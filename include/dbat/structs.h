@@ -373,6 +373,22 @@ struct unit_data {
     std::string getRoomDescription() const;
     std::string getLookDescription() const;
 
+    // Provides the keywords used for searching for this thing, from the given 
+    // character's perspective.
+    //virtual std::vector<std::string> getKeywordsFor(char_data *viewer);
+
+    // For rooms it's just the room's name, but for objects and characters it might vary widely.
+    // For example, a character might have a title, a short description, and a name.
+    // Or the character might be disguised as something else.
+    //virtual std::string getDisplayNameFor(char_data *viewer);
+
+    // When this entity is being showed in a room, what should be displayed for the looker?
+    // AffectLines are the extra lines that are shown when the target is affected by something.
+    //virtual std::string renderRoomLineFor(char_data *viewer, bool affectLines);
+
+    // Used for things like the inventory, equipment, search, and other listings.
+    //virtual std::string renderListLineFor(char_data *viewer);
+
     char *name{};
     char *room_description{};      /* When thing is listed in room */
     char *look_description{};      /* what to show when looked at */
@@ -388,8 +404,6 @@ struct unit_data {
     struct obj_data* contents{};     /* Contains objects  */
     weight_t getInventoryWeight();
     int64_t getInventoryCount();
-
-    ang::ASEvent* getReadyAngelEvent(uint32_t type);
 
     std::vector<ObjRef> getContents();
 
@@ -416,7 +430,29 @@ struct unit_data {
 
 };
 
-struct room_direction_data;
+struct room_direction_data {
+    room_direction_data() = default;
+    explicit room_direction_data(const nlohmann::json &j);
+    ~room_direction_data();
+    char *general_description{};       /* When look DIR.			*/
+    char *keyword{};        /* for open/close			*/
+
+    int16_t exit_info{};        /* Exit info			*/
+    obj_vnum key{NOTHING};        /* Key's number (-1 for no key)		*/
+    room_rnum to_room{NOWHERE};        /* Where direction leads (NOWHERE)	*/
+    int dclock{};            /* DC to pick the lock			*/
+    int dchide{};            /* DC to find hidden			*/
+    int dcskill{};            /* Skill req. to move through exit	*/
+    int dcmove{};            /* DC for skill to move through exit	*/
+    int failsavetype{};        /* Saving Throw type on skill fail	*/
+    int dcfailsave{};        /* DC to save against on fail		*/
+    room_vnum failroom{NOWHERE};        /* Room # to put char in when fail > 5  */
+    room_vnum totalfailroom{NOWHERE};        /* Room # if char fails save < 5	*/
+
+    struct room_data* getDestination();
+
+    nlohmann::json serialize();
+};
 
 struct thing_data : public unit_data {
     room_rnum in_room{NOWHERE};        /* In what room -1 when conta/carr	*/
@@ -426,6 +462,7 @@ struct thing_data : public unit_data {
     room_vnum getRoomVnum() const;
 
     std::string getLocationName() const;
+
     room_direction_data* getLocationExit(int dir) const;
     std::map<int, room_direction_data*> getLocationExits() const;
 
@@ -560,29 +597,7 @@ struct obj_data : public thing_data {
 
 
 
-struct room_direction_data {
-    room_direction_data() = default;
-    explicit room_direction_data(const nlohmann::json &j);
-    ~room_direction_data();
-    char *general_description{};       /* When look DIR.			*/
-    char *keyword{};        /* for open/close			*/
 
-    int16_t exit_info{};        /* Exit info			*/
-    obj_vnum key{NOTHING};        /* Key's number (-1 for no key)		*/
-    room_rnum to_room{NOWHERE};        /* Where direction leads (NOWHERE)	*/
-    int dclock{};            /* DC to pick the lock			*/
-    int dchide{};            /* DC to find hidden			*/
-    int dcskill{};            /* Skill req. to move through exit	*/
-    int dcmove{};            /* DC for skill to move through exit	*/
-    int failsavetype{};        /* Saving Throw type on skill fail	*/
-    int dcfailsave{};        /* DC to save against on fail		*/
-    room_vnum failroom{NOWHERE};        /* Room # to put char in when fail > 5  */
-    room_vnum totalfailroom{NOWHERE};        /* Room # if char fails save < 5	*/
-
-    struct room_data* getDestination();
-
-    nlohmann::json serialize();
-};
 
 
 /* ================== Memory Structure for room ======================= */

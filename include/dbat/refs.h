@@ -209,26 +209,72 @@ namespace ref {
     }
 
     template<typename T>
+    CScriptArray* RefToArray(const std::string& name, const std::vector<T>& refs) {
+        // Create the array in AngelScript of type 'array<T>'
+        auto typeName = "array<" + name + ">@";
+        asITypeInfo* arrayType = ang::engine->GetTypeInfoByDecl(typeName.c_str());
+        CScriptArray* asArray = CScriptArray::Create(arrayType, refs.size());
+
+        // Populate the AngelScript array with ObjRef (which is registered as Object in AS)
+        for (size_t i = 0; i < refs.size(); ++i) {
+            asArray->SetValue(i, refs.at(i)); // Directly set the ObjRef (Object) into the array
+        }
+
+        // Return the populated array
+        return asArray;
+    }
+
+    template<typename T>
     CScriptArray* getContents(const T &ref) {
         if (auto u = ref.get(); u) {
+            return RefToArray("Object", u->getContents());
+        }
+        return nullptr;
+    }
 
-            auto contents = u->getContents();
+    template<typename T>
+    ObjRef findObjectVnum(const T &ref, vnum vn) {
+        if(auto u = ref.get(); u) {
+            return u->findObjectVnum(vn);
+        }
+        return ObjRef();
+    }
 
-            // Create the array in AngelScript of type 'array<Object>'
-            asITypeInfo* arrayType = ang::engine->GetTypeInfoByDecl("array<Object>@");
-            CScriptArray* asArray = CScriptArray::Create(arrayType, contents.size());
-
-            
-            // Populate the AngelScript array with ObjRef (which is registered as Object in AS)
-            for (size_t i = 0; i < contents.size(); ++i) {
-                asArray->SetValue(i, contents[i]); // Directly set the ObjRef (Object) into the array
-            }
-
-            // Return the populated array
-            return asArray;
+    // Begin thing_data section.
+    template<typename T>
+    RoomRef getRoom(const T &ref) {
+        if(auto t = ref.get(); t) {
+            return t->getRoom();
         } else {
-            return nullptr; // Return null if the unit_data reference is invalid
+            return RoomRef();
         }
     }
 
+    template<typename T>
+    int getRoomVnum(const T &ref) {
+        if(auto t = ref.get(); t) {
+            return t->getRoomVnum();
+        }
+        return 0;
+    }
+
+    template<typename T>
+    CScriptArray* getLocationObjects(const T &ref) {
+        if(auto t = ref.get(); t) {
+            if(auto r = t.getRoom(); r) {
+                return getContents<T>(ref);
+            }
+        }
+        return nullptr;
+    }
+
+    template<typename T>
+    CScriptArray* getLocationPeople(const T &ref) {
+        if(auto t = ref.get(); t) {
+            if(auto r = t.getRoom(); r) {
+                return RefToArray<CharRef>("Character", r->getPeople());
+            }
+        }
+        return nullptr;
+    }
 }

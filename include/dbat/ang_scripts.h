@@ -68,14 +68,18 @@ namespace ang {
         engine->RegisterObjectMethod(name, "void clearVarDouble(const string &in)", asFUNCTION(ref::clearVarDouble<T>), asCALL_CDECL_OBJFIRST);
 
         engine->RegisterObjectMethod(name, "array<Object>@ getContents() const", asFUNCTION(ref::getContents<T>), asCALL_CDECL_OBJFIRST);
+        engine->RegisterObjectMethod(name, "Object findObjectVnum(int64) const", asFUNCTION(ref::findObjectVnum<T>), asCALL_CDECL_OBJFIRST);
     }
 
     
 
     template<typename T>
     void registerThingBase(const char* name) {
+        // Register all base methods.
         registerUnitBase<T>(name);
+
         // More methods
+        engine->RegisterObjectMethod(name, "Room getRoom() const", asFUNCTION(ref::getRoom<T>), asCALL_CDECL_OBJFIRST);
     }
 
     template<typename TrivType>
