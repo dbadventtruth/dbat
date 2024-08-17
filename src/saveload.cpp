@@ -46,7 +46,7 @@ static void dump_state_players(const std::filesystem::path &loc) {
 static void dump_state_characters(const std::filesystem::path &loc) {
     nlohmann::json j;
 
-    for(auto &[v, r] : uniqueCharacters) {
+    for(auto &[v, r] : char_data::instances) {
         if(v != r.second->id) r.second->id = v;
         nlohmann::json j2;
         j2["id"] = v;
@@ -63,7 +63,7 @@ static void dump_state_characters(const std::filesystem::path &loc) {
 static void dump_state_items(const std::filesystem::path &loc) {
     nlohmann::json j;
 
-    for(auto &[v, r] : uniqueObjects) {
+    for(auto &[v, r] : obj_data::instances) {
         if(v != r.second->id) r.second->id = v;
         nlohmann::json j2;
         j2["id"] = v;
@@ -80,7 +80,7 @@ static void dump_state_items(const std::filesystem::path &loc) {
 static void dump_state_dgscripts(const std::filesystem::path &loc) {
     nlohmann::json j;
 
-    for(auto &[v, r] : uniqueScripts) {
+    for(auto &[v, r] : trig_data::instances) {
         if(v != r.second->id) r.second->id = v;
         nlohmann::json j2;
         j2["id"] = v;

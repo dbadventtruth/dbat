@@ -950,8 +950,8 @@ ACMD(do_reply) {
          *      hear tells anyway. :) -gg 2/24/98
          */
 
-        auto find = uniqueCharacters.find(GET_LAST_TELL(ch));
-        if(find == uniqueCharacters.end()) {
+        auto find = char_data::instances.find(GET_LAST_TELL(ch));
+        if(find == char_data::instances.end()) {
             send_to_char(ch, "They are no longer playing.\r\n");
         }
         else if (is_tell_ok(ch, find->second.second))

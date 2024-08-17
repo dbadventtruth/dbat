@@ -438,7 +438,7 @@ static void yearChanged() {
 }
 
 static void ageAllCharacters(double addedTime) {
-    for(const auto &[id, p] : uniqueCharacters) {
+    for(const auto &[id, p] : char_data::instances) {
         p.second->ageBy(addedTime);
     }
 }

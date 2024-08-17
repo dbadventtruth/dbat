@@ -65,26 +65,27 @@ VnumIndex<obj_data> objectVnumIndex;
 VnumIndex<char_data> characterVnumIndex;
 VnumIndex<trig_data> scriptVnumIndex;
 
+InstanceMap<char_data> char_data::instances;
+InstanceMap<obj_data> obj_data::instances;
+InstanceMap<room_data> room_data::instances;
+
 std::map<obj_vnum, struct index_data> obj_index;    /* index table for object file	 */
 std::map<obj_vnum, struct obj_data> obj_proto;    /* prototypes for objs		 */
 
-std::unordered_map<int64_t, std::pair<time_t, struct char_data*>> uniqueCharacters;
 std::unordered_set<CharRef> activeCharacters;
 /* hash tree for fast obj lookup */
-std::unordered_map<int64_t, std::pair<time_t, struct obj_data*>> uniqueObjects;
 std::unordered_set<ObjRef> activeObjects;
 
 std::map<zone_vnum, struct zone_data> zone_table;    /* zone table			 */
 
 std::map<trig_vnum, struct index_data> trig_index; /* index table for triggers      */
 struct trig_data *trigger_list = nullptr;  /* all attached triggers */
-std::map<int64_t, std::pair<time_t, struct trig_data*>> uniqueScripts;
 
 std::vector<CharRef> getAllCharacters() {
     std::vector<CharRef> out;
-    out.reserve(uniqueCharacters.size());
+    out.reserve(char_data::instances.size());
 
-    for(const auto&[id, ent] : uniqueCharacters)
+    for(const auto&[id, ent] : char_data::instances)
         out.emplace_back(id, ent.first);
 
     return out;
@@ -92,9 +93,9 @@ std::vector<CharRef> getAllCharacters() {
 
 std::vector<ObjRef> getAllObjects() {
     std::vector<ObjRef> out;
-    out.reserve(uniqueObjects.size());
+    out.reserve(obj_data::instances.size());
 
-    for(const auto&[id, ent] : uniqueObjects)
+    for(const auto&[id, ent] : obj_data::instances)
         out.emplace_back(id, ent.first);
 
     return out;
@@ -294,7 +295,7 @@ static void db_load_characters_initial(const std::filesystem::path& loc) {
         } else {
             c->deserializeInstance(data, true);
         }
-        uniqueCharacters[id] = std::make_pair(generation, c);
+        char_data::instances[id] = std::make_pair(generation, c);
     }
 }
 
@@ -302,7 +303,7 @@ static void db_load_characters_finish(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "characters.json")) {
         auto id = j["id"].get<int64_t>();
         auto generation = j["generation"].get<int>();
-        if(auto cf = uniqueCharacters.find(id); cf != uniqueCharacters.end()) {
+        if(auto cf = char_data::instances.find(id); cf != char_data::instances.end()) {
             if(auto c = cf->second.second) {
                 c->deserializeRelations(j["relations"]);
                 c->deserializeLocation(j["location"]);
@@ -318,7 +319,7 @@ static void db_load_items_initial(const std::filesystem::path& loc) {
         auto data = j["data"];
         auto i = new obj_data();
         i->deserializeInstance(data, false);
-        uniqueObjects[id] = std::make_pair(generation, i);
+        obj_data::instances[id] = std::make_pair(generation, i);
     }
 }
 
@@ -326,7 +327,7 @@ static void db_load_items_finish(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "items.json")) {
         auto id = j["id"].get<int64_t>();
         auto generation = j["generation"].get<int>();
-        if(auto cf = uniqueObjects.find(id); cf != uniqueObjects.end()) {
+        if(auto cf = obj_data::instances.find(id); cf != obj_data::instances.end()) {
             if(auto i = cf->second.second) {
                 i->deserializeRelations(j["relations"]);
                 i->deserializeLocation(j["location"], j["slot"].get<int>());
@@ -355,7 +356,7 @@ static void db_load_dgscripts_initial(const std::filesystem::path& loc) {
         auto generation = j["generation"].get<int>();
         auto t = new trig_data();
         t->deserializeInstance(j["data"]);
-        uniqueScripts[id] = std::make_pair(generation, t);
+        trig_data::instances[id] = std::make_pair(generation, t);
     }
 }
 
@@ -369,7 +370,7 @@ void db_load_dgscripts_finish(const std::filesystem::path& loc) {
         auto generation = j["generation"].get<int>();
         auto location = j["location"].get<std::string>();
 
-        if (auto cf = uniqueScripts.find(id); cf != uniqueScripts.end()) {
+        if (auto cf = trig_data::instances.find(id); cf != trig_data::instances.end()) {
             if (auto t = cf->second.second) {
                 t->deserializeLocation(location);
                 struct room_data* r;
@@ -440,7 +441,9 @@ static void db_load_dgscript_prototypes(const std::filesystem::path& loc) {
 static void db_load_rooms(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "rooms.json")) {
         auto id = j["vn"].get<int64_t>();
+        auto gen = j["generation"].get<time_t>();
         auto r = world.emplace(id, j);
+        room_data::instances[id] = std::make_pair(gen, &r.first->second);
         r.first->second.zone = real_zone_by_thing(id);
         r.first->second.activate();
     }
@@ -1850,13 +1853,13 @@ void add_unique_id(struct obj_data *obj) {
         basic_mud_log("Object Found with ID -1. Automatically fixed to ID {}", obj->id);
     }
 
-    auto &o = uniqueObjects[obj->id];
+    auto &o = obj_data::instances[obj->id];
     o.first = obj->generation;
     o.second = obj;
 }
 
 void remove_unique_id(struct obj_data *obj) {
-    uniqueObjects.erase(obj->id);
+    obj_data::instances.erase(obj->id);
 }
 
 void log_dupe_objects(struct obj_data *obj1, struct obj_data *obj2) {
@@ -1889,9 +1892,9 @@ void check_unique_id(struct obj_data *obj) {
         obj->generation = time(nullptr);
         basic_mud_log("Object Found with ID -1. Automatically fixed to ID %d", obj->id);
     }
-    auto find = uniqueObjects.find(obj->id);
+    auto find = obj_data::instances.find(obj->id);
 
-    if(find != uniqueObjects.end() && find->second.first == obj->generation) {
+    if(find != obj_data::instances.end() && find->second.first == obj->generation) {
         log_dupe_objects(find->second.second, obj);
     }
 }
@@ -1912,9 +1915,9 @@ void check_unique_id(struct char_data *ch) {
         ch->generation = time(nullptr);
         basic_mud_log("Character Found with ID -1. Automatically fixed to ID %d", ch->id);
     }
-    auto find = uniqueCharacters.find(ch->id);
+    auto find = char_data::instances.find(ch->id);
 
-    if(find != uniqueCharacters.end() && find->second.first == ch->generation) {
+    if(find != char_data::instances.end() && find->second.first == ch->generation) {
         log_dupe_characters(find->second.second, ch);
     }
 }
@@ -1925,7 +1928,7 @@ void add_unique_id(struct char_data *ch) {
         ch->generation = time(nullptr);
         basic_mud_log("Character Found with ID -1. Automatically fixed to ID %d", ch->id);
     }
-    auto &o = uniqueCharacters[ch->id];
+    auto &o = char_data::instances[ch->id];
     o.first = ch->generation;
     o.second = ch;
 }
@@ -2502,7 +2505,7 @@ void free_followers(struct follow_type *k) {
 /* release memory allocated for a char struct */
 void free_char(struct char_data *ch) {
     int i;
-    uniqueCharacters.erase(ch->id);
+    char_data::instances.erase(ch->id);
 
     if(ch->vn == NOBODY) {
         if (GET_NAME(ch))
@@ -3244,13 +3247,13 @@ void load_config() {
 
 int64_t nextObjID() {
     int64_t id = 0;
-    while(uniqueObjects.contains(id)) id++;
+    while(obj_data::instances.contains(id)) id++;
     return id;
 }
 
 int64_t nextCharID() {
     int64_t id = 0;
-    while(uniqueCharacters.contains(id)) id++;
+    while(char_data::instances.contains(id)) id++;
     return id;
 }
 // ^#(?<type>[ROC])(?<id>\d+)(?::(?<generation>\d+)?)?

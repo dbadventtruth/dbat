@@ -28,3 +28,8 @@ namespace sensei {
 namespace net {
     class Connection;
 }
+
+namespace ang {
+    class ASEvent;
+    class ASEventPrototype;
+}

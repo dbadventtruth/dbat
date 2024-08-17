@@ -3449,6 +3449,7 @@ void migrate_grid() {
     }
 
     for(auto &[rv, room] : world) {
+        room.generation = time(nullptr);
         if(room.area) continue;
         auto sense = sense_location_name(rv);
         if(sense != "Unknown.") {
@@ -4640,7 +4641,7 @@ void migrate_characters() {
         a.characters.emplace_back(ch);
         ch->in_room = ch->load_room;
         ch->was_in_room = ch->load_room;
-        uniqueCharacters[id] = std::make_pair(ch->generation, ch);
+        char_data::instances[id] = std::make_pair(ch->generation, ch);
     }
 
     // migrate sense files...
@@ -5171,7 +5172,7 @@ void migrate_data() {
 
     basic_mud_log("Converting Item Instances...");
 
-    for(auto &[id, ent] : uniqueObjects) {
+    for(auto &[id, ent] : obj_data::instances) {
         migrate_obj_data(ent.second);
     }
 
@@ -5179,7 +5180,7 @@ void migrate_data() {
         migrate_char_data(&ent);
     }
 
-    for(auto &[id, ent] : uniqueCharacters) {
+    for(auto &[id, ent] : char_data::instances) {
         migrate_char_data(ent.second);
     }
 

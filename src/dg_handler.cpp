@@ -105,9 +105,9 @@ void extract_trigger(struct trig_data *trig) {
     /* walk the trigger list and remove this one */
     REMOVE_FROM_LIST(trig, trigger_list, next_in_world, temp);
 
-    auto found = uniqueScripts.find(trig->id);
-    if (found != uniqueScripts.end()) {
-        uniqueScripts.erase(found);
+    auto found = trig_data::instances.find(trig->id);
+    if (found != trig_data::instances.end()) {
+        trig_data::instances.erase(found);
     }
 
     free_trigger(trig);

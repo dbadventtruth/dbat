@@ -49,6 +49,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include "sodium.h"
 #include "dbat/saveload.h"
+#include "dbat/ang_scripts.h"
 
 /* local globals */
 struct descriptor_data *descriptor_list = nullptr;        /* master desc list */
@@ -623,6 +624,7 @@ namespace game {
         game::init_locale();
         game::init_sodium();
         game::init_database();
+        ang::initAngelScript();
         game::init_zones();
         net::init_epoll();
         game::init_copyover();

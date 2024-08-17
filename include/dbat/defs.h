@@ -217,6 +217,7 @@ enum class FormID : uint16_t {
 
 
 enum class SkillID : uint16_t {
+    Unused = 0, // needed for MagicEnum, do not remove.
     Flex = 400,
     Genius = 401,
     SolarFlare = 402,

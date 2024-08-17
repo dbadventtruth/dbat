@@ -908,9 +908,9 @@ void extract_obj(struct obj_data *obj) {
     if (SCRIPT(obj))
         extract_script(obj, OBJ_TRIGGER);
 
-    auto found = uniqueObjects.find(obj->id);
-    if (found != uniqueObjects.end()) {
-        uniqueObjects.erase(found);
+    auto found = obj_data::instances.find(obj->id);
+    if (found != obj_data::instances.end()) {
+        obj_data::instances.erase(found);
     }
 
     free_obj(obj);
@@ -1138,9 +1138,9 @@ void extract_char_final(struct char_data *ch) {
 
     ch->deactivate();
     if (IS_NPC(ch)) {
-        auto found = uniqueCharacters.find(ch->id);
-        if (found != uniqueCharacters.end()) {
-            uniqueCharacters.erase(found);
+        auto found = char_data::instances.find(ch->id);
+        if (found != char_data::instances.end()) {
+            char_data::instances.erase(found);
         }
         free_char(ch);
     }

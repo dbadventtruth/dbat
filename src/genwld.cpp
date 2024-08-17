@@ -276,6 +276,8 @@ nlohmann::json room_data::serializeDgVars() {
 nlohmann::json room_data::serialize() {
     auto j = serializeUnit();
 
+    j["generation"] = generation;
+
     if(sector_type) j["sector_type"] = sector_type;
 
     for (size_t i = 0; i < room_flags.size(); ++i) {

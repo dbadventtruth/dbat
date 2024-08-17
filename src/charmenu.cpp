@@ -24,7 +24,7 @@ namespace net {
         if(j.contains("state")) state = j.at("state").get<int>();
         if(j.contains("ch")) {
             auto id = j["ch"].get<int>();
-            ch = uniqueCharacters.at(id).second;
+            ch = char_data::instances.at(id).second;
         }
 
     }

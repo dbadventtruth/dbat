@@ -75,6 +75,10 @@ struct character_affect_type : affect_t {
             : affect_t{loc, mod, spec}, func{f} {}
 };
 
+template <typename T>
+using InstanceMap = std::unordered_map<int64_t, std::pair<time_t, T*>>;
+
+
 /* An affect structure. */
 struct affected_type : affect_t {
     using affect_t::affect_t;
@@ -91,98 +95,143 @@ struct obj_spellbook_spell {
     int pages;        /* How many pages does it take up */
 };
 
-class ObjRef {
+template <typename Derived, typename T>
+class RefBase {
 public:
     // Constructors
-    ObjRef() = default;
-    ObjRef(int64_t id, time_t generation);
-    explicit ObjRef(const nlohmann::json& j);
-    explicit ObjRef(obj_data* obj);
+    RefBase() = default;
 
-    // Destructor
-    ~ObjRef() = default;
+    RefBase(int64_t id, time_t generation) : id(id), generation(generation) {}
+
+    explicit RefBase(const nlohmann::json& j) {
+        deserialize(j);
+    }
+
+    RefBase(const T* obj) {
+        if (obj) {
+            id = obj->id;
+            generation = obj->generation;
+        }
+    }
+
+    RefBase(const RefBase& other) = default;
+
+    RefBase(RefBase&& other) noexcept
+        : id(other.id), generation(other.generation) {
+        other.id = 0;
+        other.generation = 0;
+    }
 
     // Public methods
-    int64_t getID() const;
-    time_t getGeneration() const;
-    nlohmann::json serialize() const;
-    void deserialize(const nlohmann::json& j);
-    obj_data* get(bool checkActive = false) const;
+    T* get(bool checkActive = false) const {
+        auto it = T::instances.find(id);
+        if (it != T::instances.end() && it->second.first == generation) {
+            return it->second.second;
+        }
+        return nullptr;
+    }
+
+    int64_t getID() const {
+        return id;
+    }
+
+    time_t getGeneration() const {
+        return generation;
+    }
+
+    nlohmann::json serialize() const {
+        return {
+            {"id", id},
+            {"generation", generation}
+        };
+    }
+
+    void deserialize(const nlohmann::json& j) {
+        if (j.contains("id")) id = j["id"];
+        if (j.contains("generation")) generation = j["generation"];
+    }
 
     // Operators
-    bool operator==(const ObjRef& other) const;
-    bool operator!=(const ObjRef& other) const;
-    obj_data* operator->();
-    operator obj_data*();
-    ObjRef& operator=(const obj_data* obj);
-    ObjRef& operator=(const obj_data& obj);
+    bool operator==(const Derived& other) const {
+        return id == other.id && generation == other.generation;
+    }
 
-private:
+    bool operator!=(const Derived& other) const {
+        return !(*this == other);
+    }
+
+    Derived& operator=(const T* obj) {
+        if (obj) {
+            id = obj->id;
+            generation = obj->generation;
+        } else {
+            id = 0;
+            generation = 0;
+        }
+        return *static_cast<Derived*>(this);
+    }
+
+    Derived& operator=(const T& obj) {
+        id = obj.id;
+        generation = obj.generation;
+        return *static_cast<Derived*>(this);
+    }
+
+    Derived& operator=(const RefBase& other) {
+        if (this != &other) {
+            id = other.id;
+            generation = other.generation;
+        }
+        return *static_cast<Derived*>(this);
+    }
+
+    Derived& operator=(RefBase&& other) noexcept {
+        if (this != &other) {
+            id = other.id;
+            generation = other.generation;
+            other.id = 0;
+            other.generation = 0;
+        }
+        return *static_cast<Derived*>(this);
+    }
+
+    T* operator->() {
+        return get();
+    }
+
+    operator T*() {
+        return get();
+    }
+
+protected:
     int64_t id{0};
     time_t generation{0};
 };
 
-
-class CharRef {
+// Derived classes
+class CharRef : public RefBase<CharRef, struct char_data> {
 public:
-    // Constructors
-    CharRef() = default;
-    CharRef(int64_t id, time_t generation);
-    explicit CharRef(const nlohmann::json& j);
-    explicit CharRef(char_data* obj);
-
-    // Destructor
-    ~CharRef() = default;
-
-    // Public methods
-    int64_t getID() const;
-    time_t getGeneration() const;
-    nlohmann::json serialize() const;
-    void deserialize(const nlohmann::json& j);
-    char_data* get(bool checkActive = false) const;
-
-    // Operators
-    bool operator==(const CharRef& other) const;
-    bool operator!=(const CharRef& other) const;
-    char_data* operator->();
-    operator char_data*();
-    CharRef& operator=(const char_data* obj);
-    CharRef& operator=(const char_data& obj);
-
-private:
-    int64_t id{0};
-    time_t generation{0};
+    using RefBase::RefBase;  // Inherit constructors from RefBase
 };
 
-class RoomRef {
+class ObjRef : public RefBase<ObjRef, struct obj_data> {
 public:
-    // Constructors
-    RoomRef() = default;
-    RoomRef(int64_t id, time_t generation);
-    explicit RoomRef(const nlohmann::json& j);
-    explicit RoomRef(room_data* obj);
+    using RefBase::RefBase;  // Inherit constructors from RefBase
+};
 
-    // Destructor
-    ~RoomRef() = default;
+class RoomRef : public RefBase<RoomRef, struct room_data> {
+public:
+    using RefBase::RefBase;  // Inherit constructors from RefBase
+};
 
-    // Public methods
-    int64_t getID() const;
-    time_t getGeneration() const;
-    nlohmann::json serialize() const;
-    void deserialize(const nlohmann::json& j);
-    room_data* get(bool checkActive = false) const;
+class TrigRef : public RefBase<TrigRef, struct trig_data> {
+public:
+    using RefBase::RefBase;  // Inherit constructors from RefBase
+};
 
-    // Operators
-    bool operator==(const RoomRef& other) const;
-    bool operator!=(const RoomRef& other) const;
-    room_data* operator->();
-    operator room_data*();
-    RoomRef& operator=(const room_data* obj);
-    RoomRef& operator=(const room_data& obj);
-
-private:
-    int64_t id{0};
-    time_t generation{0};
+class ASERef : public RefBase<ASERef, ang::ASEvent> {
+public:
+    using RefBase::RefBase;  // Inherit constructors from RefBase
 };
 
 // Define a hash specialization for RefBase
@@ -204,6 +253,20 @@ namespace std {
     template <>
     struct hash<RoomRef> {
         std::size_t operator()(const RoomRef& ref) const {
+            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+        }
+    };
+
+    template <>
+    struct hash<TrigRef> {
+        std::size_t operator()(const TrigRef& ref) const {
+            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+        }
+    };
+
+    template <>
+    struct hash<ASERef> {
+        std::size_t operator()(const ASERef& ref) const {
             return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
         }
     };
@@ -262,12 +325,54 @@ struct player_data {
     nlohmann::json serialize();
 };
 
+class EventVariables {
+public:
+    EventVariables() = default;
+    explicit EventVariables(const nlohmann::json& j);
+    
+    nlohmann::json serialize() const;
+    void deserialize(const nlohmann::json& j);
+
+    void setCharacter(const std::string &name, CharRef character);
+    CharRef getCharacter(const std::string &name) const;
+    void clearCharacter(const std::string &name);
+    void setObject(const std::string &name, ObjRef object);
+    ObjRef getObject(const std::string &name) const;
+    void clearObject(const std::string &name);
+    void setRoom(const std::string &name, RoomRef room);
+    RoomRef getRoom(const std::string &name) const;
+    void clearRoom(const std::string &name);
+    void setString(const std::string &name, const std::string &value);
+    std::string getString(const std::string &name) const;
+    void clearString(const std::string &name);
+    void setInt(const std::string &name, int64_t value);
+    int64_t getInt(const std::string &name) const;
+    void clearInt(const std::string &name);
+    void setDouble(const std::string &name, double value);
+    double getDouble(const std::string &name) const;
+    void clearDouble(const std::string &name);
+
+    void clear();
+protected:
+    std::unordered_map<std::string, CharRef> characters;
+    std::unordered_map<std::string, ObjRef> objects;
+    std::unordered_map<std::string, RoomRef> rooms;
+    std::unordered_map<std::string, std::string> strings;
+    std::unordered_map<std::string, int64_t> ints;
+    std::unordered_map<std::string, double> doubles;
+};
+
 struct unit_data {
     unit_data() = default;
     virtual ~unit_data() = default;
     vnum vn{NOTHING}; /* Where in database */
     zone_vnum zone{NOTHING};
-    
+
+    std::string getName() const;
+    std::string getShortDescription() const;
+    std::string getRoomDescription() const;
+    std::string getLookDescription() const;
+
     char *name{};
     char *room_description{};      /* When thing is listed in room */
     char *look_description{};      /* what to show when looked at */
@@ -278,9 +383,13 @@ struct unit_data {
     std::vector<trig_vnum> proto_script; /* list of default triggers  */
     struct script_data *script{};  /* script info for the object */
 
+    std::unordered_map<std::string, EventVariables> variables;
+    
     struct obj_data* contents{};     /* Contains objects  */
     weight_t getInventoryWeight();
     int64_t getInventoryCount();
+
+    ang::ASEvent* getReadyAngelEvent(uint32_t type);
 
     std::vector<ObjRef> getContents();
 
@@ -350,6 +459,7 @@ struct thing_data : public unit_data {
 
 /* ================== Memory Structure for Objects ================== */
 struct obj_data : public thing_data {
+    static InstanceMap<obj_data> instances;
     obj_data() = default;
     explicit obj_data(const nlohmann::json& j);
 
@@ -477,6 +587,7 @@ struct room_direction_data {
 
 /* ================== Memory Structure for room ======================= */
 struct room_data : public unit_data {
+    static InstanceMap<room_data> instances;
     room_data() = default;
     ~room_data() override;
     explicit room_data(const nlohmann::json &j);
@@ -726,6 +837,7 @@ struct craftTask {
 
 /* ================== Structure for player/non-player ===================== */
 struct char_data : public thing_data {
+    static InstanceMap<char_data> instances;
     char_data() = default;
     // this constructor below is to be used only for the mob_proto map.
     explicit char_data(const nlohmann::json& j);

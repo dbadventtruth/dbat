@@ -60,6 +60,7 @@ using Random = effolkronium::random_static;
 #include <boost/algorithm/string.hpp>
 #include "nlohmann/json.hpp"
 #include "magic_enum/magic_enum_all.hpp"
+#include "angelscript.h"
 
 /* Basic system dependencies *******************************************/
 #if CIRCLE_GNU_LIBC_MEMORY_TRACK && !defined(HAVE_MCHECK_H)
@@ -210,3 +211,7 @@ std::list<T*> get_vnum_list(const VnumIndex<T>& index, vnum vn) {
 using UID = std::variant<struct room_data*, struct obj_data*, struct char_data*>;
 
 extern bool isMigrating;
+
+namespace ang {
+    extern asIScriptEngine* engine;
+}

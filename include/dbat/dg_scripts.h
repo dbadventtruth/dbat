@@ -77,7 +77,7 @@ constexpr int DG_SPELL_LEVEL = 25;
 #define MTRIG_RECEIVE          (1 << 9)      /* character is given obj     */
 #define MTRIG_FIGHT            (1 << 10)     /* each pulse while fighting  */
 #define MTRIG_HITPRCNT         (1 << 11)     /* fighting and below some hp */
-#define MTRIG_BRIBE           (1 << 12)     /* coins are given to mob     */
+#define MTRIG_BRIBE            (1 << 12)     /* coins are given to mob     */
 #define MTRIG_LOAD             (1 << 13)     /* the mob is loaded          */
 #define MTRIG_MEMORY           (1 << 14)     /* mob see's someone remembered */
 #define MTRIG_CAST             (1 << 15)     /* mob targetted by spell     */
@@ -174,6 +174,7 @@ struct trig_var_data {
 
 /* structure for triggers */
 struct trig_data {
+    static InstanceMap<trig_data> instances;
     trig_data() = default;
     explicit trig_data(const nlohmann::json& j);
     nlohmann::json serializeProto();

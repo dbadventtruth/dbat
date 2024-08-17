@@ -2,6 +2,24 @@
 #include "dbat/dg_scripts.h"
 #include "dbat/utils.h"
 
+
+std::string unit_data::getName() const {
+    return name ? name : "";
+}
+
+std::string unit_data::getShortDescription() const {
+    return short_description ? short_description : "";
+}
+
+std::string unit_data::getRoomDescription() const {
+    return room_description ? room_description : "";
+}
+
+std::string unit_data::getLookDescription() const {
+    return look_description ? look_description : "";
+}
+
+
 std::vector<ObjRef> unit_data::getContents() {
     std::vector<ObjRef> out;
     for(auto o = contents; o; o = o->next_content) out.emplace_back(o);
@@ -133,3 +151,99 @@ std::unordered_set<struct obj_data*> unit_data::gatherObjects(const std::functio
     }
     return out;
 }
+
+// ASEventVariables implementation
+void EventVariables::setCharacter(const std::string &name, CharRef character) {
+    characters[name] = character;
+}
+
+CharRef EventVariables::getCharacter(const std::string &name) const {
+    auto it = characters.find(name);
+    if(it == characters.end()) return {};
+    return it->second;
+}
+
+void EventVariables::clearCharacter(const std::string &name) {
+    characters.erase(name);
+}
+
+void EventVariables::setObject(const std::string &name, ObjRef object) {
+    objects[name] = object;
+}
+
+ObjRef EventVariables::getObject(const std::string &name) const {
+    auto it = objects.find(name);
+    if(it == objects.end()) return {};
+    return it->second;
+}
+
+void EventVariables::clearObject(const std::string &name) {
+    objects.erase(name);
+}
+
+void EventVariables::setRoom(const std::string &name, RoomRef room) {
+    rooms[name] = room;
+}
+
+RoomRef EventVariables::getRoom(const std::string &name) const {
+    auto it = rooms.find(name);
+    if(it == rooms.end()) return {};
+    return it->second;
+}
+
+void EventVariables::clearRoom(const std::string &name) {
+    rooms.erase(name);
+}
+
+void EventVariables::setString(const std::string &name, const std::string &value) {
+    strings[name] = value;
+}
+
+std::string EventVariables::getString(const std::string &name) const {
+    auto it = strings.find(name);
+    if(it == strings.end()) return "";
+    return it->second;
+}
+
+void EventVariables::clearString(const std::string &name) {
+    strings.erase(name);
+}
+
+void EventVariables::setInt(const std::string &name, int64_t value) {
+    ints[name] = value;
+}
+
+int64_t EventVariables::getInt(const std::string &name) const {
+    auto it = ints.find(name);
+    if(it == ints.end()) return 0;
+    return it->second;
+}
+
+void EventVariables::clearInt(const std::string &name) {
+    ints.erase(name);
+}
+
+void EventVariables::setDouble(const std::string &name, double value) {
+    doubles[name] = value;
+}
+
+double EventVariables::getDouble(const std::string &name) const {
+    auto it = doubles.find(name);
+    if(it == doubles.end()) return 0.0;
+    return it->second;
+}
+
+void EventVariables::clearDouble(const std::string &name) {
+    doubles.erase(name);
+}
+
+void EventVariables::clear() {
+    characters.clear();
+    objects.clear();
+    rooms.clear();
+    strings.clear();
+    ints.clear();
+    doubles.clear();
+}
+
+// Unit Data Variable implementations

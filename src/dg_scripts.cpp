@@ -20,6 +20,7 @@
 
 #define PULSES_PER_MUD_HOUR     (SECS_PER_MUD_HOUR*PASSES_PER_SEC)
 
+InstanceMap<trig_data> trig_data::instances;
 
 /* Local functions not used elsewhere */
 void do_stat_trigger(struct char_data *ch, trig_data *trig);
@@ -934,7 +935,7 @@ void do_sstat(struct char_data *ch, struct unit_data *ud) {
 
 int64_t nextTrigID() {
     int64_t id = 0;
-    while(uniqueScripts.contains(id)) id++;
+    while(trig_data::instances.contains(id)) id++;
     return id;
 }
 
@@ -975,7 +976,7 @@ void add_trigger(struct script_data *sc, trig_data *t, int loc) {
     t->id = nextTrigID();
     t->generation = time(nullptr);
 
-    uniqueScripts[t->id] = std::make_pair(t->generation, t);
+    trig_data::instances[t->id] = std::make_pair(t->generation, t);
 
     int order = 0;
     for(auto t2 = TRIGGERS(sc); t2; t2 = t2->next) {

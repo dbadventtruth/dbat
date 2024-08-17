@@ -1780,8 +1780,8 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
             struct script_memory *mem = SCRIPT_MEM(k);
             send_to_char(ch, "Script memory:\r\n  Remember             Command\r\n");
             while (mem) {
-                auto find = uniqueCharacters.find(mem->id);
-                if(find == uniqueCharacters.end()) {
+                auto find = char_data::instances.find(mem->id);
+                if(find == char_data::instances.end()) {
                     send_to_char(ch, "  ** Corrupted!\r\n");
                 } else {
                     send_to_char(ch, "  %-20.20s <default>\r\n", GET_NAME(find->second.second));
@@ -3406,9 +3406,9 @@ ACMD(do_show) {
         case 4:
             i = 0;
             j = 0;
-            k = uniqueObjects.size();
+            k = obj_data::instances.size();
             con = sessions.size();
-            for (auto &[id, ent] : uniqueCharacters) {
+            for (auto &[id, ent] : char_data::instances) {
                 vict = ent.second;
                 if (IS_NPC(vict))
                     j++;

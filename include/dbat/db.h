@@ -397,7 +397,6 @@ extern struct char_data *affectv_list;
 extern std::map<mob_vnum, struct index_data> mob_index;
 extern std::map<mob_vnum, struct char_data> mob_proto;
 
-extern std::unordered_map<int64_t, std::pair<time_t, struct char_data*>> uniqueCharacters;
 extern std::unordered_set<CharRef> activeCharacters;
 extern std::vector<CharRef> getAllCharacters();
 int64_t nextCharID();
@@ -409,7 +408,6 @@ extern VnumIndex<trig_data> scriptVnumIndex;
 extern std::map<obj_vnum, struct index_data> obj_index;
 extern std::map<obj_vnum, struct obj_data> obj_proto;
 
-extern std::unordered_map<int64_t, std::pair<time_t, struct obj_data*>> uniqueObjects;
 extern std::unordered_set<ObjRef> activeObjects;
 extern std::vector<ObjRef> getAllObjects();
 int64_t nextObjID();
@@ -423,7 +421,6 @@ extern int top_of_socialt;
 extern std::map<trig_vnum, struct index_data> trig_index;
 
 extern struct trig_data *trigger_list;
-extern std::map<int64_t, std::pair<time_t, struct trig_data*>> uniqueScripts;
 
 extern int dg_owner_purged;
 

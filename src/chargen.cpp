@@ -877,7 +877,7 @@ namespace net {
         p.account = conn->account;
         conn->account->characters.emplace_back(ch);
         p.character = ch;
-        uniqueCharacters[ch->id] = std::make_pair(ch->generation, ch);
+        char_data::instances[ch->id] = std::make_pair(ch->generation, ch);
 
         ch->chclass = cg.sensei;
         ch->race = cg.race;

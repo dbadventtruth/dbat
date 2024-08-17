@@ -31,6 +31,7 @@
 #include "dbat/account.h"
 #include "dbat/improved-edit.h"
 #include "dbat/transformation.h"
+#include "dbat/ang_scripts.h"
 
 /* local functions */
 static void gen_map(struct char_data *ch, int num);
@@ -4164,10 +4165,57 @@ ACMD(do_gold) {
         send_to_char(ch, "You have %d zenni.\r\n", GET_GOLD(ch));
 }
 
+
+static void test_angelscript(struct char_data *ch) {
+    std::string code = R"(
+        void testFunction(Character char) {
+            string name = char.getName();
+            array<Object>@ inv = char.getContents();
+        }
+    )";
+
+    auto module = ang::engine->GetModule("TestModule", asGM_ALWAYS_CREATE);
+    module->AddScriptSection("test", code.c_str()); // Assuming scriptText contains your AngelScript code
+    int buildResult = module->Build();
+    if (buildResult < 0) {
+        std::cerr << "Failed to build the module. Error code: " << buildResult << std::endl;
+        return;
+    }
+
+    auto func = module->GetFunctionByDecl("void testFunction(Character)");
+    if (func == nullptr) {
+        // Handle the error
+        std::cerr << "Failed to find the function 'testFunction' in the script." << std::endl;
+        return;
+    }
+
+    auto ctx = ang::contextMgr->AddContext(ang::engine, func);  // Manage context lifetime
+
+    // Pass the Character object to the script
+    CharRef ref = ch->ref();
+    auto ptr = &ref;
+    ctx->SetArgObject(0, ptr);
+
+    // Execute the script
+    int r = ctx->Execute();
+    if (r == asEXECUTION_FINISHED) {
+        std::cout << "Script executed successfully." << std::endl;
+    } else if (r == asEXECUTION_EXCEPTION) {
+        // Handle the exception
+        std::cerr << "Script execution failed: " << ctx->GetExceptionString() << std::endl;
+    }
+
+    // Release the context
+    ctx->Release();
+    
+}
+
 ACMD(do_score) {
 
     if (IS_NPC(ch))
         return;
+
+    test_angelscript(ch);
 
     int view = 0, full = 5, personal = 1, health = 2, stats = 3, other = 4;
 

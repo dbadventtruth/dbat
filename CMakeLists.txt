@@ -28,6 +28,24 @@ add_definitions(-DHAVE_ZLIB)
 
 find_package(Boost REQUIRED COMPONENTS system program_options regex)
 
+add_subdirectory(angelscript/angelscript/projects/cmake)
+
+set(AS_ADDONS
+        angelscript/add_on/scriptstdstring/scriptstdstring.cpp
+        angelscript/add_on/scriptstdstring/scriptstdstring_utils.cpp
+        angelscript/add_on/scriptstdstring/scriptstdstring.h
+        angelscript/add_on/contextmgr/contextmgr.cpp
+        angelscript/add_on/contextmgr/contextmgr.h
+        angelscript/add_on/scriptdictionary/scriptdictionary.cpp
+        angelscript/add_on/scriptdictionary/scriptdictionary.h
+        angelscript/add_on/scriptarray/scriptarray.cpp
+        angelscript/add_on/scriptarray/scriptarray.h
+        angelscript/add_on/scriptmath/scriptmath.cpp
+        angelscript/add_on/scriptmath/scriptmath.h
+        angelscript/add_on/scriptmath/scriptmathcomplex.cpp
+        angelscript/add_on/scriptmath/scriptmathcomplex.h
+)
+
 set(CIRCLE_INCLUDE_DIRS
         include
         ${ZLIB_INCLUDE_DIRS}
@@ -39,6 +57,8 @@ set(CIRCLE_INCLUDE_DIRS
         ${sodium_SOURCE_DIR}/libsodium/src/libsodium/include
         ${effolkronium_random_SOURCE_DIR}/include
         ${magic_enum_SOURCE_DIR}/include
+        angelscript/angelscript/include
+        angelscript/add_on/
         )
 
 
@@ -58,10 +78,11 @@ set(CIRCLE_LINK_LIBRARIES
         #Luau.VM Luau.Common Luau.Compiler
         sodium
         effolkronium_random
+        angelscript
         )
 
 # this is the core library we're making.
-add_library(circlemud ${CIRCLE_INCLUDE} ${CIRCLE_SRC})
+add_library(circlemud ${CIRCLE_INCLUDE} ${CIRCLE_SRC} ${AS_ADDONS})
 # everything we make will link to it.
 target_link_libraries(circlemud ${CIRCLE_LINK_LIBRARIES})
 target_include_directories(circlemud PUBLIC ${CIRCLE_INCLUDE_DIRS})
