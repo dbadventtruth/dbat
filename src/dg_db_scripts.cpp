@@ -146,13 +146,13 @@ void dg_read_trigger(FILE *fp, struct unit_data *proto, int type) {
         switch (type) {
             case MOB_TRIGGER:
                 mudlog(BRF, ADMLVL_BUILDER, true,
-                       "SYSERR: dg_read_trigger: Trigger vnum #%d asked for but non-existant! (mob: %s - %d)",
-                       vnum, GET_NAME((char_data *) proto), GET_MOB_VNUM((char_data *) proto));
+                       "SYSERR: dg_read_trigger: Trigger vnum #%d asked for but non-existant! (mob: %s - %s)",
+                       vnum, proto->getName().c_str(), proto->getUID().c_str());
                 break;
             case WLD_TRIGGER:
                 mudlog(BRF, ADMLVL_BUILDER, true,
-                       "SYSERR: dg_read_trigger: Trigger vnum #%d asked for but non-existant! (room:%d)",
-                       vnum, GET_ROOM_VNUM(((room_data *) proto)->vn));
+                       "SYSERR: dg_read_trigger: Trigger vnum #%d asked for but non-existant! (room:%s)",
+                       vnum, proto->getUID().c_str());
                 break;
             default:
                 mudlog(BRF, ADMLVL_BUILDER, true,
@@ -194,13 +194,13 @@ void assign_triggers(struct unit_data *i, int type) {
     if(!SCRIPT(i)) {
         switch (type) {
             case MOB_TRIGGER:
-                i->script = new script_data((char_data*)i);
+                i->script = new script_data(dynamic_cast<char_data*>(i));
                 break;
             case OBJ_TRIGGER:
-                i->script = new script_data((obj_data*)i);
+                i->script = new script_data(dynamic_cast<obj_data*>(i));
                 break;
             case WLD_TRIGGER:
-                i->script = new script_data((room_data*)i);
+                i->script = new script_data(dynamic_cast<room_data*>(i));
                 break;
             default:
                 mudlog(BRF, ADMLVL_BUILDER, true,

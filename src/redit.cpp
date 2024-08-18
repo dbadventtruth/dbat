@@ -49,7 +49,7 @@ ACMD(do_oasis_redit) {
         buf3 = two_arguments(argument, buf1, buf2);
     }
 
-    if (GET_ADMLEVEL(ch) < 1 && !ch->getRoomFlag(ROOM_CANREMODEL)) {
+    if (GET_ADMLEVEL(ch) < 1 && !ch->getLocationRoomFlag(ROOM_CANREMODEL)) {
         send_to_char(ch, "You can not remodel this room.\r\n");
         return;
     }

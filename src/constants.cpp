@@ -1374,7 +1374,7 @@ const char *size_names[NUM_SIZES + 1] = {
 };
 
 
-int rev_dir[NUM_OF_DIRS] =
+const int rev_dir[NUM_OF_DIRS] =
         {
                 /* North */ SOUTH,
                 /* East  */ WEST,

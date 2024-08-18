@@ -19,6 +19,7 @@
 #include "dbat/spells.h"
 #include "dbat/players.h"
 #include "dbat/account.h"
+#include "dbat/fight.h"
 
 /* From db.c */
 int update_mobile_strings(struct char_data *t, struct char_data *f);
@@ -1082,8 +1083,8 @@ double char_data::getTotalWeight() {
     return getWeight() + getCarriedWeight();
 }
 
-std::string char_data::getUID(bool active) {
-    return fmt::format("#C{}:{}{}", id, generation, active ? "" : "!");
+std::string char_data::getUID() const {
+    return fmt::format("#C:{}:{}", id, generation);
 }
 
 bool char_data::isActive() {
@@ -1174,4 +1175,66 @@ void char_data::ageBy(double addedTime) {
 
 void char_data::setAge(double newAge) {
     this->time.secondsAged = newAge * SECS_PER_GAME_YEAR;
+}
+
+
+void char_data::onAddedToLocation(const LocationStub& newLoc) {
+    if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
+        // We were added to a room.
+        int i;
+
+        next_in_room = r->people;
+        r->people = this;
+        in_room = r->vn;
+
+        auto &z = zone_table[room->zone];
+        if(IS_NPC(this)) {
+            z.npcsInZone.insert(ref());
+        } else {
+            z.playersInZone.insert(ref());
+        }
+
+        /* Stop fighting now, if we left. */
+        if (FIGHTING(this) && newLoc != FIGHTING(this)->loc && !AFF_FLAGGED(this, AFF_PURSUIT)) {
+            stop_fighting(FIGHTING(this));
+            stop_fighting(this);
+        }
+        if (!IS_NPC(this)) {
+            if (PRF_FLAGGED(this, PRF_ARENAWATCH)) {
+                pref.reset(PRF_ARENAWATCH);
+                ARENA_IDNUM(this) = -1;
+            }
+        }
+    }
+}
+
+void char_data::onRemovedFromLocation(const LocationStub& oldLoc) {
+    if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
+        // we were in a room.
+
+        struct char_data *temp;
+        int i;
+
+        if (FIGHTING(this) != nullptr && !AFF_FLAGGED(this, AFF_PURSUIT))
+            stop_fighting(this);
+        if (AFF_FLAGGED(this, AFF_PURSUIT) && FIGHTING(this) == nullptr)
+            affected_by.reset(AFF_PURSUIT);
+
+        auto &z = zone_table[r->zone];
+        if(IS_NPC(this)) {
+            z.npcsInZone.erase(ref());
+        } else {
+            z.playersInZone.erase(ref());
+        }
+
+        REMOVE_FROM_LIST(this, r->people, next_in_room, temp);
+        in_room = NOWHERE;
+        next_in_room = nullptr;
+
+    }
+
+}
+
+void char_data::onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) {
+
 }

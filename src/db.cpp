@@ -3257,7 +3257,7 @@ int64_t nextCharID() {
     return id;
 }
 // ^#(?<type>[ROC])(?<id>\d+)(?::(?<generation>\d+)?)?
-static std::regex uid_regex(R"(^#([ROC])(\d+)(?::(\d+)?)?(!)?)", std::regex::icase);
+static std::regex uid_regex(R"(^#([ROC]):(\d+):(\d+)$)", std::regex::icase);
 
 bool isUID(const std::string& uid) {
     return std::regex_match(uid, uid_regex);
@@ -3273,24 +3273,49 @@ std::optional<UID> resolveUID(const std::string& uid) {
 
     char type = toupper(match[1].str()[0]); // First capture group
     int64_t id = std::stoll(match[2].str()); // Second capture group
-    bool active = match[4].matched; // Fourth capture group
     time_t generation = 0;
     if(match[3].matched) { // Third capture group
         generation = std::stoll(match[3].str());
     }
 
     if(type == 'R') {
-        if(world.contains(id)) return &world[id];
+        RoomRef ref{id, generation};
+        auto r = ref.get();
+        if(r) return r;
     } else if(type == 'O') {
         ObjRef ref{id, generation};
-        auto o = ref.get(active);
+        auto o = ref.get();
         if(o) return o;
     } else if(type == 'C') {
         CharRef ref{id, generation};
-        auto c = ref.get(active);
+        auto c = ref.get();
         if(c) return c;
     }
     return std::nullopt;
 }
 
+std::optional<UID> resolveUIDActive(const std::string& uid) {
+    if(auto res = resolveUID(uid)) {
+        if(!res) return {};
+        switch(res.value().index()) {
+            case 0: {
+                auto r = std::get<room_data*>(res.value());
+                if(r->isActive()) return res;
+                break;
+            }
+            case 1: {
+                auto o = std::get<obj_data*>(res.value());
+                if(o->isActive()) return res;
+                break;
+            }
+            case 2: {
+                auto c = std::get<char_data*>(res.value());
+                if(c->isActive()) return res;
+                break;
+            }
+        }
+    }
+
+    return {};
+}
 

@@ -20,13 +20,6 @@ std::string unit_data::getLookDescription() const {
 }
 
 
-std::vector<ObjRef> unit_data::getContents() {
-    std::vector<ObjRef> out;
-    for(auto o = contents; o; o = o->next_content) out.emplace_back(o);
-    return out;
-}
-
-
 nlohmann::json unit_data::serializeUnit() {
     nlohmann::json j;
 
@@ -246,4 +239,80 @@ void EventVariables::clear() {
     doubles.clear();
 }
 
-// Unit Data Variable implementations
+std::vector<std::string> unit_data::getKeywordsFor(char_data *viewer) {
+    std::vector<std::string> out;
+    boost::split(out, name, boost::is_space(), boost::token_compress_on);
+    return;
+}
+
+std::string unit_data::getDisplayNameFor(char_data *viewer, int ana) {
+    return getName();
+}
+
+std::string unit_data::getShortDescFor(char_data *viewer) {
+    return getDisplayNameFor(viewer, 2);
+}
+
+std::vector<std::string> unit_data::getListPrefixesFor(char_data *viewer) {
+    std::vector<std::string> out;
+
+    if(GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT) {
+        out.emplace_back(fmt::format("@G[{}]@n", getUID()));
+        if(vn != NOTHING) out.emplace_back(fmt::format("@G[VN:{}]@n", vn));
+        if(!proto_script.empty()) out.emplace_back(fmt::format("@G[DG:{}]@n", fmt::join(proto_script, ",")));
+    }
+
+    return out;
+}
+
+std::string unit_data::getRoomPostureFor(char_data *viewer) {
+    return getDisplayNameFor(viewer, 2);
+}
+
+std::string unit_data::renderRoomLineFor(char_data *viewer, bool affectLines) {
+    auto mainLines = getListPrefixesFor(viewer);
+    mainLines.emplace_back(getRoomPostureFor(viewer));
+    auto suffixes = getListSuffixesFor(viewer);
+    // Add suffixes to the mainLines vector.
+    mainLines.insert(mainLines.end(), suffixes.begin(), suffixes.end());
+
+    // Join them.
+    auto mainLine = boost::join(mainLines, " ");
+
+    if(!affectLines)
+        return mainLine;
+
+    auto affLines = renderStatusLinesFor(viewer);
+    return boost::join(mainLines, " ") + "\r\n" + boost::join(affLines, "\r\n");
+}
+
+std::vector<std::string> unit_data::renderStatusLinesFor(char_data *viewer) {
+    return {};
+}
+
+std::string unit_data::renderListLineFor(char_data* viewer) {
+    auto mainLines = getListPrefixesFor(viewer);
+    mainLines.emplace_back(getDisplayNameFor(viewer, 2));
+    auto suffixes = getListSuffixesFor(viewer);
+    // Add suffixes to the mainLines vector.
+    mainLines.insert(mainLines.end(), suffixes.begin(), suffixes.end());
+
+    // Join them.
+    auto mainLine = boost::join(mainLines, " ");
+}
+
+std::vector<std::string> unit_data::getListSuffixesFor(char_data *viewer) {
+    return {};
+}
+
+int unit_data::getApparentSexFor(char_data *viewer) {
+    return 0;
+}
+
+std::string unit_data::getPostureString(char_data *viewer) {
+    return "is here.";
+}
+
+std::string unit_data::getLocationName(const Coordinates& coords) {
+    return getName();
+}

@@ -184,7 +184,7 @@ bool char_data::in_room_range(IDXTYPE low_rnum, IDXTYPE high_rnum) {
 }
 
 bool char_data::in_past() {
-    return this->getRoomFlag(ROOM_PAST);
+    return this->getLocationRoomFlag(ROOM_PAST);
 }
 
 bool char_data::is_newbie() {

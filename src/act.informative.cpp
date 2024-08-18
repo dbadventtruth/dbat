@@ -286,7 +286,7 @@ static double terrain_bonus(struct char_data *ch) {
             break;
     }
 
-    if (ch->getRoomFlag(ROOM_SPACE)) {
+    if (ch->getLocationRoomFlag(ROOM_SPACE)) {
         bonus += -0.5;
     }
 
@@ -697,7 +697,7 @@ ACMD(do_post) {
         return;
     }
 
-    if (ch->getRoomFlag(ROOM_GARDEN1) || ch->getRoomFlag(ROOM_GARDEN2)) {
+    if (ch->getLocationRoomFlag(ROOM_GARDEN1) || ch->getLocationRoomFlag(ROOM_GARDEN2)) {
         send_to_char(ch, "You can not post on things in a garden.\r\n");
         return;
     }
@@ -1274,21 +1274,27 @@ ACMD(do_map) {
     gen_map(ch, 1);
 }
 
+static const std::vector<std::string> map_key = {
+    "@W               @D-[@CArea Map@D]-",
+    "@D-------------------------------------------@w",
+    "@WC = City, @wI@W = Inside, @GP@W = Plain, @gF@W = Forest",
+    "@DM@W = Mountain, @yH@W = Hills, @CS@W = Sky, @BW@W = Water",
+    "@bU@W = Underwater, @m$@W = Shop, @m#@W = Important,",
+    "@YD@W = Desert, @c~@W = Shallow Water, @4 @n@W = Lava,",
+    "@WLastly @RX@W = You.",
+    "@D-------------------------------------------",
+    "@D                  @CNorth@w",
+    "@D                    @c^@w",
+    "@D             @CWest @c< O > @CEast@w",
+    "@D                    @cv@w",
+    "@D                  @CSouth@w",
+    "@D                ---------@w"
+};
+
 static void print_map_key(struct char_data *ch) {
-    send_to_char(ch, "@W               @D-[@CArea Map@D]-\r\n");
-    send_to_char(ch, "@D-------------------------------------------@w\r\n");
-    send_to_char(ch, "@WC = City, @wI@W = Inside, @GP@W = Plain, @gF@W = Forest\r\n");
-    send_to_char(ch, "@DM@W = Mountain, @yH@W = Hills, @CS@W = Sky, @BW@W = Water\r\n");
-    send_to_char(ch, "@bU@W = Underwater, @m$@W = Shop, @m#@W = Important,\r\n");
-    send_to_char(ch, "@YD@W = Desert, @c~@W = Shallow Water, @4 @n@W = Lava,\r\n");
-    send_to_char(ch, "@WLastly @RX@W = You.\r\n");
-    send_to_char(ch, "@D-------------------------------------------\r\n");
-    send_to_char(ch, "@D                  @CNorth@w\r\n");
-    send_to_char(ch, "@D                    @c^@w\r\n");
-    send_to_char(ch, "@D             @CWest @c< O > @CEast@w\r\n");
-    send_to_char(ch, "@D                    @cv@w\r\n");
-    send_to_char(ch, "@D                  @CSouth@w\r\n");
-    send_to_char(ch, "@D                ---------@w\r\n");
+    for(const auto& line : map_key) {
+        send_to_char(ch, "%s\r\n", line.c_str());
+    }
 }
 
 static void initialize_map(char map[9][10]) {
@@ -1311,20 +1317,107 @@ static void replace_map_symbols(char *buf) {
     }
 }
 
-static void print_map_line(struct char_data *ch, int key, const char *buf) {
-    const char *key_strings[] = {
-        "    @WC: City, @wI@W: Inside, @GP@W: Plain@n\r\n",
-        "    @gF@W: Forest, @DM@W: Mountain, @yH@W: Hills@n\r\n",
-        "    @CS@W: Sky, @BW@W: Water, @bU@W: Underwater@n\r\n",
-        "    @m$@W: Shop, @m#@W: Important, @YD@W: Desert@n\r\n",
-        "    @c~@W: Shallow Water, @4 @n@W: Lava, @RX@W: You@n\r\n"
+static const std::vector<std::string> keyLines = {
+        "@WC: City, @wI@W: Inside, @GP@W: Plain@n",
+        "@gF@W: Forest, @DM@W: Mountain, @yH@W: Hills@n",
+        "@CS@W: Sky, @BW@W: Water, @bU@W: Underwater@n",
+        "@m$@W: Shop, @m#@W: Important, @YD@W: Desert@n",
+        "@c~@W: Shallow Water, @4 @n@W: Lava, @RX@W: You@n"
     };
 
+static void print_map_line(struct char_data *ch, int key, const char *buf) {
     if (key < 5) {
-        send_to_char(ch, "%s%s", buf, key_strings[key]);
+        send_to_char(ch, "%s    %s\r\n", buf, keyLines[key]);
     } else {
         send_to_char(ch, buf);
     }
+}
+
+
+static const std::map<int, std::string> dirNames = {
+    {NORTH, "N"},
+    {EAST, "E"},
+    {SOUTH, "S"},
+    {WEST, "W"},
+    {NORTHEAST, "NE"},
+    {NORTHWEST, "NW"},
+    {SOUTHEAST, "SE"},
+    {SOUTHWEST, "SW"},
+    {UP, "U"},
+    {DOWN, "D"},
+    {INDIR, "I"},
+    {OUTDIR, "OUT"}
+};
+
+static const std::string compassTemplate = "      |{}{:^3}@n|\r\n"
+                                           "|{}{:>3}@n| |{}{:^3}@n| |{}{:<3}@n|\r\n"
+                                           "|{}{:>3}|@n|{}{:^3}@n| |{}{:<3}@n|\r\n"
+                                           "|{}{:>3}| |{}{:^3}@n| |{}{:<3}@n|\r\n"
+                                           "      |{}{:^3}@n|";
+
+static const std::map<int, std::pair<std::string, std::string>> compassColors = {
+    {NORTH, {"@C", "@r"}},
+    {NORTHWEST, {"@C", "@r"}},
+    {UP, {"@Y", "@y"}},
+    {NORTHEAST, {"@C", "@r"}},
+    {WEST, {"@C", "@r"}},
+    {INDIR, {"@M", "@m"}},
+    {EAST, {"@C", "@r"}},
+    {SOUTHWEST, {"@C", "@r"}},
+    {DOWN, {"@Y", "@y"}},
+    {SOUTHEAST, {"@C", "@r"}},
+    {SOUTH, {"@C", "@r"}},
+    {OUTDIR, {"@M", "@m"}}
+};
+
+static std::vector<std::string> generateCompass(uint16_t doors, uint16_t locked) {
+    std::vector<std::string> compass;
+
+    // Prepare containers for directions and colors.
+    std::vector<std::string> dirs(12, "");
+    std::vector<std::string> colors(12, "");
+
+    for (int i = 0; i < 12; ++i) {
+        auto door_bit = 1 << i;
+        
+        if (doors & door_bit) {
+            if (i == INDIR || i == OUTDIR) {
+                // Handle INDIR and OUTDIR specially.
+                if ((doors & (1 << INDIR)) && (doors & (1 << OUTDIR))) {
+                    dirs[i] = "{}{}";
+                    colors[i] = "{";
+                } else if (doors & (1 << INDIR)) {
+                    dirs[i] = dirNames.at(INDIR);
+                    colors[i] = (locked & door_bit) ? compassColors.at(INDIR).second : compassColors.at(INDIR).first;
+                } else if (doors & (1 << OUTDIR)) {
+                    dirs[i] = dirNames.at(OUTDIR);
+                    colors[i] = (locked & door_bit) ? compassColors.at(OUTDIR).second : compassColors.at(OUTDIR).first;
+                }
+            } else {
+                // Handle normal directions.
+                dirs[i] = dirNames.at(i);
+                colors[i] = (locked & door_bit) ? compassColors.at(i).second : compassColors.at(i).first;
+            }
+        }
+    }
+
+    // Format the compass using fmt and the collected direction data.
+    auto rendered = fmt::format(fmt::runtime(compassTemplate),
+                                colors[NORTH], dirs[NORTH],
+                                colors[NORTHWEST], dirs[NORTHWEST],
+                                colors[UP], dirs[UP],
+                                colors[NORTHEAST], dirs[NORTHEAST],
+                                colors[WEST], dirs[WEST],
+                                colors[INDIR], dirs[INDIR],
+                                colors[EAST], dirs[EAST],
+                                colors[SOUTHWEST], dirs[SOUTHWEST],
+                                colors[DOWN], dirs[DOWN],
+                                colors[SOUTHEAST], dirs[SOUTHEAST],
+                                colors[SOUTH], dirs[SOUTH]);
+
+    // Split the formatted string into individual lines and return it.
+    boost::split(compass, rendered, boost::is_any_of("\n"));
+    return compass;
 }
 
 static void gen_map(struct char_data *ch, int num) {
@@ -1503,7 +1596,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                 send_to_char(ch, "@D(@YBeing Used@D)@w");
             }
             if (GET_OBJ_TYPE(obj) == ITEM_PLANT &&
-                (obj->getRoomFlag(ROOM_GARDEN1) || obj->getRoomFlag(ROOM_GARDEN2))) {
+                (obj->getLocationRoomFlag(ROOM_GARDEN1) || obj->getLocationRoomFlag(ROOM_GARDEN2))) {
                 see_plant(obj, ch);
                 return;
             }
@@ -2374,437 +2467,579 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
     }
 }
 
-static void list_one_char(struct char_data *i, struct char_data *ch) {
-    struct obj_data *chair = nullptr;
-    int count = false;
-    const char *positions[] = {
-            " is dead",
-            " is mortally wounded",
-            " is lying here, incapacitated",
-            " is lying here, stunned",
-            " is sleeping here",
-            " is resting here",
-            " is sitting here",
-            "!FIGHTING!",
-            " is standing here"
+RaceID char_data::getApparentRaceFor(char_data *viewer) {
+    if((viewer == this) || (GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT))
+        return race;
+
+    auto apparent = race;
+    if(mimic)
+        apparent = mimic.value();
+    
+    switch(apparent) {
+        case RaceID::Halfbreed:
+            if(playerFlags.test(PLR_TAIL) && !playerFlags.test(PLR_TAILHIDE)) {
+                if(get(CharAppearance::HairColor) == HAIRC_BLACK && get(CharAppearance::EyeColor) == EYE_BLACK) {
+                    return RaceID::Saiyan;
+                }
+                return RaceID::Halfbreed;
+            }
+            return RaceID::Human;
+        case RaceID::Saiyan:
+            if(!playerFlags.test(PLR_TAIL) || playerFlags.test(PLR_TAILHIDE)) {
+                return RaceID::Human;
+            }
+            return RaceID::Saiyan;
+    }
+    return apparent;
+}
+
+static const char *positions[] = {
+    " is dead",
+    " is mortally wounded",
+    " is lying here, incapacitated",
+    " is lying here, stunned",
+    " is sleeping here",
+    " is resting here",
+    " is sitting here",
+    "!FIGHTING!",
+    " is standing here"
+};
+
+std::string char_data::getApparentRaceSexListFor(char_data *viewer, int ana) {
+    auto race = getApparentRaceFor(viewer);
+    auto sex = getApparentSexFor(viewer);
+
+    std::string out = race::getName(race);
+
+    switch(race) {
+        case RaceID::Namekian:
+            break;
+        default:
+            out = fmt::format("{} {}", PRO_MAFE(sex), out);
+            break;
+    }
+
+    switch(ana) {
+        case 1: // a(n)
+            out = fmt::format("{} {}", STR_SANA(out.c_str()), out);
+            break;
+        case 2: // A(n)
+            out = fmt::format("{} {}", STR_ANA(out.c_str()), out);
+            break;
+    }
+    return out;
+}
+
+static std::string checkAn(const std::string& txt, int ana) {
+    switch(ana) {
+        case 1:
+            return STR_SANA(txt.c_str());
+        case 2:
+            return STR_ANA(txt.c_str());
+    }
+    return txt;
+}
+
+std::string char_data::getShortDescFor(char_data *viewer) {
+    if(viewer == this)
+        // We are looking at ourselves.
+        return getName();
+
+    if(IS_NPC(this))
+        // We are an NPC, and our descriptions are very simple.
+        return getShortDescription();
+    
+    // viewer is looking at a Player Character.
+
+    // Admin and NPCs cut through all the crap.
+    if(IS_NPC(viewer) || GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT) {
+        return getName();
+    }
+
+    // both characters are player characters, so the dub system comes into play if we are not disguised.
+    if(!IS_NPC(viewer) && !playerFlags.test(PLR_DISGUISED)) {
+        // In the case of
+        if(auto find = players.find(viewer->id); find != players.end()) {
+            if(auto found = find->second.dubNames.find(id); found != find->second.dubNames.end()) {
+                return found->second;
+            }
+        }
+    }
+    // Looking up by dub name failed. So we'll need to do something like "A male Majin, with a long forelock"
+    // The below will give us the "male Majin" part.
+
+    auto appRace = getApparentRaceFor(viewer);
+    auto appSex = getApparentSexFor(viewer);
+    auto raceName = race::getName(appRace);
+    boost::to_lower(raceName);
+
+    std::string sexName = "";
+    if(appRace != RaceID::Namekian) {
+        sexName = PRO_MAFE(appSex);
+        sexName += " ";
+    }
+
+    auto phrase = fmt::format("{}{}", sexName, raceName);
+
+    if(playerFlags.test(PLR_DISGUISED)) {
+        // If we are disguised, we need to add the disguise name.
+        return fmt::format("A disguised {}@n", phrase);
+    }
+
+    // Since player characters are all SPECIAL SNOWFLAKES, we need to check for special features.
+    switch(GET_DISTFEA(this)) {
+        case DISTFEA_EYE: {
+            auto eyec = eye_types[(int)GET_EYE(this)];
+            return fmt::format("{} {} eyed {}", checkAn(eyec, 2), eyec, phrase);
+        }
+        case DISTFEA_SKIN: {
+            auto skinc = skin_types[(int)GET_SKIN(this)];
+            return fmt::format("{} {} skinned {}", checkAn(skinc, 2), skinc, phrase);
+        }
+        case DISTFEA_WEIGHT: {
+            const char *heightDesc;
+            auto height = GET_PC_HEIGHT(this);
+                if (appRace == RaceID::Tuffle) {
+                    if (height > 70) heightDesc = "very tall";
+                    else if (height > 55) heightDesc = "tall";
+                    else if (height > 35) heightDesc = "average height";
+                    else heightDesc = "short";
+                } else {
+                    if (height > 200) heightDesc = "very tall";
+                    else if (height > 180) heightDesc = "tall";
+                    else if (height > 150) heightDesc = "average height";
+                    else if (height > 120) heightDesc = "short";
+                    else heightDesc = "very short";
+                }
+                return fmt::format("{} {} {}", checkAn(heightDesc, 2), heightDesc, phrase);
+        }
+        case DISTFEA_HEIGHT: {
+            const char *weightDesc;
+                auto w = getWeight();
+                if (appRace == RaceID::Tuffle) {
+                    if (w > 35) weightDesc = "very heavy";
+                    else if (w > 25) weightDesc = "heavy";
+                    else if (w > 15) weightDesc = "average weight";
+                    else weightDesc = "welterweight";
+                } else {
+                    if (w > 120) weightDesc = "very heavy";
+                    else if (w > 100) weightDesc = "heavy";
+                    else if (w > 80) weightDesc = "average weight";
+                    else if (w > 60) weightDesc = "lightweight";
+                    else weightDesc = "welterweight";
+                }
+                return fmt::format("{} {} {}", checkAn(weightDesc, 2), weightDesc, phrase);
+        }
+        case DISTFEA_HAIR: {
+            auto hairl = (int)GET_HAIRL(this);
+            auto hairs = (int)GET_HAIRS(this);
+            auto hairc = (int)GET_HAIRC(this);
+
+            // Honestly this system is terrible. Characters should be allowed to have both horns and hair.
+            // Think of those poor Oni in Otherworld having to choose... they'd get their suits in a tizzy.
+            switch(appRace) {
+                case RaceID::Majin:
+                    return fmt::format("{} {}, with a {} forelock", checkAn(phrase, 2), phrase, FHA_types[hairl]);
+                case RaceID::Namekian:
+                case RaceID::Arlian:
+                    return fmt::format("{} {}, with {} antennae", checkAn(phrase, 2), phrase, FHA_types[hairl]);
+                case RaceID::Icer:
+                case RaceID::Demon:
+                    return fmt::format("{} {}, with {} horns", checkAn(phrase, 2), phrase, FHA_types[hairl]);                    
+                default: 
+                    if(hairl == 0) {
+                        // Bald.
+                        return fmt::format("{} {}, with a bald head", checkAn(phrase, 2), phrase);
+                    } else {
+                        return fmt::format("{} {}, with {} {} hair {}", checkAn(phrase, 2), phrase, 
+                        hairl_types[hairl], hairc_types[hairc], hairs_types[hairs]);
+                    }
+            }
+        }
+        default: // shouldn't be possible, but just in case...
+            return fmt::format("{} {}", checkAn(phrase, 2), phrase);
+    }
+}
+
+// This is used for searching by keywords in commands like look or give or punch.
+// The words should be in order of priority. So the most ambiguous things like gender and race
+// are the last ones.
+std::vector<std::string> char_data::getKeywordsFor(char_data *viewer) {
+    std::vector<std::string> out;
+    std::vector<std::string> temp;
+
+    if(IS_NPC(this) || GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT || IS_NPC(viewer)) {
+        // NPCs are very simple.
+        boost::split(out, getName(), boost::is_space(), boost::token_compress_on);
+    }
+
+    if(!IS_NPC(viewer) && !playerFlags.test(PLR_DISGUISED)) {
+        // In the case of a player looking at another player, we might have a dub name.
+        if(auto find = players.find(viewer->id); find != players.end()) {
+            if(auto found = find->second.dubNames.find(id); found != find->second.dubNames.end()) {
+                boost::split(temp, found->second, boost::is_space(), boost::token_compress_on);
+                out.insert(out.end(), temp.begin(), temp.end());
+                temp.clear();
+            }
+        }
+    }
+
+    auto appRace = getApparentRaceFor(viewer);
+    auto raceName = race::getName(appRace);
+    boost::to_lower(raceName);
+    boost::split(temp, raceName, boost::is_space(), boost::token_compress_on);
+    out.insert(out.end(), temp.begin(), temp.end());
+    temp.clear();
+    if(appRace != RaceID::Namekian) 
+        if(auto appSex = getApparentSexFor(viewer); appSex > 0) {
+            auto sexName = std::string(PRO_MAFE(appSex));
+            boost::split(temp, sexName, boost::is_space(), boost::token_compress_on);
+            out.insert(out.end(), temp.begin(), temp.end());
+            temp.clear();
+        }
+    
+    return out;
+}
+
+// This function is used to get a display name for a character.
+// It might return something like "a male human", or a dubbed name, or the real name.
+// Although this is very similar to getShortDescFor, it is used in different contexts.
+std::string char_data::getDisplayNameFor(char_data *viewer, int ana) {
+    if(viewer == this)
+        // We are looking at ourselves.
+        return getName();
+
+    if(IS_NPC(this))
+        // We are an NPC, and our descriptions are very simple.
+        return getShortDescription();
+    
+    // Admin and NPCs cut through all the crap.
+    if(IS_NPC(viewer) || GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT) {
+        return getName();
+    }
+
+    // both characters are player characters, so the dub system comes into play if we are not disguised.
+    if(!IS_NPC(viewer) && !playerFlags.test(PLR_DISGUISED)) {
+        // In the case of
+        if(auto find = players.find(viewer->id); find != players.end()) {
+            if(auto found = find->second.dubNames.find(id); found != find->second.dubNames.end()) {
+                return found->second;
+            }
+        }
+    }
+
+    if(playerFlags.test(PLR_DISGUISED)) {
+        // If we are disguised, we need to add the disguise name.
+        switch(ana) {
+            case 1:
+                return fmt::format("a disguised {}@n", getApparentRaceSexListFor(viewer, 0));
+            case 2:
+                return fmt::format("A disguised {}@n", getApparentRaceSexListFor(viewer, 0));
+        }
+        return fmt::format("a disguised {}@n", getApparentRaceSexListFor(viewer, 0));
+    }
+
+    // Guess we're going with  "a male human" or whatever.
+    return getApparentRaceSexListFor(viewer, ana);
+}
+
+std::string char_data::getPostureString(char_data *viewer) {
+    std::string out;
+    bool hasStatus = false;
+
+    // Check special status first (Absorbing, Grappling, Carrying)
+    auto appendStatus = [&](const std::string &status) {
+        if (hasStatus) {
+            out += ", ";
+        }
+        out += status;
+        hasStatus = true;
     };
 
-    if (!IS_NPC(ch) && PRF_FLAGGED(ch, PRF_ROOMFLAGS) && IS_NPC(i)) {
-        auto sString = !i->proto_script.empty() ? fmt::format("{} ", i->scriptString()) : "";
-        send_to_char(ch, "@D[@G%d@D]@w %s", GET_MOB_VNUM(i), sString.c_str());
-    }
-
-    if (IS_NPC(i) && i->room_description && GET_POS(i) == GET_DEFAULT_POS(i) && !FIGHTING(i)) {
-        send_to_char(ch, "%s", i->room_description);
-
-        if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .9 && GET_HIT(i) != (i->getMaxPL()))
-            act("@R...Some slight wounds on $s body.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .8 && GET_HIT(i) < (i->getMaxPL()) * .9)
-            act("@R...A few wounds on $s body.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .7 && GET_HIT(i) < (i->getMaxPL()) * .8)
-            act("@R...Many wounds on $s body.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .6 && GET_HIT(i) < (i->getMaxPL()) * .7)
-            act("@R...Quite a few wounds on $s body.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .5 && GET_HIT(i) < (i->getMaxPL()) * .6)
-            act("@R...Horrible wounds on $s body.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .4 && GET_HIT(i) < (i->getMaxPL()) * .5)
-            act("@R...Blood is seeping from the wounds on $s body.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .3 && GET_HIT(i) < (i->getMaxPL()) * .4)
-            act("@R...$s body is in terrible shape.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .2 && GET_HIT(i) < (i->getMaxPL()) * .3)
-            act("@R...Is absolutely covered in wounds.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) >= (i->getMaxPL()) * .1 && GET_HIT(i) < (i->getMaxPL()) * .2)
-            act("@R...Is on $s last leg.@w", true, i, nullptr, ch, TO_VICT);
-        else if (IS_NPC(i) && GET_HIT(i) < (i->getMaxPL()) * .1)
-            act("@R...Should be DEAD soon.@w", true, i, nullptr, ch, TO_VICT);
-
-
-        if (GET_EAVESDROP(i) > 0) {
-            char eaves[300];
-            sprintf(eaves, "@w...$e is spying on everything to the @c%s@w.", dirs[GET_EAVESDIR(i)]);
-            act(eaves, true, i, nullptr, ch, TO_VICT);
-        }
-        if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 1)
-            act("...$e is in the air!", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 2)
-            act("...$e is high in the air!", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_SANCTUARY) && !GET_SKILL(i, SKILL_AQUA_BARRIER))
-            act("...$e has a barrier around $s body!", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_FIRESHIELD))
-            act("...$e has @rf@Rl@Ya@rm@Re@Ys@w around $s body!", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_SANCTUARY) && GET_SKILL(i, SKILL_AQUA_BARRIER))
-            act("...$e has a @Gbarrier@w of @cwater@w and @Cki@w around $s body!", false, i, nullptr, ch, TO_VICT);
-        if (!IS_NPC(i) && PLR_FLAGGED(i, PLR_SPIRAL))
-            act("...$e is spinning in a vortex!", false, i, nullptr, ch, TO_VICT);
-        if (GET_CHARGE(i))
-            act("...$e has a bright %s aura around $s body!", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_METAMORPH))
-            act("@w...$e has a dark, @rred@w aura and menacing presence.", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_HAYASA))
-            act("@w...$e has a soft @cblue@w glow around $s body!", false, i, nullptr, ch, TO_VICT);
-        if (AFF_FLAGGED(i, AFF_BLIND))
-            act("...$e is groping around blindly!", false, i, nullptr, ch, TO_VICT);
-        if (affected_by_spell(i, SPELL_FAERIE_FIRE))
-            act("@m...$e @mis outlined with purple fire!@m", false, i, nullptr, ch, TO_VICT);
-        if (GET_FEATURE(i)) {
-            char woo[MAX_STRING_LENGTH];
-            sprintf(woo, "@C%s@n", GET_FEATURE(i));
-            act(woo, false, i, nullptr, ch, TO_VICT);
-        }
-
-        return;
-    }
-
-    if (IS_NPC(i) && !FIGHTING(i) && GET_POS(i) != POS_SITTING && GET_POS(i) != POS_SLEEPING)
-        send_to_char(ch, "@w%c%s", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i) && GRAPPLED(i) && GRAPPLED(i) == ch)
-        send_to_char(ch, "@w%c%s is being grappled with by YOU!", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i) && GRAPPLED(i) && GRAPPLED(i) != ch)
-        send_to_char(ch, "@w%c%s is being absorbed from by %s!", UPPER(*i->short_description), i->short_description + 1,
-                     readIntro(ch, GRAPPLED(i)) == 1 ? get_i_name(ch, GRAPPLED(i)) : AN(RACE(GRAPPLED(i))));
-    else if (IS_NPC(i) && ABSORBBY(i) && ABSORBBY(i) == ch)
-        send_to_char(ch, "@w%c%s is being absorbed from by YOU!", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i) && ABSORBBY(i) && ABSORBBY(i) != ch)
-        send_to_char(ch, "@w%c%s is being absorbed from by %s!", UPPER(*i->short_description), i->short_description + 1,
-                     readIntro(ch, ABSORBBY(i)) == 1 ? get_i_name(ch, ABSORBBY(i)) : AN(RACE(ABSORBBY(i))));
-    else if (IS_NPC(i) && FIGHTING(i) && FIGHTING(i) != ch && GET_POS(i) != POS_SITTING && GET_POS(i) != POS_SLEEPING &&
-             is_sparring(i))
-        send_to_char(ch, "@w%c%s is sparring with %s!", UPPER(*i->short_description), i->short_description + 1,
-                     GET_ADMLEVEL(ch) ? GET_NAME(FIGHTING(i)) : (readIntro(ch, FIGHTING(i)) == 1 ? get_i_name(ch,
-                                                                                                              FIGHTING(
-                                                                                                                      i))
-                                                                                                 : LRACE(FIGHTING(i))));
-    else if (IS_NPC(i) && FIGHTING(i) && is_sparring(i) && FIGHTING(i) == ch && GET_POS(i) != POS_SITTING &&
-             GET_POS(i) != POS_SLEEPING)
-        send_to_char(ch, "@w%c%s is sparring with you!", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i) && FIGHTING(i) && FIGHTING(i) != ch && GET_POS(i) != POS_SITTING && GET_POS(i) != POS_SLEEPING)
-        send_to_char(ch, "@w%c%s is fighting %s!", UPPER(*i->short_description), i->short_description + 1,
-                     GET_ADMLEVEL(ch) ? GET_NAME(FIGHTING(i)) : (readIntro(ch, FIGHTING(i)) == 1 ? get_i_name(ch,
-                                                                                                              FIGHTING(
-                                                                                                                      i))
-                                                                                                 : LRACE(FIGHTING(i))));
-    else if (IS_NPC(i) && FIGHTING(i) && FIGHTING(i) == ch && GET_POS(i) != POS_SITTING && GET_POS(i) != POS_SLEEPING)
-        send_to_char(ch, "@w%c%s is fighting YOU!", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i) && FIGHTING(i) && GET_POS(i) == POS_SITTING)
-        send_to_char(ch, "@w%c%s is sitting here.", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i) && FIGHTING(i) && GET_POS(i) == POS_SLEEPING)
-        send_to_char(ch, "@w%c%s is sleeping here.", UPPER(*i->short_description), i->short_description + 1);
-    else if (IS_NPC(i))
-        send_to_char(ch, "@w%c%s", UPPER(*i->short_description), i->short_description + 1);
-    else if (!IS_NPC(i)) {
-        if (IS_MAJIN(i) && AFF_FLAGGED(i, AFF_LIQUEFIED)) {
-            send_to_char(ch, "@wSeveral blobs of %s colored goo spread out here.@n\n", skin_types[(int) GET_SKIN(i)]);
-            return;
-        }
-        if ((GET_ADMLEVEL(ch) > 0 || GET_ADMLEVEL(i) > 0) || IS_NPC(ch)) {
-            send_to_char(ch, "@w%s", i->name);
-        } else if ((!PLR_FLAGGED(i, PLR_DISGUISED) && readIntro(ch, i) == 1)) {
-            send_to_char(ch, "@w%s", get_i_name(ch, i));
-        } else if (!PLR_FLAGGED(i, PLR_DISGUISED) && readIntro(ch, i) != 1) {
-            if (GET_DISTFEA(i) == DISTFEA_EYE) {
-                send_to_char(ch, "@wA %s eyed %s %s", eye_types[(int) GET_EYE(i)], MAFE(i), LRACE(i));
-            } else if (GET_DISTFEA(i) == DISTFEA_HAIR) {
-                if (IS_MAJIN(i)) {
-                    send_to_char(ch, "@wA %s majin, with a %s forelock,", MAFE(i), FHA_types[(int) GET_HAIRL(i)]);
-                } else if (IS_NAMEK(i)) {
-                    send_to_char(ch, "@wA namek, with %s antennae,", FHA_types[(int) GET_HAIRL(i)]);
-                } else if (IS_ARLIAN(i)) {
-                    send_to_char(ch, "@wA arlian, with %s antennae,", FHA_types[(int) GET_HAIRL(i)]);
-                } else if (IS_ICER(i) || IS_DEMON(i)) {
-                    send_to_char(ch, "@wA %s %s, with %s horns", MAFE(i), LRACE(i), FHA_types[(int) GET_HAIRL(i)]);
-                } else {
-                    char blarg[MAX_INPUT_LENGTH];
-                    sprintf(blarg, "%s %s hair %s", hairl_types[(int) GET_HAIRL(i)], hairc_types[(int) GET_HAIRC(i)],
-                            hairs_types[(int) GET_HAIRS(i)]);
-                    send_to_char(ch, "@wA %s %s, with %s", MAFE(i), LRACE(i),
-                                 GET_HAIRL(i) == 0 ? "a bald head" : (blarg));
-                }
-            } else if (GET_DISTFEA(i) == DISTFEA_SKIN) {
-                send_to_char(ch, "@wA %s skinned %s %s", skin_types[(int) GET_SKIN(i)], MAFE(i), LRACE(i));
-            } else if (GET_DISTFEA(i) == DISTFEA_HEIGHT) {
-                char *height;
-                if (IS_TRUFFLE(i)) {
-                    if (GET_PC_HEIGHT(i) > 70) {
-                        height = strdup("very tall");
-                    } else if (GET_PC_HEIGHT(i) > 55) {
-                        height = strdup("tall");
-                    } else if (GET_PC_HEIGHT(i) > 35) {
-                        height = strdup("average height");
-                    } else {
-                        height = strdup("short");
-                    }
-                } else {
-                    if (GET_PC_HEIGHT(i) > 200) {
-                        height = strdup("very tall");
-                    } else if (GET_PC_HEIGHT(i) > 180) {
-                        height = strdup("tall");
-                    } else if (GET_PC_HEIGHT(i) > 150) {
-                        height = strdup("average height");
-                    } else if (GET_PC_HEIGHT(i) > 120) {
-                        height = strdup("short");
-                    } else {
-                        height = strdup("very short");
-                    }
-                }
-                send_to_char(ch, "@wA %s %s %s", height, MAFE(i), LRACE(i));
-                if (height) {
-                    free(height);
-                }
-            } else if (GET_DISTFEA(i) == DISTFEA_WEIGHT) {
-                char *height;
-                auto w = i->getWeight();
-                if (IS_TRUFFLE(i)) {
-                    if (w > 35) {
-                        height = strdup("very heavy");
-                    } else if (w > 25) {
-                        height = strdup("heavy");
-                    } else if (w > 15) {
-                        height = strdup("average weight");
-                    } else {
-                        height = strdup("welterweight");
-                    }
-                } else {
-                    if (w > 120) {
-                        height = strdup("very heavy");
-                    } else if (w > 100) {
-                        height = strdup("heavy");
-                    } else if (w > 80) {
-                        height = strdup("average weight");
-                    } else if (w > 60) {
-                        height = strdup("lightweight");
-                    } else {
-                        height = strdup("welterweight");
-                    }
-                }
-                send_to_char(ch, "@wA %s %s %s", height, MAFE(i), LRACE(i));
-                if (height) {
-                    free(height);
-                }
-            }
+    if (auto abs = ABSORBING(this); abs) {
+        if (abs != viewer) {
+            appendStatus(fmt::format("is absorbing from {}", abs->getDisplayNameFor(viewer, 1)));
         } else {
-            send_to_char(ch, "@wA disguised %s %s", MAFE(i), LRACE(i));
+            appendStatus("is absorbing from YOU");
         }
     }
 
-    if (!IS_NPC(i) || !FIGHTING(i)) {
-        if (AFF_FLAGGED(i, AFF_INVISIBLE)) {
-            send_to_char(ch, ", is invisible");
-            count = true;
+    if (auto absby = ABSORBBY(this); absby) {
+        if (absby != viewer) {
+            appendStatus(fmt::format("is being absorbed from by {}", absby->getDisplayNameFor(viewer, 1)));
+        } else {
+            appendStatus("is being absorbed from by YOU");
         }
-        if (AFF_FLAGGED(i, AFF_ETHEREAL)) {
-            send_to_char(ch, ", has a halo");
-            count = true;
+    }
+
+    if (auto grap = GRAPPLING(this); grap) {
+        if (grap != viewer) {
+            appendStatus(fmt::format("is grappling with {}", grap->getDisplayNameFor(viewer, 1)));
+        } else {
+            appendStatus("is grappling with YOU");
         }
-        if (AFF_FLAGGED(i, AFF_HIDE) && i != ch) {
-            send_to_char(ch, ", is hiding");
-            if (GET_SKILL(i, SKILL_HIDE) && !IS_NPC(ch) && i != ch) {
-                improve_skill(i, SKILL_HIDE, 1);
-            }
-            count = true;
+    }
+
+    if (auto grappledby = GRAPPLED(this); grappledby) {
+        if (grappledby != viewer) {
+            appendStatus(fmt::format("is being grappled by {}", grappledby->getDisplayNameFor(viewer, 1)));
+        } else {
+            appendStatus("is being grappled by YOU");
         }
-        if (!IS_NPC(i) && !i->desc) {
-            send_to_char(ch, ", has a blank stare");
-            count = true;
+    }
+
+    if (auto carry = CARRYING(this); carry) {
+        if (carry != viewer) {
+            appendStatus(fmt::format("is carrying {}", carry->getDisplayNameFor(viewer, 1)));
+        } else {
+            appendStatus("is carrying YOU");
         }
-        if (!IS_NPC(i) && PLR_FLAGGED(i, PLR_WRITING)) {
-            send_to_char(ch, ", is writing");
-            count = true;
+    }
+
+    if (auto carryby = CARRIED_BY(this); carryby) {
+        if (carryby != viewer) {
+            appendStatus(fmt::format("is being carried by {}", carryby->getDisplayNameFor(viewer, 1)));
+        } else {
+            appendStatus("is being carried by YOU");
         }
-        if (!IS_NPC(i) && PRF_FLAGGED(i, PRF_BUILDWALK)) {
-            send_to_char(ch, ", is buildwalking");
-            count = true;
+    }
+
+    // Combat status
+    if (auto fight = FIGHTING(this); fight) {
+        if (!PLR_FLAGGED(this, PLR_SPAR) || (PLR_FLAGGED(this, PLR_SPAR) && (!PLR_FLAGGED(fight, PLR_SPAR) || IS_NPC(fight)))) {
+            appendStatus("is here fighting");
+        } else if (PLR_FLAGGED(this, PLR_SPAR) && PLR_FLAGGED(fight, PLR_SPAR)) {
+            appendStatus("is here sparring");
         }
-        if (!IS_NPC(i) && ABSORBING(i) && ABSORBING(i) != ch) {
-            send_to_char(ch, ", is absorbing from %s", GET_NAME(ABSORBING(i)));
-            count = true;
-        }
-        if (!IS_NPC(i) && GRAPPLING(i) && GRAPPLING(i) != ch) {
-            send_to_char(ch, ", is grappling with %s",
-                         readIntro(ch, GRAPPLING(i)) == 1 ? get_i_name(ch, GRAPPLING(i)) : introd_calc(GRAPPLING(i)));
-            count = true;
-        }
-        if (!IS_NPC(i) && CARRYING(i) && CARRYING(i) != ch) {
-            send_to_char(ch, ", is carrying %s",
-                         readIntro(ch, CARRYING(i)) == 1 ? get_i_name(ch, CARRYING(i)) : introd_calc(CARRYING(i)));
-            count = true;
-        }
-        if (!IS_NPC(i) && CARRIED_BY(i) && CARRIED_BY(i) != ch) {
-            send_to_char(ch, ", is being carried by %s",
-                         readIntro(ch, CARRIED_BY(i)) == 1 ? get_i_name(ch, CARRIED_BY(i)) : introd_calc(
-                                 CARRIED_BY(i)));
-            count = true;
-        }
-        if (!IS_NPC(i) && GRAPPLING(i) && GRAPPLING(i) == ch) {
-            send_to_char(ch, ", is grappling with YOU");
-            count = true;
-        }
-        if (!IS_NPC(i) && ABSORBING(i) && ABSORBING(i) == ch) {
-            send_to_char(ch, ", is absorbing from YOU");
-            count = true;
-        }
-        if (!IS_NPC(i) && ABSORBING(ch) && ABSORBING(ch) == i) {
-            send_to_char(ch, ", is being absorbed from by YOU");
-            count = true;
-        }
-        if (!IS_NPC(i) && GRAPPLING(ch) && GRAPPLING(ch) == i) {
-            send_to_char(ch, ", is being grappled with by YOU");
-            count = true;
-        }
-        if (!IS_NPC(i) && CARRYING(ch) && CARRYING(ch) == i) {
-            send_to_char(ch, ", is being carried by you");
-            count = true;
-        }
-        if (!IS_NPC(ch) && !IS_NPC(i) && FIGHTING(i)) {
-            if (!PLR_FLAGGED(i, PLR_SPAR) ||
-                (PLR_FLAGGED(i, PLR_SPAR) && (!PLR_FLAGGED(FIGHTING(i), PLR_SPAR) || IS_NPC(FIGHTING(i))))) {
-                send_to_char(ch, ", is here fighting ");
-            }
-            if (PLR_FLAGGED(i, PLR_SPAR) && PLR_FLAGGED(FIGHTING(i), PLR_SPAR)) {
-                send_to_char(ch, ", is here sparring ");
-            }
-            if (FIGHTING(i) == ch) {
-                send_to_char(ch, "@rYOU@w");
-                count = true;
+
+        if (fight == viewer) {
+            out += " @rYOU@w";
+        } else {
+            if (IN_ROOM(this) == IN_ROOM(fight)) {
+                out += " " + fight->getDisplayNameFor(viewer, 1);
             } else {
-                if (IN_ROOM(i) == IN_ROOM(FIGHTING(i))) {
-                    send_to_char(ch, "%s", GET_ADMLEVEL(ch) ? GET_NAME(FIGHTING(i)) : (readIntro(ch, FIGHTING(i)) == 1
-                                                                                       ? get_i_name(ch, FIGHTING(i))
-                                                                                       : LRACE(FIGHTING(i))));
-                    count = true;
-                } else {
-                    send_to_char(ch, "someone who has already left!");
-                }
+                out += " someone who has already left";
+            }
+        }
+        hasStatus = true;
+    }
+
+    // Position and sitting status
+    auto posNum = (int)GET_POS(this);
+    auto pos = positions[posNum];
+    if (auto chair = SITS(this); chair) {
+        if (PLR_FLAGGED(this, PLR_HEALT)) {
+            appendStatus("is floating inside a healing tank");
+        } else {
+            out += fmt::format("{} on {}", pos, chair->getShortDescFor(viewer));
+        }
+    } else if (PLR_FLAGGED(this, PLR_PILOTING)) {
+        appendStatus("is sitting in the pilot's chair");
+    } else if (!SITS(this) && !FIGHTING(this)) {
+        if (hasStatus) {
+            out += ", and ";
+        }
+        if(posNum == POS_STANDING) {
+            // for an NPC we will not show the standing status.
+            // This will allow them to use their room_descs.
+            if(!IS_NPC(this)) {
+                // But for a player, we can have an optional alternate to standing.
+                // TODO: Implement.
+                out += pos;
+            }
+        }
+        hasStatus = true;
+    } else if (!IS_NPC(this) && !hasStatus) {
+        out += " is here struggling with thin air.";
+    }
+
+    // if out doesn't end in a ! or . then append a .
+
+    if (!out.empty() && out.back() != '!' && out.back() != '.') {
+        out += ".";
+    }
+
+    return out;
+}
+
+std::string char_data::getRoomPostureFor(char_data *viewer) {
+    // Them darned Majins are always getting special treatment.
+    // Should only be possible for PCs, but whatever.
+    if (AFF_FLAGGED(this, AFF_LIQUEFIED))
+        return fmt::format("@wSeveral blobs of {} colored goo are spread out here.@n", skin_types[(int) GET_SKIN(this)]);
+    
+    auto posString = getPostureString(viewer);
+    if(!posString.empty())
+        return fmt::format("{} {}", getShortDescFor(viewer), posString);
+    // Well the posture string was empty.
+
+    if(IS_NPC(this)) {
+        // if we have one, we'll use the room description.
+        if(auto desc = getRoomDescription(); !desc.empty()) {
+            return desc;
+        }
+    }
+
+    // If we've gotten this far, then we'll use getShortDescFor as a fallback and a basic position.
+    return fmt::format("{} is here.", getShortDescFor(viewer));
+}
+
+int char_data::getApparentSexFor(char_data *viewer) {
+    return (int)get(CharAppearance::Sex);
+}
+
+static std::vector<std::pair<double, std::string>> injuryTemplates = {
+    {.9, "@R...Some slight wounds on {hisher} body.@w"},
+    {.8, "@R...A few wounds on {hisher} body.@w"},
+    {.7, "@R...Many wounds on {hisher} body.@w"},
+    {.6, "@R...Quite a few wounds on {hisher} body.@w"},
+    {.5, "@R...Horrible wounds on {hisher} body.@w"},
+    {.4, "@R...Blood is seeping from the wounds on {hisher} body.@w"},
+    {.3, "@R...{hisher} body is in terrible shape.@w"},
+    {.2, "@R...Is absolutely covered in wounds.@w"},
+    {.1, "@R...Is on {hisher} last leg.@w"},
+    {0, "@R...Should be DEAD soon.@w"},
+};
+
+std::vector<std::string> char_data::renderStatusLinesFor(char_data* viewer) {
+    std::vector<std::string> out;
+
+    auto appSex = getApparentSexFor(viewer);
+
+    auto hisher = PRO_HSHR(appSex);
+    auto heshe = PRO_HSSH(appSex);
+    auto himher = PRO_HMHR(appSex);
+
+    auto healthPerc = getCurHealthPercent();
+    if(healthPerc < 0.95) {
+        // We are not at full health.
+        for(auto&[threshold, temp] : injuryTemplates) {
+            if(healthPerc >= threshold) {
+                out.push_back(fmt::format(fmt::runtime(temp), fmt::arg("hisher", hisher), fmt::arg("heshe", heshe), fmt::arg("himher", himher)));
+                break;
             }
         }
     }
-    if (SITS(i)) {
-        chair = SITS(i);
-        if (PLR_FLAGGED(i, PLR_HEALT)) {
-            send_to_char(ch, "@w is floating inside a healing tank.");
-        } else if (count == true) {
-            send_to_char(ch, ",@w and%s on %s.", positions[(int) GET_POS(i)], chair->short_description);
-        } else if (count == false) {
-            send_to_char(ch, "@w%s on %s.", positions[(int) GET_POS(i)], chair->short_description);
-        }
-    } else if (!PLR_FLAGGED(i, PLR_PILOTING) && !SITS(i) && (!IS_NPC(i) || !FIGHTING(i))) {
-        if (count == true) {
-            send_to_char(ch, "@w, and%s.", positions[(int) GET_POS(i)]);
-        }
-        if (count == false) {
-            send_to_char(ch, "@w%s.", positions[(int) GET_POS(i)]);
-        }
-    } else if (PLR_FLAGGED(i, PLR_PILOTING)) {
-        send_to_char(ch, "@w, is sitting in the pilot's chair.\r\n");
-    } else {
 
-        if (FIGHTING(i) && !IS_NPC(ch) && !IS_NPC(i)) {
-            if (!PLR_FLAGGED(i, PLR_SPAR)) {
-                send_to_char(ch, ", is here fighting ");
-            }
-            if (PLR_FLAGGED(i, PLR_SPAR)) {
-                send_to_char(ch, ", is here sparring ");
-            }
-            if (FIGHTING(i) == ch)
-                send_to_char(ch, "@rYOU@w!");
-            else {
-                if (IN_ROOM(i) == IN_ROOM(FIGHTING(i)))
-                    send_to_char(ch, "%s!", GET_ADMLEVEL(ch) ? GET_NAME(FIGHTING(i)) : (readIntro(ch, FIGHTING(i)) == 1
-                                                                                        ? get_i_name(ch, FIGHTING(i))
-                                                                                        : LRACE(FIGHTING(i))));
-                else
-                    send_to_char(ch, "someone who has already left!");
-            }
-        } else if (!IS_NPC(i)) {            /* NIL fighting pointer */
-            send_to_char(ch, " is here struggling with thin air.");
+    if(auto eaves = GET_EAVESDROP(this); eaves > 0) {
+        out.push_back(fmt::format("@w...{} is spying on everything to the @c{}@w.@n", heshe, dirs[eaves]));
+    }
+
+    if(AFF_FLAGGED(this, AFF_FLYING)) {
+        switch(GET_ALT(this)) {
+            case 1:
+                out.push_back(fmt::format("@w...{} is in the air!@n", heshe));
+                break;
+            case 2:
+                out.push_back(fmt::format("@w...{} is high in the air!@n", heshe));
+                break;
         }
     }
 
+    if(AFF_FLAGGED(this, AFF_FIRESHIELD))
+        out.push_back(fmt::format("@w...{} has @rf@Rl@Ya@rm@Re@Ys@w around {} body!@n", heshe, hisher));
 
-    if (AFF_FLAGGED(ch, AFF_DETECT_ALIGN)) {
-        if (IS_EVIL(i))
-            send_to_char(ch, " (@rRed@[3] Aura)");
-        else if (IS_GOOD(i))
-            send_to_char(ch, " (@bBlue@[3] Aura)");
-    }
-    if (!IS_NPC(i) && PRF_FLAGGED(i, PRF_AFK))
-        send_to_char(ch, " @D(@RAFK@D)");
-    else if (!IS_NPC(i) && i->timer > 3)
-        send_to_char(ch, " @D(@RIDLE@D)");
-    send_to_char(ch, "@n\r\n");
-
-    if (GET_EAVESDROP(i) > 0) {
-        char eaves[300];
-        sprintf(eaves, "@w...$e is spying on everything to the @c%s@w.", dirs[GET_EAVESDIR(i)]);
-        act(eaves, true, i, nullptr, ch, TO_VICT);
-    }
-    if (!IS_NPC(i)) {
-        if (PLR_FLAGGED(i, PLR_FISHING)) {
-            act("@w...$e is @Cfishing@w.@n", true, i, nullptr, ch, TO_VICT);
-        }
-    }
-    if (PLR_FLAGGED(i, PLR_AURALIGHT)) {
-        char bloom[MAX_INPUT_LENGTH];
-        sprintf(bloom, "...is surrounded by a bright %s aura.@n", aura_types[GET_AURA(i)]);
-        act(bloom, true, i, nullptr, ch, TO_VICT);
-    }
-
-    auto is_oozaru = (i->form == FormID::Oozaru || i->form == FormID::GoldenOozaru);
-
-    if (AFF_FLAGGED(i, AFF_SANCTUARY) && !GET_SKILL(i, SKILL_AQUA_BARRIER))
-        act("@w...$e has a @bbarrier@w around $s body!", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_FIRESHIELD))
-        act("@w...$e has @rf@Rl@Ya@rm@Re@Ys@w around $s body!", false, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_HEALGLOW))
-        act("@w...$e has a serene @Cblue@Y glow@w around $s body.", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_EARMOR))
-        act("@w...$e has ghostly @Ggreen@w ethereal armor around $s body.", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_SANCTUARY) && GET_SKILL(i, SKILL_AQUA_BARRIER))
-        act("@w...$e has a @bbarrier@w of @cwater@w and @CKi@w around $s body!", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 1)
-        act("@w...$e is in the air!", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 2)
-        act("@w...$e is high in the air!", true, i, nullptr, ch, TO_VICT);
-    if (!IS_NPC(i) && PLR_FLAGGED(i, PLR_SPIRAL))
-        act("@w...$e is spinning in a vortex!", false, i, nullptr, ch, TO_VICT);
-    if (IS_TRANSFORMED(i) && !IS_ANDROID(i) && !IS_SAIYAN(i) && !IS_HALFBREED(i))
-        act("@w...$e has energy crackling around $s body!", true, i, nullptr, ch, TO_VICT);
-    if (GET_CHARGE(i) && !IS_SAIYAN(i) && !IS_HALFBREED(i)) {
-        char aura[MAX_INPUT_LENGTH];
-        sprintf(aura, "@w...$e has a @Ybright@w %s aura around $s body!", aura_types[GET_AURA(i)]);
-        act(aura, true, i, nullptr, ch, TO_VICT);
-    }
-    if (!is_oozaru && GET_CHARGE(i) && !IS_TRANSFORMED(i) && (IS_SAIYAN(i) || IS_HALFBREED(i))) {
-        char aura[MAX_INPUT_LENGTH];
-        sprintf(aura, "@w...$e has a @Ybright@w %s aura around $s body!", aura_types[GET_AURA(i)]);
-        act(aura, true, i, nullptr, ch, TO_VICT);
-    }
-    if (i->form != FormID::Oozaru && !GET_CHARGE(i) && IS_TRANSFORMED(i) && (IS_SAIYAN(i) || IS_HALFBREED(i)))
-        act("@w...$e has energy crackling around $s body!", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(ch, AFF_KYODAIKA))
-        act("@w...$e has expanded $s body size@w!", true, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_HAYASA))
-        act("@w...$e has a soft @cblue@w glow around $s body!", false, i, nullptr, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_LIMIT_BREAKING))
-        act("@w...$e has an overflowing aura around $s body!", false, i, nullptr, ch, TO_VICT);
-
-    if(i->form != FormID::Base)
-        act(trans::getExtra(i, i->form).c_str(), true, i, nullptr, ch, TO_VICT);
-    if(i->technique != FormID::Base)
-        act(trans::getExtra(i, i->technique).c_str(), true, i, nullptr, ch, TO_VICT);
-    if (GET_FEATURE(i)) {
-        char woo[MAX_STRING_LENGTH];
-        sprintf(woo, "@C%s@n", GET_FEATURE(i));
-        act(woo, false, i, nullptr, ch, TO_VICT);
-    }
-
-    if (GET_RDISPLAY(i)) {
-        if (GET_RDISPLAY(i) != "Empty") {
-            char rdis[MAX_STRING_LENGTH];
-            sprintf(rdis, "...%s", GET_RDISPLAY(i));
-            act(rdis, false, i, nullptr, ch, TO_VICT);
+    if(AFF_FLAGGED(this, AFF_SANCTUARY)) {
+        if(GET_SKILL(this, SKILL_AQUA_BARRIER)) {
+            out.push_back(fmt::format("@w...{} has a @Gbarrier@w of @cwater@w and @Cki@w around {} body!@n", heshe, hisher));
+        } else {
+            out.push_back(fmt::format("@w...{} has a barrier around {} body!@n", heshe, hisher));
         }
     }
 
+    if(PLR_FLAGGED(this, PLR_SPIRAL))
+        out.push_back(fmt::format("@w...{} is surrounded by a spiraling vortex of energy!@n", heshe));
+    
+    // Transformations can now override natural aura color.
+    auto aura = (int)GET_AURA(this);
+    auto check = trans::getAuraColorFor(this, form);
+    if(check) aura = *check;
+
+    if(GET_CHARGE(this))
+        out.push_back(fmt::format("@w...{} has a bright {} aura around {} body!@n", 
+            heshe, aura_types[aura] , hisher));
+
+    if(AFF_FLAGGED(this, AFF_HEALGLOW))
+        out.push_back(fmt::format("@w...{} has a serene @Cblue@Y glow@w around {} body.", heshe, hisher));
+    
+    if(AFF_FLAGGED(this, AFF_EARMOR))
+        out.push_back(fmt::format("@w...{} has ghostly @Ggreen@w ethereal armor around {} body.", heshe, hisher));
+
+    if(AFF_FLAGGED(this, AFF_METAMORPH))
+        out.push_back(fmt::format("@w...{} has a dark, @rred@w aura and menacing presence.", heshe));
+
+    if(AFF_FLAGGED(this, AFF_HAYASA))
+        out.push_back(fmt::format("@w...{} has a soft @cblue@w glow around {} body!", heshe, hisher));
+    
+    if(AFF_FLAGGED(this, AFF_BLIND))
+        out.push_back(fmt::format("...{} is groping around blindly!", heshe));
+
+    if(affected_by_spell(this, SPELL_FAERIE_FIRE))
+        out.push_back(fmt::format("@m...{} @mis outlined with purple fire!@n", heshe));
+    
+    if(auto feature = GET_FEATURE(this); feature)
+        out.push_back(fmt::format("@C%s@n", feature));
+
+    if(AFF_FLAGGED(this, AFF_LIMIT_BREAKING))
+        out.push_back(fmt::format("@w...{} has an overflowing aura around {} body!", heshe, hisher));
+
+    if(PLR_FLAGGED(this, PLR_FISHING))
+        out.push_back(fmt::format("@w...{} is @Cfishing@w.@n", heshe));
+
+    if(PLR_FLAGGED(this, PLR_AURALIGHT))
+        out.push_back(fmt::format("...is surrounded by a bright {} aura.@n", aura_types[aura]));
+    
+    if(AFF_FLAGGED(this, AFF_ETHEREAL))
+        out.push_back(fmt::format("@w...{} has a halo over {} head!@n", heshe, hisher));
+    
+    if(AFF_FLAGGED(this, AFF_INVISIBLE))
+        out.push_back(fmt::format("@w...{} is shielded from view by invisibility!@n", heshe));
+    
+    if(AFF_FLAGGED(this, AFF_HIDE)) {
+        out.push_back(fmt::format("@w...{} is hiding!@n", heshe));
+        if(viewer != this && !IS_NPC(viewer)) {
+            if(auto skill = GET_SKILL(this, SKILL_HIDE); skill > 0)
+                improve_skill(this, SKILL_HIDE, 1);
+        }
+    }
+
+    // TODO: add in the new transformation stuffs
+
+    return out;
+}
+
+std::vector<std::string> char_data::getListSuffixesFor(char_data *viewer) {
+    std::vector<std::string> out;
+
+    if(AFF_FLAGGED(viewer, AFF_DETECT_ALIGN)) {
+        if(IS_EVIL(this))
+            out.push_back("(@rRed@n Aura)");
+        else if(IS_GOOD(this))
+            out.push_back("(@bBlue@n Aura)");
+    }
+
+    if(!IS_NPC(this)) {
+        if(PRF_FLAGGED(this, PRF_AFK))
+            out.push_back("@D(@RAFK@D)@n");
+        if(timer > 3)
+            out.push_back("@D(@RIDLE@D)");
+        
+        if(!desc)
+            out.push_back("@D(@RLinkdead@D)@n");
+        
+        if(PRF_FLAGGED(this, PRF_BUILDWALK))
+            out.push_back("@D(@GBuildwalk@D)@n");
+        
+        if(PLR_FLAGGED(this, PLR_WRITING))
+            out.push_back("@D(@GWriting@D)@n");
+
+    }
+
+    return out;
+}
+
+static void list_one_char(struct char_data *i, struct char_data *ch) {
+    send_to_char(ch, "%s", i->renderRoomLineFor(ch, true));
 }
 
 struct hide_node {
@@ -6876,4 +7111,13 @@ ACMD(do_desc) {
         string_write(d, &ch->transforms[form].description, EXDSCR_LENGTH, 0, nullptr);
         STATE(d) = CON_EXDESC;
     }
+}
+
+std::vector<std::string> HasLocation::buildCompass() {
+    auto bitmasks = getCompassBitmasks();
+    return generateCompass(bitmasks.first, bitmasks.second);
+}
+
+std::vector<std::string> HasLocation::buildAutoMap() {
+    if(!room) return {};
 }

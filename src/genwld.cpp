@@ -355,8 +355,8 @@ static bool checkGravity(const area_data &a) {
 }
 
 
-std::string room_data::getUID(bool active) {
-    return fmt::format("#R{}:{}{}", vn, generation, active ? "" : "!");
+std::string room_data::getUID() const {
+    return fmt::format("#R:{}:{}", id, generation);
 }
 
 bool room_data::isActive() {
@@ -414,14 +414,6 @@ std::optional<room_vnum> room_data::getLaunchDestination() {
     return a.getLaunchDestination();
 }
 
-std::vector<CharRef> room_data::getPeople() {
-    std::vector<CharRef> out;
-    for(auto c = people; c; c = c->next_in_room) {
-        out.emplace_back(c);
-    }
-    return out;
-}
-
 static const std::unordered_set<int> inside_sectors = {SECT_INSIDE, SECT_UNDERWATER, SECT_IMPORTANT, SECT_SHOP, SECT_SPACE};
 
 static const std::map<std::string, int> _dirNames = {
@@ -462,7 +454,7 @@ std::optional<std::string> room_data::dgCallMember(const std::string& member, co
             }
             else if (!strcasecmp(arg.c_str(), "room")) {
                 if (auto roomFound = world.find(ex->to_room); roomFound != world.end())
-                    return fmt::format("{}", roomFound->second.getUID(false));
+                    return fmt::format("{}", roomFound->second.getUID());
                 else
                     return "";
             }
@@ -555,4 +547,153 @@ double room_data::getEnvironment(int type) {
     }
     if(environment.contains(type)) return environment[type];
     return 0.0;
+}
+
+
+// Location Implementation
+std::string room_data::getLocationName(const Coordinates& coord) {
+    if(name && strlen(name)) {
+        return std::string(name);
+    }
+    return getUID();
+}
+
+std::optional<Destination> room_data::getDirectionalDestination(const Coordinates& coord, int dir) {
+    if(!dir_option[dir]) return std::nullopt;
+    return Destination(dir_option[dir]);
+}
+
+std::map<int, Destination> room_data::getDirectionalDestinations(const Coordinates& coord) {
+    std::map<int, Destination> destinations;
+    for(int i = 0; i < NUM_OF_DIRS; i++) {
+        if(dir_option[i]) {
+            destinations[i] = Destination(dir_option[i]);
+        }
+    }
+    return destinations;
+}
+
+
+std::optional<Destination> room_data::getLaunchDestination(const Coordinates& coord) {
+    auto launch = getLaunchDestination();
+    if(launch && world.contains(*launch)) {
+        Destination dest{};
+        dest.location = &world.at(*launch);
+        dest.coords.type = CoordinateType::Room;
+    }
+    return std::nullopt;
+}
+
+static std::vector<std::pair<std::pair<room_vnum, room_vnum>, std::vector<character_affect_type>>> roomRangeModifiers = {
+
+};
+
+static std::unordered_map<int, std::vector<character_affect_type>> roomFlagModifiers = {
+    {ROOM_REGEN, {
+        {APPLY_CVIT_REGEN_MULT, 2.0, ~0},
+        }
+    },
+    {ROOM_BEDROOM, {
+        {APPLY_CVIT_REGEN_MULT, 0.25, ~0},
+        }
+    }
+};
+
+double room_data::getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific) {
+    if(!ch) return 0.0;
+    
+    double total = 0.0;
+
+    auto handleModifiers = [&](auto& modifiers) {
+        for(auto& aff : modifiers) {
+            if(!aff.match(location, specific)) continue;
+            total += aff.modifier;
+            if(aff.func) total += aff.func(ch);
+        }
+    };
+
+    for(auto&[range, mod] : roomRangeModifiers) {
+        if(!(vn >= range.first && vn <= range.second)) continue;
+        handleModifiers(mod);
+        
+    }
+
+    for(auto&[flag, mod] : roomFlagModifiers) {
+        if(!room_flags.test(flag)) continue;
+        handleModifiers(mod);
+    }
+
+    return total;
+}
+
+
+int room_data::getDamage(const Coordinates& coord) {
+    return getDamage();
+}
+
+int room_data::setDamage(const Coordinates& coord, int damage) {
+    return setDamage(damage);
+}
+
+int room_data::modDamage(const Coordinates& coord, int damage) {
+    return modDamage(damage);
+}
+
+int room_data::getTileType(const Coordinates& coord) {
+    return sector_type;
+}
+
+int room_data::getGroundEffect(const Coordinates& coord) {
+    return geffect;
+}
+
+int room_data::setGroundEffect(const Coordinates& coord, int val) {
+    geffect = val;
+    return geffect;
+}
+
+int room_data::modGroundEffect(const Coordinates& coord, int val) {
+    setGroundEffect(coord, val + getGroundEffect(coord));
+    return getGroundEffect(coord);
+}
+
+SpecialFunc room_data::getSpecialFunction(const Coordinates& coord) {
+    return func;
+}
+
+double room_data::getEnvironment(const Coordinates& coord, uint64_t type) {
+    return 0.0;
+}
+
+double room_data::setEnvironment(const Coordinates& coord, uint64_t type, double value) {
+    return 0.0;
+}
+
+void room_data::broadcastAt(const Coordinates& coord, const std::string& message) {
+    for(const auto &ref : getPeople()) {
+        auto ch = ref.get();
+        if(!ch) continue;
+        send_to_char(ch, message);
+    }
+}
+
+std::vector<HasLocation*> room_data::getEntitiesAt(const Coordinates& coords) {
+    std::vector<HasLocation*> out;
+    for(auto [ent, _] : entities) {
+        out.push_back(ent);
+    }
+    return out;
+}
+
+void room_data::setRoomFlag(const Coordinates& coord, int flag, bool value) {
+    room_flags.set(flag, value);
+}
+
+bool room_data::getRoomFlag(const Coordinates& coord, int flag) {
+    return room_flags.test(flag);
+}
+
+bool room_data::toggleRoomFlag(const Coordinates& coord, int flag) {
+    room_flags.flip(flag);
+    return room_flags.test(flag);
 }

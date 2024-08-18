@@ -858,13 +858,13 @@ static int is_tell_ok(struct char_data *ch, struct char_data *vict) {
         send_to_char(ch, "They need to be 5000 PL or higher to send or receive tells");
     else if (PRF_FLAGGED(ch, PRF_NOTELL) && GET_ADMLEVEL(vict) < 1)
         send_to_char(ch, "You can't tell other people while you have notell on.\r\n");
-    else if (ch->getRoomFlag(ROOM_SOUNDPROOF) && GET_ADMLEVEL(vict) < 1)
+    else if (ch->getLocationRoomFlag(ROOM_SOUNDPROOF) && GET_ADMLEVEL(vict) < 1)
         send_to_char(ch, "The walls seem to absorb your words.\r\n");
     else if (!vict->desc)        /* linkless */
         act("$E's linkless at the moment.", false, ch, nullptr, vict, TO_CHAR | TO_SLEEP);
     else if (PLR_FLAGGED(vict, PLR_WRITING))
         act("$E's writing a message right now; try again later.", false, ch, nullptr, vict, TO_CHAR | TO_SLEEP);
-    else if ((GET_ADMLEVEL(ch) < 1 && PRF_FLAGGED(vict, PRF_NOTELL)) || vict->getRoomFlag(ROOM_SOUNDPROOF))
+    else if ((GET_ADMLEVEL(ch) < 1 && PRF_FLAGGED(vict, PRF_NOTELL)) || vict->getLocationRoomFlag(ROOM_SOUNDPROOF))
         act("$E can't hear you.", false, ch, nullptr, vict, TO_CHAR | TO_SLEEP);
     else
         return (true);
@@ -921,11 +921,11 @@ ACMD(do_reply) {
     if (IS_NPC(ch))
         return;
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         send_to_char(ch, "This is a different dimension!\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_PAST)) {
+    if (ch->getLocationRoomFlag(ROOM_PAST)) {
         send_to_char(ch, "This is the past, you can't send tells!\r\n");
         return;
     }
@@ -1414,7 +1414,7 @@ ACMD(do_gen_comm) {
         send_to_char(ch, "%s", com_msgs[subcmd][0]);
         return;
     }
-    if (ch->getRoomFlag(ROOM_SOUNDPROOF)) {
+    if (ch->getLocationRoomFlag(ROOM_SOUNDPROOF)) {
         send_to_char(ch, "The walls seem to absorb your words.\r\n");
         return;
     }
@@ -1477,7 +1477,7 @@ ACMD(do_gen_comm) {
         if (STATE(i) == CON_PLAYING && i != ch->desc && i->character &&
             (IS_NPC(i->character) || !PRF_FLAGGED(i->character, channels[subcmd])) &&
             (IS_NPC(i->character) || !PLR_FLAGGED(i->character, PLR_WRITING)) &&
-            !i->character->getRoomFlag(ROOM_SOUNDPROOF)) {
+            !i->character->getLocationRoomFlag(ROOM_SOUNDPROOF)) {
 
             if (subcmd == SCMD_SHOUT &&
                 ((ch->getRoom()->zone != i->character->getRoom()->zone) ||

@@ -2617,7 +2617,7 @@ parry_ki(double attperc, struct char_data *ch, struct char_data *vict, char snam
         }
     }
 
-    if ((foundo == false || foundv == false) && !vict->getRoomFlag(ROOM_SPACE)) {
+    if ((foundo == false || foundv == false) && !vict->getLocationRoomFlag(ROOM_SPACE)) {
         sprintf(buf,
                 "@WYou watch as the deflected %s slams into the ground, exploding with a roar of blinding light!@n",
                 sname);
@@ -2751,7 +2751,7 @@ parry_ki(double attperc, struct char_data *ch, struct char_data *vict, char snam
 }
 
 void dodge_ki(struct char_data *ch, struct char_data *vict, int type, int type2, int skill, int skill2) {
-    if (type == 0 && !vict->getRoomFlag(ROOM_SPACE)) {
+    if (type == 0 && !vict->getLocationRoomFlag(ROOM_SPACE)) {
         const auto tile = ch->getLocationTileType();
         if (tile != SECT_INSIDE) {
             impact_sound(ch, "@wA loud roar is heard nearby!@n\r\n");
@@ -3734,7 +3734,7 @@ static void spar_helper(struct char_data *ch, struct char_data *vict, int type, 
     }
 
 	//Bonuses by room to vital gains
-    if (ch->getRoomFlag(ROOM_WORKOUT) || (ch->getRoomFlag(ROOM_HBTC))) {
+    if (ch->getLocationRoomFlag(ROOM_WORKOUT) || (ch->getLocationRoomFlag(ROOM_HBTC))) {
         if (ch->getRoomVnum() >= 19100 && ch->getRoomVnum() <= 19199) {
             gmult *= 1.75;
             pscost += 2;
@@ -3826,7 +3826,7 @@ static void spar_helper(struct char_data *ch, struct char_data *vict, int type, 
             gaincalc = gaincalc * 0.9;
         }
 		//Room bonuses to xp gain
-        if (ch->getRoomFlag(ROOM_WORKOUT) || (ch->getRoomFlag(ROOM_HBTC))) {
+        if (ch->getLocationRoomFlag(ROOM_WORKOUT) || (ch->getLocationRoomFlag(ROOM_HBTC))) {
             if (ch->getRoomVnum() >= 19100 && ch->getRoomVnum() <= 19199) {
                 gaincalc *= 1.5;
             } else {
@@ -3964,7 +3964,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
         if (GET_HIT(vict) <= 0 && FIGHTING(vict)) {
             return 0;
         }
-        if (ch->getRoomFlag(ROOM_PEACEFUL)) {
+        if (ch->getLocationRoomFlag(ROOM_PEACEFUL)) {
             send_to_char(ch, "This room just has such a peaceful, easy feeling...\r\n");
             return 0;
         } else if (vict == ch) {
@@ -4058,7 +4058,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
         }
     }
     if (obj) {
-        if (ch->getRoomFlag(ROOM_PEACEFUL)) {
+        if (ch->getLocationRoomFlag(ROOM_PEACEFUL)) {
             send_to_char(ch, "This room just has such a peaceful, easy feeling...\r\n");
             return 0;
         } else if (OBJ_FLAGGED(obj, ITEM_UNBREAKABLE) && GET_OBJ_VNUM(obj) != 87 && GET_OBJ_VNUM(obj) != 80 &&
@@ -6124,7 +6124,7 @@ void handle_death_msg(struct char_data *ch, struct char_data *vict, int type) {
     const auto tile = vict->getLocationTileType();
     if (type == 0) {
         if (vict->getLocationEnvironment(ENV_WATER) < 100.0 && tile != SECT_WATER_SWIM &&
-            tile != SECT_WATER_NOSWIM && !vict->getRoomFlag(ROOM_SPACE) &&
+            tile != SECT_WATER_NOSWIM && !vict->getLocationRoomFlag(ROOM_SPACE) &&
             tile != SECT_FLYING) {
             switch (rand_number(1, 5)) {
                 case 1:
@@ -6213,7 +6213,7 @@ void handle_death_msg(struct char_data *ch, struct char_data *vict, int type) {
                     }
                     break;
             }
-        } else if (vict->getRoomFlag(ROOM_SPACE)) {
+        } else if (vict->getLocationRoomFlag(ROOM_SPACE)) {
             switch (rand_number(1, 5)) {
                 case 1:
                     act("@R$N@r coughs up blood and dies. The blood freezes and floats freely through space...@n", true,
@@ -6354,7 +6354,7 @@ void handle_death_msg(struct char_data *ch, struct char_data *vict, int type) {
         }
     } else {
         if (vict->getLocationEnvironment(ENV_WATER) < 100.0 && tile != SECT_WATER_SWIM &&
-            tile != SECT_WATER_NOSWIM && !vict->getRoomFlag(ROOM_SPACE) &&
+            tile != SECT_WATER_NOSWIM && !vict->getLocationRoomFlag(ROOM_SPACE) &&
             tile != SECT_FLYING) {
             switch (rand_number(1, 5)) {
                 case 1:
@@ -6431,7 +6431,7 @@ void handle_death_msg(struct char_data *ch, struct char_data *vict, int type) {
                         TO_NOTVICT);
                     break;
             }
-        } else if (vict->getRoomFlag(ROOM_SPACE)) {
+        } else if (vict->getLocationRoomFlag(ROOM_SPACE)) {
             switch (rand_number(1, 5)) {
                 case 1:
                     act("@R$N@r explodes and chunks of $M shower out into every direction of space.@n", true, ch,

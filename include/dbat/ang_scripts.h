@@ -71,8 +71,6 @@ namespace ang {
         engine->RegisterObjectMethod(name, "Object findObjectVnum(int64) const", asFUNCTION(ref::findObjectVnum<T>), asCALL_CDECL_OBJFIRST);
     }
 
-    
-
     template<typename T>
     void registerThingBase(const char* name) {
         // Register all base methods.

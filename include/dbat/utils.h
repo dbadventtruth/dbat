@@ -813,13 +813,21 @@ extern void WAIT_STATE(struct char_data *ch, double timeToWait);
 #define CIRCLEMUD_VERSION(major, minor, patchlevel) \
     (((major) << 16) + ((minor) << 8) + (patchlevel))
 
-#define HSHR(ch) (GET_SEX(ch) ? (GET_SEX(ch)==SEX_MALE ? "his": (GET_SEX(ch)==SEX_FEMALE ? "her" : "their")) :"its")
-#define HSSH(ch) (GET_SEX(ch) ? (GET_SEX(ch)==SEX_MALE ? "he" : (GET_SEX(ch)==SEX_FEMALE ? "she" : "they")) : "it")
-#define HMHR(ch) (GET_SEX(ch) ? (GET_SEX(ch)==SEX_MALE ? "him": (GET_SEX(ch)==SEX_FEMALE ? "her" : "their")) : "it")
-#define MAFE(ch) (GET_SEX(ch) ? (GET_SEX(ch)==SEX_MALE ? "male": (GET_SEX(ch)==SEX_FEMALE ? "female" : "androgynous")) : "questionably gendered")
+#define PRO_HSHR(sex) ((sex)==SEX_MALE ? "his": ((sex)==SEX_FEMALE ? "her" : "their"))
+#define PRO_HSSH(sex) ((sex)==SEX_MALE ? "he" : ((sex)==SEX_FEMALE ? "she" : "they"))
+#define PRO_HMHR(sex) ((sex)==SEX_MALE ? "him": ((sex)==SEX_FEMALE ? "her" : "their"))
+#define PRO_MAFE(sex) ((sex)==SEX_MALE ? "male": ((sex)==SEX_FEMALE ? "female" : "androgynous"))
 
-#define ANA(obj) (strchr("aeiouAEIOU", *(obj)->name) ? "An" : "A")
-#define SANA(obj) (strchr("aeiouAEIOU", *(obj)->name) ? "an" : "a")
+#define HSHR(ch) (GET_SEX(ch) ? (PRO_HSHR(GET_SEX(ch))) : "its")
+#define HSSH(ch) (GET_SEX(ch) ? (PRO_HSSH(GET_SEX(ch))) : "it")
+#define HMHR(ch) (GET_SEX(ch) ? (PRO_HMHR(GET_SEX(ch))) : "it")
+#define MAFE(ch) (GET_SEX(ch) ? (PRO_MAFE(GET_SEX(ch))) : "questionably gendered")
+
+#define STR_ANA(txt) (strchr("aeiouAEIOU", *(txt)) ? "An" : "A")
+#define STR_SANA(txt) (strchr("aeiouAEIOU", *(txt)) ? "an" : "a")
+
+#define ANA(obj) (STR_ANA((obj)->name))
+#define SANA(obj) (STR_SANA((obj)->name))
 
 
 /* Various macros building up to CAN_SEE */

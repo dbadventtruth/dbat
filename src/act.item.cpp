@@ -397,7 +397,7 @@ ACMD(do_garden) {
                 send_to_char(ch, "You can not collect soil from this area.\r\n");
                 return;
             }
-            if (ch->getRoomFlag(ROOM_FERTILE1)) {
+            if (ch->getLocationRoomFlag(ROOM_FERTILE1)) {
                 struct obj_data *soil = read_object(255, VIRTUAL);
                 obj_to_char(soil, ch);
                 act("@yYou sink your shovel into the soft ground and manage to dig up a pile of fertile soil!@n", true,
@@ -407,7 +407,7 @@ ACMD(do_garden) {
                 GET_OBJ_VAL(soil, 0) = 8;
                 WAIT_STATE(ch, PULSE_4SEC);
                 return;
-            } else if (ch->getRoomFlag(ROOM_FERTILE2)) {
+            } else if (ch->getLocationRoomFlag(ROOM_FERTILE2)) {
                 struct obj_data *soil = read_object(255, VIRTUAL);
                 obj_to_char(soil, ch);
                 act("@yYou sink your shovel into the soft ground and manage to dig up a pile of good soil!@n", true, ch,
@@ -437,7 +437,7 @@ ACMD(do_garden) {
         return;
     }
 
-    if (!ch->getRoomFlag(ROOM_GARDEN1) && !ch->getRoomFlag(ROOM_GARDEN2)) {
+    if (!ch->getLocationRoomFlag(ROOM_GARDEN1) && !ch->getLocationRoomFlag(ROOM_GARDEN2)) {
         send_to_char(ch, "You are not even in a garden!\r\n");
         return;
     }
@@ -583,10 +583,10 @@ ACMD(do_garden) {
 
             if (found == false) {
                 send_to_char(ch, "You don't have any real soil.\r\n");
-            } else if (check_saveroom_count(ch, nullptr) > 7 && ch->getRoomFlag(ROOM_GARDEN1)) {
+            } else if (check_saveroom_count(ch, nullptr) > 7 && ch->getLocationRoomFlag(ROOM_GARDEN1)) {
                 send_to_char(ch, "This room already has all its planters full. Try digging up some plants.\r\n");
                 return;
-            } else if (check_saveroom_count(ch, nullptr) > 19 && ch->getRoomFlag(ROOM_GARDEN2)) {
+            } else if (check_saveroom_count(ch, nullptr) > 19 && ch->getLocationRoomFlag(ROOM_GARDEN2)) {
                 send_to_char(ch, "This room already has all its planters full. Try digging up some plants.\r\n");
                 return;
             } else if (skill < axion_dice(-5)) {
@@ -823,7 +823,7 @@ int check_saveroom_count(struct char_data *ch, struct obj_data *cont) {
 
     if (IN_ROOM(ch) == NOWHERE)
         return 0;
-    else if (!ch->getRoomFlag(ROOM_HOUSE))
+    else if (!ch->getLocationRoomFlag(ROOM_HOUSE))
         return 0;
 
     for (obj = ch->getRoom()->contents; obj; obj = next_obj) {
@@ -886,11 +886,11 @@ ACMD(do_deploy) {
     } else if (GET_RP(ch) < 10 && furniture == false) {
         send_to_char(ch, "You are required to have (not spend) 10 RPP in order to place a house.\r\n");
         return;
-    } else if (furniture == true && (!ch->getRoomFlag(ROOM_HOUSE) || ch->getRoomFlag(ROOM_SHIP))) {
+    } else if (furniture == true && (!ch->getLocationRoomFlag(ROOM_HOUSE) || ch->getLocationRoomFlag(ROOM_SHIP))) {
         send_to_char(ch, "You can't deploy house furniture capsules here.\r\n");
         return;
     } else if (furniture == true &&
-               (ch->getRoomFlag(ROOM_GARDEN1) || ch->getRoomFlag(ROOM_GARDEN2))) {
+               (ch->getLocationRoomFlag(ROOM_GARDEN1) || ch->getLocationRoomFlag(ROOM_GARDEN2))) {
         send_to_char(ch, "You can't deploy house furniture capsules here.\r\n");
         return;
     } else if (const auto tile = ch->getLocationTileType(); furniture == false && (tile == SECT_INSIDE || tile == SECT_WATER_NOSWIM ||
@@ -1267,11 +1267,11 @@ ACMD(do_auction) {
 
     two_arguments(argument, arg1, arg2);
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         send_to_char(ch, "This is a different dimension!\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_PAST)) {
+    if (ch->getLocationRoomFlag(ROOM_PAST)) {
         send_to_char(ch, "You are in the past!\r\n");
         return;
     }
@@ -1342,11 +1342,11 @@ ACMD(do_bid) {
         return;
     }
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         send_to_char(ch, "This is a different dimension!\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_PAST)) {
+    if (ch->getLocationRoomFlag(ROOM_PAST)) {
         send_to_char(ch, "This is the past, nothing is being auctioned!\r\n");
         return;
     }
@@ -1683,9 +1683,9 @@ static void auc_send_to_all(char *messg, bool buyer) {
     for (i = descriptor_list; i; i = i->next) {
         if (STATE(i) != CON_PLAYING)
             continue;
-        if (i->character->getRoomFlag(ROOM_HBTC))
+        if (i->character->getLocationRoomFlag(ROOM_HBTC))
             continue;
-        if (i->character->getRoomFlag(ROOM_PAST))
+        if (i->character->getLocationRoomFlag(ROOM_PAST))
             continue;
         if (buyer)
             act(messg, true, ch_buying, obj_selling, i->character, TO_VICT | TO_SLEEP);
@@ -1753,7 +1753,7 @@ ACMD(do_assemble) {
     } else if (!assemblyCheckComponents(lVnum, ch, false)) {
         send_to_char(ch, "You haven't got all the things you need.\r\n");
         return;
-    } else if (ch->getRoomFlag(ROOM_SPACE)) {
+    } else if (ch->getLocationRoomFlag(ROOM_SPACE)) {
         send_to_char(ch, "You can't do that in space.");
         return;
     } else if (!GET_SKILL(ch, SKILL_SURVIVAL) && !strcasecmp(arg2, "campfire")) {
@@ -1769,7 +1769,7 @@ ACMD(do_assemble) {
     }
 
     if (strcasecmp(arg2, "campfire")) {
-        if (ch->getRoomFlag(ROOM_SPACE) || ch->getLocationTileType() == SECT_WATER_NOSWIM || ch->getLocationEnvironment(ENV_WATER) >= 100.0) {
+        if (ch->getLocationRoomFlag(ROOM_SPACE) || ch->getLocationTileType() == SECT_WATER_NOSWIM || ch->getLocationEnvironment(ENV_WATER) >= 100.0) {
             send_to_char(ch, "This area will not allow a fire to burn properly.\r\n");
             return;
         }
@@ -2140,7 +2140,7 @@ int perform_get_from_room(struct char_data *ch, struct obj_data *obj) {
         return (0);
     }
 
-    if (ch->getRoomFlag(ROOM_GARDEN1) || ch->getRoomFlag(ROOM_GARDEN2)) {
+    if (ch->getLocationRoomFlag(ROOM_GARDEN1) || ch->getLocationRoomFlag(ROOM_GARDEN2)) {
         send_to_char(ch, "You can't get things from a garden. Help garden.\r\n");
         return (0);
     }
@@ -2386,12 +2386,12 @@ static int perform_drop(struct char_data *ch, struct obj_data *obj,
     }
     if (GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 || GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 ||
         GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 || GET_OBJ_VNUM(obj) == 26) {
-        if (ch->getRoomFlag(ROOM_SPACE)) {
+        if (ch->getLocationRoomFlag(ROOM_SPACE)) {
             snprintf(buf, sizeof(buf), "You can't %s $p in space!", sname);
             act(buf, false, ch, obj, nullptr, TO_CHAR);
             return (0);
         }
-        if (ch->getRoomFlag(ROOM_GARDEN1) || ch->getRoomFlag(ROOM_GARDEN2)) {
+        if (ch->getLocationRoomFlag(ROOM_GARDEN1) || ch->getLocationRoomFlag(ROOM_GARDEN2)) {
             snprintf(buf, sizeof(buf), "You can't %s $p in here. Read help garden.", sname);
             act(buf, false, ch, obj, nullptr, TO_CHAR);
             return (0);
@@ -2403,17 +2403,17 @@ static int perform_drop(struct char_data *ch, struct obj_data *obj,
             extract_obj(obj);
             return (0);
         }
-        if (ch->getRoomFlag(ROOM_NOINSTANT)) {
+        if (ch->getLocationRoomFlag(ROOM_NOINSTANT)) {
             snprintf(buf, sizeof(buf), "You can't %s $p in this protected area!", sname);
             act(buf, false, ch, obj, nullptr, TO_CHAR);
             return (0);
         }
-        if (ch->getRoomFlag(ROOM_SHIP)) {
+        if (ch->getLocationRoomFlag(ROOM_SHIP)) {
             snprintf(buf, sizeof(buf), "You can't %s $p on a private ship!", sname);
             act(buf, false, ch, obj, nullptr, TO_CHAR);
             return (0);
         }
-        if (ch->getRoomFlag(ROOM_HOUSE)) {
+        if (ch->getLocationRoomFlag(ROOM_HOUSE)) {
             snprintf(buf, sizeof(buf), "You can't %s $p in a private house!", sname);
             act(buf, false, ch, obj, nullptr, TO_CHAR);
             return (0);
@@ -2497,7 +2497,7 @@ ACMD(do_drop) {
         return;
     }
 
-    if (ch->getRoomFlag(ROOM_GARDEN1) || ch->getRoomFlag(ROOM_GARDEN2)) {
+    if (ch->getLocationRoomFlag(ROOM_GARDEN1) || ch->getLocationRoomFlag(ROOM_GARDEN2)) {
         send_to_char(ch, "You can not do that in a garden.\r\n");
         return;
     }
@@ -3243,7 +3243,7 @@ ACMD(do_eat) {
 
     //Logic for food that will give PS or Exp
     if (GET_OBJ_VNUM(food) >= MEAL_START && GET_OBJ_VNUM(food) <= MEAL_LAST && 
-        (!ch->getRoomFlag(ROOM_AL) && !ch->getRoomFlag(ROOM_RHELL))) {
+        (!ch->getLocationRoomFlag(ROOM_AL) && !ch->getLocationRoomFlag(ROOM_RHELL))) {
         if (subcmd != SCMD_TASTE) {
             int psbonus = GET_OBJ_VAL(food, 1);
             int expbonus = GET_OBJ_VAL(food, 2) * ((GET_LEVEL(ch) * 0.4) + 1);

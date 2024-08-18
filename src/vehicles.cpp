@@ -595,7 +595,7 @@ static bool validate_warp_conditions(struct char_data *ch, struct obj_data *vehi
         return false;
     }
 
-    if (!vehicle->getRoomFlag(ROOM_SPACE)) {
+    if (!vehicle->getLocationRoomFlag(ROOM_SPACE)) {
         send_to_char(ch, "Your ship needs to be in space to utilize its Instant Travel Warp Accelerator.\r\n");
         return false;
     }
@@ -862,7 +862,7 @@ static void handle_drive_launch(struct char_data *ch, struct obj_data *vehicle, 
 }
 
 static void handle_buoy_launch(struct char_data *ch, struct obj_data *vehicle, const std::string& marker) {
-    if (!vehicle->getRoomFlag(ROOM_SPACE)) {
+    if (!vehicle->getLocationRoomFlag(ROOM_SPACE)) {
         send_to_char(ch, "@wYou need to be in space to launch a marker buoy.\r\n");
         return;
     }

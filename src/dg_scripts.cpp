@@ -145,7 +145,7 @@ obj_data *get_obj_in_list(char *name, obj_data *list) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
@@ -171,7 +171,7 @@ obj_data *get_object_in_equip(char_data *ch, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
@@ -302,7 +302,7 @@ char_data *get_char(char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 2) return nullptr;
@@ -330,7 +330,7 @@ char_data *get_char_near_obj(obj_data *obj, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 2) return nullptr;
@@ -360,7 +360,7 @@ char_data *get_char_in_room(room_data *room, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 2) return nullptr;
@@ -397,7 +397,7 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     if (obj->in_obj) {
         if (*name == UID_CHAR) {
             std::optional<DgUID> result;
-            result = resolveUID(name);
+            result = resolveUIDActive(name);
             auto uidResult = result;
             if(!uidResult) return nullptr;
             if(uidResult->index() != 1) return nullptr;
@@ -432,7 +432,7 @@ obj_data *get_obj(char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
@@ -457,7 +457,7 @@ room_data *get_room(char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 0) return nullptr;
@@ -480,7 +480,7 @@ char_data *get_char_by_obj(obj_data *obj, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 2) return nullptr;
@@ -520,7 +520,7 @@ char_data *get_char_by_room(room_data *room, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 2) return nullptr;
@@ -556,7 +556,7 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
@@ -593,7 +593,7 @@ obj_data *get_obj_in_room(room_data *room, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
@@ -616,7 +616,7 @@ obj_data *get_obj_by_room(room_data *room, char *name) {
 
     if (*name == UID_CHAR) {
         std::optional<DgUID> result;
-        result = resolveUID(name);
+        result = resolveUIDActive(name);
         auto uidResult = result;
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
@@ -836,7 +836,7 @@ void script_stat(char_data *ch, struct script_data *sc) {
         snprintf(namebuf, sizeof(namebuf), "%s:%ld", tv->name, tv->context);
         if (*(tv->value) == UID_CHAR) {
             std::optional<DgUID> result;
-            result = resolveUID(tv->value);
+            result = resolveUIDActive(tv->value);
             auto uidResult = result;
             if(uidResult) {
 				auto idx = uidResult->index();
@@ -891,7 +891,7 @@ void script_stat(char_data *ch, struct script_data *sc) {
             for (tv = GET_TRIG_VARS(t); tv; tv = tv->next) {
                 if (*(tv->value) == UID_CHAR) {
                     std::optional<DgUID> result;
-                    result = resolveUID(tv->value);
+                    result = resolveUIDActive(tv->value);
                     auto uidResult = result;
                     if(uidResult) {
                         auto idx = uidResult->index();
@@ -1847,7 +1847,7 @@ void process_attach(void *go, struct script_data *sc, trig_data *trig,
     }
 
     /* parse and locate the id specified */
-    std::optional<DgUID> result1 = resolveUID(result);
+    std::optional<DgUID> result1 = resolveUIDActive(result);
     auto uidResult = result1;
     if(!uidResult) {
         script_log("Trigger: %s, VNum %d. attach invalid id arg: '%s'",
@@ -1928,7 +1928,7 @@ void process_detach(void *go, struct script_data *sc, trig_data *trig,
     }
 
     /* parse and locate the id specified */
-    std::optional<DgUID> result1 = resolveUID(result);
+    std::optional<DgUID> result1 = resolveUIDActive(result);
 
     auto uidResult = result1;
     if(!uidResult) {
@@ -2083,7 +2083,7 @@ void process_remote(struct script_data *sc, trig_data *trig, char *cmd) {
     }
     /* find the target script from the uid number */
     std::optional<DgUID> result;
-    result = resolveUID(buf2);
+    result = resolveUIDActive(buf2);
     auto uidResult = result;
     if(!uidResult) {
         script_log("Trigger: %s, VNum %d. remote: illegal uid '%s'",
@@ -2141,7 +2141,7 @@ ACMD(do_vdelete) {
     }
 
     std::optional<DgUID> result;
-    result = resolveUID(buf2);
+    result = resolveUIDActive(buf2);
     auto uidResult = result;
     if(!uidResult) {
         send_to_char(ch, "vdelete: illegal id specified.\r\n");
@@ -2252,7 +2252,7 @@ void process_rdelete(struct script_data *sc, trig_data *trig, char *cmd) {
     }
 
     std::optional<DgUID> result;
-    result = resolveUID(buf2);
+    result = resolveUIDActive(buf2);
     auto uidResult = result;
     if(!uidResult) {
         script_log("Trigger: %s, VNum %d. rdelete: illegal uid '%s'",
@@ -3144,7 +3144,7 @@ trig_data::trig_data(const nlohmann::json &j) : trig_data() {
 }
 
 void ADD_UID_VAR(char *buf, struct trig_data *trig, struct unit_data *thing, char *name, long context) {
-	auto uid = thing->getUID(false);
+	auto uid = thing->getUID();
     add_var(&GET_TRIG_VARS(trig), name, (char*)uid.c_str(), context);
 }
 

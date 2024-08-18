@@ -1638,7 +1638,7 @@ void trainProgress(char_data* ch) {
     if (ch->getRoomVnum() >= 19800 && ch->getRoomVnum() <= 19899) {
         plus *= 4;
     }
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         plus *= 3;
     }
     if (GET_BONUS(ch, BONUS_HARDWORKER)) {
@@ -6014,7 +6014,7 @@ ACMD(do_plant) {
     char vict_name[100], obj_name[100];
     int roll = 0, detect = 0, fail = 0;
 
-    if (ch->getRoomFlag(ROOM_PEACEFUL)) {
+    if (ch->getLocationRoomFlag(ROOM_PEACEFUL)) {
         send_to_char(ch, "This room just has such a peaceful, easy feeling...\r\n");
         return;
     }
@@ -6907,8 +6907,8 @@ ACMD(do_instant) {
     } else if (ch->getRoomVnum() >= 19800 && ch->getRoomVnum() <= 19899) {
         send_to_char(ch, "@rYou are in a pocket dimension!@n\r\n");
         return;
-    } else if (ch->getRoomFlag(ROOM_RHELL) || ch->getRoomFlag(ROOM_AL) ||
-               ch->getRoomFlag(ROOM_HELL)) {
+    } else if (ch->getLocationRoomFlag(ROOM_RHELL) || ch->getLocationRoomFlag(ROOM_AL) ||
+               ch->getLocationRoomFlag(ROOM_HELL)) {
         send_to_char(ch, "You can not leave where you are at!\r\n");
         return;
     } else if (!*arg) {
@@ -6998,13 +6998,13 @@ ACMD(do_instant) {
         } else if (IS_ANDROID(tar) || GET_HIT(tar) < (GET_HIT(ch) * 0.001) + 1) {
             send_to_char(ch, "You can't sense them well enough.\r\n");
             return;
-        } else if (!ch->getRoomFlag(ROOM_AL) && tar->getRoomFlag(ROOM_AL)) {
+        } else if (!ch->getLocationRoomFlag(ROOM_AL) && tar->getLocationRoomFlag(ROOM_AL)) {
             send_to_char(ch, "They are dead and can't be reached.\r\n");
             return;
-        } else if (!ch->getRoomFlag(ROOM_RHELL) && tar->getRoomFlag(ROOM_RHELL)) {
+        } else if (!ch->getLocationRoomFlag(ROOM_RHELL) && tar->getLocationRoomFlag(ROOM_RHELL)) {
             send_to_char(ch, "They are dead and can't be reached.\r\n");
             return;
-        } else if (tar->getRoomFlag(ROOM_NOINSTANT)) {
+        } else if (tar->getLocationRoomFlag(ROOM_NOINSTANT)) {
             send_to_char(ch, "You can not go there as it is a protected area!\r\n");
             return;
         }
@@ -7370,7 +7370,7 @@ ACMD(do_situp) {
         send_to_char(ch, "You are a mob fool!\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_HELL)) {
+    if (ch->getLocationRoomFlag(ROOM_HELL)) {
         send_to_char(ch, "The fire makes it too hot!\r\n");
         return;
     }
@@ -7422,7 +7422,7 @@ ACMD(do_situp) {
 void situpProgress(char_data* ch) {
     int64_t cost = 1, bonus = 0;
 
-    if (ch->getRoomFlag(ROOM_HELL)) {
+    if (ch->getLocationRoomFlag(ROOM_HELL)) {
         send_to_char(ch, "The fire makes it too hot!\r\n");
         ch->setTask(Task::nothing);
         return;
@@ -7530,11 +7530,11 @@ void situpProgress(char_data* ch) {
     bonus = (start_bonus * ratio_bonus) * diminishing_returns;
     if(bonus <= 0) bonus = 0;
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         send_to_char(ch, "@rThis place feels like it operates on a different time frame, it feels great...@n\r\n");
         bonus *= 8;
         if(bonus <= 10) bonus = 10;
-    } else if (ch->getRoomFlag(ROOM_WORKOUT)) {
+    } else if (ch->getLocationRoomFlag(ROOM_WORKOUT)) {
         if (ch->getRoomVnum() >= 19100 && ch->getRoomVnum() <= 19199) {
             bonus *= 5;
             if(bonus <= 6) bonus = 6;
@@ -7582,7 +7582,7 @@ ACMD(do_meditate) {
         send_to_char(ch, "You are a mob fool!\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_HELL)) {
+    if (ch->getLocationRoomFlag(ROOM_HELL)) {
         send_to_char(ch, "The fire makes it too hot!\r\n");
         return;
     }
@@ -7690,7 +7690,7 @@ ACMD(do_meditate) {
 void meditateProgress(char_data* ch) {
     int64_t bonus = 0, cost = 1;
 
-    if (ch->getRoomFlag(ROOM_HELL)) {
+    if (ch->getLocationRoomFlag(ROOM_HELL)) {
         send_to_char(ch, "The fire makes it too hot!\r\n");
         ch->setTask(Task::nothing);
         return;
@@ -7791,11 +7791,11 @@ void meditateProgress(char_data* ch) {
     if(bonus <= 0) bonus = 0;
 
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         if(bonus <= 0) bonus = 10;
         send_to_char(ch, "@rThis place feels like it operates on a different time frame, it feels great...@n\r\n");
         bonus *= 5;
-    } else if (ch->getRoomFlag(ROOM_WORKOUT)) {
+    } else if (ch->getLocationRoomFlag(ROOM_WORKOUT)) {
         if (ch->getRoomVnum() >= 19100 && ch->getRoomVnum() <= 19199) {
             if(bonus <= 0) bonus = 6;
             bonus *= 5;
@@ -7809,10 +7809,10 @@ void meditateProgress(char_data* ch) {
     } else {
         if(bonus <= 0) bonus = 1;
     }
-    if (bonus <= 0 && !ch->getRoomFlag(ROOM_HBTC)) {
+    if (bonus <= 0 && !ch->getLocationRoomFlag(ROOM_HBTC)) {
         bonus = 1;
     }
-    if (bonus <= 1 && ch->getRoomFlag(ROOM_WORKOUT)) {
+    if (bonus <= 1 && ch->getLocationRoomFlag(ROOM_WORKOUT)) {
         if (ch->getRoomVnum() >= 19100 && ch->getRoomVnum() <= 19199) {
             bonus = 6;
         } else {
@@ -8005,11 +8005,11 @@ void pushupProgress(char_data* ch) {
     bonus = (start_bonus * ratio_bonus) * diminishing_returns;
     if(bonus <= 0) bonus = 0;
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         send_to_char(ch, "@rThis place feels like it operates on a different time frame, it feels great...@n\r\n");
         bonus *= 5;
         if(bonus <= 6) bonus = 6;
-    } else if (ch->getRoomFlag(ROOM_WORKOUT)) {
+    } else if (ch->getLocationRoomFlag(ROOM_WORKOUT)) {
         if (ch->getRoomVnum() >= 19100 && ch->getRoomVnum() <= 19199) {
             bonus *= 5;
             if(bonus <= 6) bonus = 6;
@@ -8291,7 +8291,7 @@ ACMD(do_snet) {
     struct obj_data *obj = nullptr;
     struct obj_data *obj2 = nullptr;
 
-    if (ch->getRoomFlag(ROOM_HBTC)) {
+    if (ch->getLocationRoomFlag(ROOM_HBTC)) {
         send_to_char(ch, "This is a different dimension!\r\n");
         return;
     }
@@ -8299,11 +8299,11 @@ ACMD(do_snet) {
         send_to_char(ch, "Lol, no.\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_PAST)) {
+    if (ch->getLocationRoomFlag(ROOM_PAST)) {
         send_to_char(ch, "This is the past, you can't talk on scouter net!\r\n");
         return;
     }
-    if (ch->getRoomFlag(ROOM_HELL)) {
+    if (ch->getLocationRoomFlag(ROOM_HELL)) {
         send_to_char(ch, "The fire eats your transmission!\r\n");
         return;
     }
@@ -8379,18 +8379,18 @@ ACMD(do_snet) {
             if (IN_ROOM(i->character) == IN_ROOM(ch)) {
                 continue;
             }
-            if (i->character->getRoomFlag(ROOM_HBTC)) {
+            if (i->character->getLocationRoomFlag(ROOM_HBTC)) {
                 continue;
             }
-            if (i->character->getRoomFlag(ROOM_PAST)) {
+            if (i->character->getLocationRoomFlag(ROOM_PAST)) {
                 continue;
             }
-            if ((i->character->getRoomFlag(ROOM_RHELL) && !ch->getRoomFlag(ROOM_RHELL)) ||
-                (i->character->getRoomFlag(ROOM_AL) && !ch->getRoomFlag(ROOM_AL))) {
+            if ((i->character->getLocationRoomFlag(ROOM_RHELL) && !ch->getLocationRoomFlag(ROOM_RHELL)) ||
+                (i->character->getLocationRoomFlag(ROOM_AL) && !ch->getLocationRoomFlag(ROOM_AL))) {
                 continue;
             }
-            if ((!i->character->getRoomFlag(ROOM_RHELL) && ch->getRoomFlag(ROOM_RHELL)) ||
-                (!i->character->getRoomFlag(ROOM_AL) && ch->getRoomFlag(ROOM_AL))) {
+            if ((!i->character->getLocationRoomFlag(ROOM_RHELL) && ch->getLocationRoomFlag(ROOM_RHELL)) ||
+                (!i->character->getLocationRoomFlag(ROOM_AL) && ch->getLocationRoomFlag(ROOM_AL))) {
                 continue;
             }
             if (GET_POS(i->character) == POS_SLEEPING) {
@@ -8475,7 +8475,7 @@ ACMD(do_snet) {
                 char over[MAX_STRING_LENGTH];
                 sprintf(over, "@C$n@W says into $s scouter, '@G@G%s %s@W'@n\r\n", CAP(arg), !*arg2 ? "" : arg2);
                 act(over, true, ch, nullptr, nullptr, TO_ROOM);
-                if (ch->getRoomFlag(ROOM_RHELL) || ch->getRoomFlag(ROOM_AL)) {
+                if (ch->getLocationRoomFlag(ROOM_RHELL) || ch->getLocationRoomFlag(ROOM_AL)) {
                     send_to_char(ch, "@mThe transmission only reaches those who are in the afterlife.@n\r\n");
                 }
             }
@@ -8490,7 +8490,7 @@ ACMD(do_snet) {
                 char over[MAX_STRING_LENGTH];
                 sprintf(over, "@C$n@W says into $s scouter, '@G@G%s@W'@n\r\n", !*arg2 ? "" : CAP(arg2));
                 act(over, true, ch, nullptr, nullptr, TO_ROOM);
-                if (ch->getRoomFlag(ROOM_RHELL) || ch->getRoomFlag(ROOM_AL)) {
+                if (ch->getLocationRoomFlag(ROOM_RHELL) || ch->getLocationRoomFlag(ROOM_AL)) {
                     send_to_char(ch, "@mThe transmission only reaches those who are in the afterlife.@n\r\n");
                 }
             }
@@ -8700,7 +8700,7 @@ ACMD(do_quit) {
     if (IS_NPC(ch) || !ch->desc)
         return;
 
-    if (ch->getRoomFlag(ROOM_PAST)) {
+    if (ch->getLocationRoomFlag(ROOM_PAST)) {
         send_to_char(ch, "This is the past, you can't quit here!\r\n");
         return;
     }
@@ -8760,14 +8760,14 @@ ACMD(do_quit) {
      */
 
         /* If someone is quitting in their house, let them load back here. */
-        if (!ch->getRoomFlag(ROOM_PAST) &&
+        if (!ch->getLocationRoomFlag(ROOM_PAST) &&
             (ch->getRoomVnum() < 19800 || ch->getRoomVnum() > 19899)) {
             if (ch->getRoomVnum() != NOWHERE && ch->getRoomVnum() != 0 &&
                 ch->getRoomVnum() != 1) {
                 GET_LOADROOM(ch) = ch->getRoomVnum();
             }
         }
-        if (ch->getRoomFlag(ROOM_PAST)) {
+        if (ch->getLocationRoomFlag(ROOM_PAST)) {
             if (ch->getRoomVnum() != NOWHERE && ch->getRoomVnum() != 0 &&
                 ch->getRoomVnum() != 1) {
                 GET_LOADROOM(ch) = GET_ROOM_VNUM(real_room(1561));
@@ -10762,7 +10762,7 @@ ACMD(do_clan) {
             if (!clanIsMember(GET_CLAN(ch), ch) && !clanIsModerator(GET_CLAN(ch), ch)) {
                 send_to_char(ch, "You are not in a clan.\r\n");
                 return;
-            } else if (!ch->getRoomFlag(ROOM_CBANK) && clanBANY(GET_CLAN(ch), ch) == false) {
+            } else if (!ch->getLocationRoomFlag(ROOM_CBANK) && clanBANY(GET_CLAN(ch), ch) == false) {
                 send_to_char(ch, "You are not in your clan bank and your clan doesn't have bank anywhere.\r\n");
                 return;
             } else if (!*arg2) {

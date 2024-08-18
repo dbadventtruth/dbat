@@ -840,10 +840,10 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         }
     }
 
-    if (ch->getRoomFlag(ROOM_TIMED_DT) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE))
+    if (ch->getLocationRoomFlag(ROOM_TIMED_DT) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE))
         timed_dt(nullptr);
 
-    if (ch->getRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
+    if (ch->getLocationRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
         log_death_trap(ch);
         death_cry(ch);
         extract_char(ch);
@@ -1113,7 +1113,7 @@ ACMD(do_move) {
             WAIT_STATE(ch, std::min<int>(PULSE_3SEC * ratio, PULSE_5SEC));
         }
 
-        if (ch->getRoomFlag(ROOM_SPACE) && GET_ADMLEVEL(ch) < 1) {
+        if (ch->getLocationRoomFlag(ROOM_SPACE) && GET_ADMLEVEL(ch) < 1) {
             send_to_char(ch, "You struggle to cross the vast distance.\r\n");
             WAIT_STATE(ch, PULSE_6SEC);
         } else if ((GET_LIMBCOND(ch, 2) <= 0 && GET_LIMBCOND(ch, 3) <= 0) && GET_LIMBCOND(ch, 0) <= 0 &&
@@ -1349,7 +1349,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                                      "@wThe ship hatch opens slowly and settles onto the ground outside.\r\n");
                         send_to_room(IN_ROOM(vehicle),
                                      "@wThe ship hatch opens slowly and settles onto the ground.\r\n");
-                        if (vehicle->getRoomFlag(ROOM_SPACE)) {
+                        if (vehicle->getLocationRoomFlag(ROOM_SPACE)) {
                             send_to_room(IN_ROOM(ch),
                                          "@wA great vortex forms as air begins to get sucked out into the void!\r\n");
                         }
@@ -1368,7 +1368,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     if (GET_OBJ_VNUM(obj) > 19199) {
                         send_to_room(num, "@wThe ship hatch opens slowly and settles onto the ground.\r\n");
                         send_to_room(IN_ROOM(hatch), "@wThe ship hatch opens slowly.\r\n");
-                        if (obj->getRoomFlag(ROOM_SPACE)) {
+                        if (obj->getLocationRoomFlag(ROOM_SPACE)) {
                             send_to_room(num, "@wThe air starts getting sucked out into space as the hatch opens!\r\n");
                         }
                     } else {
@@ -1399,7 +1399,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                         send_to_room(IN_ROOM(ch),
                                      "@wThe ship hatch slowly closes, sealing the ship from the outside.\r\n");
                         send_to_room(IN_ROOM(vehicle), "@wThe ship hatch slowly closes, sealing the ship.\r\n");
-                        if (vehicle->getRoomFlag(ROOM_SPACE)) {
+                        if (vehicle->getLocationRoomFlag(ROOM_SPACE)) {
                             send_to_room(IN_ROOM(ch),
                                          "@wThe air stops getting sucked out into space as the hatch seals!\r\n");
                         }
@@ -1419,7 +1419,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                         send_to_room(num, "@wThe ship hatch slowly closes, sealing the ship.\r\n");
                         send_to_room(IN_ROOM(hatch),
                                      "@wThe ship hatch slowly closes, sealing the ship from the outside.\r\n");
-                        if (obj->getRoomFlag(ROOM_SPACE)) {
+                        if (obj->getLocationRoomFlag(ROOM_SPACE)) {
                             send_to_room(num, "@wAir stops getting sucked out into space as the hatch seals!\r\n");
                         }
                     } else {
@@ -1724,7 +1724,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj, int need_
         act("@C$n@w carries @c$N@w with $m.@n", true, ch, nullptr, CARRYING(ch), TO_ROOM);
     }
     char_from_room(ch);
-    char_to_room(ch, r);
+    char_to_room(ch, r->vn);
 
     /* move them first, then move them back if they aren't allowed to go. */
     /* see if an entry trigger disallows the move */
@@ -1771,7 +1771,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj, int need_
     if (ch->desc != nullptr)
         look_at_room(IN_ROOM(ch), ch, 0);
 
-    if (ch->getRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
+    if (ch->getLocationRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
         log_death_trap(ch);
         death_cry(ch);
         extract_char(ch);
@@ -1864,7 +1864,7 @@ ACMD(do_enter) {
             else
                 send_to_char(ch, "There is no %s here.\r\n", buf);
         }
-    } else if (ch->getRoomFlag(ROOM_INDOORS)) {
+    } else if (ch->getLocationRoomFlag(ROOM_INDOORS)) {
         send_to_char(ch, "You are already indoors.\r\n");
     } else {
         /* try to locate an entrance */
@@ -2010,7 +2010,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj, int need_
         look_at_room(IN_ROOM(ch), ch, 0);
     }
 
-    if (ch->getRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
+    if (ch->getLocationRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
         log_death_trap(ch);
         death_cry(ch);
         extract_char(ch);
@@ -2130,7 +2130,7 @@ static void handle_fall(struct char_data *ch) {
 static int check_swim(struct char_data *ch) {
     auto can = false;
 
-    if (ch->getRoomFlag(ROOM_SPACE)) {
+    if (ch->getLocationRoomFlag(ROOM_SPACE)) {
         auto space_cost = (GET_MAX_MANA(ch) / 1000) + ((ch->getCarriedWeight()) / 2);
         if (ch->getCurKI() >= space_cost)
             can = true;

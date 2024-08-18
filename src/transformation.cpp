@@ -10,6 +10,23 @@
 #include <dbat/attack.h>
 
 namespace trans {
+
+    std::optional<int> getAuraColorFor(struct char_data *ch, FormID form) {
+        switch(form) {
+            case FormID::SuperSaiyan:
+            case FormID::SuperSaiyan2:
+            case FormID::SuperSaiyan3:
+            case FormID::SuperSaiyan4:
+                return AURA_YELLOW;
+            case FormID::SuperSaiyanGod:
+                return AURA_RED;
+            case FormID::SuperSaiyanBlue:
+                return AURA_BLUE;
+        }
+
+        return {};
+    }
+
     static std::string getCustomName(struct char_data* ch, FormID form) {
         return "Unknown";
     }
@@ -275,13 +292,10 @@ namespace trans {
         int maxGrade = 1;
         switch (form) {
             case FormID::Kaioken:
-                maxGrade = GET_SKILL(ch, (int)SkillID::Kaioken) / 5;
-                if (maxGrade > 20)
-                    maxGrade = 20;
+                maxGrade = std::min(20, GET_SKILL(ch, (int)SkillID::Kaioken) / 5);
                 if(ch->form != FormID::Base)
                     maxGrade /= 4;
-                if (maxGrade < 1)
-                    maxGrade = 1;
+                maxGrade = std::max(maxGrade, 1);
 
                 return maxGrade;
             case FormID::DarkMeta:
@@ -1596,7 +1610,7 @@ namespace trans {
 
         if(form == FormID::SuperSaiyan && PLR_FLAGGED(ch, PLR_FPSSJ)) drain *= 0.5;
 
-        if (ch->getRoomFlag(ROOM_RHELL) || ch->getRoomFlag(ROOM_AL)) 
+        if (ch->getLocationRoomFlag(ROOM_RHELL) || ch->getLocationRoomFlag(ROOM_AL)) 
             drain *= 0.75;
 
         if(ch->form != FormID::Base && ch->technique != FormID::Base)

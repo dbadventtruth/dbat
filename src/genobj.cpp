@@ -14,6 +14,7 @@
 #include "dbat/handler.h"
 #include "dbat/dg_olc.h"
 #include "dbat/shop.h"
+#include "dbat/vehicles.h"
 
 static int copy_object_main(struct obj_data *to, struct obj_data *from, int free_object);
 
@@ -502,8 +503,8 @@ weight_t obj_data::getTotalWeight() {
     return getWeight() + getInventoryWeight() + (sitting ? sitting->getTotalWeight() : 0);
 }
 
-std::string obj_data::getUID(bool active) {
-    return fmt::format("#O{}:{}{}", id, generation, active ? "" : "!");
+std::string obj_data::getUID() const {
+    return fmt::format("#O:{}:{}", id, generation);
 }
 
 bool obj_data::isActive() {
@@ -700,4 +701,145 @@ void obj_data::clearLocation() {
     else if(carried_by) obj_from_char(this);
     else if(worn_by) unequip_char(worn_by, worn_on);
     else if(world.contains(in_room)) obj_from_room(this);
+}
+
+void obj_data::onAddedToLocation(const LocationStub& newLoc) {
+    if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
+        // we've been added to a room.
+        if(type_flag == ITEM_PLANT && (r->room_flags.test(ROOM_GARDEN1) || r->room_flags.test(ROOM_GARDEN2)))
+            objectSubscriptions.subscribe("growingPlants", ref());
+        
+        if(r->vn == 80) auc_load(this);
+
+        next_content = room->contents;
+        room->contents = this;
+        in_room = room->vn;
+        carried_by = nullptr;
+        GET_LAST_LOAD(this) = time(nullptr);
+
+        auto &z = zone_table[room->zone];
+        z.objectsInZone.insert(ref());
+
+        auto otype = GET_OBJ_TYPE(this);
+        auto ovn = GET_OBJ_VNUM(this);
+
+        if (otype == ITEM_VEHICLE && !OBJ_FLAGGED(this, ITEM_UNBREAKABLE) &&
+            GET_OBJ_VNUM(this) > 19199) {
+            extra_flags.set(ITEM_UNBREAKABLE);
+        }
+
+        // This section is now only going to be called during migrations.
+        if(isMigrating) {
+            if (otype == ITEM_HATCH && ovn <= 19199) {
+                if ((ovn <= 18999 && ovn >= 18800) ||
+                    (ovn <= 19199 && ovn >= 19100)) {
+                    int hnum = GET_OBJ_VAL(this, 0);
+                    struct obj_data *house = read_object(hnum, VIRTUAL);
+                    obj_to_room(house, real_room(GET_OBJ_VAL(this, 6)));
+                    SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_CLOSED);
+                    SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_LOCKED);
+                }
+            }
+            struct obj_data* vehicle;
+            if (otype == ITEM_HATCH && GET_OBJ_VAL(this, 0) > 1 && ovn > 19199) {
+                if (!(vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(this, VAL_HATCH_DEST)))) {
+                    if (real_room(GET_OBJ_VAL(this, 3)) != NOWHERE) {
+                        vehicle = read_object(GET_OBJ_VAL(this, 0), VIRTUAL);
+                        if(!vehicle) {
+                            basic_mud_log("SYSERR: Vehicle %d not found for hatch %d", GET_OBJ_VAL(this, 0), ovn);
+                        }
+                        obj_to_room(vehicle, real_room(GET_OBJ_VAL(this, 3)));
+                        if (look_description) {
+                            if (strlen(look_description)) {
+                                char nick[MAX_INPUT_LENGTH], nick2[MAX_INPUT_LENGTH], nick3[MAX_INPUT_LENGTH];
+                                if (GET_OBJ_VNUM(vehicle) <= 46099 && GET_OBJ_VNUM(vehicle) >= 46000) {
+                                    sprintf(nick, "Saiyan Pod %s", look_description);
+                                    sprintf(nick2, "@wA @Ys@ya@Yi@yy@Ya@yn @Dp@Wo@Dd@w named @D(@C%s@D)@w",
+                                            look_description);
+                                } else if (GET_OBJ_VNUM(vehicle) >= 46100 && GET_OBJ_VNUM(vehicle) <= 46199) {
+                                    sprintf(nick, "EDI Xenofighter MK. II %s", look_description);
+                                    sprintf(nick2,
+                                            "@wAn @YE@yD@YI @CX@ce@Wn@Do@Cf@ci@Wg@Dh@Wt@ce@Cr @RMK. II @wnamed @D(@C%s@D)@w",
+                                            look_description);
+                                }
+                                sprintf(nick3, "%s is resting here@w", nick2);
+                                vehicle->name = strdup(nick);
+                                vehicle->short_description = strdup(nick2);
+                                vehicle->room_description = strdup(nick3);
+                            }
+                        }
+                        SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_CLOSED);
+                        SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_LOCKED);
+                    } else {
+                        basic_mud_log("Hatch load: Hatch with no vehicle load room: #%d!", ovn);
+                    }
+                }
+            }
+        }
+
+        if (EXIT(this, 5) &&
+            (getLocationTileType() == SECT_UNDERWATER || getLocationTileType() == SECT_WATER_NOSWIM)) {
+            act("$p @Bsinks to deeper waters.@n", true, nullptr, this, nullptr, TO_ROOM);
+            int numb = GET_ROOM_VNUM(EXIT(this, 5)->to_room);
+            obj_from_room(this);
+            obj_to_room(this, real_room(numb));
+        }
+        if (EXIT(this, 5) && getLocationTileType() == SECT_FLYING &&
+            (ovn < 80 || ovn > 83)) {
+            act("$p @Cfalls down.@n", true, nullptr, this, nullptr, TO_ROOM);
+            int numb = GET_ROOM_VNUM(EXIT(this, 5)->to_room);
+            obj_from_room(this);
+            obj_to_room(this, real_room(numb));
+            if (getLocationTileType() != SECT_FLYING) {
+                act("$p @Cfalls down and smacks the ground.@n", true, nullptr, this, nullptr, TO_ROOM);
+            }
+        }
+        if (GET_OBJ_VAL(this, 0) != 0) {
+            if (ovn == 16705 || ovn == 16706 || ovn == 16707) {
+                level = GET_OBJ_VAL(this, 0);
+            }
+        }
+
+    }
+
+}
+
+void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
+
+    if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
+        // we've been removed from a room.
+
+        struct obj_data *temp;
+
+        if(type_flag == ITEM_PLANT) objectSubscriptions.unsubscribe("growingPlants", ref());
+
+        if (GET_OBJ_POSTED(this) && in_obj == nullptr) {
+            struct obj_data *obj = GET_OBJ_POSTED(this);
+            if (GET_OBJ_POSTTYPE(this) <= 0) {
+                send_to_room(IN_ROOM(obj), "%s@W shakes loose from %s@W.@n\r\n", obj->short_description,
+                            short_description);
+            } else {
+                send_to_room(IN_ROOM(obj), "%s@W comes loose from %s@W.@n\r\n", short_description,
+                            obj->short_description);
+            }
+            GET_OBJ_POSTED(obj) = nullptr;
+            GET_OBJ_POSTTYPE(obj) = 0;
+            GET_OBJ_POSTED(this) = nullptr;
+            GET_OBJ_POSTTYPE(this) = 0;
+        }
+
+        auto &z = zone_table[r->zone];
+        z.objectsInZone.erase(ref());
+
+        REMOVE_FROM_LIST(this, r->contents, next_content, temp);
+
+        in_room = NOWHERE;
+        next_content = nullptr;
+
+    }
+
+}
+
+void obj_data::onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) {
+    
 }

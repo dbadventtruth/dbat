@@ -113,8 +113,9 @@ constexpr int DB_BOOT_GLD = 7;
 
 // global variables
 
-bool isUID(const std::string& uid);
-std::optional<UID> resolveUID(const std::string& uid);
+extern bool isUID(const std::string& uid);
+extern std::optional<UID> resolveUID(const std::string& uid);
+extern std::optional<UID> resolveUIDActive(const std::string& uid);
 
 extern struct time_info_data old_time_info; /* UNUSED (to be removed) the infomation about the time    */
 extern struct time_info_data time_info;/* the infomation about the time    */

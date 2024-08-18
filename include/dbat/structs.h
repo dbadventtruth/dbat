@@ -325,6 +325,43 @@ struct player_data {
     nlohmann::json serialize();
 };
 
+enum class CoordinateType : uint8_t {
+    Room = 0, // in the contents of a Room.
+    Grid = 1, // in the contents of a Grid at specific coordinates.
+    Space = 2, // in floating point space map at specific coordinates.
+    Inventory = 3, // in someone's inventory. order doesn't really matter.
+    Equipped = 4 // equipped. x y and z can be used to determine slot location.
+};
+
+struct HasCoordinates {
+    HasCoordinates() = default;
+    explicit HasCoordinates(const nlohmann::json& j);
+    virtual nlohmann::json serialize();
+    virtual void deserialize(const nlohmann::json& j);
+    CoordinateType type{CoordinateType::Room};
+    double x{0.0}, y{0.0}, z{0.0};
+};
+
+struct Coordinates : public HasCoordinates {
+    using HasCoordinates::HasCoordinates;
+    bool operator== (const Coordinates& other) const;
+};
+
+using LocationStub = std::pair<Location*, Coordinates>;
+struct room_direction_data;
+
+struct Destination {
+    Destination() = default;
+    explicit Destination(room_direction_data *exit);
+    explicit Destination(room_data *room);
+    Location *location{};
+    Coordinates coords{};
+    std::string keyword{}, general_description{};
+    uint8_t exit_flags; // uses EX_ISDOOR, EX_CLOSED, EX_LOCKED, etc....
+    obj_vnum key{NOTHING};        /* Key's number (-1 for no key)		*/
+    LocationStub getStub();
+};
+
 class EventVariables {
 public:
     EventVariables() = default;
@@ -362,7 +399,163 @@ protected:
     std::unordered_map<std::string, double> doubles;
 };
 
-struct unit_data {
+struct entity_data {
+    virtual std::string getUID() const = 0;
+
+    int64_t id{NOTHING}; /* used by DG triggers	*/
+    time_t generation{};             /* creation time for dupe check     */
+};
+
+class HasLocation : public virtual entity_data {
+// abstract interface used for objects that have a location.
+public:
+    
+    // These are the only methods that should be used to change an entity's location.
+    LocationStub getLocation();
+    LocationStub clearLocation();
+    void setLocation(const LocationStub &newLoc);
+
+    // Relocation hooks.
+    virtual void onAddedToLocation(const LocationStub& loc) = 0;
+    virtual void onRemovedFromLocation(const LocationStub& loc) = 0;
+    virtual void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) = 0;
+
+    // convenience methods.
+    std::string getLocationName() const;
+    std::optional<Destination> getDirection(int dir) const;
+    std::map<int, Destination> getDirections() const;
+
+    void setLocationRoomFlag(int flag, bool value = true) const;
+    bool toggleLocationRoomFlag(int flag) const;
+    bool getLocationRoomFlag(int flag) const;
+
+    // For commands like get or look that need to find objects within touch range of unit.
+    std::vector<ObjRef> getLocationObjects() const;
+    std::vector<CharRef> getLocationPeople() const;
+    
+    double getLocationEnvironment(int type) const;
+    double setLocationEnvironment(int type, double value) const;
+    double modLocationEnvironment(int type, double value) const;
+    void clearLocationEnvironment(int type) const;
+
+    void broadcastAtLocation(const std::string& message) const;
+
+    int getLocationDamage() const;
+    int setLocationDamage(int amount) const;
+    int modLocationDamage(int amount) const;
+
+    int getLocationTileType() const;
+
+    int getLocationGroundEffect() const;
+    int setLocationGroundEffect(int val) const;
+    int modLocationGroundEffect(int val) const;
+
+    SpecialFunc getLocationSpecialFunc() const;
+
+    std::pair<uint16_t, uint16_t> getCompassBitmasks();
+    std::vector<std::string> buildCompass();
+    std::vector<std::string> buildAutoMap();
+
+    // Temporarily in for compatability...
+    room_rnum in_room{NOWHERE};        /* In what room -1 when conta/carr	*/
+    struct room_data* room;
+    struct room_data* getRoom() const;
+    room_vnum getRoomVnum() const;
+
+protected:
+    LocationStub loc{};
+
+};
+
+class Location : public virtual entity_data {
+    // This is an abstract base class that is used for the new location system.
+    // unit_data can have a Location *location field that is used to track where
+    // it is.
+
+    // Then, when doing certain things like moving around or using look, it calls
+    // the methods on this while passing in the unit_data ptr so it knows which
+    // entity it's gonna be working with.
+public:
+    // This is used for serialization and identification. It should be unique.
+    virtual std::string getLocationName(const Coordinates& coords) = 0;
+
+    // Add an entity to this location at a specific sub-location
+    void addEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
+    virtual void onAddEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
+    // Remove an entity from this location.
+    void removeEntity(HasLocation* ent, uint64_t flags);
+    virtual void onRemoveEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
+
+    // Change an entity's coordinates within this location.
+    void relocateEntity(HasLocation *ent, const Coordinates& coords, uint64_t flags);
+    virtual void onRelocateEntity(HasLocation *ent, const Coordinates& oldCoordinates, const Coordinates& newCoordinates, uint64_t flags);
+
+    // Get the coordinates for a unit in this location. If the unit isn't in this Location,
+    // we get an empty optional.
+    virtual std::optional<Coordinates> getCoordinatesForEntity(HasLocation* ent);
+    virtual std::vector<HasLocation*> getEntitiesAt(const Coordinates& coords);
+
+    // Wrapper for dealing with legacy room flags.
+    virtual void setRoomFlag(const Coordinates& coord, int flag, bool value);
+    virtual bool toggleRoomFlag(const Coordinates& coord, int flag);
+    virtual bool getRoomFlag(const Coordinates& coord, int flag);
+
+    // Returns the exit data for a given direction. nullptr if no exit.
+    virtual std::optional<Destination> getDirectionalDestination(const Coordinates& coord, int dir);
+    virtual std::map<int, Destination> getDirectionalDestinations(const Coordinates& coord);
+    
+    // We need to be able to query our environment for things like gravity or temperature...
+    // TODO: Implement environmental enums. Example: Moonlight, Temperature, Gravity, etc.
+    virtual double getEnvironment(const Coordinates& coord, uint64_t type);
+    virtual double setEnvironment(const Coordinates& coord, uint64_t type, double value);
+    virtual double modEnvironment(const Coordinates& coord, uint64_t type, double value);
+    virtual void clearEnvironment(const Coordinates& coord, uint64_t type);
+
+    // If the location is a planet or spaceship or something it might have the ability to
+    // exit to space or another location via launching.
+    virtual std::optional<Destination> getLaunchDestination(const Coordinates& coord);
+
+    // Location might be a planet or spaceship. In which case, we provide a list of potential
+    // landing destinations, such as specially flagged rooms or maybe a hangar bay.
+    // NOTE: on second thought, this should probably go somewhere else.
+    // virtual std::vector<Destination> getLandingDestinations(unit_data *unit) = 0;
+
+    // used to get modifiers for the unit's current location.
+    virtual double getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific);
+
+    // Wrapper for the existing room damage system.
+    virtual int getDamage(const Coordinates& coord);
+    virtual int setDamage(const Coordinates& coord, int amount);
+    virtual int modDamage(const Coordinates& coord, int amount);
+
+    virtual int getTileType(const Coordinates& coord);
+    virtual int getGroundEffect(const Coordinates& coord);
+    virtual int setGroundEffect(const Coordinates& coord, int val);
+    virtual int modGroundEffect(const Coordinates& coord, int val);
+
+    virtual SpecialFunc getSpecialFunction(const Coordinates& coord);
+
+    virtual void broadcastAt(const Coordinates &coord, const std::string& message);
+
+    template<typename PtrType, typename RefType>
+    std::vector<RefType> gatherEntities(const Coordinates& coord) {
+        std::vector<RefType> out;
+        for(auto ent : getEntitiesAt(coord)) {
+            if(auto cast = dynamic_cast<PtrType*>(ent); cast) {
+                out.emplace_back(cast);
+            }
+        }
+        return out;
+    }
+
+    virtual std::vector<ObjRef> getContents();
+    virtual std::vector<CharRef> getPeople();
+
+protected:
+    std::unordered_map<HasLocation*, Coordinates> entities;
+};
+
+struct unit_data : public virtual Location {
     unit_data() = default;
     virtual ~unit_data() = default;
     vnum vn{NOTHING}; /* Where in database */
@@ -373,21 +566,47 @@ struct unit_data {
     std::string getRoomDescription() const;
     std::string getLookDescription() const;
 
+    std::string getLocationName(const Coordinates& coords) override;
+
     // Provides the keywords used for searching for this thing, from the given 
     // character's perspective.
-    //virtual std::vector<std::string> getKeywordsFor(char_data *viewer);
+    virtual std::vector<std::string> getKeywordsFor(char_data *viewer);
 
     // For rooms it's just the room's name, but for objects and characters it might vary widely.
     // For example, a character might have a title, a short description, and a name.
     // Or the character might be disguised as something else.
-    //virtual std::string getDisplayNameFor(char_data *viewer);
+    virtual std::string getDisplayNameFor(char_data *viewer, int ana);
+
+    // For NPCs and items this is the same as displayname.
+    // For PCs, it might be something like, "A male majin, with a long forelock"
+    // Unless the viewer has dubbed that PC something...
+    virtual std::string getShortDescFor(char_data *viewer);
+
+    virtual int getApparentSexFor(char_data *viewer);
+
+    // Used for any special sections in [] or <> or () displayed before names or whatnot.
+    virtual std::vector<std::string> getListPrefixesFor(char_data *viewer);
+
+    // used for the "is sitting here." part of the below function.
+    virtual std::string getPostureString(char_data *viewer);
+
+    // Used by renderRoomLineFor to generate the target's posture/position/state/pose after their name.
+    // "<getDisplayNameFor(viewer)> is sitting here." etc.
+    virtual std::string getRoomPostureFor(char_data *viewer);
 
     // When this entity is being showed in a room, what should be displayed for the looker?
     // AffectLines are the extra lines that are shown when the target is affected by something.
-    //virtual std::string renderRoomLineFor(char_data *viewer, bool affectLines);
+    virtual std::string renderRoomLineFor(char_data *viewer, bool affectLines);
+
+    // Used for all of the special status lines that appear after some objects and characters
+    // in rooms. like. "... is flying high in the sky!" or "... is surrounded by an aura of power!"
+    virtual std::vector<std::string> renderStatusLinesFor(char_data *viewer);
 
     // Used for things like the inventory, equipment, search, and other listings.
-    //virtual std::string renderListLineFor(char_data *viewer);
+    virtual std::string renderListLineFor(char_data *viewer);
+
+    // Used for any special sections in [] or <> or () displayed before names or whatnot.
+    virtual std::vector<std::string> getListSuffixesFor(char_data *viewer);
 
     char *name{};
     char *room_description{};      /* When thing is listed in room */
@@ -404,12 +623,7 @@ struct unit_data {
     struct obj_data* contents{};     /* Contains objects  */
     weight_t getInventoryWeight();
     int64_t getInventoryCount();
-
-    std::vector<ObjRef> getContents();
-
-    int64_t id{NOTHING}; /* used by DG triggers	*/
-    time_t generation{};             /* creation time for dupe check     */
-
+   
     nlohmann::json serializeUnit();
 
     void activateContents();
@@ -418,7 +632,6 @@ struct unit_data {
     void deserializeUnit(const nlohmann::json& j);
     std::string scriptString();
 
-    virtual std::string getUID(bool active = true) = 0;
     virtual bool isActive() = 0;
 
     nlohmann::json serializeScripts();
@@ -454,48 +667,9 @@ struct room_direction_data {
     nlohmann::json serialize();
 };
 
-struct thing_data : public unit_data {
-    room_rnum in_room{NOWHERE};        /* In what room -1 when conta/carr	*/
-
-    struct room_data* room;
-    struct room_data* getRoom() const;
-    room_vnum getRoomVnum() const;
-
-    std::string getLocationName() const;
-
-    room_direction_data* getLocationExit(int dir) const;
-    std::map<int, room_direction_data*> getLocationExits() const;
-
-    double getLocationEnvironment(int type) const;
-    double setLocationEnvironment(int type, double value) const;
-    double modLocationEnvironment(int type, double value) const;
-    void clearLocationEnvironment(int type) const;
-
-    void setRoomFlag(int flag, bool value = true) const;
-    bool toggleRoomFlag(int flag) const;
-    bool getRoomFlag(int flag) const;
-
-    void broadcastAtLocation(const std::string& message) const;
-
-    std::vector<ObjRef> getLocationObjects() const;
-    std::vector<CharRef> getLocationPeople() const;
-
-    int getLocationDamage() const;
-    int setLocationDamage(int amount) const;
-    int modLocationDamage(int amount) const;
-
-    int getLocationTileType() const;
-
-    int getLocationGroundEffect() const;
-    int setLocationGroundEffect(int val) const;
-    int modLocationGroundEffect(int val) const;
-
-    SpecialFunc getLocationSpecialFunc() const;
-
-};
-
 /* ================== Memory Structure for Objects ================== */
-struct obj_data : public thing_data {
+struct obj_data : public virtual unit_data, public virtual HasLocation {
+
     static InstanceMap<obj_data> instances;
     obj_data() = default;
     explicit obj_data(const nlohmann::json& j);
@@ -521,7 +695,7 @@ struct obj_data : public thing_data {
 
     double getAffectModifier(uint64_t location, uint64_t specific);
 
-    std::string getUID(bool active = true) override;
+    std::string getUID() const override;
     bool active{false};
     bool isActive() override;
 
@@ -589,6 +763,12 @@ struct obj_data : public thing_data {
 
     bool isProvidingLight();
     double currentGravity();
+
+
+    // HasLocation stuff
+    void onAddedToLocation(const LocationStub& loc) override;
+    void onRemovedFromLocation(const LocationStub& loc) override;
+    void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) override;
 };
 /* ======================================================================= */
 
@@ -596,12 +776,8 @@ struct obj_data : public thing_data {
 /* room-related structures ************************************************/
 
 
-
-
-
-
 /* ================== Memory Structure for room ======================= */
-struct room_data : public unit_data {
+struct room_data : public virtual unit_data {
     static InstanceMap<room_data> instances;
     room_data() = default;
     ~room_data() override;
@@ -627,14 +803,12 @@ struct room_data : public unit_data {
     void deserializeContents(const nlohmann::json& j, bool isActive);
 
     std::optional<vnum> getMatchingArea(std::function<bool(const area_data&)> f);
-    std::string getUID(bool active = true) override;
+    std::string getUID() const override;
     bool isActive() override;
 
     RoomRef ref();
 
     std::optional<room_vnum> getLaunchDestination();
-
-    std::vector<CharRef> getPeople();
 
     nlohmann::json serializeDgVars();
 
@@ -645,6 +819,29 @@ struct room_data : public unit_data {
     double modEnvironment(int type, double value);
     void clearEnvironment(int type);
     std::unordered_map<int, double> environment;
+
+    // Implementation of Location interface
+    std::string getLocationName(const Coordinates& coords) override;
+    
+    void setRoomFlag(const Coordinates& coord, int flag, bool value) override;
+    bool toggleRoomFlag(const Coordinates& coord, int flag) override;
+    bool getRoomFlag(const Coordinates& coord, int flag) override;
+    std::optional<Destination> getDirectionalDestination(const Coordinates& coord, int dir) override;
+    std::map<int, Destination> getDirectionalDestinations(const Coordinates& coord) override;
+    std::vector<HasLocation*> getEntitiesAt(const Coordinates& coords) override;
+    double getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific) override;
+    std::optional<Destination> getLaunchDestination(const Coordinates& coord) override;
+    int getDamage(const Coordinates& coord) override;
+    int setDamage(const Coordinates& coord, int amount) override;
+    int modDamage(const Coordinates& coord, int amount) override;
+    int getTileType(const Coordinates& coord) override;
+    int getGroundEffect(const Coordinates& coord) override;
+    int setGroundEffect(const Coordinates& coord, int val) override;
+    int modGroundEffect(const Coordinates& coord, int val) override;
+    SpecialFunc getSpecialFunction(const Coordinates& coord) override;
+    double getEnvironment(const Coordinates& coord, uint64_t type) override;
+    double setEnvironment(const Coordinates& coord, uint64_t type, double value) override;
+    void broadcastAt(const Coordinates& coords, const std::string& message);
 
 };
 extern std::map<room_vnum, room_data> world;
@@ -851,7 +1048,7 @@ struct craftTask {
 
 
 /* ================== Structure for player/non-player ===================== */
-struct char_data : public thing_data {
+struct char_data : public virtual unit_data, public virtual HasLocation {
     static InstanceMap<char_data> instances;
     char_data() = default;
     // this constructor below is to be used only for the mob_proto map.
@@ -879,13 +1076,25 @@ struct char_data : public thing_data {
     void deserializeLocation(const nlohmann::json& j);
     void deserializeRelations(const nlohmann::json& j);
 
-    std::string getUID(bool active = true) override;
+    std::string getUID() const override;
 
     bool active{false};
     bool isActive() override;
 
     void ageBy(double addedTime);
     void setAge(double newAge);
+
+    int getApparentSexFor(char_data *viewer) override;
+    RaceID getApparentRaceFor(char_data *viewer);
+    std::vector<std::string> getKeywordsFor(char_data *viewer) override;
+    std::string getApparentRaceSexListFor(char_data *viewer, int ana);
+    std::string getPostureString(char_data *viewer) override;
+    std::string getDisplayNameFor(char_data *viewer, int ana) override;
+    std::string getShortDescFor(char_data *viewer) override;
+    std::string getRoomPostureFor(char_data *viewer) override;
+    //std::string renderRoomLineFor(char_data *viewer, bool affectLines) override;
+    std::vector<std::string> renderStatusLinesFor(char_data* viewer) override;
+    std::vector<std::string> getListSuffixesFor(char_data *viewer) override;
 
     void onAttack(atk::Attack& outgoing);
     void onAttacked(atk::Attack& incoming);
@@ -1470,6 +1679,11 @@ struct char_data : public thing_data {
 
     bool isProvidingLight();
     double currentGravity();
+
+    // HasLocation Stuff.
+    void onAddedToLocation(const LocationStub& loc) override;
+    void onRemovedFromLocation(const LocationStub& loc) override;
+    void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) override;
 
 };
 

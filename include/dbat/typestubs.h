@@ -10,10 +10,12 @@ struct command_info;
 struct descriptor_data;
 struct account_data;
 struct player_data;
+struct entity_data;
 
 class CharRef;
 class ObjRef;
 class RoomRef;
+class Location;
 
 namespace race {
     class Race;

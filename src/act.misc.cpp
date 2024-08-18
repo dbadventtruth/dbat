@@ -1263,7 +1263,7 @@ ACMD(do_fish) {
         if (PLR_FLAGGED(ch, PLR_FISHING)) {
             send_to_char(ch, "You are already fishing! Syntax: fish stop\r\n");
             return;
-        } else if (!ch->getRoomFlag(ROOM_FISHING)) {
+        } else if (!ch->getLocationRoomFlag(ROOM_FISHING)) {
             send_to_char(ch, "This is not an area you can fish at.\r\n");
             return;
         } else if (AFF_FLAGGED(ch, AFF_FLYING)) {
@@ -1419,7 +1419,7 @@ void fish_update(uint64_t heartPulse, double deltaTime) {
         i = r.get();
         if(!i) continue;
 
-        if(!i->getRoomFlag(ROOM_FISHING)) {
+        if(!i->getLocationRoomFlag(ROOM_FISHING)) {
             i->playerFlags.reset(PLR_FISHING);
             GET_FISHD(i) = 0;
             GET_FISHSTATE(i) = FISH_NOFISH;
@@ -1479,8 +1479,8 @@ void fish_update(uint64_t heartPulse, double deltaTime) {
                     act("@CYou feel as if the fish has stopped biting...@n", true, ch, nullptr, nullptr, TO_CHAR);
                     GET_FISHSTATE(ch) = FISH_NOFISH;
                 } else if (GET_FISHSTATE(ch) != FISH_HOOKED && GET_FISHSTATE(ch) != FISH_BITE &&
-                           ((ch->getRoomFlag(ROOM_FISHFRESH) && rand_number(1, 10) >= 8) ||
-                            (!ch->getRoomFlag(ROOM_FISHFRESH) && rand_number(1, 20) >= 18))) {
+                           ((ch->getLocationRoomFlag(ROOM_FISHFRESH) && rand_number(1, 10) >= 8) ||
+                            (!ch->getLocationRoomFlag(ROOM_FISHFRESH) && rand_number(1, 20) >= 18))) {
                     act("@CYou feel a fish biting on your line! Better @Ghook@C it!@n", true, ch, nullptr, nullptr,
                         TO_CHAR);
                     GET_FISHSTATE(ch) = FISH_BITE;
@@ -1500,8 +1500,8 @@ static void catch_fish(struct char_data *ch, int quality) {
     struct obj_data *fish = nullptr;
     int num = 1000;
 
-    if (ch->getRoomFlag(ROOM_FISHFRESH)) {
-        if (ch->getRoomFlag(ROOM_EARTH)) {
+    if (ch->getLocationRoomFlag(ROOM_FISHFRESH)) {
+        if (ch->getLocationRoomFlag(ROOM_EARTH)) {
             switch (rand_number(1, 10)) {
                 case 1:
                 case 2:
@@ -1522,7 +1522,7 @@ static void catch_fish(struct char_data *ch, int quality) {
                     num = 1003;
                     break;
             }
-        } else if (ch->getRoomFlag(ROOM_AETHER)) {
+        } else if (ch->getLocationRoomFlag(ROOM_AETHER)) {
             switch (rand_number(1, 10)) {
                 case 1:
                 case 2:
@@ -1545,7 +1545,7 @@ static void catch_fish(struct char_data *ch, int quality) {
             }
         }
     } else {
-        if (ch->getRoomFlag(ROOM_EARTH)) {
+        if (ch->getLocationRoomFlag(ROOM_EARTH)) {
             switch (rand_number(1, 10)) {
                 case 1:
                 case 2:
@@ -1566,7 +1566,7 @@ static void catch_fish(struct char_data *ch, int quality) {
                     num = 1007;
                     break;
             }
-        } else if (ch->getRoomFlag(ROOM_NAMEK)) {
+        } else if (ch->getLocationRoomFlag(ROOM_NAMEK)) {
             switch (rand_number(1, 10)) {
                 case 1:
                 case 2:
@@ -2710,7 +2710,7 @@ ACMD(do_shimmer) {
         } else if (GET_ADMLEVEL(tar) > 0 && GET_ADMLEVEL(ch) < 1) {
             send_to_char(ch, "That immortal prevents you from reaching them.\r\n");
             return;
-        } else if (tar->getRoomFlag(ROOM_NOINSTANT)) {
+        } else if (tar->getLocationRoomFlag(ROOM_NOINSTANT)) {
             send_to_char(ch, "You can not go there as it is a protected area!\r\n");
             return;
         } else if (GRAPPLING(ch) && AFF_FLAGGED(GRAPPLING(ch), AFF_SPIRIT)) {
@@ -5148,7 +5148,7 @@ ACMD(do_warppool) {
         pass = true;
     } else if (ch->getRoomVnum() >= 13155 && ch->getRoomVnum() < 13199) {
         pass = true;
-    } else if (ch->getRoomFlag(ROOM_NAMEK) && ch->getLocationTileType() == SECT_WATER_NOSWIM) {
+    } else if (ch->getLocationRoomFlag(ROOM_NAMEK) && ch->getLocationTileType() == SECT_WATER_NOSWIM) {
         pass = true;
     } else if (ch->getRoomVnum() >= 12103 && ch->getRoomVnum() < 12289) {
         pass = true;
@@ -5159,19 +5159,19 @@ ACMD(do_warppool) {
         return;
     }
 
-    if (!strcasecmp("earth", arg) && ch->getRoomFlag(ROOM_EARTH)) {
+    if (!strcasecmp("earth", arg) && ch->getLocationRoomFlag(ROOM_EARTH)) {
         send_to_char(ch, "You are already on Earth!\r\n");
         return;
-    } else if (!strcasecmp("frigid", arg) && ch->getRoomFlag(ROOM_FRIGID)) {
+    } else if (!strcasecmp("frigid", arg) && ch->getLocationRoomFlag(ROOM_FRIGID)) {
         send_to_char(ch, "You are already on Frigid!\r\n");
         return;
-    } else if (!strcasecmp("kanassa", arg) && ch->getRoomFlag(ROOM_KANASSA)) {
+    } else if (!strcasecmp("kanassa", arg) && ch->getLocationRoomFlag(ROOM_KANASSA)) {
         send_to_char(ch, "You are already on Kanasssa!\r\n");
         return;
-    } else if (!strcasecmp("namek", arg) && ch->getRoomFlag(ROOM_NAMEK)) {
+    } else if (!strcasecmp("namek", arg) && ch->getLocationRoomFlag(ROOM_NAMEK)) {
         send_to_char(ch, "You are already on Namek!\r\n");
         return;
-    } else if (!strcasecmp("aether", arg) && ch->getRoomFlag(ROOM_AETHER)) {
+    } else if (!strcasecmp("aether", arg) && ch->getLocationRoomFlag(ROOM_AETHER)) {
         send_to_char(ch, "You are already on Aether!\r\n");
         return;
     } else if (!strcasecmp("earth", arg)) {
@@ -5446,7 +5446,7 @@ ACMD(do_dimizu) {
     } else if (tile == SECT_UNDERWATER) {
         send_to_char(ch, "The area is already underwater!\r\n");
         return;
-    } else if (tile == SECT_SPACE || ch->getRoomFlag(ROOM_SPACE)) {
+    } else if (tile == SECT_SPACE || ch->getLocationRoomFlag(ROOM_SPACE)) {
         send_to_char(ch, "You can't flood space!\r\n");
         return;
     } else if ((ch->getCurKI()) < GET_MAX_MANA(ch) / 12) {

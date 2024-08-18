@@ -2082,7 +2082,7 @@ ACMD(do_switch) {
         send_to_char(ch, "You can't do that, the body is already in use!\r\n");
     else if (!(IS_NPC(victim) || ADM_FLAGGED(ch, ADM_SWITCHMORTAL)))
         send_to_char(ch, "You aren't holy enough to use a mortal's body.\r\n");
-    else if (GET_ADMLEVEL(ch) < ADMLVL_VICE && victim->getRoomFlag(ROOM_GODROOM))
+    else if (GET_ADMLEVEL(ch) < ADMLVL_VICE && victim->getLocationRoomFlag(ROOM_GODROOM))
         send_to_char(ch, "You are not godly enough to use that room!\r\n");
     else {
         send_to_char(ch, "%s", CONFIG_OK);

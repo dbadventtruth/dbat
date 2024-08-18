@@ -253,7 +253,7 @@ int call_magic(struct char_data *caster, struct char_data *cvict,
     if (!cast_mtrigger(caster, cvict, spellnum))
         return 0;
 
-    if (caster->getRoomFlag(ROOM_PEACEFUL) && GET_ADMLEVEL(caster) < ADMLVL_IMPL &&
+    if (caster->getLocationRoomFlag(ROOM_PEACEFUL) && GET_ADMLEVEL(caster) < ADMLVL_IMPL &&
         (SINFO.violent || IS_SET(SINFO.routines, MAG_DAMAGE))) {
         send_to_char(caster, "A flash of white light fills the room, dispelling your violent magic!\r\n");
         act("White light from no particular source suddenly fills the room, then vanishes.", false, caster, nullptr,

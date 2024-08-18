@@ -26,6 +26,8 @@ namespace trans {
     extern std::optional<FormID> findFormFor(char_data* ch, const std::string& form);
     extern std::unordered_set<FormID> getFormsFor(char_data* ch);
 
+    extern std::optional<int> getAuraColorFor(struct char_data *ch, FormID form);
+
     extern bool blockRevertDisallowed(struct char_data *ch, FormID form);
 
     extern std::optional<FormID> findForm(struct char_data *ch, const std::string& arg);

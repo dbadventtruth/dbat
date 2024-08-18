@@ -211,7 +211,7 @@ static int64_t mana_gain(struct char_data *ch) {
         /* Neat and fast */
         gain = GET_MAX_MANA(ch) / 70;
     } else {
-        if (ch->getRoomFlag(ROOM_REGEN) ||
+        if (ch->getLocationRoomFlag(ROOM_REGEN) ||
             (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
             if (IS_KONATSU(ch)) {
                 gain = GET_MAX_MANA(ch) / 12;
@@ -225,7 +225,7 @@ static int64_t mana_gain(struct char_data *ch) {
             if (!IS_KONATSU(ch) && !IS_MUTANT(ch)) {
                 gain = GET_MAX_MANA(ch) / 10;
             }
-        } else if (!ch->getRoomFlag(ROOM_REGEN)) {
+        } else if (!ch->getLocationRoomFlag(ROOM_REGEN)) {
             if (IS_KONATSU(ch)) {
                 gain = GET_MAX_MANA(ch) / 15;
             }
@@ -235,7 +235,7 @@ static int64_t mana_gain(struct char_data *ch) {
             if (!IS_KONATSU(ch) && !IS_MUTANT(ch)) {
                 gain = GET_MAX_MANA(ch) / 12;
             }
-            if (ch->getRoomFlag(ROOM_BEDROOM)) {
+            if (ch->getLocationRoomFlag(ROOM_BEDROOM)) {
                 gain += gain * 0.25;
             }
             if (IS_ARLIAN(ch)) {
@@ -370,7 +370,7 @@ int64_t hit_gain(struct char_data *ch) {
         /* Neat and fast */
         gain = GET_MAX_HIT(ch) / 70;
     } else {
-        if (ch->getRoomFlag(ROOM_REGEN) || (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
+        if (ch->getLocationRoomFlag(ROOM_REGEN) || (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
             if (IS_HUMAN(ch)) {
                 gain = GET_MAX_HIT(ch) / 20;
             }
@@ -402,7 +402,7 @@ int64_t hit_gain(struct char_data *ch) {
             if (!IS_HUMAN(ch) && !IS_NAMEK(ch) && !IS_MUTANT(ch)) {
                 gain = GET_MAX_HIT(ch) / 15;
             }
-            if (ch->getRoomFlag(ROOM_BEDROOM)) {
+            if (ch->getLocationRoomFlag(ROOM_BEDROOM)) {
                 gain += gain * 0.25;
             }
         }
@@ -518,7 +518,7 @@ static int64_t move_gain(struct char_data *ch) {
         /* Neat and fast */
         gain = GET_MAX_MOVE(ch) / 70;
     } else {
-        if (ch->getRoomFlag(ROOM_REGEN) ||
+        if (ch->getLocationRoomFlag(ROOM_REGEN) ||
             (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
             if (IS_MUTANT(ch)) {
                 gain = GET_MAX_MOVE(ch) / 7;
@@ -529,14 +529,14 @@ static int64_t move_gain(struct char_data *ch) {
             if (!IS_MUTANT(ch)) {
                 gain = GET_MAX_MOVE(ch) / 6;
             }
-        } else if (!ch->getRoomFlag(ROOM_REGEN)) {
+        } else if (!ch->getLocationRoomFlag(ROOM_REGEN)) {
             if (IS_MUTANT(ch)) {
                 gain = GET_MAX_MOVE(ch) / 9;
             }
             if (!IS_MUTANT(ch)) {
                 gain = GET_MAX_MOVE(ch) / 8;
             }
-            if (ch->getRoomFlag(ROOM_BEDROOM)) {
+            if (ch->getLocationRoomFlag(ROOM_BEDROOM)) {
                 gain += gain * 0.25;
             }
         }
@@ -622,7 +622,7 @@ static int64_t move_gain(struct char_data *ch) {
     if (AFF_FLAGGED(ch, AFF_POISON))
         gain /= 4;
 
-    if (ch->getRoomFlag(ROOM_AURA)) {
+    if (ch->getLocationRoomFlag(ROOM_AURA)) {
         gain = GET_MAX_MOVE(ch) - (ch->getCurST());
     }
 
@@ -788,9 +788,9 @@ void gain_condition(struct char_data *ch, int condition, int value) {
         return;
     } else if (GET_COND(ch, condition) < 0) {    /* No change */
         return;
-    } else if (ch->getRoomFlag(ROOM_RHELL)) {
+    } else if (ch->getLocationRoomFlag(ROOM_RHELL)) {
         return;
-    } else if (ch->getRoomFlag(ROOM_HELL)) {
+    } else if (ch->getLocationRoomFlag(ROOM_HELL)) {
         return;
     } else if (AFF_FLAGGED(ch, AFF_SPIRIT)) {
         return;
@@ -1635,7 +1635,7 @@ void point_update(uint64_t heartPulse, double deltaTime) {
             processedCharacters.insert(charId);
 
             if (!IS_NPC(i) && IN_ROOM(i) != NOWHERE) {
-                if (i->getRoomFlag(ROOM_HOUSE)) {
+                if (i->getLocationRoomFlag(ROOM_HOUSE)) {
                     GET_RELAXCOUNT(i) += 1;
                 } else if (GET_RELAXCOUNT(i) >= 464) {
                     GET_RELAXCOUNT(i) -= 4;
@@ -1741,7 +1741,7 @@ void point_update(uint64_t heartPulse, double deltaTime) {
                     }
                 }
 
-                if (!has_o2(i) && (i->getLocationEnvironment(ENV_WATER) >= 100.0 || i->getRoomFlag(ROOM_SPACE))) {
+                if (!has_o2(i) && (i->getLocationEnvironment(ENV_WATER) >= 100.0 || i->getLocationRoomFlag(ROOM_SPACE))) {
                     if (auto remKi = i->modCurVitalDam(CharVital::Ki, .005); remKi < 1.0) {
                         send_to_char(i, "Your ki holds an atmosphere around you.\r\n");
                     } else {
@@ -1969,7 +1969,7 @@ void timed_dt(struct char_data *ch) {
             if (IN_ROOM(vict) == NOWHERE)
                 continue;
 
-            if (!vict->getRoomFlag(ROOM_TIMED_DT))
+            if (!vict->getLocationRoomFlag(ROOM_TIMED_DT))
                 continue;
 
             timed_dt(vict);

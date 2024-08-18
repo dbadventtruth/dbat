@@ -708,7 +708,7 @@ int roll_pursue(struct char_data *ch, struct char_data *vict) {
         skill = GET_SKILL(ch, SKILL_PURSUIT);
     } else if (IS_NPC(ch) && !MOB_FLAGGED(ch, MOB_SENTINEL)) {
         skill = GET_LEVEL(ch);
-        if (vict->getRoomFlag(ROOM_NOMOB))
+        if (vict->getLocationRoomFlag(ROOM_NOMOB))
             skill = -1;
     } else {
         skill = -1;
@@ -1965,11 +1965,11 @@ int planet_check(struct char_data *ch, struct char_data *vict) {
             auto chPlanet = ch->getMatchingArea(area_data::isPlanet);
             auto victPlanet = vict->getMatchingArea(area_data::isPlanet);
             if(chPlanet && chPlanet == victPlanet) return true;
-            else if (ch->getRoomFlag(ROOM_AL) && vict->getRoomFlag(ROOM_AL)) {
+            else if (ch->getLocationRoomFlag(ROOM_AL) && vict->getLocationRoomFlag(ROOM_AL)) {
                 return true;
-            } else if (ch->getRoomFlag(ROOM_HELL) && vict->getRoomFlag(ROOM_HELL)) {
+            } else if (ch->getLocationRoomFlag(ROOM_HELL) && vict->getLocationRoomFlag(ROOM_HELL)) {
                 return true;
-            } else if (ch->getRoomFlag(ROOM_NEO) && vict->getRoomFlag(ROOM_NEO)) {
+            } else if (ch->getLocationRoomFlag(ROOM_NEO) && vict->getLocationRoomFlag(ROOM_NEO)) {
                 return true;
             }
         }

@@ -27,7 +27,7 @@ static void grow_plants() {
         auto k = r.get();
         if(!k) continue;
 
-        if (k->getRoomFlag(ROOM_GARDEN1) || k->getRoomFlag(ROOM_GARDEN2)) {
+        if (k->getLocationRoomFlag(ROOM_GARDEN1) || k->getLocationRoomFlag(ROOM_GARDEN2)) {
             if (GET_OBJ_VAL(k, VAL_WATERLEVEL) < 0 && GET_OBJ_VAL(k, VAL_WATERLEVEL) > -10) {
                 GET_OBJ_VAL(k, VAL_WATERLEVEL) -= 1;
                 if (GET_OBJ_VAL(k, VAL_WATERLEVEL) > -10) {

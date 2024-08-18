@@ -500,7 +500,7 @@ static const std::vector<std::pair<std::string, std::string>> intelligentLand = 
 
 /* This handles NPCs taunting opponents or reacting to combat. */
 void mob_taunt(struct char_data *ch) {
-    if (ch->getRoomFlag(ROOM_SPACE)) { /* In space.... nobody cares. */
+    if (ch->getLocationRoomFlag(ROOM_SPACE)) { /* In space.... nobody cares. */
         return;
     }
 

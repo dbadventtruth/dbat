@@ -385,71 +385,22 @@ void affect_join(struct char_data *ch, struct affected_type *af,
 
 /* move a player out of a room */
 void char_from_room(struct char_data *ch) {
-    struct char_data *temp;
-    int i;
-    struct room_data *r;
-
-    if (ch == nullptr || !(r = ch->getRoom())) {
-        basic_mud_log("SYSERR: nullptr character or NOWHERE in %s, char_from_room", __FILE__);
-        return;
-    }
-
-    if (FIGHTING(ch) != nullptr && !AFF_FLAGGED(ch, AFF_PURSUIT))
-        stop_fighting(ch);
-    if (AFF_FLAGGED(ch, AFF_PURSUIT) && FIGHTING(ch) == nullptr)
-        ch->affected_by.reset(AFF_PURSUIT);
-
-    auto &z = zone_table[r->zone];
-    if(IS_NPC(ch)) {
-        z.npcsInZone.erase(ch->ref());
-    } else {
-        z.playersInZone.erase(ch->ref());
-    }
-
-    REMOVE_FROM_LIST(ch, r->people, next_in_room, temp);
-    IN_ROOM(ch) = NOWHERE;
-    ch->room = nullptr;
-    ch->next_in_room = nullptr;
-
-
-
-}
-
-/* place a character in a room */
-void char_to_room(struct char_data *ch, struct room_data* room) {
-    int i;
-
-    ch->next_in_room = room->people;
-    room->people = ch;
-    IN_ROOM(ch) = room->vn;
-    ch->room = room;
-
-    auto &z = zone_table[room->zone];
-    if(IS_NPC(ch)) {
-        z.npcsInZone.insert(ch->ref());
-    } else {
-        z.playersInZone.insert(ch->ref());
-    }
-
-    /* Stop fighting now, if we left. */
-    if (FIGHTING(ch) && IN_ROOM(ch) != IN_ROOM(FIGHTING(ch)) && !AFF_FLAGGED(ch, AFF_PURSUIT)) {
-        stop_fighting(FIGHTING(ch));
-        stop_fighting(ch);
-    }
-    if (!IS_NPC(ch)) {
-        if (PRF_FLAGGED(ch, PRF_ARENAWATCH)) {
-            ch->pref.reset(PRF_ARENAWATCH);
-            ARENA_IDNUM(ch) = -1;
+    if(auto loc = ch->getLocation(); loc.first) {
+        if(auto r = dynamic_cast<room_data*>(loc.first)) {
+            ch->clearLocation();
         }
     }
-
 }
+
 
 /* place a character in a room */
 void char_to_room(struct char_data *ch, room_rnum room) {
     if(!ch) return;
     if(!world.count(room)) return;
-    char_to_room(ch, &world[room]);
+    LocationStub stub;
+    stub.first = &world.at(room);
+    stub.second.type = CoordinateType::Room;
+    ch->setLocation(stub);
 }
 
 
@@ -668,157 +619,29 @@ struct char_data *get_char_num(mob_rnum nr) {
 }
 
 
-void obj_to_room(struct obj_data *object, struct room_data *room) {
-    struct obj_data *vehicle = nullptr;
-
-    if (ROOM_FLAGGED(room, ROOM_GARDEN1) || ROOM_FLAGGED(room, ROOM_GARDEN2)) {
-        if (GET_OBJ_TYPE(object) != ITEM_PLANT) {
-            send_to_room(room,
-                         "%s @wDisappears in a puff of smoke! It seems the room was designed to vaporize anything not plant related. Strange...@n\r\n",
-                         object->short_description);
-            extract_obj(object);
-            return;
-        } else {
-            objectSubscriptions.subscribe("growingPlants", object->ref());
-        }
-    }
-    if (room->vn == real_room(80)) {
-        auc_load(object);
-    }
-
-    object->next_content = room->contents;
-    room->contents = object;
-    IN_ROOM(object) = room->vn;
-    object->room = room;
-    object->carried_by = nullptr;
-    GET_LAST_LOAD(object) = time(nullptr);
-
-    auto &z = zone_table[room->zone];
-    z.objectsInZone.insert(object->ref());
-
-    if (GET_OBJ_TYPE(object) == ITEM_VEHICLE && !OBJ_FLAGGED(object, ITEM_UNBREAKABLE) &&
-        GET_OBJ_VNUM(object) > 19199) {
-        object->extra_flags.set(ITEM_UNBREAKABLE);
-    }
-
-    // This section is now only going to be called during migrations.
-    if(isMigrating) {
-        if (GET_OBJ_TYPE(object) == ITEM_HATCH && GET_OBJ_VNUM(object) <= 19199) {
-            if ((GET_OBJ_VNUM(object) <= 18999 && GET_OBJ_VNUM(object) >= 18800) ||
-                (GET_OBJ_VNUM(object) <= 19199 && GET_OBJ_VNUM(object) >= 19100)) {
-                int hnum = GET_OBJ_VAL(object, 0);
-                struct obj_data *house = read_object(hnum, VIRTUAL);
-                obj_to_room(house, real_room(GET_OBJ_VAL(object, 6)));
-                SET_BIT(GET_OBJ_VAL(object, VAL_CONTAINER_FLAGS), CONT_CLOSED);
-                SET_BIT(GET_OBJ_VAL(object, VAL_CONTAINER_FLAGS), CONT_LOCKED);
-            }
-        }
-
-        if (GET_OBJ_TYPE(object) == ITEM_HATCH && GET_OBJ_VAL(object, 0) > 1 && GET_OBJ_VNUM(object) > 19199) {
-            if (!(vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(object, VAL_HATCH_DEST)))) {
-                if (real_room(GET_OBJ_VAL(object, 3)) != NOWHERE) {
-                    vehicle = read_object(GET_OBJ_VAL(object, 0), VIRTUAL);
-                    if(!vehicle) {
-                        basic_mud_log("SYSERR: Vehicle %d not found for hatch %d", GET_OBJ_VAL(object, 0), GET_OBJ_VNUM(object));
-                    }
-                    obj_to_room(vehicle, real_room(GET_OBJ_VAL(object, 3)));
-                    if (object->look_description) {
-                        if (strlen(object->look_description)) {
-                            char nick[MAX_INPUT_LENGTH], nick2[MAX_INPUT_LENGTH], nick3[MAX_INPUT_LENGTH];
-                            if (GET_OBJ_VNUM(vehicle) <= 46099 && GET_OBJ_VNUM(vehicle) >= 46000) {
-                                sprintf(nick, "Saiyan Pod %s", object->look_description);
-                                sprintf(nick2, "@wA @Ys@ya@Yi@yy@Ya@yn @Dp@Wo@Dd@w named @D(@C%s@D)@w",
-                                        object->look_description);
-                            } else if (GET_OBJ_VNUM(vehicle) >= 46100 && GET_OBJ_VNUM(vehicle) <= 46199) {
-                                sprintf(nick, "EDI Xenofighter MK. II %s", object->look_description);
-                                sprintf(nick2,
-                                        "@wAn @YE@yD@YI @CX@ce@Wn@Do@Cf@ci@Wg@Dh@Wt@ce@Cr @RMK. II @wnamed @D(@C%s@D)@w",
-                                        object->look_description);
-                            }
-                            sprintf(nick3, "%s is resting here@w", nick2);
-                            vehicle->name = strdup(nick);
-                            vehicle->short_description = strdup(nick2);
-                            vehicle->room_description = strdup(nick3);
-                        }
-                    }
-                    SET_BIT(GET_OBJ_VAL(object, VAL_CONTAINER_FLAGS), CONT_CLOSED);
-                    SET_BIT(GET_OBJ_VAL(object, VAL_CONTAINER_FLAGS), CONT_LOCKED);
-                } else {
-                    basic_mud_log("Hatch load: Hatch with no vehicle load room: #%d!", GET_OBJ_VNUM(object));
-                }
-            }
-        }
-    }
-
-    if (EXIT(object, 5) &&
-        (object->getLocationTileType() == SECT_UNDERWATER || object->getLocationTileType() == SECT_WATER_NOSWIM)) {
-        act("$p @Bsinks to deeper waters.@n", true, nullptr, object, nullptr, TO_ROOM);
-        int numb = GET_ROOM_VNUM(EXIT(object, 5)->to_room);
-        obj_from_room(object);
-        obj_to_room(object, real_room(numb));
-    }
-    if (EXIT(object, 5) && object->getLocationTileType() == SECT_FLYING &&
-        (GET_OBJ_VNUM(object) < 80 || GET_OBJ_VNUM(object) > 83)) {
-        act("$p @Cfalls down.@n", true, nullptr, object, nullptr, TO_ROOM);
-        int numb = GET_ROOM_VNUM(EXIT(object, 5)->to_room);
-        obj_from_room(object);
-        obj_to_room(object, real_room(numb));
-        if (object->getLocationTileType() != SECT_FLYING) {
-            act("$p @Cfalls down and smacks the ground.@n", true, nullptr, object, nullptr, TO_ROOM);
-        }
-    }
-    if (GET_OBJ_VAL(object, 0) != 0) {
-        if (GET_OBJ_VNUM(object) == 16705 || GET_OBJ_VNUM(object) == 16706 || GET_OBJ_VNUM(object) == 16707) {
-            object->level = GET_OBJ_VAL(object, 0);
-        }
-    }
-}
-
-
 /* put an object in a room */
 void obj_to_room(struct obj_data *object, room_rnum room) {
     if(!object) return;
     if(!world.count(room)) return;
-    obj_to_room(object, &world[room]);
+    LocationStub stub;
+    stub.first = &world.at(room);
+    stub.second.type = CoordinateType::Room;
+    object->setLocation(stub);
 }
 
 
 /* Take an object from a room */
 void obj_from_room(struct obj_data *object) {
-    struct obj_data *temp;
-    auto r = object->getRoom();
-
-    if (!object || IN_ROOM(object) == NOWHERE) {
-        basic_mud_log("SYSERR: nullptr object or obj not in a room (%d) passed to obj_from_room",
-            IN_ROOM(object));
+    if (!object) {
+        basic_mud_log("SYSERR: nullptr object or obj not in a room passed to obj_from_room");
         return;
     }
 
-    if(object->type_flag == ITEM_PLANT) objectSubscriptions.unsubscribe("growingPlants", object->ref());
-
-    if (GET_OBJ_POSTED(object) && object->in_obj == nullptr) {
-        struct obj_data *obj = GET_OBJ_POSTED(object);
-        if (GET_OBJ_POSTTYPE(object) <= 0) {
-            send_to_room(IN_ROOM(obj), "%s@W shakes loose from %s@W.@n\r\n", obj->short_description,
-                         object->short_description);
-        } else {
-            send_to_room(IN_ROOM(obj), "%s@W comes loose from %s@W.@n\r\n", object->short_description,
-                         obj->short_description);
-        }
-        GET_OBJ_POSTED(obj) = nullptr;
-        GET_OBJ_POSTTYPE(obj) = 0;
-        GET_OBJ_POSTED(object) = nullptr;
-        GET_OBJ_POSTTYPE(object) = 0;
+    auto loc = object->getLocation();
+    if(loc.first) {
+        auto r = dynamic_cast<room_data*>(loc.first);
+        object->clearLocation();
     }
-
-    auto &z = zone_table[r->zone];
-    z.objectsInZone.erase(object->ref());
-
-    REMOVE_FROM_LIST(object, object->getRoom()->contents, next_content, temp);
-
-    IN_ROOM(object) = NOWHERE;
-    object->room = nullptr;
-    object->next_content = nullptr;
 
 }
 
