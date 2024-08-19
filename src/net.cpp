@@ -29,6 +29,14 @@ namespace net {
     std::unordered_map<int, DisconnectReason> deadConnections;
     std::unordered_set<int> pendingOutData, pendingReads, pendingWrites;
 
+    static int nextConnID() {
+        int checking = 0;
+        while(connections.contains(checking)) {
+            checking++;
+        }
+        return checking;
+    };
+
     int server_fd = -1;
     int epoll_fd = -1;
 
@@ -235,6 +243,10 @@ namespace net {
     void Connection::onNetworkDisconnected() {
         state = ConnectionState::Dead;
         deadConnections[connId] = DisconnectReason::ConnectionLost;
+        if(!fdClosed) {
+            ::close(socket);
+            fdClosed = true;
+        }
     }
 
     static const telnet_telopt_t my_telopts[] = {
@@ -512,11 +524,12 @@ namespace net {
         }
     }
 
-    Connection::Connection(int connId) : connId(connId) {
+    Connection::Connection(int connID, int socket) : connId(connId), socket(socket) {
         teldata = telnet_init(my_telopts, &telnet_handler, TELNET_FLAG_ROLE_SERVER, this);
     }
 
-    Connection::Connection(int connId, const nlohmann::json &j) : Connection(connId) {
+    Connection::Connection(const nlohmann::json &j) : Connection(connId) {
+        teldata = telnet_init(my_telopts, &telnet_handler, TELNET_FLAG_ROLE_SERVER, this);
         deserialize(j);
         epollRegister();
     }
@@ -524,6 +537,7 @@ namespace net {
     nlohmann::json Connection::serialize() {
         nlohmann::json j;
 
+        j["socket"] = socket;
         j["connId"] = connId;
         j["capabilities"] = capabilities.serialize();
         if(account) j["account"] = account->vn;
@@ -580,6 +594,7 @@ namespace net {
 
     void Connection::deserialize(const nlohmann::json &j) {
         connId = j.at("connId").get<int>();
+        socket = j.at("socket").get<int>();
         capabilities.deserialize(j.at("capabilities"));
         if (j.contains("account")) {
             auto &acc = accounts[j.at("account").get<int>()];
@@ -676,7 +691,8 @@ namespace net {
         // Free the telnet data.
         telnet_free(teldata);
         // Close the descriptor.
-        ::close(connId);
+        if(!fdClosed)
+            ::close(socket);
     }
 
     void Connection::cleanup(DisconnectReason reason) {
@@ -815,69 +831,82 @@ namespace net {
     void Connection::epollRegister() {
         epoll_event ev{};
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-        ev.data.fd = connId;
+        ev.data.u32 = connId;
 
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, connId, &ev) == -1) {
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket, &ev) == -1) {
             perror("epoll_ctl: connection fd");
             exit(EXIT_FAILURE);
         }
     }
 
     void Connection::epollUnregister() {
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, connId, NULL) == -1) {
+        if(!fdClosed)
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, socket, NULL) == -1) {
             perror("epoll_ctl: EPOLL_CTL_DEL");
         }
     }
 
     void Connection::readFromSocket() {
-        if(state == ConnectionState::Dead) {
+        if(state == ConnectionState::Dead || fdClosed) {
             return;
         }
 
         std::vector<char> buffer(4096);
 
         while (true) {
-            ssize_t bytesRead = read(connId, buffer.data(), buffer.size());
+            ssize_t bytesRead = read(socket, buffer.data(), buffer.size());
             if (bytesRead > 0) {
                 // Successfully read data, process it
                 telnet_recv(teldata, buffer.data(), bytesRead);
             } else if (bytesRead == 0) {
                 // Connection closed by the client
-                void onNetworkDisconnected();
+                basic_mud_log("Connection %d fd %d closed by client.", connId, socket);
+                onNetworkDisconnected();
                 break;
             } else {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     // No more data available right now, would block
+                    pendingReads.erase(connId);
                     break;
                 } else if(errno == ETIMEDOUT) {
-                    void onNetworkTimedOut();
+                    // Connection timed out
+                    basic_mud_log("Connection %d fd %d timed out.", connId, socket);
+                    onNetworkDisconnected();
+                    break;
                 } else {
                     // An error occurred, log or handle it
-                    std::cerr << "Read error: " << strerror(errno) << std::endl;
-                    // Handle error if needed
+                    basic_mud_log("Connection %d fd %d read error: %s", connId, socket, strerror(errno));
+                    onNetworkDisconnected();
                     break;
                 }
             }
         }
     }
 
+
     void Connection::writeToSocket() {
+        if (state == ConnectionState::Dead || fdClosed) {
+            return;
+        }
+
         // Iterate over the buffer's data sequence and attempt to send it
         while (!outbuf.empty()) {
             // Access the front data sequence in the buffer.
             auto &sbuf = outbuf.front();
             int remaining = sbuf.data.size() - sbuf.sent;
 
-            if(remaining > 0) {
+            if (remaining > 0) {
                 // Attempt to send the data
-                ssize_t bytesSent = send(connId, sbuf.data.c_str() + sbuf.sent, remaining, 0);
+                ssize_t bytesSent = send(socket, sbuf.data.c_str() + sbuf.sent, remaining, 0);
 
                 if (bytesSent == -1) {
-                    if(errno == EAGAIN || errno == EWOULDBLOCK) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
                         // Socket is not ready to send more data; stop and wait for EPOLLOUT
                         pendingWrites.erase(connId);
                         break;
                     } else {
+                        // An error occurred, log or handle it
+                        std::cerr << "Send error: " << strerror(errno) << std::endl;
                         onNetworkDisconnected();
                         break;
                     }
@@ -888,8 +917,8 @@ namespace net {
                 remaining -= bytesSent;
             }
 
-            if(remaining == 0) {
-                if(sbuf.bitflags & SendBuffer::BF_CLOSE_AFTER_SEND) {
+            if (remaining == 0) {
+                if (sbuf.bitflags & SendBuffer::BF_CLOSE_AFTER_SEND) {
                     outbuf.clear();
                     close();
                 } else {
@@ -943,8 +972,9 @@ namespace net {
         }
 
         // Create a new Connection object and add it to the map
-        auto conn = std::make_shared<Connection>(conn_fd);
-        connections[conn_fd] = conn;
+        auto id = nextConnID();
+        auto conn = std::make_shared<Connection>(id, conn_fd);
+        connections[id] = conn;
 
         char ip_str[INET6_ADDRSTRLEN]; // Enough space to hold both IPv4 and IPv6 addresses
 
@@ -996,31 +1026,51 @@ namespace net {
 
         for(int i = 0; i < nfds; i++) {
             auto &ev = events[i];
-            int fd = ev.data.fd;
+            int connId = ev.data.u32;
+
+            if(!connections.contains(connId)) {
+                // This should never happen.
+                basic_mud_log("epoll_wait returned an fd that doesn't exist in connections: %d", connId);
+                continue;
+            }
+            auto conn = connections.at(connId);
 
             if(ev.events & EPOLLERR) {
                 // Handle error condition
                 int err = 0;
                 socklen_t len = sizeof(err);
-                if (getsockopt(ev.data.fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0) {
-                    basic_mud_log("Error on fd %d: %s\n", fd, strerror(err));
+                
+                // Retrieve the specific error code
+                if (getsockopt(conn->socket, SOL_SOCKET, SO_ERROR, &err, &len) == 0) {
+                    basic_mud_log("Error on socket fd %d: %s\n", conn->socket, strerror(err));
                 } else {
-                    basic_mud_log("getsockopt failed on fd %d", fd);
+                    basic_mud_log("getsockopt failed on socket fd %d", conn->socket);
                 }
 
-                // Close the file descriptor and remove it from your connections
-                deadConnections[ev.data.fd] = DisconnectReason::ConnectionLost;
+                // Mark the connection as closed to prevent further operations
+                conn->fdClosed = true;
+                
+                // Mark the connection as dead due to connection loss
+                deadConnections[connId] = DisconnectReason::ConnectionLost;
 
-                // Skip further processing for this fd
+                // Close the file descriptor explicitly
+                close(conn->socket);
+                
+                // Unregister from epoll to clean up the epoll set
+                if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->socket, nullptr) == -1) {
+                    basic_mud_log("epoll_ctl: EPOLL_CTL_DEL failed for fd %d", conn->socket);
+                }
+
+                // Skip further processing for this file descriptor
                 continue;
             }
 
             if(ev.events & EPOLLIN) {
-                pendingReads.insert(fd);
+                pendingReads.insert(connId);
             }
 
             if(ev.events & EPOLLOUT) {
-                pendingWrites.insert(fd);
+                pendingWrites.insert(connId);
             }
         }
     }
