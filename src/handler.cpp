@@ -407,19 +407,10 @@ void char_to_room(struct char_data *ch, room_rnum room) {
 /* give an object to a char   */
 void obj_to_char(struct obj_data *object, struct char_data *ch) {
     if (object && ch) {
-        object->next_content = ch->contents;
-        ch->contents = object;
-        object->carried_by = ch;
-        IN_ROOM(object) = NOWHERE;
-
-        /* set flag for crash-save system, but not on mobs! */
-        if (GET_OBJ_VAL(object, 0) != 0) {
-            if (GET_OBJ_VNUM(object) == 16705 || GET_OBJ_VNUM(object) == 16706 || GET_OBJ_VNUM(object) == 16707) {
-                object->level = GET_OBJ_VAL(object, 0);
-            }
-        }
-        if (!IS_NPC(ch))
-            ch->playerFlags.set(PLR_CRASH);
+        LocationStub newLoc{};
+        newLoc.first = ch;
+        newLoc.second.type = CoordinateType::Inventory;
+        object->setLocation(newLoc);
     } else
         basic_mud_log("SYSERR: nullptr obj or char passed to obj_to_char.");
 }
@@ -427,28 +418,18 @@ void obj_to_char(struct obj_data *object, struct char_data *ch) {
 
 /* take an object from a char */
 void obj_from_char(struct obj_data *object) {
-    struct obj_data *temp;
 
     if (object == nullptr) {
         basic_mud_log("SYSERR: nullptr object passed to obj_from_char.");
         return;
     }
-    REMOVE_FROM_LIST(object, object->carried_by->contents, next_content, temp);
 
-    /* set flag for crash-save system, but not on mobs! */
-    if (!IS_NPC(object->carried_by))
-        object->carried_by->playerFlags.set(PLR_CRASH);
-
-    int64_t previous = (object->carried_by->getMaxPL());
-
-    if (GET_OBJ_VAL(object, 0) != 0) {
-        if (GET_OBJ_VNUM(object) == 16705 || GET_OBJ_VNUM(object) == 16706 || GET_OBJ_VNUM(object) == 16707) {
-            object->level = GET_OBJ_VAL(object, 0);
+    auto loc = object->getLocation();
+    if(auto ch = dynamic_cast<char_data*>(loc.first); ch) {
+        if(loc.second.type == CoordinateType::Inventory) {
+            object->clearLocation();
         }
-    }
-
-    object->carried_by = nullptr;
-    object->next_content = nullptr;
+    } 
 }
 
 
@@ -517,36 +498,35 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
         basic_mud_log("SYSERR: EQUIP: Obj is in_room when equip.");
         return;
     }
+
+    LocationStub newLoc{};
+    newLoc.first = ch;
     if (invalid_align(ch, obj) || invalid_class(ch, obj) || invalid_race(ch, obj)) {
         act("You stop wearing $p as something prevents you.", false, ch, obj, nullptr, TO_CHAR);
         act("$n stops wearing $p as something prevents $m.", false, ch, obj, nullptr, TO_ROOM);
         /* Changed to drop in inventory instead of the ground. */
-        obj_to_char(obj, ch);
-        return;
+        newLoc.second.type = CoordinateType::Inventory;
+    } else {
+        newLoc.second.type = CoordinateType::Equipped;
+        newLoc.second.x = pos;
     }
 
-    GET_EQ(ch, pos) = obj;
-    obj->worn_by = ch;
-    obj->worn_on = pos;
+    obj->setLocation(newLoc);
 }
 
 
 struct obj_data *unequip_char(struct char_data *ch, int pos) {
     int j;
-    struct obj_data *obj;
+    struct obj_data *obj = GET_EQ(ch, pos);
 
-    if ((pos < 0 || pos >= NUM_WEARS) || GET_EQ(ch, pos) == nullptr) {
+    if ((pos < 0 || pos >= NUM_WEARS) || !obj) {
         core_dump();
         return (nullptr);
     }
 
-    obj = GET_EQ(ch, pos);
-    obj->worn_by = nullptr;
-    obj->worn_on = -1;
+    obj->clearLocation();
 
-    GET_EQ(ch, pos) = nullptr;
-
-    return (obj);
+    return obj;
 }
 
 
@@ -654,10 +634,10 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
         return;
     }
 
-    obj->next_content = obj_to->contents;
-    obj_to->contents = obj;
-    obj->in_obj = obj_to;
-    tmp_obj = obj->in_obj;
+    LocationStub newLoc;
+    newLoc.first = obj_to;
+    newLoc.second.type = CoordinateType::Inventory;
+    obj->setLocation(newLoc);
 }
 
 
@@ -669,12 +649,11 @@ void obj_from_obj(struct obj_data *obj) {
         basic_mud_log("SYSERR: (%s): trying to illegally extract obj from obj.", __FILE__);
         return;
     }
-    obj_from = obj->in_obj;
-    temp = obj->in_obj;
-    REMOVE_FROM_LIST(obj, obj_from->contents, next_content, temp);
 
-    obj->in_obj = nullptr;
-    obj->next_content = nullptr;
+    auto loc = obj->getLocation();
+    if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
+        obj->clearLocation();
+    }
 }
 
 
@@ -728,7 +707,6 @@ void extract_obj(struct obj_data *obj) {
     if (GET_OBJ_RNUM(obj) != NOTHING)
         (obj_index[GET_OBJ_RNUM(obj)].vn)--;
 
-    if (SCRIPT(obj))
         extract_script(obj, OBJ_TRIGGER);
 
     auto found = obj_data::instances.find(obj->id);
@@ -948,7 +926,6 @@ void extract_char_final(struct char_data *ch) {
         if (GET_MOB_RNUM(ch) != NOTHING)    /* prototyped */
             erase_vnum(characterVnumIndex, ch);
 
-        if (SCRIPT(ch))
             extract_script(ch, MOB_TRIGGER);
         if (SCRIPT_MEM(ch))
             extract_script_mem(SCRIPT_MEM(ch));

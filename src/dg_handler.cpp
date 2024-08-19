@@ -96,6 +96,10 @@ void free_trigger(struct trig_data *trig) {
 void extract_trigger(struct trig_data *trig) {
     struct trig_data *temp;
 
+    if(trig->owner) {
+        auto find = std::find(trig->owner->trig_list.begin(), trig->owner->trig_list.end(), trig);
+        if(find != trig->owner->trig_list.end()) trig->owner->trig_list.erase(find);
+    }
     triggers_waiting.erase(trig);
     auto find = std::find(triggers_queued.begin(), triggers_queued.end(), trig);
     if(find != triggers_queued.end())
@@ -114,41 +118,21 @@ void extract_trigger(struct trig_data *trig) {
 }
 
 /* remove all triggers from a mob/obj/room */
-void extract_script(void *thing, int type) {
-    struct script_data *sc = nullptr;
+void extract_script(unit_data *thing, int type) {
     struct trig_data *trig, *next_trig;
     char_data *mob;
     obj_data *obj;
     room_data *room;
 
-    switch (type) {
-        case MOB_TRIGGER:
-            mob = (struct char_data *) thing;
-            sc = SCRIPT(mob);
-            SCRIPT(mob) = nullptr;
-            break;
-        case OBJ_TRIGGER:
-            obj = (struct obj_data *) thing;
-            sc = SCRIPT(obj);
-            SCRIPT(obj) = nullptr;
-            break;
-        case WLD_TRIGGER:
-            room = (struct room_data *) thing;
-            sc = SCRIPT(room);
-            SCRIPT(room) = nullptr;
-            break;
-    }
+    auto trigs = thing->trig_list;
 
-    for (trig = TRIGGERS(sc); trig; trig = next_trig) {
-        next_trig = trig->next;
-        extract_trigger(trig);
+    for (auto t : trigs) {
+        extract_trigger(t);
     }
-    TRIGGERS(sc) = nullptr;
 
     /* Thanks to James Long for tracking down this memory leak */
-    free_varlist(sc->global_vars);
-
-    delete sc;
+    free_varlist(thing->global_vars);
+    thing->global_vars = nullptr;
 }
 
 /* erase the script memory of a mob */

@@ -211,8 +211,7 @@ int free_mobile(struct char_data *mob) {
         affect_remove(mob, mob->affected);
 
     /* free any assigned scripts */
-    if (SCRIPT(mob))
-        extract_script(mob, MOB_TRIGGER);
+    extract_script(mob, MOB_TRIGGER);
 
     free(mob);
     return true;
@@ -598,8 +597,8 @@ nlohmann::json char_data::serializeInstance() {
     if(upgrade) j["upgrade"] = upgrade;
     if(voice && strlen(voice)) j["voice"] = voice;
 
-    if(script && script->global_vars) {
-        j["dgvariables"] = serializeVars(script->global_vars);
+    if(global_vars) {
+        j["dgvariables"] = serializeVars(global_vars);
     }
 
     if(relax_count) j["relax_count"] = relax_count;
@@ -778,8 +777,7 @@ void char_data::deserializeInstance(const nlohmann::json &j, bool isActive) {
     }
 
     if(j.contains("dgvariables")) {
-        if(!script) script = new script_data(this);
-        deserializeVars(&script->global_vars, j["dgvariables"]);
+        deserializeVars(&global_vars, j["dgvariables"]);
     }
 
     auto proto = mob_proto.find(vn);
@@ -973,12 +971,12 @@ void char_data::activate() {
     }
 
     auto r = ref();
-    if(script) {
-        script->activate();
+    if(!trig_list.empty()) {
+        for(auto t : trig_list) t->activate();
 
-        if(SCRIPT_TYPES(SCRIPT(this)) & MTRIG_RANDOM)
+        if(SCRIPT_TYPES(this) & MTRIG_RANDOM)
             characterSubscriptions.subscribe("randomTriggers", r);
-        if(SCRIPT_TYPES(SCRIPT(this)) & MTRIG_TIME)
+        if(SCRIPT_TYPES(this) & MTRIG_TIME)
             characterSubscriptions.subscribe("timeTriggers", r);
     }
 
@@ -1035,6 +1033,11 @@ void char_data::deactivate() {
     if(affectedv) {
         REMOVE_FROM_LIST(this, affectv_list, next_affectv, temp);
     }
+
+    for(auto t : trig_list) {
+        t->deactivate();
+    }
+
     characterSubscriptions.unsubscribeFromAll(ref());
     if(contents) deactivateContents();
     for(auto i = 0; i < NUM_WEARS; i++) {
@@ -1187,7 +1190,7 @@ void char_data::onAddedToLocation(const LocationStub& newLoc) {
         r->people = this;
         in_room = r->vn;
 
-        auto &z = zone_table[room->zone];
+        auto &z = zone_table[r->zone];
         if(IS_NPC(this)) {
             z.npcsInZone.insert(ref());
         } else {

@@ -292,8 +292,8 @@ nlohmann::json obj_data::serializeInstance() {
 
     if(generation) j["generation"] = generation;
 
-    if(script && script->global_vars) {
-        j["dgvariables"] = serializeVars(script->global_vars);
+    if(global_vars) {
+        j["dgvariables"] = serializeVars(global_vars);
     }
 
     if(world.contains(room_loaded)) j["room_loaded"] = room_loaded;
@@ -423,17 +423,17 @@ void obj_data::activate() {
     }
 
     auto r = ref();
-    if(script) {
-        script->activate();
-        if(SCRIPT_TYPES(SCRIPT(this)) & OTRIG_RANDOM)
+    if(!trig_list.empty()) {
+        for(auto t : trig_list) t->activate();
+        if(SCRIPT_TYPES(this) & OTRIG_RANDOM)
             objectSubscriptions.subscribe("randomTriggers", r);
-        if(SCRIPT_TYPES(SCRIPT(this)) & OTRIG_TIME)
+        if(SCRIPT_TYPES(this) & OTRIG_TIME)
             objectSubscriptions.subscribe("timeTriggers", r);
     }
     activeObjects.insert(r);
     if(IS_CORPSE(this))
         objectSubscriptions.subscribe("corpseRotService", r);
-    if(script && SCRIPT_TYPES(SCRIPT(this)) && OTRIG_RANDOM)
+    if(SCRIPT_TYPES(this) && OTRIG_RANDOM)
         objectSubscriptions.subscribe("randomTriggers", r);
     if(vn == 65)
         objectSubscriptions.subscribe("healTankService", r);
@@ -449,14 +449,8 @@ void obj_data::deactivate() {
         erase_vnum(objectVnumIndex, this);
     }
 
-    if(script && script->trig_list) {
-        struct trig_data *next_trig;
-        for (auto trig = TRIGGERS(script); trig; trig = next_trig) {
-            next_trig = trig->next;
-            extract_trigger(trig);
-        }
-        TRIGGERS(script) = nullptr;
-    }
+    for(auto t : trig_list) t->deactivate();
+    
     objectSubscriptions.unsubscribeFromAll(ref());
     if(contents) deactivateContents();
 }
@@ -469,8 +463,7 @@ void obj_data::deserializeInstance(const nlohmann::json &j, bool isActive) {
     add_unique_id(this);
 
     if(j.contains("dgvariables")) {
-        if(!script) script = new script_data(this);
-        deserializeVars(&script->global_vars, j["dgvariables"]);
+        deserializeVars(&global_vars, j["dgvariables"]);
     }
 
     if(j.contains("room_loaded")) room_loaded = j["room_loaded"];
@@ -696,28 +689,56 @@ bool obj_data::isWorking() {
     return !(OBJ_FLAGGED(this, ITEM_BROKEN) || OBJ_FLAGGED(this, ITEM_FORGED));
 }
 
-void obj_data::clearLocation() {
-    if(in_obj) obj_from_obj(this);
-    else if(carried_by) obj_from_char(this);
-    else if(worn_by) unequip_char(worn_by, worn_on);
-    else if(world.contains(in_room)) obj_from_room(this);
-}
-
 void obj_data::onAddedToLocation(const LocationStub& newLoc) {
-    if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
+    if(auto c = dynamic_cast<char_data*>(newLoc.first); c) {
+        // we've been added to a character.
+
+        if(newLoc.second.type == CoordinateType::Inventory) {
+            // we've been added to the character's inventory.
+            next_content = c->contents;
+            c->contents = this;
+            carried_by = c;
+            in_room = NOWHERE;
+
+            /* set flag for crash-save system, but not on mobs! */
+            if (GET_OBJ_VAL(this, 0) != 0) {
+                if (vn == 16705 || vn == 16706 || vn == 16707) {
+                    level = GET_OBJ_VAL(this, 0);
+                }
+            }
+
+        } else if(newLoc.second.type == CoordinateType::Equipped) {
+            // we've been equipped by the character.
+            int pos = newLoc.second.x;
+            GET_EQ(c, pos) = this;
+            worn_by = c;
+            worn_on = pos;
+        }
+    }
+
+    else if(auto o = dynamic_cast<obj_data*>(newLoc.first); o) {
+        // we've been added to an object's inventory.
+        struct obj_data *tmp_obj;
+        next_content = o->contents;
+        o->contents = this;
+        in_obj = o;
+        tmp_obj = in_obj;
+    }
+    
+    else if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
         // we've been added to a room.
         if(type_flag == ITEM_PLANT && (r->room_flags.test(ROOM_GARDEN1) || r->room_flags.test(ROOM_GARDEN2)))
             objectSubscriptions.subscribe("growingPlants", ref());
         
         if(r->vn == 80) auc_load(this);
 
-        next_content = room->contents;
-        room->contents = this;
-        in_room = room->vn;
+        next_content = r->contents;
+        r->contents = this;
+        in_room = r->vn;
         carried_by = nullptr;
         GET_LAST_LOAD(this) = time(nullptr);
 
-        auto &z = zone_table[room->zone];
+        auto &z = zone_table[r->zone];
         z.objectsInZone.insert(ref());
 
         auto otype = GET_OBJ_TYPE(this);
@@ -805,8 +826,46 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
 }
 
 void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
+    if(auto c = dynamic_cast<char_data*>(oldLoc.first)) {
+        // we've been removed from a character.
+        if(oldLoc.second.type == CoordinateType::Inventory) {
+            struct obj_data *temp;
+            REMOVE_FROM_LIST(this, carried_by->contents, next_content, temp);
 
-    if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
+            /* set flag for crash-save system, but not on mobs! */
+            if (!IS_NPC(carried_by))
+                carried_by->playerFlags.set(PLR_CRASH);
+
+            int64_t previous = (carried_by->getMaxPL());
+
+            if (GET_OBJ_VAL(this, 0) != 0) {
+                if (vn == 16705 || vn == 16706 || vn == 16707) {
+                    level = GET_OBJ_VAL(this, 0);
+                }
+            }
+
+            carried_by = nullptr;
+            next_content = nullptr;
+        } else if(oldLoc.second.type == CoordinateType::Equipped) {
+            int pos = oldLoc.second.x;
+            worn_by = nullptr;
+            worn_on = -1;
+            GET_EQ(c, pos) = nullptr;
+        }
+    }
+
+    else if(auto o = dynamic_cast<obj_data*>(oldLoc.first); o) {
+        // we've been removed from an object's inventory.
+        struct obj_data *temp, *obj_from;
+        obj_from = in_obj;
+        temp = in_obj;
+        REMOVE_FROM_LIST(this, obj_from->contents, next_content, temp);
+
+        in_obj = nullptr;
+        next_content = nullptr;
+    }
+
+    else if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
         // we've been removed from a room.
 
         struct obj_data *temp;

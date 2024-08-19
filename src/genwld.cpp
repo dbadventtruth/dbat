@@ -34,7 +34,6 @@ room_rnum add_room(struct room_data *room) {
 
     if (world.contains(room->vn)) {
         auto &ro = world[room->vn];
-        if (SCRIPT(&ro))
             extract_script(&ro, WLD_TRIGGER);
         tch = ro.people;
         tobj = ro.contents;
@@ -100,7 +99,6 @@ int delete_room(room_rnum rnum) {
         char_to_room(ppl, 0);
     }
 
-    if (SCRIPT(room))
         extract_script(room, WLD_TRIGGER);
     free_proto_script(room, WLD_TRIGGER);
 
@@ -267,8 +265,8 @@ room_direction_data::room_direction_data(const nlohmann::json &j) : room_directi
 }
 
 nlohmann::json room_data::serializeDgVars() {
-    if(script && script->global_vars)
-        return serializeVars(script->global_vars);
+    if(global_vars)
+        return serializeVars(global_vars);
     return nlohmann::json::array();
 }
 
@@ -315,11 +313,6 @@ room_data::room_data(const nlohmann::json &j) {
     if(j.contains("proto_script")) {
         for(auto p : j["proto_script"]) proto_script.emplace_back(p.get<trig_vnum>());
     }
-
-    if(!proto_script.empty() || vn == 0) {
-        if(!script) script = new script_data(this);
-    }
-
 
 }
 
@@ -369,15 +362,26 @@ int room_data::getDamage() {
 }
 
 void room_data::activate() {
+    assign_triggers(this, WLD_TRIGGER);
+    for(auto t : trig_list) t->activate();
+
     auto r = ref();
-    if(script) {
-        if(SCRIPT_TYPES(SCRIPT(this)) & OTRIG_RANDOM)
+    if(!trig_list.empty()) {
+        for(auto t : trig_list) t->activate();
+        if(SCRIPT_TYPES(this) & OTRIG_RANDOM)
             roomSubscriptions.subscribe("randomTriggers", r);
-        if(SCRIPT_TYPES(SCRIPT(this)) & OTRIG_TIME)
+        if(SCRIPT_TYPES(this) & OTRIG_TIME)
             roomSubscriptions.subscribe("timeTriggers", r);
     }
     if(dmg != 0)
         roomSubscriptions.subscribe("roomRepairDamage", r);
+
+    activateContents();
+    for(auto c = people; c; c = c->next_in_room) {
+        if(IS_NPC(c)) {
+            c->activate();
+        }
+    }
 }
 
 void room_data::deactivate() {

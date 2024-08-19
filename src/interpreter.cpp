@@ -1312,7 +1312,6 @@ void enter_player_game(struct descriptor_data *d) {
 
     d->character->timer = 0;
     reset_char(d->character);
-    if(!d->character->script) d->character->script = new script_data(d->character);
 
     racial_body_parts(d->character);
 

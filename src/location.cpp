@@ -138,6 +138,10 @@ int Location::getTileType(const Coordinates& coord) {
     return 0;
 }
 
+std::string Location::printTileType(const Coordinates& coord) {
+    return " ";
+}
+
 int Location::getGroundEffect(const Coordinates& coord) {
     return 0;
 }

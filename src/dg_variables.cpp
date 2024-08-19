@@ -238,7 +238,7 @@ static char *recho[] = {"mrecho ", "orecho ", "wrecho "};
 
 /* sets str to be the value of var.field */
 void
-find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, char *var, char *field, char *subfield,
+find_replacement(unit_data *u, trig_data *trig, int type, char *var, char *field, char *subfield,
                  char *str, size_t slen) {
     struct trig_var_data *vd = nullptr;
     char_data *ch, *c = nullptr, *rndm;
@@ -247,7 +247,7 @@ find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, ch
     char *name;
     int num, count, i, j, doors;
 
-    auto unit = (unit_data*)go;
+    auto unit = u;
 
     *str = '\0';
 
@@ -258,10 +258,10 @@ find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, ch
                 break;
 
     /* some evil waitstates could crash the mud if sent here with sc==nullptr*/
-    if (!vd && sc)
-        for (vd = sc->global_vars; vd; vd = vd->next)
+    if (!vd && u)
+        for (vd = u->global_vars; vd; vd = vd->next)
             if (!strcasecmp(vd->name, var) &&
-                (vd->context == 0 || vd->context == sc->context))
+                (vd->context == 0 || vd->context == u->dgContext))
                 break;
 
     if (!*field) {
@@ -316,7 +316,7 @@ find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, ch
 
             switch (type) {
                 case MOB_TRIGGER:
-                    ch = (char_data *) go;
+                    ch = dynamic_cast<char_data*>(u);
 
                     if ((o = get_object_in_equip(ch, name)));
                     else if ((o = get_obj_in_list(name, ch->contents)));
@@ -328,7 +328,7 @@ find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, ch
 
                     break;
                 case OBJ_TRIGGER:
-                    obj = (obj_data *) go;
+                    obj = dynamic_cast<obj_data*>(u);
 
                     if ((c = get_char_by_obj(obj, name)));
                     else if ((o = get_obj_by_obj(obj, name)));
@@ -336,7 +336,7 @@ find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, ch
 
                     break;
                 case WLD_TRIGGER:
-                    room = (struct room_data *) go;
+                    room = dynamic_cast<room_data*>(u);
 
                     if ((c = get_char_by_room(room, name)));
                     else if ((o = get_obj_by_room(room, name)));
@@ -351,17 +351,17 @@ find_replacement(void *go, struct script_data *sc, trig_data *trig, int type, ch
                 o = nullptr;
                 switch (type) {
                     case MOB_TRIGGER:
-                        c = (char_data *) go;
+                        c = dynamic_cast<char_data*>(u);
                         break;     /* the room.  - Welcor        */
                     case OBJ_TRIGGER:
-                        o = (obj_data *) go;
+                        o = dynamic_cast<obj_data*>(u);
                         break;
                     case WLD_TRIGGER:
-                        r = (struct room_data *) go;
+                        r = dynamic_cast<room_data*>(u);
                         break;
                 }
             } else if (!strcasecmp(var, "global")) {
-                struct script_data *thescript = SCRIPT(&world[0]);
+                auto thescript = &world.at(0);
                 *str = '\0';
                 if (!thescript) {
                     script_log("Attempt to find global var. Apparently the void has no script.");
@@ -458,7 +458,7 @@ in the vault (vnum: 453) now and then. you can just use
                     count = 0;
 
                     if (type == MOB_TRIGGER) {
-                        ch = (char_data *) go;
+                        ch = dynamic_cast<char_data*>(u);
                         for (c = ch->getRoom()->people; c; c = c->next_in_room)
                             if ((c != ch) && valid_dg_target(c, DG_ALLOW_GODS) &&
                                 CAN_SEE(ch, c)) {
@@ -467,7 +467,7 @@ in the vault (vnum: 453) now and then. you can just use
                                 count++;
                             }
                     } else if (type == OBJ_TRIGGER) {
-                        for (c = world[obj_room((obj_data *) go)].people; c;
+                        for (c = world[obj_room(dynamic_cast<obj_data*>(u))].people; c;
                              c = c->next_in_room)
                             if (valid_dg_target(c, DG_ALLOW_GODS)) {
                                 if (!rand_number(0, count))
@@ -475,7 +475,7 @@ in the vault (vnum: 453) now and then. you can just use
                                 count++;
                             }
                     } else if (type == WLD_TRIGGER) {
-                        for (c = ((struct room_data *) go)->people; c;
+                        for (c = (dynamic_cast<room_data*>(u))->people; c;
                              c = c->next_in_room)
                             if (valid_dg_target(c, DG_ALLOW_GODS)) {
 
@@ -494,13 +494,13 @@ in the vault (vnum: 453) now and then. you can just use
 
                     switch (type) {
                         case WLD_TRIGGER:
-                            in_room = real_room(((struct room_data *) go)->vn);
+                            in_room = dynamic_cast<room_data*>(u)->vn;
                             break;
                         case OBJ_TRIGGER:
-                            in_room = obj_room((struct obj_data *) go);
+                            in_room = obj_room(dynamic_cast<obj_data*>(u));
                             break;
                         case MOB_TRIGGER:
-                            in_room = IN_ROOM((struct char_data *) go);
+                            in_room = IN_ROOM(dynamic_cast<char_data*>(u));
                             break;
                     }
                     if (in_room == NOWHERE) {
@@ -531,8 +531,8 @@ in the vault (vnum: 453) now and then. you can just use
         if (c) {
             
             if (!strcasecmp(field, "global")) { /* get global of something else */
-                if (IS_NPC(c) && c->script) {
-                    find_replacement(go, c->script, nullptr, MOB_TRIGGER,
+                if (IS_NPC(c)) {
+                    find_replacement(u, nullptr, MOB_TRIGGER,
                                      subfield, nullptr, nullptr, str, slen);
                 }
             }
@@ -570,7 +570,7 @@ in the vault (vnum: 453) now and then. you can just use
                     break;
                 case 'c':
                     if (!strcasecmp(field, "canbeseen")) {
-                        if ((type == MOB_TRIGGER) && !CAN_SEE(((char_data *) go), c))
+                        if ((type == MOB_TRIGGER) && !CAN_SEE(dynamic_cast<char_data*>(u), c))
                             strcpy(str, "0");
                         else
                             strcpy(str, "1");
@@ -885,12 +885,10 @@ in the vault (vnum: 453) now and then. you can just use
                     } else if (!strcasecmp(field, "varexists")) {
                         struct trig_var_data *remote_vd;
                         int found = 0;
-                        if (SCRIPT(c)) {
-                            for (remote_vd = SCRIPT(c)->global_vars; remote_vd; remote_vd = remote_vd->next) {
-                                if (!strcasecmp(remote_vd->name, subfield)) {
-                                    found = 1;
-                                    break;
-                                }
+                        for (remote_vd = c->global_vars; remote_vd; remote_vd = remote_vd->next) {
+                            if (!strcasecmp(remote_vd->name, subfield)) {
+                                found = 1;
+                                break;
                             }
                         }
                         snprintf(str, slen, "%d", found);
@@ -905,21 +903,15 @@ in the vault (vnum: 453) now and then. you can just use
             } /* switch *field */
 
             if (*str == '\x1') { /* no match found in switch */
-                if (SCRIPT(c)) {
-                    for (vd = (SCRIPT(c))->global_vars; vd; vd = vd->next)
-                        if (!strcasecmp(vd->name, field))
-                            break;
-                    if (vd)
-                        snprintf(str, slen, "%s", vd->value);
-                    else {
-                        *str = '\0';
-                        script_log("Trigger: %s, VNum %d. unknown char field: '%s'",
-                                   GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), field);
-                    }
-                } else {
+                for (vd = c->global_vars; vd; vd = vd->next)
+                    if (!strcasecmp(vd->name, field))
+                        break;
+                if (vd)
+                    snprintf(str, slen, "%s", vd->value);
+                else {
                     *str = '\0';
                     script_log("Trigger: %s, VNum %d. unknown char field: '%s'",
-                               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), field);
+                                GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), field);
                 }
             }
 
@@ -1151,24 +1143,16 @@ in the vault (vnum: 453) now and then. you can just use
 
 
             if (*str == '\x1') { /* no match in switch */
-                if (SCRIPT(o)) { /* check for global var */
-                    for (vd = (SCRIPT(o))->global_vars; vd; vd = vd->next)
-                        if (!strcasecmp(vd->name, field))
-                            break;
-                    if (vd)
-                        snprintf(str, slen, "%s", vd->value);
-                    else {
-                        *str = '\0';
-                        if (strcasecmp(GET_TRIG_NAME(trig), "Rename Object")) {
-                            script_log("Trigger: %s, VNum %d, type: %d. unknown object field: '%s'",
-                                       GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type, field);
-                        }
-                    }
-                } else {
+                for (vd = o->global_vars; vd; vd = vd->next)
+                    if (!strcasecmp(vd->name, field))
+                        break;
+                if (vd)
+                    snprintf(str, slen, "%s", vd->value);
+                else {
                     *str = '\0';
                     if (strcasecmp(GET_TRIG_NAME(trig), "Rename Object")) {
                         script_log("Trigger: %s, VNum %d, type: %d. unknown object field: '%s'",
-                                   GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type, field);
+                                    GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type, field);
                     }
                 }
             }
@@ -1183,20 +1167,13 @@ in the vault (vnum: 453) now and then. you can just use
 
             /* special handling of the void, as it stores all 'full global' variables */
             if (r->vn == 0) {
-                if (!SCRIPT(r)) {
+                for (vd = r->global_vars; vd; vd = vd->next)
+                    if (!strcasecmp(vd->name, field))
+                        break;
+                if (vd)
+                    snprintf(str, slen, "%s", vd->value);
+                else
                     *str = '\0';
-                    script_log(
-                            "Trigger: %s, Vnum %d, type %d. Trying to access Global var list of void. Apparently this has not been set up!",
-                            GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type);
-                } else {
-                    for (vd = (SCRIPT(r))->global_vars; vd; vd = vd->next)
-                        if (!strcasecmp(vd->name, field))
-                            break;
-                    if (vd)
-                        snprintf(str, slen, "%s", vd->value);
-                    else
-                        *str = '\0';
-                }
             } else if (!strcasecmp(field, "name"))
                 snprintf(str, slen, "%s", r->name);
 
@@ -1270,21 +1247,15 @@ in the vault (vnum: 453) now and then. you can just use
                 } else
                     snprintf(str, slen, "0");
             } else {
-                if (SCRIPT(r)) { /* check for global var */
-                    for (vd = (SCRIPT(r))->global_vars; vd; vd = vd->next)
-                        if (!strcasecmp(vd->name, field))
-                            break;
-                    if (vd)
-                        snprintf(str, slen, "%s", vd->value);
-                    else {
-                        *str = '\0';
-                        script_log("Trigger: %s, VNum %d, type: %d. unknown room field: '%s'",
-                                   GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type, field);
-                    }
-                } else {
+                for (vd = r->global_vars; vd; vd = vd->next)
+                    if (!strcasecmp(vd->name, field))
+                        break;
+                if (vd)
+                    snprintf(str, slen, "%s", vd->value);
+                else {
                     *str = '\0';
                     script_log("Trigger: %s, VNum %d, type: %d. unknown room field: '%s'",
-                               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type, field);
+                                GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), type, field);
                 }
             }
         } /* if (r).. */
@@ -1307,7 +1278,7 @@ in the vault (vnum: 453) now and then. you can just use
  */
 
 /* substitutes any variables into line and returns it as buf */
-void var_subst(void *go, struct script_data *sc, trig_data *trig,
+void var_subst(unit_data *u, trig_data *trig,
                int type, char *line, char *buf) {
     char tmp[MAX_INPUT_LENGTH], repl_str[MAX_INPUT_LENGTH];
     char *var = nullptr, *field = nullptr, *p = nullptr;
@@ -1366,10 +1337,10 @@ void var_subst(void *go, struct script_data *sc, trig_data *trig,
                 for (field = p; *p && ((*p != '%') || (paren_count > 0) || (dots)); p++) {
                     if (dots > 0) {
                         *subfield_p = '\0';
-                        find_replacement(go, sc, trig, type, var, field, subfield, repl_str, sizeof(repl_str));
+                        find_replacement(u, trig, type, var, field, subfield, repl_str, sizeof(repl_str));
                         if (*repl_str) {
                             snprintf(tmp2, sizeof(tmp2), "eval tmpvr %s", repl_str); //temp var
-                            process_eval(go, sc, trig, type, tmp2);
+                            process_eval(u, trig, type, tmp2);
                             strcpy(var, "tmpvr");
                             field = p;
                             dots = 0;
@@ -1395,11 +1366,11 @@ void var_subst(void *go, struct script_data *sc, trig_data *trig,
             *subfield_p = '\0';
 
             if (*subfield) {
-                var_subst(go, sc, trig, type, subfield, tmp2);
+                var_subst(u, trig, type, subfield, tmp2);
                 strcpy(subfield, tmp2);
             }
 
-            find_replacement(go, sc, trig, type, var, field, subfield, repl_str, sizeof(repl_str) - 1);
+            find_replacement(u, trig, type, var, field, subfield, repl_str, sizeof(repl_str) - 1);
 
             strncat(buf, repl_str, left);
             len = strlen(repl_str);

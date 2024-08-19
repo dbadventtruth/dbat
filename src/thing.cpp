@@ -18,18 +18,23 @@ LocationStub HasLocation::clearLocation() {
 
 void HasLocation::setLocation(const LocationStub& newLoc) {
     auto old = loc;
-    // This really shouldn't be used this way, 
-    // but we'll handle it just in case.
-    if(old.first && old.first != newLoc.first) {
-        clearLocation();
-        loc = newLoc;
-        newLoc.first->addEntity(this, newLoc.second, 0);
-        onAddedToLocation(newLoc);
-    } else {
-        loc = newLoc;
+
+    // We are being moved within the same location.
+    // So we just call the relocate routines.
+    if(old.first && old.first == newLoc.first) {
         newLoc.first->relocateEntity(this, newLoc.second, 0);
         onRelocatedWithinLocation(old.second, newLoc.second);
+        return;
     }
+
+    // They are not the same.
+    if(old.first) {
+        clearLocation();
+    }
+
+    loc = newLoc;
+    newLoc.first->addEntity(this, newLoc.second, 0);
+    onAddedToLocation(newLoc);
 }
 
 struct room_data* HasLocation::getRoom() const {

@@ -507,9 +507,7 @@ WCMD(do_wload) {
             return;
         }
         char_to_room(mob, rnum);
-        if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
-            add_var(&(SCRIPT(room)->global_vars), "lastloaded", mob->getUID().c_str(), 0);
-        }
+        add_var(&(room->global_vars), "lastloaded", mob->getUID().c_str(), 0);
         load_mtrigger(mob);
     } else if (is_abbrev(arg1, "obj")) {
         if ((object = read_object(number, VIRTUAL)) == nullptr) {
@@ -519,9 +517,7 @@ WCMD(do_wload) {
         /* special handling to make objects able to load on a person/in a container/worn etc. */
         if (!target || !*target) {
             obj_to_room(object, real_room(room->vn));
-            if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
-                add_var(&(SCRIPT(room)->global_vars), "lastloaded", object->getUID().c_str(), 0);
-            }
+            add_var(&(room->global_vars), "lastloaded", object->getUID().c_str(), 0);
             load_otrigger(object);
             return;
         }

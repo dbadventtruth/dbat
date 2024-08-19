@@ -33,6 +33,8 @@
 #include "dbat/transformation.h"
 #include "dbat/ang_scripts.h"
 
+#include <queue>
+
 /* local functions */
 static void gen_map(struct char_data *ch, int num);
 
@@ -1303,27 +1305,28 @@ static void initialize_map(char map[9][10]) {
     }
 }
 
-static void replace_map_symbols(char *buf) {
-    const char *search_pairs[][2] = {
-        {"x", "@RX"}, {"&", "@m$"}, {"*", "@m#"}, {"+", "@c~"}, {"s", "@CS"},
-        {"i", "@wI"}, {"(", "@WC"}, {"^", "@DM"}, {"h", "@yH"}, {"`", "@BW"},
-        {"=", "@bU"}, {"p", "@GP"}, {"f", "@gF"}, {"!", "@YD"}, {"-", "@w:"},
-        {"1", "@4@YC@n"}, {"2", "@4@YP@n"}, {"3", "@4@YH@n"}, {"7", "@4@YD@n"},
-        {"5", "@4@YM@n"}, {"6", "@4@YF@n"}, {"8", "@1 @n"}
-    };
+static const char *search_pairs[][2] = {
+    {"x", "@RX"}, {"&", "@m$"}, {"*", "@m#"}, {"+", "@c~"}, {"s", "@CS"},
+    {"i", "@wI"}, {"(", "@WC"}, {"^", "@DM"}, {"h", "@yH"}, {"`", "@BW"},
+    {"=", "@bU"}, {"p", "@GP"}, {"f", "@gF"}, {"!", "@YD"}, {"-", "@w:"},
+    {"1", "@4@YC@n"}, {"2", "@4@YP@n"}, {"3", "@4@YH@n"}, {"7", "@4@YD@n"},
+    {"5", "@4@YM@n"}, {"6", "@4@YF@n"}, {"8", "@1 @n"}
+};
 
+static void replace_map_symbols(char *buf) {
+    
     for (const auto &pair : search_pairs) {
         search_replace(buf, pair[0], pair[1]);
     }
 }
 
 static const std::vector<std::string> keyLines = {
-        "@WC: City, @wI@W: Inside, @GP@W: Plain@n",
-        "@gF@W: Forest, @DM@W: Mountain, @yH@W: Hills@n",
-        "@CS@W: Sky, @BW@W: Water, @bU@W: Underwater@n",
-        "@m$@W: Shop, @m#@W: Important, @YD@W: Desert@n",
-        "@c~@W: Shallow Water, @4 @n@W: Lava, @RX@W: You@n"
-    };
+    "@WC: City, @wI@W: Inside, @GP@W: Plain@n",
+    "@gF@W: Forest, @DM@W: Mountain, @yH@W: Hills@n",
+    "@CS@W: Sky, @BW@W: Water, @bU@W: Underwater@n",
+    "@m$@W: Shop, @m#@W: Important, @YD@W: Desert@n",
+    "@c~@W: Shallow Water, @4 @n@W: Lava, @RX@W: You@n"
+};
 
 static void print_map_line(struct char_data *ch, int key, const char *buf) {
     if (key < 5) {
@@ -1349,10 +1352,10 @@ static const std::map<int, std::string> dirNames = {
     {OUTDIR, "OUT"}
 };
 
-static const std::string compassTemplate = "      |{}{:^3}@n|\r\n"
+static constexpr char* compassTemplate =   "      @n|{}{:^3}@n|\r\n"
                                            "|{}{:>3}@n| |{}{:^3}@n| |{}{:<3}@n|\r\n"
-                                           "|{}{:>3}|@n|{}{:^3}@n| |{}{:<3}@n|\r\n"
-                                           "|{}{:>3}| |{}{:^3}@n| |{}{:<3}@n|\r\n"
+                                           "|{}{:>3}@n| |{}{:^3}@n| |{}{:<3}@n|\r\n"
+                                           "|{}{:>3}@n| |{}{:^3}@n| |{}{:<3}@n|\r\n"
                                            "      |{}{:^3}@n|";
 
 static const std::map<int, std::pair<std::string, std::string>> compassColors = {
@@ -1402,7 +1405,7 @@ static std::vector<std::string> generateCompass(uint16_t doors, uint16_t locked)
     }
 
     // Format the compass using fmt and the collected direction data.
-    auto rendered = fmt::format(fmt::runtime(compassTemplate),
+    auto rendered = fmt::format(compassTemplate,
                                 colors[NORTH], dirs[NORTH],
                                 colors[NORTHWEST], dirs[NORTHWEST],
                                 colors[UP], dirs[UP],
@@ -1416,7 +1419,7 @@ static std::vector<std::string> generateCompass(uint16_t doors, uint16_t locked)
                                 colors[SOUTH], dirs[SOUTH]);
 
     // Split the formatted string into individual lines and return it.
-    boost::split(compass, rendered, boost::is_any_of("\n"));
+    boost::split(compass, rendered, boost::is_any_of("\r\n"), boost::token_compress_on);
     return compass;
 }
 
@@ -1643,13 +1646,9 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                 if (!IS_NPC(ch) && PRF_FLAGGED(ch, PRF_ROOMFLAGS)) {
                     if (GET_OBJ_POSTED(obj) == nullptr) {
                         send_to_char(ch, "@D[@G%d@D]@w ", GET_OBJ_VNUM(obj));
-                        if (!obj->proto_script.empty())
-                            send_to_char(ch, "%s ", obj->scriptString().c_str());
                     } else {
                         if (GET_OBJ_POSTTYPE(obj) <= 0) {
                             send_to_char(ch, "@D[@G%d@D]@w ", GET_OBJ_VNUM(obj));
-                            if (!obj->proto_script.empty())
-                                send_to_char(ch, "%s ", obj->scriptString().c_str());
                         }
                     }
                 }
@@ -1699,8 +1698,6 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
         case SHOW_OBJ_SHORT:
             if (!IS_NPC(ch) && PRF_FLAGGED(ch, PRF_ROOMFLAGS)) {
                 send_to_char(ch, "[%d] ", GET_OBJ_VNUM(obj));
-                if (!obj->proto_script.empty())
-                    send_to_char(ch, "%s ", obj->scriptString().c_str());
             }
 
             if (PRF_FLAGGED(ch, PRF_IHEALTH)) {
@@ -3134,6 +3131,26 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
     }
 }
 
+static size_t plainStringLength(const std::string& txt) {
+    return processColors(txt, false, nullptr).size();
+}
+
+static void normalizeStringVector(std::vector<std::string> &data, size_t width, size_t height) {
+    while(data.size() < height) {
+        data.emplace_back("");
+    }
+    for (auto &txt : data) {
+        auto length = plainStringLength(txt);
+        if (length < width) {
+            // Calculate the number of spaces needed to reach the desired width
+            size_t spacesToAdd = width - length;
+            // Append spaces to the end of the string
+            txt.append(spacesToAdd, ' ');
+        }
+    }
+    
+}
+
 static void do_auto_exits(struct room_data *room, struct char_data *ch, int exit_mode) {
     const int MAX_DIRS = 12;
     const char *dirNames[MAX_DIRS] = {"Northwest", "North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Up", "Down", "Inside", "Outside"};
@@ -3148,11 +3165,25 @@ static void do_auto_exits(struct room_data *room, struct char_data *ch, int exit
         send_to_char(ch, "@D------------------------------------------------------------------------@n\r\n");
     }
 
-    if (exit_mode == EXIT_NORMAL && !space && IN_ROOM(ch) == room->vn) {
+    if (exit_mode == EXIT_NORMAL && !space && ch->getLocation().first) {
+        auto compassMasks = ch->getCompassBitmasks();
+        auto compassLines = generateCompass(compassMasks.first, compassMasks.second);
+        auto mapTileLines = ch->buildAutoMap(true, 8, -8, 2, -2);
+        // and for now we'll use...
+        auto mapKeyLines = keyLines;
+        size_t maxLines = std::max({mapKeyLines.size(), compassLines.size(), mapTileLines.size()});
+        normalizeStringVector(compassLines, 20, maxLines);
+        normalizeStringVector(mapTileLines, 19, maxLines);
+        normalizeStringVector(mapKeyLines, 33, maxLines);
+
         send_to_char(ch, "@D------------------------------------------------------------------------@n\r\n");
-        send_to_char(ch, "@w      Compass           Auto-Map            Map Key\r\n");
-        send_to_char(ch, "@R     ---------         ----------   -----------------------------\r\n");
-        gen_map(ch, 0);
+        send_to_char(ch, "@w     Compass             Auto-Map                   Map Key@n\r\n");
+        send_to_char(ch, "@R-----------------   -----------------  ---------------------------------@n\r\n");
+        for(auto i = 0; i < maxLines; i++) {
+            send_to_char(ch, "%s", compassLines[i]);
+            send_to_char(ch, "%s", mapTileLines[i]);
+            send_to_char(ch, "%s\r\n", mapKeyLines[i]);
+        }
         send_to_char(ch, "@D------------------------------------------------------------------------@n\r\n");
     }
 
@@ -3393,9 +3424,9 @@ static void display_room_flags(struct room_data *rm, struct char_data *ch) {
 
     send_to_char(ch, "@wLocation: @G%-70s@w\r\n", rm->name);
 
-    if (SCRIPT(rm)) {
+    if (!rm->trig_list.empty()) {
         send_to_char(ch, "@D[@GTriggers");
-        for (auto t = TRIGGERS(SCRIPT(rm)); t; t = t->next)
+        for (auto t : rm->trig_list)
             send_to_char(ch, " %d", GET_TRIG_VNUM(t));
         send_to_char(ch, "@D] ");
     }
@@ -6006,9 +6037,6 @@ static void print_object_location(int num, struct obj_data *obj, struct char_dat
     else
         send_to_char(ch, "%33s", " - ");
 
-    if (!obj->proto_script.empty())
-        send_to_char(ch, "%s", obj->scriptString().c_str());
-
     if (IN_ROOM(obj) != NOWHERE)
         send_to_char(ch, "[%5d] %s\r\n", obj->getRoomVnum(), obj->getRoom()->name);
     else if (obj->carried_by)
@@ -6071,10 +6099,6 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
                 found = 1;
                 send_to_char(ch, "M%3d. %-25s - [%5d] %-25s", ++num, GET_NAME(i),
                              i->getRoomVnum(), i->getRoom()->name);
-                if (IS_NPC(i) && SCRIPT(i) && SCRIPT(i)->trig_list) {
-                    auto t = i->scriptString();
-                    send_to_char(ch, "%s ", t.c_str());
-                }
                 send_to_char(ch, "\r\n");
             }
         }
@@ -7113,11 +7137,131 @@ ACMD(do_desc) {
     }
 }
 
+
+std::vector<std::string> Location::buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY) {
+    std::unordered_set<LocationStub> visited;
+    // The +1 is for the center point.
+    assert(minX <= -1);
+    assert(minY <= -1);
+    assert(maxX >= 1);
+    assert(maxY >= 1);
+
+    int width = abs(maxX) - abs(minX) + 1;
+    int height = abs(maxY) - abs(minY) + 1;
+
+    std::queue<std::pair<LocationStub, std::pair<int, int>>> queue;
+
+    // BFS Initialization: Start at the initial coordinates
+    queue.push({{this, coord}, {0, 0}});
+    
+    std::map<int, std::map<int, std::string>> tiles;
+
+    while (!queue.empty()) {
+        auto [current, coords] = queue.front();
+        auto [curX, curY] = coords;
+        queue.pop();
+
+        // Similar logic to determine the placement and traversal...
+        if (!visited.insert(current).second) continue;
+        if (!current.first) continue;
+        if (curX > maxX || curX < minX || curY > maxY || curY < minY) continue;
+
+        std::string tile = mark && curX == 0 && curY == 0 ? "@RX@n" : current.first->printTileType(current.second);
+        tiles[curY][curX] = tile;
+
+        for (auto &[dir, dest] : current.first->getDirectionalDestinations(current.second)) {
+            if (!dest.location || dest.exit_flags & (EX_SECRET | EX_CLOSED)) continue;
+
+            int newX = curX, newY = curY;
+            switch (dir) {
+                case NORTHWEST: newX--; newY++; break;
+                case NORTH: newY++; break;
+                case NORTHEAST: newX++; newY++; break;
+                case EAST: newX++; break;
+                case SOUTHEAST: newX++; newY--; break;
+                case SOUTH: newY--; break;
+                case SOUTHWEST: newX--; newY--; break;
+                case WEST: newX--; break;
+                default: continue;
+            }
+            queue.push({dest.getStub(), {newX, newY}});
+        }
+    }
+
+    // Create the output vector from the map
+    std::vector<std::string> output;
+    for(auto y = maxY; y >= minY; y--) {
+        if(auto yFound = tiles.find(y); yFound != tiles.end()) {
+            std::string line;
+            auto &yline = yFound->second;
+            for(auto x = minX; x <= maxX; x++) {
+                if(auto xFound = yline.find(x); xFound != yline.end()) {
+                    line += xFound->second;
+                } else {
+                    line += " ";
+                }
+            }
+            output.emplace_back(line);
+        } else {
+            // emplace a completely empty line.
+            output.emplace_back(std::string(width, ' '));
+        }
+    }
+
+    return output;
+}
+
+std::string room_data::printTileType(const Coordinates& coord) {
+    // just throwing in some test data for now...
+    if(auto env = getEnvironment(coord, ENV_LAVA); env > 0.0) {
+        return "@4 @n";
+    }
+    if(auto env = getEnvironment(coord, ENV_WATER); env > 0.0) {
+        if(env <= 50.0)
+            return "@c~@n";
+        if (env <= 75.0)
+            return "@BW@n";
+        return "@bU@n";
+    }
+    switch(sector_type) {
+        case SECT_INSIDE:
+            return "@wI@n";
+        case SECT_CITY:
+            return "@WC@n";
+        case SECT_FIELD:
+            return "@GP@n";
+        case SECT_FOREST:
+            return "@gF@n";
+        case SECT_HILLS:
+            return "@yH@n";
+        case SECT_MOUNTAIN:
+            return "@DM@n";
+        case SECT_WATER_SWIM:
+        case SECT_WATER_NOSWIM:
+            return "@BW@n";
+        case SECT_FLYING:
+            return "@CS@n";
+        case SECT_UNDERWATER:
+            return "@bU@n";
+        case SECT_SHOP:
+            return "@m$@n";
+        case SECT_IMPORTANT:
+            return "@m#@n";
+        case SECT_DESERT:
+            return "@YD@n";
+        case SECT_LAVA:
+            return "@4 @n";
+        default:
+            return "@n @n";
+    }
+}
+
 std::vector<std::string> HasLocation::buildCompass() {
     auto bitmasks = getCompassBitmasks();
     return generateCompass(bitmasks.first, bitmasks.second);
 }
 
-std::vector<std::string> HasLocation::buildAutoMap() {
-    if(!room) return {};
+std::vector<std::string> HasLocation::buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY) {
+    if(loc.first) return loc.first->buildAutoMapAt(loc.second, mark, maxX, minX, maxY, minY);
+    return {};
 }

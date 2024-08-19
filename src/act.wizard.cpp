@@ -1828,7 +1828,7 @@ ACMD(do_varstat) {
         return;
     } else {
         /* Display their global variables */
-        if (vict->script && vict->script->global_vars) {
+        if (vict->global_vars) {
             struct trig_var_data *tv;
             char uname[MAX_INPUT_LENGTH];
             void find_uid_name(char *uid, char *name, size_t nlen);
@@ -1837,7 +1837,7 @@ ACMD(do_varstat) {
 
             /* currently, variable context for players is always 0, so it is */
             /* not displayed here. in the future, this might change */
-            for (tv = vict->script->global_vars; tv; tv = tv->next) {
+            for (tv = vict->global_vars; tv; tv = tv->next) {
                 if (tv->value && *(tv->value) == UID_CHAR) {
                     std::optional<DgUID> result;
                     result = resolveUID(tv->value);

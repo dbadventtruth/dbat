@@ -362,6 +362,52 @@ struct Destination {
     LocationStub getStub();
 };
 
+namespace std {
+    template <>
+    struct hash<Coordinates> {
+        std::size_t operator()(const Coordinates& coords) const {
+            std::size_t seed = 0;
+            std::hash<int> hashInt;
+            std::hash<double> hashDouble;
+
+            seed ^= hashInt(static_cast<int>(coords.type)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hashDouble(coords.x) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hashDouble(coords.y) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hashDouble(coords.z) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<Destination> {
+        std::size_t operator()(const Destination& dest) const {
+            std::size_t seed = 0;
+            std::hash<Location*> hashLocationPtr;
+            std::hash<Coordinates> hashCoordinates;
+
+            seed ^= hashLocationPtr(dest.location) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hashCoordinates(dest.coords) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<LocationStub> {
+        std::size_t operator()(const LocationStub& stub) const {
+            std::size_t seed = 0;
+            std::hash<Location*> hashLocationPtr;
+            std::hash<Coordinates> hashCoordinates;
+
+            seed ^= hashLocationPtr(stub.first) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hashCoordinates(stub.second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+            return seed;
+        }
+    };
+}
+
 class EventVariables {
 public:
     EventVariables() = default;
@@ -400,6 +446,7 @@ protected:
 };
 
 struct entity_data {
+    // TODO: Expand this significantly.
     virtual std::string getUID() const = 0;
 
     int64_t id{NOTHING}; /* used by DG triggers	*/
@@ -454,7 +501,7 @@ public:
 
     std::pair<uint16_t, uint16_t> getCompassBitmasks();
     std::vector<std::string> buildCompass();
-    std::vector<std::string> buildAutoMap();
+    std::vector<std::string> buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY);
 
     // Temporarily in for compatability...
     room_rnum in_room{NOWHERE};        /* In what room -1 when conta/carr	*/
@@ -529,6 +576,7 @@ public:
     virtual int modDamage(const Coordinates& coord, int amount);
 
     virtual int getTileType(const Coordinates& coord);
+    virtual std::string printTileType(const Coordinates& coord);
     virtual int getGroundEffect(const Coordinates& coord);
     virtual int setGroundEffect(const Coordinates& coord, int val);
     virtual int modGroundEffect(const Coordinates& coord, int val);
@@ -550,6 +598,8 @@ public:
 
     virtual std::vector<ObjRef> getContents();
     virtual std::vector<CharRef> getPeople();
+
+    virtual std::vector<std::string> buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY);
 
 protected:
     std::unordered_map<HasLocation*, Coordinates> entities;
@@ -616,7 +666,6 @@ struct unit_data : public virtual Location {
     struct extra_descr_data *ex_description{}; /* extra descriptions     */
 
     std::vector<trig_vnum> proto_script; /* list of default triggers  */
-    struct script_data *script{};  /* script info for the object */
 
     std::unordered_map<std::string, EventVariables> variables;
     
@@ -630,17 +679,22 @@ struct unit_data : public virtual Location {
     void deactivateContents();
 
     void deserializeUnit(const nlohmann::json& j);
-    std::string scriptString();
 
     virtual bool isActive() = 0;
 
     nlohmann::json serializeScripts();
-    void deserializeScripts();
+    void deserializedgScripts(const nlohmann::json &j);
 
     struct obj_data* findObjectVnum(obj_vnum objVnum, bool working = true);
     virtual struct obj_data* findObject(const std::function<bool(struct obj_data*)> &func, bool working = true);
     virtual std::unordered_set<struct obj_data*> gatherObjects(const std::function<bool(struct obj_data*)> &func, bool working = true);
 
+    // Direct integration of DgScripts data structures. It's simpler that way.
+    long dgTypes{};                /* bitvector of trigger types */
+    std::list<trig_data*> trig_list{};
+    struct trig_var_data *global_vars{};
+    bool dgPurged{};
+    long dgContext{};
 };
 
 struct room_direction_data {
@@ -701,7 +755,6 @@ struct obj_data : public virtual unit_data, public virtual HasLocation {
 
     struct room_data* getAbsoluteRoom();
     bool isWorking();
-    void clearLocation();
 
     ObjRef ref();
 
@@ -835,6 +888,7 @@ struct room_data : public virtual unit_data {
     int setDamage(const Coordinates& coord, int amount) override;
     int modDamage(const Coordinates& coord, int amount) override;
     int getTileType(const Coordinates& coord) override;
+    std::string printTileType(const Coordinates& coord) override;
     int getGroundEffect(const Coordinates& coord) override;
     int setGroundEffect(const Coordinates& coord, int val) override;
     int modGroundEffect(const Coordinates& coord, int val) override;

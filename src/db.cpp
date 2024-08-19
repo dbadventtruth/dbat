@@ -304,10 +304,14 @@ static void db_load_characters_finish(const std::filesystem::path& loc) {
         auto id = j["id"].get<int64_t>();
         auto generation = j["generation"].get<int>();
         if(auto cf = char_data::instances.find(id); cf != char_data::instances.end()) {
-            if(auto c = cf->second.second) {
+            auto c = cf->second.second;
+            if(!c) continue;
+            if(j.contains("relations"))
                 c->deserializeRelations(j["relations"]);
+            if(j.contains("location"))
                 c->deserializeLocation(j["location"]);
-            }
+            if(j.contains("dgscripts"))
+                c->deserializedgScripts(j["dgscripts"]);
         }
     }
 }
@@ -328,10 +332,14 @@ static void db_load_items_finish(const std::filesystem::path& loc) {
         auto id = j["id"].get<int64_t>();
         auto generation = j["generation"].get<int>();
         if(auto cf = obj_data::instances.find(id); cf != obj_data::instances.end()) {
-            if(auto i = cf->second.second) {
+            auto i = cf->second.second;
+            if(!i) continue;
+            if(j.contains("relations"))
                 i->deserializeRelations(j["relations"]);
+            if(j.contains("location"))
                 i->deserializeLocation(j["location"], j["slot"].get<int>());
-            }
+            if(j.contains("dgscripts"))
+                i->deserializedgScripts(j["dgscripts"]);
         }
     }
 }
@@ -339,14 +347,7 @@ static void db_load_items_finish(const std::filesystem::path& loc) {
 static void db_load_activate_entities() {
     // activate all items which ended up "in the world".
     for(auto &[id, r] : world) {
-        if(r.script) r.script->activate();
-        assign_triggers(&r, WLD_TRIGGER);
-        r.activateContents();
-        for(auto c = r.people; c; c = c->next_in_room) {
-            if(IS_NPC(c)) {
-                c->activate();
-            }
-        }
+        r.activate();
     }
 }
 
@@ -360,47 +361,7 @@ static void db_load_dgscripts_initial(const std::filesystem::path& loc) {
     }
 }
 
-void db_load_dgscripts_finish(const std::filesystem::path& loc) {
-    // Iterating through DgSCripts in reverse to ensure they're added in proper order.
-    auto json_array = load_from_file(loc, "dgscripts.json");
 
-    for (auto it = json_array.rbegin(); it != json_array.rend(); ++it) {
-        auto& j = *it;
-        auto id = j["id"].get<int64_t>();
-        auto generation = j["generation"].get<int>();
-        auto location = j["location"].get<std::string>();
-
-        if (auto cf = trig_data::instances.find(id); cf != trig_data::instances.end()) {
-            if (auto t = cf->second.second) {
-                t->deserializeLocation(location);
-                struct room_data* r;
-                struct obj_data* o;
-                struct char_data* c;
-
-                switch (t->owner.index()) {
-                    case 0:
-                        r = std::get<0>(t->owner);
-                        t->next = r->script->trig_list;
-                        r->script->trig_list = t;
-                        r->script->types |= GET_TRIG_TYPE(t);
-                        break;
-                    case 1:
-                        o = std::get<1>(t->owner);
-                        t->next = o->script->trig_list;
-                        o->script->trig_list = t;
-                        o->script->types |= GET_TRIG_TYPE(t);
-                        break;
-                    case 2:
-                        c = std::get<2>(t->owner);
-                        t->next = c->script->trig_list;
-                        c->script->trig_list = t;
-                        c->script->types |= GET_TRIG_TYPE(t);
-                        break;
-                }
-            }
-        }
-    }
-}
 
 static void db_load_globaldata(const std::filesystem::path& loc) {
     auto j = load_from_file(loc, "globaldata.json");
@@ -415,8 +376,8 @@ static void db_load_globaldata(const std::filesystem::path& loc) {
     }
     if(j.contains("dgGlobals")) {
         if(auto room = world.find(0); room != world.end()) {
-            if(!room->second.script) room->second.script = new script_data(&(room->second));
-            deserializeVars(&(room->second.script->global_vars), j["dgGlobals"]);
+            auto &r = room->second;
+            deserializeVars(&(r.global_vars), j["dgGlobals"]);
         }
     }
 }
@@ -446,6 +407,18 @@ static void db_load_rooms(const std::filesystem::path& loc) {
         room_data::instances[id] = std::make_pair(gen, &r.first->second);
         r.first->second.zone = real_zone_by_thing(id);
         r.first->second.activate();
+    }
+}
+
+static void db_load_rooms_finish(const std::filesystem::path& loc) {
+    for(auto j : load_from_file(loc, "rooms.json")) {
+        auto id = j["vn"].get<int64_t>();
+        auto gen = j["generation"].get<time_t>();
+        RoomRef ref(id, gen);
+        auto r = ref.get();
+        if(!r) continue;
+        if(j.contains("dgscripts"))
+            r->deserializedgScripts(j["dgscripts"]);
     }
 }
 
@@ -579,26 +552,26 @@ void boot_db_world() {
     basic_mud_log("Loading players.");
     db_load_players(latest);
 
+    basic_mud_log("Loading dgscript initial...");
+    db_load_dgscripts_initial(latest);
+
     basic_mud_log("Loading characters initial...");
     db_load_characters_initial(latest);
 
     basic_mud_log("Loading items initial...");
     db_load_items_initial(latest);
 
-    basic_mud_log("Loading dgscript initial...");
-    db_load_dgscripts_initial(latest);
-
     // Now that all of the game entities have been spawned, we can finish loading
     // relations between them.
+
+    basic_mud_log("Loading rooms finish...");
+    db_load_rooms_finish(latest);
 
     basic_mud_log("Loading characters finish...");
     db_load_characters_finish(latest);
 
     basic_mud_log("Loading items finish...");
     db_load_items_finish(latest);
-
-    basic_mud_log("Loading dgscript finish...");
-    db_load_dgscripts_finish(latest);
 
     basic_mud_log("Running activation of entities...");
     db_load_activate_entities();
@@ -1202,7 +1175,7 @@ int vnum_mobile(char *searchname, struct char_data *ch) {
         if (isname(searchname, m.second.name))
             send_to_char(ch, "%3d. [%5d] %-40s %s\r\n",
                          ++found, m.first, m.second.short_description,
-                         !m.second.proto_script.empty() ? m.second.scriptString().c_str() : "");
+                         "");
 
     return (found);
 }
@@ -1215,7 +1188,7 @@ int vnum_object(char *searchname, struct char_data *ch) {
         if (isname(searchname, o.second.name))
             send_to_char(ch, "%3d. [%5d] %-40s %s\r\n",
                          ++found, o.first, o.second.short_description,
-                         !o.second.proto_script.empty() ? o.second.scriptString().c_str() : "");
+                         "");
 
     return (found);
 }
@@ -1228,7 +1201,7 @@ int vnum_material(char *searchname, struct char_data *ch) {
         if (isname(searchname, material_names[o.second.value[VAL_ALL_MATERIAL]])) {
             send_to_char(ch, "%3d. [%5d] %-40s %s\r\n",
                          ++found, o.first, o.second.short_description,
-                         !o.second.proto_script.empty() ? o.second.scriptString().c_str() : "");
+                         "");
         }
 
     return (found);
@@ -1243,7 +1216,7 @@ int vnum_weapontype(char *searchname, struct char_data *ch) {
             if (isname(searchname, weapon_type[o.second.value[VAL_WEAPON_SKILL]])) {
                 send_to_char(ch, "%3d. [%5d] %-40s %s\r\n",
                              ++found, o.first, o.second.short_description,
-                             !o.second.proto_script.empty() ? o.second.scriptString().c_str() : "");
+                             "");
             }
         }
 
@@ -1259,7 +1232,7 @@ int vnum_armortype(char *searchname, struct char_data *ch) {
             if (isname(searchname, armor_type[o.second.value[VAL_ARMOR_SKILL]])) {
                 send_to_char(ch, "%3d. [%5d] %-40s %s\r\n",
                              ++found, o.first, o.second.short_description,
-                             !o.second.proto_script.empty() ? o.second.scriptString().c_str() : "");
+                             "");
             }
         }
 
@@ -2313,20 +2286,18 @@ void reset_zone(zone_rnum zone) {
 
                 case 'T': /* trigger command */
                     if (c.arg1 == MOB_TRIGGER && tmob) {
-                        if (!SCRIPT(tmob)) tmob->script = new script_data(tmob);
-                        add_trigger(SCRIPT(tmob), read_trigger(c.arg2), -1);
+                        add_trigger(tmob, read_trigger(c.arg2), -1);
                         last_cmd = 1;
                     } else if (c.arg1 == OBJ_TRIGGER && tobj) {
-                        if (!SCRIPT(tobj)) tobj->script = new script_data(tobj);
-                        add_trigger(SCRIPT(tobj), read_trigger(c.arg2), -1);
+                        add_trigger(tobj, read_trigger(c.arg2), -1);
                         last_cmd = 1;
                     } else if (c.arg1 == WLD_TRIGGER) {
                         room = world.find(c.arg3);
                         if (room == world.end()) {
                             ZONE_ERROR("Invalid room number in trigger assignment");
                         }
-                        if (room->second.script) room->second.script = new script_data(&room->second);
-                        add_trigger(room->second.script, read_trigger(c.arg2), -1);
+                        
+                        add_trigger(&room->second, read_trigger(c.arg2), -1);
                         last_cmd = 1;
                     }
 
@@ -2335,27 +2306,18 @@ void reset_zone(zone_rnum zone) {
                 case 'V':
                     if (c.arg1 == MOB_TRIGGER
                     && tmob) {
-                        if (!SCRIPT(tmob)) {
-                            ZONE_ERROR("Attempt to give a variable to scriptless mobile");
-                        } else
-                            add_var(&(SCRIPT(tmob)->global_vars), (char*)c.sarg1.c_str(), (char*)c.sarg2.c_str(),
+                        add_var(&(tmob->global_vars), (char*)c.sarg1.c_str(), (char*)c.sarg2.c_str(),
                                     c.arg3);
                         last_cmd = 1;
                     } else if (c.arg1 == OBJ_TRIGGER && tobj) {
-                        if (!SCRIPT(tobj)) {
-                            ZONE_ERROR("Attempt to give variable to scriptless object");
-                        } else
-                            add_var(&(SCRIPT(tobj)->global_vars), (char*)c.sarg1.c_str(), (char*)c.sarg2.c_str(),
+                        add_var(&(tobj->global_vars), (char*)c.sarg1.c_str(), (char*)c.sarg2.c_str(),
                                     c.arg3);
                         last_cmd = 1;
                     } else if (c.arg1 == WLD_TRIGGER) {
                         if (!world.count(c.arg3)) {
                             ZONE_ERROR("Invalid room number in variable assignment");
                         } else {
-                            if (!(world[c.arg3].script)) {
-                                ZONE_ERROR("Attempt to give variable to scriptless object");
-                            } else
-                                add_var(&(world[c.arg3].script->global_vars),
+                            add_var(&(world[c.arg3].global_vars),
                                         (char*)c.sarg1.c_str(), (char*)c.sarg2.c_str(), c.arg2);
                             last_cmd = 1;
                         }
@@ -2541,8 +2503,8 @@ void free_char(struct char_data *ch) {
         affect_remove(ch, ch->affected);
 
     /* free any assigned scripts */
-    if (SCRIPT(ch))
-        extract_script(ch, MOB_TRIGGER);
+
+    extract_script(ch, MOB_TRIGGER);
 
     /* new version of free_followers take the followers pointer as arg */
     free_followers(ch->followers);
@@ -2576,8 +2538,7 @@ void free_obj(struct obj_data *obj) {
     }
 
     /* free any assigned scripts */
-    if (SCRIPT(obj))
-        extract_script(obj, OBJ_TRIGGER);
+    extract_script(obj, OBJ_TRIGGER);
 
     if (obj->sbinfo)
         free(obj->sbinfo);

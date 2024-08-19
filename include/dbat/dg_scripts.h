@@ -173,7 +173,8 @@ struct trig_var_data {
 };
 
 /* structure for triggers */
-struct trig_data {
+struct trig_data : public entity_data {
+    std::string getUID() const override;
     static InstanceMap<trig_data> instances;
     trig_data() = default;
     explicit trig_data(const nlohmann::json& j);
@@ -194,41 +195,17 @@ struct trig_data {
     double waiting{0.0};    /* event to pause the trigger      */
     bool purged{};            /* trigger is set to be purged     */
     struct trig_var_data *var_list{};    /* list of local vars for trigger  */
-    DgUID owner{};
-    int order{0};
+    unit_data *owner{};
     int countLine(struct cmdlist_element *c);
 
     bool active{false};
     void activate();
     void deactivate();
 
-    int64_t id{};
-    time_t generation{};
-
     struct trig_data *next{};
     struct trig_data *next_in_world{};    /* next in the global trigger list */
     void deserializeInstance(const nlohmann::json& j);
     void deserializeLocation(const std::string& txt);
-};
-
-
-/* a complete script (composed of several triggers) */
-struct script_data {
-    script_data() = default;
-    explicit script_data(DgUID uid) : script_data() {
-        owner = uid;
-    };
-    long types{};                /* bitvector of trigger types */
-    struct trig_data *trig_list{};            /* list of triggers           */
-    struct trig_var_data *global_vars{};    /* list of global variables   */
-    bool purged{};                /* script is set to be purged */
-    long context{};                /* current context for statics */
-    DgUID owner{};
-
-    struct script_data *next{};        /* used for purged_scripts    */
-    void activate();
-    void deactivate();
-    void refreshTypes();
 };
 
 /* The event data for the wait command */
@@ -397,7 +374,8 @@ extern void find_uid_name(char *uid, char *name, size_t nlen);
 
 extern void do_sstat(struct char_data *ch, struct unit_data *ud);
 
-extern void add_trigger(struct script_data *sc, trig_data *t, int loc);
+
+extern void add_trigger(struct unit_data *u, trig_data *t, int loc);
 
 extern void script_vlog(const char *format, va_list args);
 
@@ -409,12 +387,11 @@ struct room_data *dg_room_of_obj(struct obj_data *obj);
 
 /* To maintain strict-aliasing we'll have to do this trick with a union */
 /* Thanks to Chris Gilbert for reminding me that there are other options. */
-extern int script_driver(void *go_adress, trig_data *trig, int type, int mode);
+extern int script_driver(unit_data *u, trig_data *trig, int type, int mode);
 
 extern trig_rnum real_trigger(trig_vnum vnum);
 
-extern void process_eval(void *go, struct script_data *sc, trig_data *trig,
-                         int type, char *cmd);
+extern void process_eval(unit_data *u, trig_data *trig, int type, char *cmd);
 
 extern void read_saved_vars(struct char_data *ch);
 
@@ -447,13 +424,13 @@ extern char *skill_percent(struct char_data *ch, char *skill);
 
 extern int char_has_item(char *item, struct char_data *ch);
 
-extern void var_subst(void *go, struct script_data *sc, trig_data *trig,
+extern void var_subst(unit_data *u, trig_data *trig,
                       int type, char *line, char *buf);
 
 extern int text_processed(char *field, char *subfield, struct trig_var_data *vd,
                           char *str, size_t slen);
 
-extern void find_replacement(void *go, struct script_data *sc, trig_data *trig,
+extern void find_replacement(unit_data *u, trig_data *trig,
                              int type, char *var, char *field, char *subfield, char *str, size_t slen);
 
 
@@ -468,7 +445,7 @@ extern void free_trigger(trig_data *trig);
 
 extern void extract_trigger(struct trig_data *trig);
 
-extern void extract_script(void *thing, int type);
+extern void extract_script(unit_data *u, int type);
 
 extern void extract_script_mem(struct script_memory *sc);
 
@@ -484,10 +461,10 @@ extern void sub_write(char *arg, char_data *ch, int8_t find_invis, int targets);
 extern void send_to_zone(char *messg, zone_rnum zone);
 
 /* from dg_misc.c */
-extern void do_dg_cast(void *go, struct script_data *sc, trig_data *trig,
+extern void do_dg_cast(unit_data *u, trig_data *trig,
                        int type, char *cmd);
 
-extern void do_dg_affect(void *go, struct script_data *sc, trig_data *trig,
+extern void do_dg_affect(unit_data *u, trig_data *trig,
                          int type, char *cmd);
 
 extern void send_char_pos(struct char_data *ch, int dam);
@@ -509,7 +486,7 @@ extern room_rnum obj_room(obj_data *obj);
 #define UID_CHAR   '#'
 #define GET_TRIG_NAME(t)          ((t)->name)
 #define GET_TRIG_RNUM(t)          ((t)->vn)
-#define GET_TRIG_VNUM(t)      (trig_index[(t)->vn].vn)
+#define GET_TRIG_VNUM(t)      ((t)->vn)
 #define GET_TRIG_TYPE(t)          ((t)->trigger_type)
 #define GET_TRIG_NARG(t)          ((t)->narg)
 #define GET_TRIG_ARG(t)           ((t)->arglist)
@@ -529,14 +506,13 @@ constexpr int OBJ_ID_BASE = 1300000; /* 250000 Rooms */
 #define SCRIPT(o)          ((o)->script)
 #define SCRIPT_MEM(c)             ((c)->memory)
 
-#define SCRIPT_TYPES(s)          ((s)->types)
+#define SCRIPT_TYPES(s)          ((s)->dgTypes)
 #define TRIGGERS(s)          ((s)->trig_list)
 
 #define GET_SHORT(ch)    ((ch)->short_description)
 
 
-#define SCRIPT_CHECK(go, type)   (SCRIPT(go) && \
-                  IS_SET(SCRIPT_TYPES(SCRIPT(go)), type))
+#define SCRIPT_CHECK(go, type)   (IS_SET(SCRIPT_TYPES(go), type))
 #define TRIGGER_CHECK(t, type)   (IS_SET(GET_TRIG_TYPE(t), type) && \
                   !GET_TRIG_DEPTH(t))
 

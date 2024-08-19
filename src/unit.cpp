@@ -42,6 +42,11 @@ nlohmann::json unit_data::serializeUnit() {
     if(id != NOTHING) j["id"] = id;
     if(zone != NOTHING) j["zone"] = zone;
 
+    for(auto t : trig_list) {
+        auto tr = TrigRef(t);
+        j["dgscripts"].push_back(tr.serialize());
+    }
+
     return j;
 }
 
@@ -81,6 +86,17 @@ void unit_data::deserializeUnit(const nlohmann::json& j) {
 
 }
 
+void unit_data::deserializedgScripts(const nlohmann::json &j) {
+    // iterate through the sequence of pairs.
+    for(auto pair : j) {
+        TrigRef ref(pair);
+        if(auto t = ref.get(); t) {
+            t->owner = this;
+            trig_list.emplace_back(t);
+        }
+    }
+}
+
 void unit_data::activateContents() {
     for(auto obj = contents; obj; obj = obj->next_content) {
         obj->activate();
@@ -91,14 +107,6 @@ void unit_data::deactivateContents() {
     for(auto obj = contents; obj; obj = obj->next_content) {
         obj->deactivate();
     }
-}
-
-std::string unit_data::scriptString() {
-    if(!script) return "";
-    std::vector<std::string> vnums;
-    for(auto p : proto_script) vnums.emplace_back(std::move(std::to_string(p)));
-
-    return fmt::format("@D[@wT{}@D]@n", fmt::join(vnums, ","));
 }
 
 double unit_data::getInventoryWeight() {

@@ -323,7 +323,6 @@ OCMD(do_otransform) {
         tmpobj.contents = obj->contents;
         tmpobj.id = obj->id;
         tmpobj.proto_script = obj->proto_script;
-        tmpobj.script = obj->script;
         tmpobj.next_content = obj->next_content;
         memcpy(obj, &tmpobj, sizeof(*obj));
 
@@ -498,9 +497,7 @@ OCMD(do_dgoload) {
         }
         char_to_room(mob, rnum);
 
-        if (SCRIPT(obj)) { /* It _should_ have, but it might be detached. */
-            add_var(&(SCRIPT(obj)->global_vars), "lastloaded", mob->getUID().c_str(), 0);
-        }
+        add_var(&(obj->global_vars), "lastloaded", mob->getUID().c_str(), 0);
 
         load_mtrigger(mob);
     } else if (is_abbrev(arg1, "obj")) {
@@ -509,9 +506,7 @@ OCMD(do_dgoload) {
             return;
         }
 
-        if (SCRIPT(obj)) { /* It _should_ have, but it might be detached. */
-            add_var(&(SCRIPT(obj)->global_vars), "lastloaded", object->getUID().c_str(), 0);
-        }
+        add_var(&(obj->global_vars), "lastloaded", object->getUID().c_str(), 0);
 
         /* special handling to make objects able to load on a person/in a container/worn etc. */
         if (!target || !*target) {

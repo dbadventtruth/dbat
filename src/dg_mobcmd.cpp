@@ -472,18 +472,14 @@ ACMD(do_mload) {
             return;
         }
         char_to_room(mob, rnum);
-        if (SCRIPT(ch)) { /* It _should_ have, but it might be detached. */
-            add_var(&(SCRIPT(ch)->global_vars), "lastloaded", mob->getUID().c_str(), 0);
-        }
+        add_var(&(ch->global_vars), "lastloaded", mob->getUID().c_str(), 0);
         load_mtrigger(mob);
     } else if (is_abbrev(arg1, "obj")) {
         if ((object = read_object(number, VIRTUAL)) == nullptr) {
             mob_log(ch, "mload: bad object vnum");
             return;
         }
-        if (SCRIPT(ch)) { /* It _should_ have, but it might be detached. */
-            add_var(&(SCRIPT(ch)->global_vars), "lastloaded", object->getUID().c_str(), 0);
-        }
+        add_var(&(ch->global_vars), "lastloaded", object->getUID().c_str(), 0);
         randomize_eq(object);
         /* special handling to make objects able to load on a person/in a container/worn etc. */
         if (!target || !*target) {
@@ -1011,7 +1007,6 @@ ACMD(do_mtransform) {
         tmpmob.affected = ch->affected;
         tmpmob.contents = ch->contents;
         tmpmob.proto_script = ch->proto_script;
-        tmpmob.script = ch->script;
         tmpmob.memory = ch->memory;
         tmpmob.next_in_room = ch->next_in_room;
         tmpmob.followers = ch->followers;

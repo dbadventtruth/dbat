@@ -83,11 +83,11 @@ static void dump_state_dgscripts(const std::filesystem::path &loc) {
     for(auto &[v, r] : trig_data::instances) {
         if(v != r.second->id) r.second->id = v;
         nlohmann::json j2;
+        if(!r.second->owner) continue;
         j2["id"] = v;
         j2["generation"] = static_cast<int32_t>(r.first);
         j2["data"] = r.second->serializeInstance();
         j2["location"] = r.second->serializeLocation();
-        j2["order"] = r.second->order;
         j.push_back(j2);
     }
     dump_to_file(loc, "dgscripts.json", j);
@@ -100,8 +100,8 @@ void dump_state_globalData(const std::filesystem::path &loc) {
     j["era_uptime"] = era_uptime.serialize();
     j["weather"] = weather_info.serialize();
     if(auto gRoom = world.find(0); gRoom != world.end()) {
-        if(gRoom->second.script && gRoom->second.script->global_vars) {
-            j["dgGlobals"] = serializeVars(gRoom->second.script->global_vars);
+        if(gRoom->second.global_vars) {
+            j["dgGlobals"] = serializeVars(gRoom->second.global_vars);
         }
     }
 

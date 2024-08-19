@@ -21,17 +21,7 @@ void event_process(uint64_t heart_pulse, double deltaTime) {
     while(toProcess > 0 && !triggers_queued.empty()) {
         auto trig = triggers_queued.front();
         triggers_queued.pop_front();
-        switch(trig->owner.index()) {
-            case 0:
-                script_driver(&std::get<0>(trig->owner), trig, WLD_TRIGGER, TRIG_RESTART);
-                break;
-            case 1:
-                script_driver(&std::get<1>(trig->owner), trig, OBJ_TRIGGER, TRIG_RESTART);
-                break;
-            case 2:
-                script_driver(&std::get<2>(trig->owner), trig, MOB_TRIGGER, TRIG_RESTART);
-                break;
-        }
+        script_driver(trig->owner, trig, trig->attach_type, TRIG_RESTART);
         toProcess--;
     }
 }
