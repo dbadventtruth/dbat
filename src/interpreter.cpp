@@ -1028,7 +1028,7 @@ int special(struct char_data *ch, int cmd, char *arg) {
     auto room = ch->getRoom();
 
     if (room && room->func)
-        if (room->func(ch, ch->getRoom(), cmd, arg))
+        if (room->func(ch, room, cmd, arg))
             return 1;
 
     /* special in equipment list? */
@@ -1040,23 +1040,32 @@ int special(struct char_data *ch, int cmd, char *arg) {
     }
 
     /* special in inventory? */
-    for (auto obj : ch->getContents())
+    for (auto ref : ch->getContents()) {
+        auto obj = ref.get();
+        if(!obj) continue;
         if (auto func = GET_OBJ_SPEC(obj))
             if (func(ch, obj, cmd, arg))
                 return 1;
+    }
 
     /* special in mobile present? */
     if(room) {
-        for (auto mob : room->getPeople())
+        for (auto ref : room->getPeople()) {
+            auto mob = ref.get();
+            if(!mob) continue;
             if (IS_NPC(mob) && !MOB_FLAGGED(mob, MOB_NOTDEADYET))
                 if (auto func = GET_MOB_SPEC(mob); func)
                     if(func(ch, mob, cmd, arg))
                         return 1;
+        }
 
-        for (auto obj : room->getContents())
+        for (auto ref : room->getContents()) {
+            auto obj = ref.get();
+            if(!obj) continue;
             if(auto func = GET_OBJ_SPEC(obj); func)
                 if (func(ch, obj, cmd, arg))
                     return 1;
+        }
     }
 
     return 0;
