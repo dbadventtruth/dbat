@@ -180,25 +180,11 @@ void copyover_recover() {
     // restore the server_fd.
     if(j.contains("server_fd")) net::server_fd = j.at("server_fd").get<int>();
 
-    // Rebuild connection data.
-    if(j.contains("pendingReads")) {
-        for(const auto &c : j.at("pendingReads")) net::pendingReads.insert(c.get<int>());
-    }
-
-    if(j.contains("pendingOutData")) {
-        for(const auto &c : j.at("pendingOutData")) net::pendingOutData.insert(c.get<int>());
-    }
-
-    if(j.contains("pendingWrites")) {
-        for(const auto &c : j.at("pendingWrites")) net::pendingWrites.insert(c.get<int>());
-    }
-
     if(j.contains("connections"))
         for(auto &jc : j.at("connections")) {
             auto connId = jc[0].get<int>();
             auto conn = std::make_shared<net::Connection>(jc[1]);
             net::connections[connId] = conn;
-            conn->epollRegister();
         }
 
     // rebuild descriptor data...
@@ -253,18 +239,6 @@ static void performReboot(int mode) {
         j["connections"].push_back(std::make_pair(id, conn->serialize()));
     }
 
-    for(const auto &c : net::pendingOutData) {
-        j["pendingOutData"].push_back(c);
-    }
-
-    for(const auto &c : net::pendingReads) {
-        j["pendingReads"].push_back(c);
-    }
-
-    for(const auto &c : net::pendingWrites) {
-        j["pendingWrites"].push_back(c);
-    }
-
     /* For each descriptor/connection, halt them and save state. */
     for (auto &[cid, d] : sessions) {
         nlohmann::json jd;
@@ -291,7 +265,6 @@ static void performReboot(int mode) {
 
     fp << jdump(j) << std::endl;
     fp.close();
-    close(net::epoll_fd);
 }
 
 static std::vector<std::pair<std::string, double>> timings;
@@ -402,23 +375,14 @@ void processConnections(double deltaTime) {
     for(auto &id : toErase) {
         net::connections.erase(id);
         net::deadConnections.erase(id);
-        net::pendingOutData.erase(id);
-        net::pendingReads.erase(id);
-        net::pendingWrites.erase(id);
     }
 
     // Second, welcome any new connections!
     net::acceptAllIncomingConnections();
 
-    for(const auto &id : net::pendingReads) {
-        auto it = net::connections.find(id);
-        if (it != net::connections.end()) {
-            auto conn = it->second;
-            // Need a proper welcoming later....
-            conn->readFromSocket();
-        }
+    for(auto &[id, conn] : net::connections) {
+        conn->readFromSocket();
     }
-    net::pendingReads.clear();
 
     auto now = std::chrono::system_clock::now();
 
@@ -437,30 +401,19 @@ void processConnections(double deltaTime) {
 }
 
 void processDisconnects() {
-    std::unordered_set<int> toErase;
+    auto dead = net::deadConnections;
     // First, handle any disconnected connections caused by a TCP issue.
-    for(auto &[id, reason] : net::deadConnections) {
+    for(auto &[id, reason] : dead) {
         // We don't want to purge those in the GameLogoff state until their buffers are cleaned.
         if(reason != net::DisconnectReason::GameLogoff) continue;
-        if(!net::pendingOutData.contains(id)) toErase.insert(id);
-    }
-    for(auto &id : toErase) {
         net::connections.erase(id);
         net::deadConnections.erase(id);
     }
 }
 
 void processOutputs() {
-    // Vector to store the intersection result
-    std::vector<int> intersection;
 
-    // Calculate the intersection of set1 and set2
-    std::set_intersection(net::pendingWrites.begin(), net::pendingWrites.end(), net::pendingOutData.begin(), net::pendingOutData.end(), std::back_inserter(intersection));
-
-    for(auto &id : intersection) {
-        auto it = net::connections.find(id);
-        if(it == net::connections.end()) continue;
-        auto conn = it->second;
+    for(auto &[id, conn] : net::connections) {
         conn->writeToSocket();
     }
 }
@@ -625,7 +578,6 @@ namespace game {
         game::init_database();
         ang::initAngelScript();
         game::init_zones();
-        net::init_epoll();
         game::init_copyover();
         net::init_listeners();
     }

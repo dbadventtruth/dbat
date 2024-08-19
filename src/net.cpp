@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <memory>
 #include <regex>
-#include <sys/epoll.h>
 #include <cppcodec/base64_rfc4648.hpp>
 
 #include "dbat/net.h"
@@ -27,10 +26,9 @@
 namespace net {
     std::unordered_map<int, std::shared_ptr<Connection>> connections;
     std::unordered_map<int, DisconnectReason> deadConnections;
-    std::unordered_set<int> pendingOutData, pendingReads, pendingWrites;
 
     static int nextConnID() {
-        int checking = 0;
+        int checking = 1;
         while(connections.contains(checking)) {
             checking++;
         }
@@ -38,7 +36,6 @@ namespace net {
     };
 
     int server_fd = -1;
-    int epoll_fd = -1;
 
     using base64 = cppcodec::base64_rfc4648;
 
@@ -478,7 +475,6 @@ namespace net {
                 break;
             case TELNET_EV_SEND: {
                 outbuf.emplace_back(std::string(event->data.buffer, event->data.size));
-                pendingOutData.insert(connId);
             }
                 break;
             case TELNET_EV_IAC:
@@ -524,14 +520,13 @@ namespace net {
         }
     }
 
-    Connection::Connection(int connID, int socket) : connId(connId), socket(socket) {
+    Connection::Connection(int connId, int socket) : connId(connId), socket(socket) {
         teldata = telnet_init(my_telopts, &telnet_handler, TELNET_FLAG_ROLE_SERVER, this);
     }
 
-    Connection::Connection(const nlohmann::json &j) : Connection(connId) {
+    Connection::Connection(const nlohmann::json &j) {
         teldata = telnet_init(my_telopts, &telnet_handler, TELNET_FLAG_ROLE_SERVER, this);
         deserialize(j);
-        epollRegister();
     }
 
     nlohmann::json Connection::serialize() {
@@ -810,14 +805,6 @@ namespace net {
         return listen_fd;
     }
 
-    void init_epoll() {
-        // Let's initialize the epoll
-        epoll_fd = epoll_create1(0);
-        if (epoll_fd == -1) {
-            perror("epoll_create1");
-            exit(EXIT_FAILURE);
-        }
-    }
 
     void init_listeners() {
         // server_fd might already be set to a proper port by the copyover process.
@@ -825,24 +812,6 @@ namespace net {
             // This is a fresh start. We need to create and bind a server to config::hostAddress config::port and set
             // the fd to server_fd
             server_fd = create_listener(config::hostAddress, config::port);
-        }
-    }
-
-    void Connection::epollRegister() {
-        epoll_event ev{};
-        ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-        ev.data.u32 = connId;
-
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket, &ev) == -1) {
-            perror("epoll_ctl: connection fd");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    void Connection::epollUnregister() {
-        if(!fdClosed)
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, socket, NULL) == -1) {
-            perror("epoll_ctl: EPOLL_CTL_DEL");
         }
     }
 
@@ -866,7 +835,6 @@ namespace net {
             } else {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     // No more data available right now, would block
-                    pendingReads.erase(connId);
                     break;
                 } else if(errno == ETIMEDOUT) {
                     // Connection timed out
@@ -902,7 +870,6 @@ namespace net {
                 if (bytesSent == -1) {
                     if (errno == EAGAIN || errno == EWOULDBLOCK) {
                         // Socket is not ready to send more data; stop and wait for EPOLLOUT
-                        pendingWrites.erase(connId);
                         break;
                     } else {
                         // An error occurred, log or handle it
@@ -925,10 +892,6 @@ namespace net {
                     outbuf.pop_front();
                 }
             }
-        }
-
-        if (outbuf.empty()) {
-            pendingOutData.erase(connId);
         }
     }
 
@@ -990,7 +953,6 @@ namespace net {
         }
         conn->capabilities.hostAddress = ip_str;
 
-        conn->epollRegister();
         conn->state = ConnectionState::Pending;
         conn->sendTelnetNegotiations();
     }
@@ -1014,65 +976,7 @@ namespace net {
     }
 
     void update(double deltaTime) {
-        if(connections.empty()) return;
-
-        std::vector<epoll_event> events(connections.size());
-
-        int nfds = epoll_wait(epoll_fd, events.data(), events.size(), 0);
-        if (nfds == -1) {
-            perror("epoll_wait");
-            exit(EXIT_FAILURE);
-        }
-
-        for(int i = 0; i < nfds; i++) {
-            auto &ev = events[i];
-            int connId = ev.data.u32;
-
-            if(!connections.contains(connId)) {
-                // This should never happen.
-                basic_mud_log("epoll_wait returned an fd that doesn't exist in connections: %d", connId);
-                continue;
-            }
-            auto conn = connections.at(connId);
-
-            if(ev.events & EPOLLERR) {
-                // Handle error condition
-                int err = 0;
-                socklen_t len = sizeof(err);
-                
-                // Retrieve the specific error code
-                if (getsockopt(conn->socket, SOL_SOCKET, SO_ERROR, &err, &len) == 0) {
-                    basic_mud_log("Error on socket fd %d: %s\n", conn->socket, strerror(err));
-                } else {
-                    basic_mud_log("getsockopt failed on socket fd %d", conn->socket);
-                }
-
-                // Mark the connection as closed to prevent further operations
-                conn->fdClosed = true;
-                
-                // Mark the connection as dead due to connection loss
-                deadConnections[connId] = DisconnectReason::ConnectionLost;
-
-                // Close the file descriptor explicitly
-                close(conn->socket);
-                
-                // Unregister from epoll to clean up the epoll set
-                if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->socket, nullptr) == -1) {
-                    basic_mud_log("epoll_ctl: EPOLL_CTL_DEL failed for fd %d", conn->socket);
-                }
-
-                // Skip further processing for this file descriptor
-                continue;
-            }
-
-            if(ev.events & EPOLLIN) {
-                pendingReads.insert(connId);
-            }
-
-            if(ev.events & EPOLLOUT) {
-                pendingWrites.insert(connId);
-            }
-        }
+        
     }
 
     void prepareForCopyover() {
@@ -1094,14 +998,17 @@ namespace net {
         }
 
         // Ensure all pending data is sent out.
-        while(!pendingOutData.empty()) {
-            auto pending = pendingOutData;
-            for(auto &connId : pending) {
-                auto conn = connections.at(connId);
+        auto start = std::chrono::steady_clock::now();
+    
+        while(true) {
+            for(auto &[id, conn] : connections) {
                 conn->writeToSocket();
             }
-            if(!pendingOutData.empty())
-                std::this_thread::sleep_for(std::chrono::milliseconds(15));
+
+            // Check if 200 milliseconds have passed
+            if (std::chrono::steady_clock::now() - start > std::chrono::milliseconds(200)) {
+                break;
+            }
         }
 
         // Close the pending and any remaining connections.

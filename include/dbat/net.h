@@ -8,7 +8,6 @@
 namespace net {
     using namespace std::chrono_literals;
 
-    extern void init_epoll();
     extern void init_listeners();
     extern void prepareForCopyover();
 
@@ -69,9 +68,8 @@ namespace net {
 
     extern std::unordered_map<int, std::shared_ptr<Connection>> connections;
     extern std::unordered_map<int, DisconnectReason> deadConnections;
-    extern std::unordered_set<int> pendingOutData, pendingReads, pendingWrites;
 
-    extern int server_fd, epoll_fd;
+    extern int server_fd;
     extern void update(double deltaTime);
     extern void acceptAllIncomingConnections();
     extern void prepareForCopyover();
@@ -151,8 +149,6 @@ namespace net {
 
         ConnectionState state{ConnectionState::Pending};
 
-        void epollRegister();
-        void epollUnregister();
         void readFromSocket();
         void writeToSocket();
         void handleTelnet(telnet_event_t *event);
