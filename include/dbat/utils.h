@@ -1419,7 +1419,7 @@ extern std::string format_double(double value);
 
 using MessageVar = std::variant<std::string, char_data*, obj_data*>;
 
-extern std::unordered_map<std::string, std::function<std::string(const std::string&, const std::string&, char_data*, Message&)>> msgFuncs;
+
 
 class Message {
 public:
@@ -1449,3 +1449,5 @@ protected:
     std::unordered_set<std::string, MessageVar> variables;
     std::function<bool(char_data*)> excludeFilter, includeFilter;
 };
+
+extern std::unordered_map<std::string, std::function<std::string(const std::string&, const std::string&, char_data*, Message&)>> msgFuncs;
