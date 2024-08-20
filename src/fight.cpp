@@ -1436,15 +1436,12 @@ void stop_fighting(struct char_data *ch) {
 
 static void make_pcorpse(struct char_data *ch) {
 
-    struct obj_data *corpse;
     struct obj_data *money;
     int x, y;
 
 
-    corpse = create_obj();
+    auto corpse = create_obj();
 
-    corpse->vn = NOTHING;
-    IN_ROOM(corpse) = NOWHERE;
     objectSubscriptions.subscribe("corpseRotService", corpse->ref());
 
     /* This handles how the corpse is viewed - Iovan */
@@ -1490,23 +1487,13 @@ static void make_pcorpse(struct char_data *ch) {
     GET_OBJ_TIMER(corpse) = CONFIG_MAX_PC_CORPSE_TIME;
 
 
-    struct obj_data *obj, *next_obj;
-
-    for (obj = ch->contents; obj; obj = next_obj) {
-        next_obj = obj->next_content;
-
-        if (obj && GET_OBJ_VNUM(obj) < 19900 && GET_OBJ_VNUM(obj) != 17998) {
-            if ((GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 18999) ||
-                (GET_OBJ_VNUM(obj) >= 19100 && GET_OBJ_VNUM(obj) <= 19199)) {
-                continue;
-            } else {
-                obj_from_char(obj);
-                obj_to_obj(obj, corpse);
-                continue;
-            }
-        } else {
-            continue;
-        }
+    LocationStub newLoc;
+    newLoc.first = corpse;
+    newLoc.second.type = CoordinateType::Inventory;
+    for (auto ref : ch->getContents()) {
+        auto obj = ref.get();
+        if(!obj) continue;
+        obj->setLocation(newLoc);
     }
 
     /* transfer gold */
@@ -1519,8 +1506,8 @@ static void make_pcorpse(struct char_data *ch) {
          * test below shall live on, for a while. -gg 3/3/2002
          */
         if (IS_NPC(ch) || ch->desc) {
-            money = create_money(GET_GOLD(ch));
-            obj_to_obj(money, corpse);
+            auto money = create_money(GET_GOLD(ch));
+            money->setLocation(newLoc);
         }
         ch->set(CharMoney::Carried, 0);
     }
@@ -1754,21 +1741,21 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
     }
 
     if (!MOB_FLAGGED(ch, MOB_HUSK)) {
-        /* transfer character's inventory to the corpse */
-        corpse->contents = ch->contents;
-        for (o = corpse->contents; o != nullptr; o = o->next_content) {
-            o->in_obj = corpse;
-        }
-        object_list_new_owner(corpse, nullptr);
+        LocationStub newLoc;
+        newLoc.first = corpse;
+        newLoc.second.type = CoordinateType::Inventory;
+        for(auto ref : ch->getContents()) {
+            auto o = ref.get();
+            if(!o) continue;
+            o->setLocation(newLoc);
 
-        /* transfer character's equipment to the corpse */
-        int eqdrop = false;
-        for (i = 0; i < NUM_WEARS; i++)
-            if (GET_EQ(ch, i)) {
-                remove_otrigger(GET_EQ(ch, i), ch);
-                obj_to_obj(unequip_char(ch, i), corpse);
-                eqdrop = true;
-            }
+        }
+
+        for(auto [slot, ref] : ch->getEquipment()) {
+            auto o = ref.get();
+            if(!o) continue;
+            o->setLocation(newLoc);
+        }
     }
     /* transfer gold */
     if (GET_GOLD(ch) > 0 && !MOB_FLAGGED(ch, MOB_HUSK)) {
@@ -1780,14 +1767,12 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
          * test below shall live on, for a while. -gg 3/3/2002
          */
         if (IS_NPC(ch) || ch->desc) {
-            money = create_money(GET_GOLD(ch));
+            auto money = create_money(GET_GOLD(ch));
             obj_to_obj(money, corpse);
         }
         ch->set(CharMoney::Carried, 0);
     }
-    if (!MOB_FLAGGED(ch, MOB_HUSK)) {
-        ch->contents = nullptr;
-    }
+
     obj_to_room(corpse, IN_ROOM(ch));
 
 }

@@ -599,6 +599,8 @@ public:
     virtual std::vector<ObjRef> getContents();
     virtual std::vector<CharRef> getPeople();
 
+    virtual std::map<int, ObjRef> getEquipment();
+
     virtual std::vector<std::string> buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY);
 
 protected:
@@ -1244,9 +1246,6 @@ struct char_data : public virtual unit_data, public virtual HasLocation {
 
     /* Equipment array			*/
     struct obj_data *equipment[NUM_WEARS]{};
-
-    std::map<int, struct obj_data*> getEquipment();
-    struct obj_data* getEquipSlot(int slot);
 
     struct descriptor_data *desc{};    /* nullptr for mobiles			*/
 

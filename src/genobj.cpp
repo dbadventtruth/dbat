@@ -52,24 +52,6 @@ int update_objects(struct obj_data *refobj) {
     struct obj_data *obj, swap;
     int count = 0;
 
-    for (auto obj : get_vnum_list(objectVnumIndex, refobj->vn)) {
-
-        count++;
-
-        /* Update the existing object but save a copy for private information. */
-        swap = *obj;
-        *obj = *refobj;
-
-        /* Copy game-time dependent variables over. */
-        IN_ROOM(obj) = swap.in_room;
-        obj->carried_by = swap.carried_by;
-        obj->worn_by = swap.worn_by;
-        obj->worn_on = swap.worn_on;
-        obj->in_obj = swap.in_obj;
-        obj->contents = swap.contents;
-        obj->next_content = swap.next_content;
-    }
-
     return count;
 }
 
@@ -699,6 +681,9 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
             c->contents = this;
             carried_by = c;
             in_room = NOWHERE;
+            in_obj = nullptr;
+            worn_by = nullptr;
+            worn_on = -1;
 
             /* set flag for crash-save system, but not on mobs! */
             if (GET_OBJ_VAL(this, 0) != 0) {
@@ -713,16 +698,20 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
             GET_EQ(c, pos) = this;
             worn_by = c;
             worn_on = pos;
+            carried_by = nullptr;
+            in_room = NOWHERE;
+            in_obj = nullptr;
         }
     }
 
     else if(auto o = dynamic_cast<obj_data*>(newLoc.first); o) {
         // we've been added to an object's inventory.
-        struct obj_data *tmp_obj;
         next_content = o->contents;
         o->contents = this;
         in_obj = o;
-        tmp_obj = in_obj;
+        worn_by = nullptr;
+        carried_by = nullptr;
+        in_room = NOWHERE;
     }
     
     else if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {

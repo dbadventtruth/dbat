@@ -1422,8 +1422,16 @@ void goopTimeService(uint64_t heartPulse, double deltaTime) {
     
 }
 
+static const std::unordered_map<int, std::pair<std::string, std::string>> rotStrings = {
+    {5, {"@DFlies start to gather around {sdesc}@D.@n\r\n",""}},
+    {3, {"@DA cloud of flies has formed over {sdesc}@D.@n\r\n", ""}},
+    {2, {"@DMaggots can be seen crawling all over {sdesc}@D.@n\r\n",""}},
+    {1, {"@DMaggots have nearly stripped {sdesc} of all its flesh@D.@n\r\n", ""}},
+    {0, {"@DNothing remains of {sdesc} but dust in the wind.@n\r\n", "{sdesc} breaks down completely into a pile of junk.\r\n"}}
+};
+
 void corpseRotService(uint64_t heartPulse, double deltaTime) {
-    obj_data *jj, *next_thing2;
+
     for(const auto& ref : objectSubscriptions.all("corpseRotService")) {
         auto j = ref.get();
         if (!j) continue;
@@ -1431,82 +1439,60 @@ void corpseRotService(uint64_t heartPulse, double deltaTime) {
         // how the fuck did this happen? TODO add a warning.
         if(!IS_CORPSE(j)) continue;
 
-        /* timer count down */
-        if (GET_OBJ_TIMER(j) > 0)
-            GET_OBJ_TIMER(j)--;
-        if (!strstr(j->name, "android") && !strstr(j->name, "Android") && !OBJ_FLAGGED(j, ITEM_BURIED)) {
-            if (GET_OBJ_TIMER(j) == 5) {
-                if ((IN_ROOM(j) != NOWHERE) && (j->getRoom()->people)) {
-                    act("@DFlies start to gather around $p@D.@n", true, j->getRoom()->people, j, nullptr,
-                        TO_CHAR);
-                    act("@DFlies start to gather around $p@D.@n", true, j->getRoom()->people, j, nullptr,
-                        TO_ROOM);
-                }
-            }
-            if (GET_OBJ_TIMER(j) == 3) {
-                if ((IN_ROOM(j) != NOWHERE) && (j->getRoom()->people)) {
-                    act("@DA cloud of flies has formed over $p@D.@n", true, j->getRoom()->people, j, nullptr,
-                        TO_CHAR);
-                    act("@DA cloud of flies has formed over $p@D.@n", true, j->getRoom()->people, j, nullptr,
-                        TO_ROOM);
-                }
-            }
-            if (GET_OBJ_TIMER(j) == 2) {
-                if ((IN_ROOM(j) != NOWHERE) && (j->getRoom()->people)) {
-                    act("@DMaggots can be seen crawling all over $p@D.@n", true, j->getRoom()->people, j,
-                        nullptr, TO_CHAR);
-                    act("@DMaggots can be seen crawling all over $p@D.@n", true, j->getRoom()->people, j,
-                        nullptr, TO_ROOM);
-                }
-            }
-            if (GET_OBJ_TIMER(j) == 1) {
-                if ((IN_ROOM(j) != NOWHERE) && (j->getRoom()->people)) {
-                    act("@DMaggots have nearly stripped $p of all its flesh@D.@n", true, j->getRoom()->people,
-                        j, nullptr, TO_CHAR);
-                    act("@DMaggots have nearly stripped $p of all its flesh@D.@n", true, j->getRoom()->people,
-                        j, nullptr, TO_ROOM);
-                }
+        auto timer = GET_OBJ_TIMER(j);
+        if(timer < 0) continue;
+
+        timer = GET_OBJ_TIMER(j)--;
+
+        std::string toDisplay = "";
+        if(auto find = rotStrings.find(timer); find != rotStrings.end()) {
+            if(boost::icontains(j->name, "android")) {
+                toDisplay = find->second.second;
+            } else {
+                toDisplay = find->second.first;
             }
         }
-        if (!GET_OBJ_TIMER(j)) {
 
-            if (j->carried_by) {
-                if (!strstr(j->name, "android")) {
-                    act("$p decays in your hands.", false, j->carried_by, j, nullptr, TO_CHAR);
-                    if ((IN_ROOM(j) != NOWHERE) && (j->getRoom()->people)) {
-                        act("A quivering horde of maggots consumes $p.",
-                            true, j->getRoom()->people, j, nullptr, TO_ROOM);
-                        act("A quivering horde of maggots consumes $p.",
-                            true, j->getRoom()->people, j, nullptr, TO_CHAR);
-                    }
-                } else {
-                    act("$p decays in your hands.", false, j->carried_by, j, nullptr, TO_CHAR);
-                    if ((IN_ROOM(j) != NOWHERE) && (j->getRoom()->people)) {
-                        act("$p breaks down completely into a pile of junk.",
-                            true, j->getRoom()->people, j, nullptr, TO_ROOM);
-                        act("$p breaks down completely into a pile of junk.",
-                            true, j->getRoom()->people, j, nullptr, TO_CHAR);
-                    }
-                }
-            }
-            for (jj = j->contents; jj; jj = next_thing2) {
-                next_thing2 = jj->next_content;    /* Next in inventory */
-                obj_from_obj(jj);
-
-                if (j->in_obj)
-                    obj_to_obj(jj, j->in_obj);
-                else if (j->carried_by)
-                    obj_to_room(jj, IN_ROOM(j->carried_by));
-                else if (IN_ROOM(j) != NOWHERE)
-                    obj_to_room(jj, IN_ROOM(j));
-                else
-                    core_dump();
-            }
-            extract_obj(j);
+        if(timer == 0) {
+            if(j->carried_by)
+                act("$p decays in your hands.", false, j->carried_by, j, nullptr, TO_CHAR);
+            // not sure how you'd wear a corpse, but okay.
+            if(j->worn_by)
+                act("$p decays in your hands.", false, j->worn_by, j, nullptr, TO_CHAR);
         }
 
+        auto witnesses = j->getLocationPeople();
+
+        if(!OBJ_FLAGGED(j, ITEM_BURIED) && !toDisplay.empty()) {
+            for(auto ref : witnesses) {
+                auto ch = ref.get();
+                if(!ch) continue;
+                auto rendered = fmt::format(fmt::runtime(toDisplay), fmt::arg("sdesc", j->getDisplayNameFor(ch, 1)));
+                send_to_char(ch, rendered);
+            }
+        }
+
+        if(timer != 0) continue;
+
+        auto loc = j->getLocation();
+        if(loc.second.type == CoordinateType::Equipped)
+            loc.second.type = CoordinateType::Inventory;
+
+        if(loc.first)
+            for (auto ref : j->getContents()) {
+                auto jj = ref.get();
+                if(!jj) continue;
+                jj->setLocation(loc);
+                for(auto re : witnesses) {
+                    auto ch = re.get();
+                    if(!ch) continue;
+                    send_to_char(ch, fmt::format("{} tumbles out of the crumbling remains of {}.\r\n", jj->getDisplayNameFor(ch, 2), j->getDisplayNameFor(ch, 0)));
+                }
+            }
+        extract_obj(j);
     }
 }
+
 
 void characterVitalsRecovery(uint64_t heartPulse, double deltaTime) {
 

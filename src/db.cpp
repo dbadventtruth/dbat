@@ -1259,7 +1259,6 @@ struct char_data *create_char(bool activate) {
 /* create a new mobile from a prototype */
 struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 {
-    struct char_data *mob;
 
     auto proto = mob_proto.find(nr);
 
@@ -1268,14 +1267,15 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
         return (nullptr);
     }
 
-    mob = new char_data();
+    auto mob = new char_data(proto->second);
 
-    *mob = proto->second;
     mob->id = nextCharID();
     mob->generation = time(nullptr);
     check_unique_id(mob);
     add_unique_id(mob);
     mob->activate();
+    if(race::hasTail(mob->race))
+        mob->playerFlags.set(PLR_TAIL);
 
     std::map<CharAppearance, int> setNumsTo;
 
@@ -1312,6 +1312,7 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
     if (IS_SAIYAN(mob)) {
         setNumsTo[CharAppearance::HairColor] = HAIRC_BLACK;
         setNumsTo[CharAppearance::EyeColor] = 1;
+        setNumsTo[CharAppearance::SkinColor] = SKIN_WHITE;
     }
 
     for(auto &[cint, val] : setNumsTo) {

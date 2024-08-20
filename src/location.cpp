@@ -212,3 +212,14 @@ std::optional<Destination> Location::getLaunchDestination(const Coordinates& coo
 double Location::getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific) {
     return 0.0;
 }
+
+std::map<int, ObjRef> Location::getEquipment() {
+    std::map<int, ObjRef> out;
+    for(auto [e, coord] : entities) {
+        if(coord.type != CoordinateType::Equipped) continue;
+        auto o = dynamic_cast<obj_data*>(e);
+        if(!o) continue;
+        out[coord.x] = o;
+    }
+    return out;
+}
