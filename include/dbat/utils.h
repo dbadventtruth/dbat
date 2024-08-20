@@ -1416,3 +1416,36 @@ extern bool is_all_alpha(const std::string& str);
 extern void doContinuedTask(char_data* ch);
 
 extern std::string format_double(double value);
+
+using MessageVar = std::variant<std::string, char_data*, obj_data*>;
+
+extern std::unordered_map<std::string, std::function<std::string(const std::string&, const std::string&, char_data*, Message&)>> msgFuncs;
+
+class Message {
+public:
+    explicit Message(const std::string& templateText);
+
+    Message& addExcludes(std::vector<char_data*> ex);
+    Message& addExcludes(std::vector<CharRef> ex);
+    Message& addExclude(char_data* ex);
+    Message& addRecipientsAt(LocationStub loc);
+    Message& addRecipientsAt(HasLocation* ent);
+    Message& setSource(char_data* src);
+    Message& setVariable(const std::string& name, MessageVar var);
+    Message& setExcludeFilter(std::function<bool(char_data*)> filter);
+    Message& setIncludeFilter(std::function<bool(char_data*)> filter);
+
+    std::unordered_set<char_data*> getRecipients();
+    char_data* getSource();
+
+    std::optional<MessageVar> getVariable(const std::string& name);
+
+    void send();
+
+protected:
+    std::string baseText;
+    std::unordered_set<char_data*> recipients, exclude;
+    char_data* source;
+    std::unordered_set<std::string, MessageVar> variables;
+    std::function<bool(char_data*)> excludeFilter, includeFilter;
+};

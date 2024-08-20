@@ -828,12 +828,11 @@ ACMD(do_selfd) {
             }
             if (MOB_FLAGGED(tch, MOB_NOKILL)) {
                 continue;
-            } else {
-                act("@r$N@R is caught in the explosion!@n", true, ch, nullptr, tch, TO_CHAR);
-                act("@RYou are caught in the explosion!@n", true, ch, nullptr, tch, TO_VICT);
-                act("@r$N@R is caught in the explosion!@n", true, ch, nullptr, tch, TO_NOTVICT);
-                hurt(0, 0, ch, tch, nullptr, dmg, 1);
             }
+            act("@r$N@R is caught in the explosion!@n", true, ch, nullptr, tch, TO_CHAR);
+            act("@RYou are caught in the explosion!@n", true, ch, nullptr, tch, TO_VICT);
+            act("@r$N@R is caught in the explosion!@n", true, ch, nullptr, tch, TO_NOTVICT);
+            hurt(0, 0, ch, tch, nullptr, dmg, 1);
         }
         if (PLR_FLAGGED(ch, PLR_IMMORTAL)) {
             GET_SDCOOLDOWN(ch) = 600;
