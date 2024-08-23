@@ -272,7 +272,7 @@ ACMD(do_genki) {
         return;
     }
 
-    for (friend_char = ch->getRoom()->people; friend_char; friend_char = next_v) {
+    for(auto friend_char : IterRef(ch->getLocationPeople())) {
         next_v = friend_char->next_in_room;
         if (friend_char == ch) {
             continue;

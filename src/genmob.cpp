@@ -997,7 +997,7 @@ void char_data::activate() {
 
     activeCharacters.insert(r);
 
-    if(contents) activateContents();
+    activateContents();
     for(auto i = 0; i < NUM_WEARS; i++) {
         if(GET_EQ(this, i)) {
             auto obj = GET_EQ(this, i);
@@ -1039,7 +1039,7 @@ void char_data::deactivate() {
     }
 
     characterSubscriptions.unsubscribeFromAll(ref());
-    if(contents) deactivateContents();
+    deactivateContents();
     for(auto i = 0; i < NUM_WEARS; i++) {
         if(GET_EQ(this, i)) {
             auto obj = GET_EQ(this, i);

@@ -349,21 +349,33 @@ struct obj_data *get_obj_in_list_type(int type, struct obj_data *list) {
     return nullptr;
 }
 
+struct obj_data *get_obj_in_list_type(int type, const std::vector<ObjRef>& list) {
+    for (auto i : IterRef(list))
+        if (GET_OBJ_TYPE(i) == type)
+            return i;
+
+    return nullptr;
+}
+
 /* Search the player's room, inventory and equipment for a control */
 struct obj_data *find_control(struct char_data *ch) {
     struct obj_data *controls, *obj;
     int j;
 
-    controls = get_obj_in_list_type(ITEM_CONTROL, ch->getRoom()->contents);
+    controls = get_obj_in_list_type(ITEM_CONTROL, ch->getLocationObjects());
     if (!controls)
-        for (obj = ch->contents; obj && !controls; obj = obj->next_content)
-            if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_TYPE(obj) == ITEM_CONTROL)
+        for (auto obj : IterRef(ch->getContents()))
+            if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_TYPE(obj) == ITEM_CONTROL) {
                 controls = obj;
+                break;
+            }
     if (!controls)
-        for (j = 0; j < NUM_WEARS && !controls; j++)
+        for (j = 0; j < NUM_WEARS; j++)
             if (GET_EQ(ch, j) && CAN_SEE_OBJ(ch, GET_EQ(ch, j)) &&
-                GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_CONTROL)
-                controls = GET_EQ(ch, j);
+                GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_CONTROL) {
+                    controls = GET_EQ(ch, j);
+                    break;
+                }
     return controls;
 }
 
@@ -377,7 +389,7 @@ static void drive_into_vehicle(struct char_data *ch, struct obj_data *vehicle, c
         send_to_char(ch, "@wDrive into what?\r\n");
         return;
     }
-    if (!(vehicle_in_out = get_obj_in_list_vis(ch, arg, nullptr, vehicle->getRoom()->contents))) {
+    if (!(vehicle_in_out = get_obj_in_list_vis(ch, arg, nullptr, vehicle->getLocationObjects()))) {
         send_to_char(ch, "@wNothing here by that name!\r\n");
         return;
     }
@@ -422,7 +434,7 @@ static void drive_outof_vehicle(struct char_data *ch, struct obj_data *vehicle) 
 
     auto room = vehicle->getRoom();
 
-    if (!(hatch = get_obj_in_list_type(ITEM_HATCH, room->contents))) {
+    if (!(hatch = get_obj_in_list_type(ITEM_HATCH, vehicle->getLocationObjects()))) {
         send_to_char(ch, "@wNowhere to pilot out of.\r\n");
         return;
     }
@@ -514,9 +526,11 @@ void drive_in_direction(struct char_data *ch, struct obj_data *vehicle, int dir)
 
     struct obj_data *hatch = nullptr;
 
-    for (hatch = world[real_room(GET_OBJ_VAL(vehicle, 0))].contents; hatch; hatch = hatch->next_content) {
-        if (GET_OBJ_TYPE(hatch) == ITEM_HATCH) {
-            GET_OBJ_VAL(hatch, 3) = vehicle->getRoomVnum();
+    for (auto h : IterRef(world.at(GET_OBJ_VAL(vehicle, 0)).getContents())) {
+        if (GET_OBJ_TYPE(h) == ITEM_HATCH) {
+            GET_OBJ_VAL(h, 3) = vehicle->getRoomVnum();
+            hatch = h;
+            break;
         }
     }
 
@@ -938,13 +952,13 @@ ACMD(do_ship_fire) {
     struct obj_data *obj = nullptr, *obj2 = nullptr, *next_obj = nullptr;
     int shot = false;
 
-    for (obj = ch->getRoom()->contents; obj; obj = next_obj) {
-        next_obj = obj->next_content;
+    for(auto obj : IterRef(ch->getLocationObjects())) {
         if (shot == false) {
             if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE && obj != vehicle) {
                 if (!strcasecmp(arg1, obj->name)) {
                     obj2 = obj;
                     shot = true;
+                    break;
                 }
             }
         }

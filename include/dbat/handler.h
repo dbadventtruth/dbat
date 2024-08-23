@@ -78,8 +78,6 @@ extern void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to);
 
 extern void obj_from_obj(struct obj_data *obj);
 
-extern void object_list_new_owner(struct obj_data *list, struct char_data *ch);
-
 extern void extract_obj(struct obj_data *obj);
 
 /* ******* characters ********* */
@@ -108,11 +106,13 @@ struct char_data *get_char_room_vis(struct char_data *ch, char *name, int *numbe
 
 struct char_data *get_char_world_vis(struct char_data *ch, char *name, int *number);
 
-struct obj_data *get_obj_in_list_num(int num, struct obj_data *list);
+struct obj_data *get_obj_in_list_num(int num, const std::vector<ObjRef>& list);
 
 struct obj_data *get_obj_num(obj_rnum nr);
 
 struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, struct obj_data *list);
+struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, const std::vector<ObjRef>& list);
+
 
 struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *num);
 

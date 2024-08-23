@@ -66,7 +66,7 @@ int mag_materials(struct char_data *ch, int item0, int item1, int item2,
     struct obj_data *tobj;
     struct obj_data *obj0 = nullptr, *obj1 = nullptr, *obj2 = nullptr;
 
-    for (tobj = ch->contents; tobj; tobj = tobj->next_content) {
+    for (auto tobj : IterRef(ch->getContents())) {
         if ((item0 > 0) && (GET_OBJ_VNUM(tobj) == item0)) {
             obj0 = tobj;
             item0 = -1;
@@ -649,7 +649,7 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
 void mag_masses(int level, struct char_data *ch, int spellnum) {
     struct char_data *tch, *tch_next;
 
-    for (tch = ch->getRoom()->people; tch; tch = tch_next) {
+    for(auto tch : IterRef(ch->getLocationPeople())) {
         tch_next = tch->next_in_room;
         if (tch == ch)
             continue;
@@ -692,7 +692,7 @@ void mag_areas(int level, struct char_data *ch, int spellnum) {
         act(to_room, false, ch, nullptr, nullptr, TO_ROOM);
 
 
-    for (tch = ch->getRoom()->people; tch; tch = next_tch) {
+    for(auto tch : IterRef(ch->getLocationPeople())) {
         next_tch = tch->next_in_room;
 
         /*
@@ -975,8 +975,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spel
         mob->master_id = GET_IDNUM(ch);
     }
     if (handle_corpse) {
-        for (tobj = obj->contents; tobj; tobj = next_obj) {
-            next_obj = tobj->next_content;
+        for (auto tobj : IterRef(obj->getContents())) {
             obj_from_obj(tobj);
             obj_to_char(tobj, mob);
         }

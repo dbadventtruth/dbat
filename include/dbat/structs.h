@@ -272,6 +272,73 @@ namespace std {
     };
 }
 
+// Custom iterator for filtering valid references
+template <typename Iterator, typename RefType>
+class ValidRefIterator {
+public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = typename std::remove_pointer<decltype(std::declval<RefType>().get())>::type;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+
+    ValidRefIterator(Iterator current, Iterator end)
+        : current(current), end(end) {
+        advanceToValid();
+    }
+
+    pointer operator*() { return current->get(); }
+    pointer operator->() { return current->get(); }
+
+    ValidRefIterator& operator++() {
+        ++current;
+        advanceToValid();
+        return *this;
+    }
+
+    ValidRefIterator operator++(int) {
+        ValidRefIterator tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    bool operator==(const ValidRefIterator& other) const { return current == other.current; }
+    bool operator!=(const ValidRefIterator& other) const { return current != other.current; }
+
+private:
+    void advanceToValid() {
+        while (current != end && !current->get()) {
+            ++current;
+        }
+    }
+
+    Iterator current;
+    Iterator end;
+};
+
+// Range adapter for ValidRefIterator
+template <typename Collection, typename RefType>
+class RefRange {
+public:
+    using iterator = ValidRefIterator<typename Collection::const_iterator, RefType>;
+
+    RefRange(const Collection& collection)
+        : collection(collection) {}
+
+    iterator begin() const { return iterator(collection.begin(), collection.end()); }
+    iterator end() const { return iterator(collection.end(), collection.end()); }
+
+private:
+    const Collection& collection;
+};
+
+// Helper function to deduce the template types
+template <typename Collection>
+auto IterRef(const Collection& collection) {
+    using RefType = typename Collection::value_type;
+    return RefRange<Collection, RefType>(collection);
+}
+
 struct account_data {
     account_data() = default;
     explicit account_data(const nlohmann::json& j);

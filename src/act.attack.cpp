@@ -260,7 +260,7 @@ ACMD(do_throw) {
         two_arguments(chunk, arg2, arg3);
     }
 
-    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
         if (!(tch = get_char_vis(ch, arg, nullptr, FIND_CHAR_ROOM))) {
             send_to_char(ch, "You do not have that object or character to throw!\r\n");
             return;
@@ -818,8 +818,7 @@ ACMD(do_selfd) {
             true, ch, nullptr, nullptr, TO_CHAR);
         act("@R$n EXPLODES! The explosion expands outward burning up all surroundings for a large distance. The explosion takes on the shape of a large energy dome with $n at its center!@n",
             true, ch, nullptr, nullptr, TO_ROOM);
-        for (tch = ch->getRoom()->people; tch; tch = next_v) {
-            next_v = tch->next_in_room;
+        for (auto tch : IterRef(ch->getLocationPeople())) {
             if (tch == ch) {
                 continue;
             }

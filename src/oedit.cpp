@@ -1743,9 +1743,9 @@ ACMD(do_iedit) {
 
     if ((k = get_obj_in_equip_vis(ch, arg, nullptr, ch->equipment))) {
         found = 1;
-    } else if ((k = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+    } else if ((k = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
         found = 1;
-    } else if ((k = get_obj_in_list_vis(ch, arg, nullptr, ch->getRoom()->contents))) {
+    } else if ((k = get_obj_in_list_vis(ch, arg, nullptr, ch->getLocationObjects()))) {
         found = 1;
     } else if ((k = get_obj_vis(ch, arg, nullptr))) {
         found = 1;

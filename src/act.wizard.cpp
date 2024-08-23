@@ -594,7 +594,7 @@ ACMD(do_transobj) {
         return;
     }
 
-    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
         send_to_char(ch, "You want to send what?\r\n");
         return;
     } else if (!strcasecmp("all", arg2)) {
@@ -803,7 +803,7 @@ ACMD(do_echo) {
             sprintf(argument, "%s\n@D(@gMessage truncated to %d characters@D)@n\n", argument, truncAt);
         }
 
-        for (vict = ch->getRoom()->people; vict; vict = next_v) {
+        for(auto vict : IterRef(ch->getLocationPeople())) {
             next_v = vict->next_in_room;
             if (vict == ch)
                 continue;
@@ -1314,18 +1314,20 @@ static void do_stat_room(struct char_data *ch) {
         }
     }
 
-    if (rm->contents) {
+    if (auto cont = rm->getContents(); !cont.empty()) {
         send_to_char(ch, "Contents:@g");
         column = 9;    /* ^^^ strlen ^^^ */
 
-        for (found = 0, j = rm->contents; j; j = j->next_content) {
+        found = 0;
+        for (auto j : IterRef(cont)) {
             if (!CAN_SEE_OBJ(ch, j))
                 continue;
+            found++;
 
             column += send_to_char(ch, "%s %s", found++ ? "," : "", j->short_description);
             if (column >= 62) {
                 send_to_char(ch, "%s\r\n", j->next_content ? "," : "");
-                found = false;
+                found = 0;
                 column = 0;
             }
         }
@@ -1522,17 +1524,18 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
    * more or less useless and just takes up valuable screen space.
    */
 
-    if (j->contents) {
+    if (auto cont = j->getContents(); !cont.empty()) {
         int column;
 
         send_to_char(ch, "\r\nContents:@g");
         column = 9;    /* ^^^ strlen ^^^ */
-
-        for (found = 0, j2 = j->contents; j2; j2 = j2->next_content) {
+        
+        found = 0;
+        for (auto j2 : IterRef(cont)) {
             column += send_to_char(ch, "%s %s", found++ ? "," : "", j2->short_description);
             if (column >= 62) {
                 send_to_char(ch, "%s\r\n", j2->next_content ? "," : "");
-                found = false;
+                found = 0;
                 column = 0;
             }
         }
@@ -1691,8 +1694,10 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
     }
 
     int counts = 0, total = 0;
-    for (i = 0, j = k->contents; j; j = j->next_content, i++) {
+    i = 0;
+    for (auto j : IterRef(k->getContents())) {
         counts += check_insidebag(j, 0.5);
+        i++;
         counts++;
     }
     total = counts;
@@ -1940,11 +1945,11 @@ ACMD(do_stat) {
 
         if ((object = get_obj_in_equip_vis(ch, name, &number, ch->equipment)) != nullptr)
             do_stat_object(ch, object);
-        else if ((object = get_obj_in_list_vis(ch, name, &number, ch->contents)) != nullptr)
+        else if ((object = get_obj_in_list_vis(ch, name, &number, ch->getContents())) != nullptr)
             do_stat_object(ch, object);
         else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_ROOM)) != nullptr)
             do_stat_character(ch, victim);
-        else if ((object = get_obj_in_list_vis(ch, name, &number, ch->getRoom()->contents)) != nullptr)
+        else if ((object = get_obj_in_list_vis(ch, name, &number, ch->getLocationObjects())) != nullptr)
             do_stat_object(ch, object);
         else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_WORLD)) != nullptr)
             do_stat_character(ch, victim);
@@ -2452,7 +2457,7 @@ ACMD(do_purge) {
                 }
             }
             extract_char(vict);
-        } else if ((obj = get_obj_in_list_vis(ch, buf, nullptr, ch->getRoom()->contents)) != nullptr) {
+        } else if ((obj = get_obj_in_list_vis(ch, buf, nullptr, ch->getLocationObjects())) != nullptr) {
             act("$n destroys $p.", false, ch, obj, nullptr, TO_ROOM);
             extract_obj(obj);
         } else {
@@ -2468,13 +2473,12 @@ ACMD(do_purge) {
             false, ch, nullptr, nullptr, TO_ROOM);
         send_to_room(IN_ROOM(ch), "The world seems a little cleaner.\r\n");
 
-        for (vict = ch->getRoom()->people; vict; vict = vict->next_in_room) {
+        for(auto vict : IterRef(ch->getLocationPeople())) {
             if (!IS_NPC(vict))
                 continue;
 
             /* Dump inventory. */
-            while (vict->contents)
-                extract_obj(vict->contents);
+            for (auto obj : IterRef(vict->getContents())) extract_obj(obj);
 
             /* Dump equipment. */
             for (i = 0; i < NUM_WEARS; i++)
@@ -2486,8 +2490,7 @@ ACMD(do_purge) {
         }
 
         /* Clear the ground. */
-        while (ch->getRoom()->contents)
-            extract_obj(ch->getRoom()->contents);
+        for (auto o : IterRef(ch->getLocationObjects())) extract_obj(o);
     }
 }
 
@@ -2724,7 +2727,7 @@ void perform_immort_vis(struct char_data *ch) {
 static void perform_immort_invis(struct char_data *ch, int level) {
     struct char_data *tch;
 
-    for (tch = ch->getRoom()->people; tch; tch = tch->next_in_room) {
+    for(auto tch : IterRef(ch->getLocationPeople())) {
         if (tch == ch)
             continue;
         if (GET_ADMLEVEL(tch) >= GET_INVIS_LEV(ch) && GET_ADMLEVEL(tch) < level)
@@ -2974,7 +2977,7 @@ ACMD(do_force) {
         mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), true, "(GC) %s forced room %d to %s",
                GET_NAME(ch), ch->getRoomVnum(), to_force);
 
-        for (vict = ch->getRoom()->people; vict; vict = next_force) {
+        for(auto vict : IterRef(ch->getLocationPeople())) {
             next_force = vict->next_in_room;
             if (!IS_NPC(vict) && GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
                 continue;
@@ -4363,7 +4366,7 @@ ACMD(do_peace) {
     struct char_data *vict, *next_v;
     send_to_room(IN_ROOM(ch), "Everything is quite peaceful now.\r\n");
 
-    for (vict = ch->getRoom()->people; vict; vict = next_v) {
+    for(auto vict : IterRef(ch->getLocationPeople())) {
         next_v = vict->next_in_room;
         if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch))
             continue;
@@ -4447,8 +4450,8 @@ ACMD(do_chown) {
             }
         }
 
-        if (!(obj = get_obj_in_list_vis(victim, buf2, nullptr, victim->contents))) {
-            if (!k && !(obj = get_obj_in_list_vis(victim, buf2, nullptr, victim->contents))) {
+        if (!(obj = get_obj_in_list_vis(victim, buf2, nullptr, victim->getContents()))) {
+            if (!k && !(obj = get_obj_in_list_vis(victim, buf2, nullptr, victim->getContents()))) {
                 send_to_char(ch, "%s does not appear to have the %s.\r\n", GET_NAME(victim), buf2);
                 return;
             }
@@ -4481,19 +4484,10 @@ ACMD(do_zpurge) {
     auto &z = zone_table[zone];
 
     for (auto room = z.bot; room <= z.top; room++) {
-        if ((i = real_room(room)) != NOWHERE) {
-            for (mob = world[i].people; mob; mob = next_mob) {
-                next_mob = mob->next_in_room;
-                if (IS_NPC(mob)) {
-                    extract_char(mob);
-                }
-            }
-
-            for (obj = world[i].contents; obj; obj = next_obj) {
-                next_obj = obj->next_content;
-                extract_obj(obj);
-            }
-        }
+        if(!world.contains(room)) continue;
+        auto r = &world.at(room);
+        for(auto mob : IterRef(r->getPeople())) if (IS_NPC(mob)) extract_char(mob);
+        for (auto obj : IterRef(world.at(i).getContents())) extract_obj(obj);
     }
 
     send_to_char(ch, "All mobiles and objects in zone %d purged.\r\n", zone);

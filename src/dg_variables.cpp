@@ -82,8 +82,7 @@ char *skill_percent(struct char_data *ch, char *skill) {
    Now returns the number of matching objects -- Welcor 02/04
 */
 
-int item_in_list(char *item, obj_data *list) {
-    obj_data *i;
+int item_in_list(char *item, const std::vector<ObjRef>& list) {
     int count = 0;
 
     if (!item || !*item)
@@ -97,27 +96,27 @@ int item_in_list(char *item, obj_data *list) {
         if(uidResult->index() != 1) return 0;
         auto obj = std::get<1>(*uidResult);
 
-        for (i = list; i; i = i->next_content) {
+        for (auto i : IterRef(list)) {
             if (i == obj)
                 count++;
             if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
-                count += item_in_list(item, i->contents);
+                count += item_in_list(item, i->getContents());
         }
     } else if (is_number(item) > -1) { /* check for vnum */
         obj_vnum ovnum = atof(item);
 
-        for (i = list; i; i = i->next_content) {
+        for (auto i : IterRef(list)) {
             if (GET_OBJ_VNUM(i) == ovnum)
                 count++;
             if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
-                count += item_in_list(item, i->contents);
+                count += item_in_list(item, i->getContents());
         }
     } else {
-        for (i = list; i; i = i->next_content) {
+        for (auto i : IterRef(list)) {
             if (isname(item, i->name))
                 count++;
             if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
-                count += item_in_list(item, i->contents);
+                count += item_in_list(item, i->getContents());
         }
     }
     return count;
@@ -139,7 +138,7 @@ int char_has_item(char *item, struct char_data *ch) {
     if (get_object_in_equip(ch, item) != nullptr)
         return 1;
 
-    if (item_in_list(item, ch->contents) == 0)
+    if (item_in_list(item, ch->getContents()) == 0)
         return 0;
     else
         return 1;
@@ -319,9 +318,9 @@ find_replacement(unit_data *u, trig_data *trig, int type, char *var, char *field
                     ch = dynamic_cast<char_data*>(u);
 
                     if ((o = get_object_in_equip(ch, name)));
-                    else if ((o = get_obj_in_list(name, ch->contents)));
+                    else if ((o = get_obj_in_list(name, ch->getContents())));
                     else if (IN_ROOM(ch) != NOWHERE && (c = get_char_in_room(ch->getRoom(), name)));
-                    else if ((o = get_obj_in_list(name, ch->getRoom()->contents)));
+                    else if ((o = get_obj_in_list(name, ch->getLocationObjects())));
                     else if ((c = get_char(name)));
                     else if ((o = get_obj(name)));
                     else if ((r = get_room(name))) {}
@@ -449,7 +448,7 @@ in the vault (vnum: 453) now and then. you can just use
                         strcpy(str, "0");
                     } else {
                         /* item_in_list looks within containers as well. */
-                        snprintf(str, slen, "%d", item_in_list(subfield, world[rrnum].contents));
+                        snprintf(str, slen, "%d", item_in_list(subfield, world.at(rrnum).getContents()));
                     }
                 }
             } else if (!strcasecmp(var, "random")) {
@@ -459,7 +458,7 @@ in the vault (vnum: 453) now and then. you can just use
 
                     if (type == MOB_TRIGGER) {
                         ch = dynamic_cast<char_data*>(u);
-                        for (c = ch->getRoom()->people; c; c = c->next_in_room)
+                        for(auto c : IterRef(ch->getLocationPeople()))
                             if ((c != ch) && valid_dg_target(c, DG_ALLOW_GODS) &&
                                 CAN_SEE(ch, c)) {
                                 if (!rand_number(0, count))
@@ -681,17 +680,19 @@ in the vault (vnum: 453) now and then. you can just use
                         strcpy(str, IS_NPC(c) ? "1" : "0");
                     } else if (!strcasecmp(field, "inventory")) {
                         if (subfield && *subfield) {
-                            for (obj = c->contents; obj; obj = obj->next_content) {
+                            for (auto obj : IterRef(c->getContents())) {
                                 if (GET_OBJ_VNUM(obj) == atof(subfield)) {
                                     snprintf(str, slen, "%s", ((obj)->getUID().c_str())); /* arg given, found */
                                     return;
                                 }
                             }
-                            if (!obj)
-                                *str = '\0'; /* arg given, not found */
+                            *str = '\0'; /* arg given, not found */
                         } else { /* no arg given */
-                            if (c->contents) {
-                                snprintf(str, slen, "%s", ((c->contents)->getUID().c_str()));
+                            if (auto cont = c->getContents(); !cont.empty()) {
+                                for(auto first : IterRef(cont)) {
+                                    snprintf(str, slen, "%s", first->getUID().c_str());
+                                    return;
+                                }
                             } else {
                                 *str = '\0';
                             }
@@ -951,15 +952,19 @@ in the vault (vnum: 453) now and then. you can just use
                         else
                             *str = '\0';
                     } else if (!strcasecmp(field, "contents")) {
-                        if (o->contents)
-                            snprintf(str, slen, "%s", ((o->contents)->getUID().c_str()));
+                        if (auto cont = c->getContents(); !cont.empty()) {
+                            for(auto first : IterRef(cont)) {
+                                snprintf(str, slen, "%s", first->getUID().c_str());
+                                return;
+                            }
+                        }
                         else
                             *str = '\0';
                     }
                         /* thanks to Jamie Nelson (Mordecai of 4 Dimensions MUD) */
                     else if (!strcasecmp(field, "count")) {
                         if (GET_OBJ_TYPE(o) == ITEM_CONTAINER)
-                            snprintf(str, slen, "%d", item_in_list(subfield, o->contents));
+                            snprintf(str, slen, "%d", item_in_list(subfield, o->getContents()));
                         else
                             strcpy(str, "0");
                     }
@@ -981,7 +986,7 @@ in the vault (vnum: 453) now and then. you can just use
                     /* thanks to Jamie Nelson (Mordecai of 4 Dimensions MUD) */
                     if (!strcasecmp(field, "has_in")) {
                         if (GET_OBJ_TYPE(o) == ITEM_CONTAINER)
-                            snprintf(str, slen, "%s", (item_in_list(subfield, o->contents) ? "1" : "0"));
+                            snprintf(str, slen, "%s", (item_in_list(subfield, o->getContents()) ? "1" : "0"));
                         else
                             strcpy(str, "0");
                     }
@@ -1191,18 +1196,20 @@ in the vault (vnum: 453) now and then. you can just use
                 }
             } else if (!strcasecmp(field, "contents")) {
                 if (subfield && *subfield) {
-                    for (obj = r->contents; obj; obj = obj->next_content) {
+                    for (auto obj : IterRef(r->getContents())) {
                         if (GET_OBJ_VNUM(obj) == atof(subfield)) {
                             /* arg given, found */
                             snprintf(str, slen, "%s", ((obj)->getUID().c_str()));
                             return;
                         }
                     }
-                    if (!obj)
-                        *str = '\0'; /* arg given, not found */
+                    *str = '\0'; /* arg given, not found */
                 } else { /* no arg given */
-                    if (r->contents) {
-                        snprintf(str, slen, "%s", ((r->contents)->getUID().c_str()));
+                    if (auto cont = c->getContents(); !cont.empty()) {
+                        for(auto first : IterRef(cont)) {
+                            snprintf(str, slen, "%s", first->getUID().c_str());
+                            return;
+                        }
                     } else {
                         *str = '\0';
                     }

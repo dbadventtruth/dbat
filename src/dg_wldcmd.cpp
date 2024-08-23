@@ -431,16 +431,12 @@ WCMD(do_wpurge) {
 
     if (!*arg) {
         /* purge all */
-        for (ch = room->people; ch; ch = next_ch) {
-            next_ch = ch->next_in_room;
+        for (auto ch : IterRef(room->getPeople())) {
             if (IS_NPC(ch))
                 extract_char(ch);
         }
 
-        for (obj = room->contents; obj; obj = next_obj) {
-            next_obj = obj->next_content;
-            extract_obj(obj);
-        }
+        for (auto obj : IterRef(room->getContents())) extract_obj(obj);
 
         return;
     }

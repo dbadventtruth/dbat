@@ -37,6 +37,7 @@ room_rnum add_room(struct room_data *room) {
             extract_script(&ro, WLD_TRIGGER);
         tch = ro.people;
         tobj = ro.contents;
+        // TODO: update this for new location handling somehow...
         copy_room(&ro, room);
         ro.people = tch;
         ro.contents = tobj;
@@ -66,7 +67,7 @@ int delete_room(room_rnum rnum) {
     if (!world.count(rnum))    /* Can't delete void yet. */
         return false;
 
-    room = &world[rnum];
+    room = &world.at(rnum);
 
     /* This is something you might want to read about in the logs. */
     basic_mud_log("GenOLC: delete_room: Deleting room #%d (%s).", room->vn, room->name);
@@ -88,13 +89,11 @@ int delete_room(room_rnum rnum) {
      * Dump the contents of this room into the Void.  We could also just
      * extract the people, mobs, and objects here.
      */
-    for (obj = world[rnum].contents; obj; obj = next_obj) {
-        next_obj = obj->next_content;
+    for (auto obj : IterRef(room->getContents())) {
         obj_from_room(obj);
         obj_to_room(obj, 0);
     }
-    for (ppl = world[rnum].people; ppl; ppl = next_ppl) {
-        next_ppl = ppl->next_in_room;
+    for (auto ppl : IterRef(room->getPeople())) {
         char_from_room(ppl);
         char_to_room(ppl, 0);
     }
@@ -490,7 +489,7 @@ double room_data::getEnvironment(int type) {
     switch(type) {
         case ENV_GRAVITY: {
             // check for a gravity generator...
-            for(auto c = contents; c; c = c->next_content) {
+            for(auto c : IterRef(getContents())) {
                 if(c->gravity) return c->gravity.value();
             }
 

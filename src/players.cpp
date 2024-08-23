@@ -104,8 +104,8 @@ void deletePlayerCharacter(CharRef ref) {
     // Okay the coast is clear.
 
     // erase their inventory.
-    while(ch->contents)
-        extract_obj(ch->contents);
+    for(auto o : IterRef(ch->getContents()))
+        extract_obj(o);
 
     // delete their gear.
     for(auto & i : ch->equipment)

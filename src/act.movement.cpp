@@ -907,7 +907,7 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
     }
 
     struct obj_data *wall;
-    for (wall = ch->getRoom()->contents; wall; wall = wall->next_content) {
+    for(auto wall : IterRef(ch->getLocationObjects())) {
         if (GET_OBJ_VNUM(wall) == 79) {
             if (GET_OBJ_COST(wall) == dir) {
                 send_to_char(ch, "That direction has a glacial wall blocking it.\r\n");
@@ -1051,10 +1051,10 @@ ACMD(do_move) {
     if (!IS_NPC(ch)) {
         int fail = false;
         struct obj_data *obj, *next_obj;
-        for (obj = ch->getRoom()->contents; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+        for(auto obj : IterRef(ch->getLocationObjects())) {
             if (KICHARGE(obj) > 0 && USER(obj) == ch) {
                 fail = true;
+                break;
             }
         }
         if (fail == true) {
@@ -1318,10 +1318,10 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
             char_from_room(ch);
             char_to_room(ch, real_room(GET_OBJ_VAL(obj, VAL_PORTAL_DEST)));
         }
-        for (obj2 = world[IN_ROOM(ch)].contents; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
+        for (auto obj2 : IterRef(ch->getLocationObjects())) {
             if (GET_OBJ_TYPE(obj2) == ITEM_HATCH) {
                 hatch = obj2;
+                break;
             }
         }
         obj2 = nullptr;
@@ -1803,10 +1803,11 @@ static int perform_enter_obj(struct char_data *ch, struct obj_data *obj, int nee
             if (GET_OBJ_VAL(obj, VAL_PORTAL_DEST) >= 45000 && GET_OBJ_VAL(obj, VAL_PORTAL_DEST) <= 45099) {
                 struct char_data *tch, *next_v;
                 int filled = false;
-                for (tch = world[real_room(GET_OBJ_VAL(obj, VAL_PORTAL_DEST))].people; tch; tch = next_v) {
-                    next_v = tch->next_in_room;
+                auto r = &world.at(real_room(GET_OBJ_VAL(obj, VAL_PORTAL_DEST)));
+                for (auto tch : IterRef(r->getPeople())) {
                     if (tch) {
                         filled = true;
+                        break;
                     }
                 }
                 if (filled == true) {
@@ -1841,10 +1842,10 @@ ACMD(do_enter) {
 
     if (*buf) { /* an argument was supplied, search for door keyword */
         /* Is the object in the room? */
-        obj = get_obj_in_list_vis(ch, buf, nullptr, ch->getRoom()->contents);
+        obj = get_obj_in_list_vis(ch, buf, nullptr, ch->getLocationObjects());
         /* Is the object in the character's inventory? */
         if (!obj)
-            obj = get_obj_in_list_vis(ch, buf, nullptr, ch->contents);
+            obj = get_obj_in_list_vis(ch, buf, nullptr, ch->getContents());
         /* Is the character carrying the object? */
         if (!obj)
             obj = get_obj_in_equip_vis(ch, buf, nullptr, ch->equipment);
@@ -2058,9 +2059,7 @@ ACMD(do_leave) {
         return;
     }
 
-    auto r = ch->getRoom();
-
-    for (obj = r->contents; obj; obj = obj->next_content)
+    for (auto obj : IterRef(ch->getLocationObjects()))
         if (CAN_SEE_OBJ(ch, obj))
             if (GET_OBJ_TYPE(obj) == ITEM_HATCH || GET_OBJ_TYPE(obj) == ITEM_PORTAL) {
                 perform_leave_obj(ch, obj, 0);
@@ -2071,6 +2070,8 @@ ACMD(do_leave) {
         send_to_char(ch, "You are outside.. where do you want to go?\r\n");
         return;
     }
+
+    auto r = ch->getRoom();
 
     for (door = 0; door < NUM_OF_DIRS; door++) {
         auto e = r->dir_option[door];
@@ -2423,7 +2424,7 @@ ACMD(do_sit) {
             send_to_char(ch, "You are already on something!\r\n");
             return;
         }
-        if (!(chair = get_obj_in_list_vis(ch, arg, nullptr, ch->getRoom()->contents))) {
+        if (!(chair = get_obj_in_list_vis(ch, arg, nullptr, ch->getLocationObjects()))) {
             send_to_char(ch, "That isn't here.\r\n");
             return;
         }
@@ -2565,7 +2566,7 @@ ACMD(do_rest) {
             send_to_char(ch, "You are already on something!\r\n");
             return;
         }
-        if (!(chair = get_obj_in_list_vis(ch, arg, nullptr, ch->getRoom()->contents))) {
+        if (!(chair = get_obj_in_list_vis(ch, arg, nullptr, ch->getLocationObjects()))) {
             send_to_char(ch, "That isn't here.\r\n");
             return;
         }
@@ -2739,7 +2740,7 @@ ACMD(do_sleep) {
             send_to_char(ch, "You are already on something!\r\n");
             return;
         }
-        if (!(chair = get_obj_in_list_vis(ch, arg, nullptr, ch->getRoom()->contents))) {
+        if (!(chair = get_obj_in_list_vis(ch, arg, nullptr, ch->getLocationObjects()))) {
             send_to_char(ch, "That isn't here.\r\n");
             return;
         }

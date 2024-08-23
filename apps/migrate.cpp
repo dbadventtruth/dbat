@@ -847,7 +847,6 @@ static int Crash_load(struct char_data *ch) {
                     if (GET_OBJ_TYPE(temp) == ITEM_CONTAINER) {
                         /* rem item ; fill ; equip again */
                         temp = unequip_char(ch, locate - 1);
-                        temp->contents = nullptr; /* should be empty - but who knows */
                         for (; cont_row[0]; cont_row[0] = obj1) {
                             obj1 = cont_row[0]->next_content;
                             obj_to_obj(cont_row[0], temp);
@@ -875,7 +874,6 @@ static int Crash_load(struct char_data *ch) {
                     if (GET_OBJ_TYPE(temp) == ITEM_CONTAINER) {
                         /* take item ; fill ; give to char again */
                         obj_from_char(temp);
-                        temp->contents = nullptr;
                         for (; cont_row[j]; cont_row[j] = obj1) {
                             obj1 = cont_row[j]->next_content;
                             obj_to_obj(cont_row[j], temp);
@@ -1082,15 +1080,7 @@ static void parse_room(FILE *fl, room_vnum virtual_nr) {
         exit(1);
     }
 
-    r.func = nullptr;
-    r.contents = nullptr;
-    r.people = nullptr;
     r.timed = -1;
-
-    for (i = 0; i < NUM_OF_DIRS; i++)
-        r.dir_option[i] = nullptr;
-
-    r.ex_description = nullptr;
 
     snprintf(buf, sizeof(buf), "SYSERR: Format error in room #%d (expecting D/E/S)", virtual_nr);
 

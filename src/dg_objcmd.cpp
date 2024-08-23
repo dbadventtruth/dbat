@@ -289,49 +289,7 @@ OCMD(do_otimer) {
 /* note: this shouldn't be used with containers unless both objects */
 /* are containers! */
 OCMD(do_otransform) {
-    char arg[MAX_INPUT_LENGTH];
-    obj_data *o, tmpobj;
-    struct char_data *wearer = nullptr;
-    int pos = 0;
-
-    one_argument(argument, arg);
-
-    if (!*arg)
-        obj_log(obj, "otransform: missing argument");
-    else if (!isdigit(*arg))
-        obj_log(obj, "otransform: bad argument");
-    else {
-        o = read_object(atoi(arg), VIRTUAL);
-        if (o == nullptr) {
-            obj_log(obj, "otransform: bad object vnum");
-            return;
-        }
-
-        if (obj->worn_by) {
-            pos = obj->worn_on;
-            wearer = obj->worn_by;
-            unequip_char(obj->worn_by, pos);
-        }
-
-        /* move new obj info over to old object and delete new obj */
-        memcpy(&tmpobj, o, sizeof(*o));
-        IN_ROOM(&tmpobj) = IN_ROOM(obj);
-        tmpobj.carried_by = obj->carried_by;
-        tmpobj.worn_by = obj->worn_by;
-        tmpobj.worn_on = obj->worn_on;
-        tmpobj.in_obj = obj->in_obj;
-        tmpobj.contents = obj->contents;
-        tmpobj.id = obj->id;
-        tmpobj.proto_script = obj->proto_script;
-        tmpobj.next_content = obj->next_content;
-        memcpy(obj, &tmpobj, sizeof(*obj));
-
-        if (wearer) {
-            equip_char(wearer, obj, pos);
-        }
-
-        extract_obj(o);
-    }
+    obj_log(obj, "otransform: no longer supported argument");
 }
 
 OCMD(do_dupe) {
@@ -350,19 +308,15 @@ OCMD(do_opurge) {
 
     if (!*arg) {
         /* purge all */
-        if ((rm = obj_room(obj)) != NOWHERE) {
-            for (ch = world[rm].people; ch; ch = next_ch) {
-                next_ch = ch->next_in_room;
+        for (auto ch : IterRef(obj->getLocationPeople())) {
                 if (IS_NPC(ch))
                     extract_char(ch);
             }
 
-            for (o = world[rm].contents; o; o = next_obj) {
-                next_obj = o->next_content;
+            for (auto o : IterRef(obj->getLocationObjects())) {
                 if (o != obj)
                     extract_obj(o);
             }
-        }
 
         return;
     } /* no arg */

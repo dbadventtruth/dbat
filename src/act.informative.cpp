@@ -319,7 +319,7 @@ static void search_room(struct char_data *ch) {
     act("@y$n@Y begins searching the room carefully.@n", true, ch, nullptr, nullptr, TO_ROOM);
     WAIT_STATE(ch, PULSE_1SEC);
 
-    for (vict = ch->getRoom()->people; vict; vict = next_v) {
+    for(auto vict : IterRef(ch->getLocationPeople())) {
         next_v = vict->next_in_room;
         if (AFF_FLAGGED(vict, AFF_HIDE) && vict != ch) {
             if (GET_SUPPRESS(vict) >= 1) {
@@ -350,7 +350,7 @@ static void search_room(struct char_data *ch) {
 
     struct obj_data *obj = nullptr;
 
-    for (obj = ch->getRoom()->contents; obj; obj = obj->next_content) {
+    for(auto obj : IterRef(ch->getLocationObjects())) {
         if (OBJ_FLAGGED(obj, ITEM_BURIED) && perc * bonus > rand_number(50, 200)) {
             act("@YYou uncover @y$p@Y, which had been burried here.@n", true, ch, obj, nullptr, TO_CHAR);
             act("@y$n@Y uncovers @y$p@Y, which had burried here.@n", true, ch, obj, nullptr, TO_ROOM);
@@ -499,12 +499,12 @@ ACMD(do_table) {
         return;
     }
 
-    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getRoom()->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getLocationObjects()))) {
         send_to_char(ch, "You don't see that table here.\r\n");
         return;
     }
 
-    if (!(obj2 = get_obj_in_list_vis(ch, arg2, nullptr, obj->contents))) {
+    if (!(obj2 = get_obj_in_list_vis(ch, arg2, nullptr, obj->getContents()))) {
         send_to_char(ch, "That card doesn't seem to be on that table.\r\n");
         return;
     }
@@ -529,18 +529,16 @@ ACMD(do_draw) {
     struct obj_data *obj = nullptr, *obj2 = nullptr, *obj3 = nullptr, *next_obj = nullptr;
     int drawn = false;
 
-    if (!(obj = get_obj_in_list_vis(ch, "case", nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, "case", nullptr, ch->getContents()))) {
         send_to_char(ch, "You don't have a case.\r\n");
         return;
     }
-    for (obj2 = obj->contents; obj2; obj2 = next_obj) {
-        next_obj = obj2->next_content;
-        if (drawn == false) {
-            obj_from_obj(obj2);
-            obj_to_char(obj2, ch);
-            obj3 = obj2;
-            drawn = true;
-        }
+    for (auto obj2 : IterRef(obj->getContents())) {
+        obj_from_obj(obj2);
+        obj_to_char(obj2, ch);
+        obj3 = obj2;
+        drawn = true;
+        break;
     }
     if (drawn == false) {
         send_to_char(ch, "You don't have any cards in the case!\r\n");
@@ -568,31 +566,27 @@ ACMD(do_shuffle) {
     struct obj_data *obj = nullptr, *obj2 = nullptr, *next_obj = nullptr;
     int count = 0;
 
-    if (!(obj = get_obj_in_list_vis(ch, "case", nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, "case", nullptr, ch->getContents()))) {
         send_to_char(ch, "You don't have a case.\r\n");
         return;
     }
 
-    for (obj2 = obj->contents; obj2; obj2 = next_obj) {
-        next_obj = obj2->next_content;
-        if (!OBJ_FLAGGED(obj2, ITEM_CARD)) {
-            continue;
+    for (auto obj2 : IterRef(obj->getContents())) {
+        if (OBJ_FLAGGED(obj2, ITEM_CARD)) {
+            count++;
         }
-        count += 1;
     }
     if (count <= 0) {
         send_to_char(ch, "You don't have any cards in the case!\r\n");
         return;
     }
     int total = count;
-    for (obj2 = obj->contents; obj2; obj2 = next_obj) {
-        next_obj = obj2->next_content;
+    for (auto obj2 : IterRef(obj->getContents())) {
         obj_from_obj(obj2);
         obj_to_room(obj2, real_room(48));
     }
     while (count > 0) {
-        for (obj2 = world[real_room(48)].contents; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
+        for (auto obj2 : IterRef(world.at(48).getContents())) {
             if (!OBJ_FLAGGED(obj2, ITEM_CARD)) {
                 continue;
             }
@@ -627,8 +621,7 @@ ACMD(do_hand) {
 
     if (!strcasecmp("look", arg)) {
         send_to_char(ch, "@CYour hand contains:\r\n@D---------------------------@n\r\n");
-        for (obj = ch->contents; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+        for (auto obj : IterRef(ch->getContents())) {
             if (obj && !OBJ_FLAGGED(obj, ITEM_CARD)) {
                 continue;
             }
@@ -652,8 +645,7 @@ ACMD(do_hand) {
     } else if (!strcasecmp("show", arg)) {
         send_to_char(ch, "You show off your hand to the room.\r\n");
         act("@C$n's hand contains:\r\n@D---------------------------@n", true, ch, nullptr, nullptr, TO_ROOM);
-        for (obj = ch->contents; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+        for (auto obj : IterRef(ch->getContents())) {
             if (obj && !OBJ_FLAGGED(obj, ITEM_CARD)) {
                 continue;
             }
@@ -689,7 +681,7 @@ ACMD(do_post) {
         return;
     }
 
-    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
         send_to_char(ch, "You don't seem to have that.\r\n");
         return;
     }
@@ -717,7 +709,7 @@ ACMD(do_post) {
         GET_OBJ_POSTTYPE(obj) = 1;
         return;
     } else {
-        if (!(obj2 = get_obj_in_list_vis(ch, arg2, nullptr, ch->getRoom()->contents))) {
+        if (!(obj2 = get_obj_in_list_vis(ch, arg2, nullptr, ch->getLocationObjects()))) {
             send_to_char(ch, "You can't seem to find the thing you want to post it on.\r\n");
             return;
         } else if (GET_OBJ_POSTED(obj2)) {
@@ -768,13 +760,12 @@ ACMD(do_play) {
         return;
     }
 
-    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
         send_to_char(ch, "You don't have that card to play.\r\n");
         return;
     }
 
-    for (obj3 = ch->getRoom()->contents; obj3; obj3 = next_obj) {
-        next_obj = obj3->next_content;
+    for(auto obj3 : IterRef(ch->getLocationObjects())) {
         if (GET_OBJ_VNUM(obj3) == GET_OBJ_VNUM(SITS(ch)) - 4) {
             obj2 = obj3;
         }
@@ -805,7 +796,7 @@ ACMD(do_nickname) {
     }
 
     if (strcasecmp(arg, "ship")) {
-        if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+        if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
             send_to_char(ch, "You don't have that item to nickname.\r\n");
             return;
         }
@@ -818,8 +809,7 @@ ACMD(do_nickname) {
     if (!strcasecmp(arg, "ship")) {
         struct obj_data *ship = nullptr, *next_obj = nullptr, *ship2 = nullptr;
         int found = false;
-        for (ship = ch->getRoom()->contents; ship; ship = next_obj) {
-            next_obj = ship->next_content;
+        for(auto ship : IterRef(ch->getLocationObjects())) {
             if (GET_OBJ_VNUM(ship) >= 45000 && GET_OBJ_VNUM(ship) <= 45999 && found == false) {
                 found = true;
                 ship2 = ship;
@@ -892,7 +882,7 @@ ACMD(do_showoff) {
         return;
     }
 
-    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
         send_to_char(ch, "You don't seem to have that.\r\n");
         return;
     } else if (!(vict = get_player_vis(ch, arg2, nullptr, FIND_CHAR_ROOM))) {
@@ -2137,6 +2127,44 @@ static void list_obj_to_char(struct obj_data *list, struct char_data *ch, int mo
         send_to_char(ch, " Nothing.\r\n");
 }
 
+static void list_obj_to_char(const std::vector<ObjRef>& list, struct char_data *ch, int mode, int show) {
+    struct obj_data *i, *d;
+    bool found = false;
+    int num;
+
+    for (auto i : IterRef(list)) {
+        if (i->room_description == nullptr || strcasecmp(i->room_description, "undefined") == 0)
+            continue;
+
+        num = 0;
+        d = i;
+
+        if (CONFIG_STACK_OBJS) {
+            for (auto j : IterRef(list)) {
+                if (can_stack_objects(j, i) && CAN_SEE_OBJ(ch, j)) {
+                    num++;
+                    if (d == i && !CAN_SEE_OBJ(ch, d))
+                        d = j;
+                }
+            }
+
+            if (num > 1) {
+                send_to_char(ch, "@D(@Rx@Y%2i@D)@n ", num);
+            }
+        }
+
+        if (CAN_SEE_OBJ(ch, d) &&
+            ((*d->room_description != '.' && *d->short_description != '.') || PRF_FLAGGED(ch, PRF_HOLYLIGHT)) ||
+            (GET_OBJ_TYPE(d) == ITEM_LIGHT)) {
+            show_obj_to_char(d, ch, mode);
+            found = true;
+        }
+    }
+
+    if (!found && show)
+        send_to_char(ch, " Nothing.\r\n");
+}
+
 
 static void diag_obj_to_char(struct obj_data *obj, struct char_data *ch) {
     struct {
@@ -2224,245 +2252,182 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch) {
     send_to_char(ch, "%s\r\n", diagnosis[ar_index].text);
 }
 
-static void look_at_char(struct char_data *i, struct char_data *ch) {
-    int j, found, clan = false;
-    char buf[100];
-    struct obj_data *tmp_obj;
+// Utility to send a formatted limb condition message
+static void send_limb_condition(struct char_data* ch, const std::string& limb_name, int limb_condition, bool is_cybernetic) {
+    if (limb_condition >= 50 && !is_cybernetic) {
+        send_to_char(ch, "            @D[@c%-10s @D: @G%2d%s@D/@g100%s        @D]@n\r\n", limb_name.c_str(), limb_condition, "%", "%");
+    } else if (limb_condition > 0 && !is_cybernetic) {
+        send_to_char(ch, "            @D[@c%-10s @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n", limb_name.c_str(), limb_condition, "%", "%");
+    } else if (limb_condition > 0 && is_cybernetic) {
+        send_to_char(ch, "            @D[@c%-10s @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n", limb_name.c_str(), limb_condition, "%", "%");
+    } else if (limb_condition <= 0) {
+        send_to_char(ch, "            @D[@c%-10s @D: @rMissing.            @D]@n\r\n", limb_name.c_str());
+    }
+}
 
-    if (!ch->desc) {
+// Utility to describe a limb
+static void describe_limb(struct char_data* ch, struct char_data* i) {
+    send_limb_condition(ch, "Right Arm", GET_LIMBCOND(i, 0), PLR_FLAGGED(i, PLR_CRARM));
+    send_limb_condition(ch, "Left Arm", GET_LIMBCOND(i, 1), PLR_FLAGGED(i, PLR_CLARM));
+    send_limb_condition(ch, "Right Leg", GET_LIMBCOND(i, 2), PLR_FLAGGED(i, PLR_CRLEG));
+    send_limb_condition(ch, "Left Leg", GET_LIMBCOND(i, 3), PLR_FLAGGED(i, PLR_CLLEG));
+    if (PLR_FLAGGED(i, PLR_HEAD)) {
+        send_to_char(ch, "            @D[@cHead        @D: @GHas.                 @D]@n\r\n");
+    } else {
+        send_to_char(ch, "            @D[@cHead        @D: @rMissing.             @D]@n\r\n");
+    }
+    if (race::hasTail(i->race) && !PLR_FLAGGED(i, PLR_TAILHIDE)) {
+        if(PLR_FLAGGED(i, PLR_TAIL))
+            send_to_char(ch, "            @D[@cTail        @D: @GHas.                 @D]@n\r\n");
+        else
+            send_to_char(ch, "            @D[@cTail        @D: @rMissing.             @D]@n\r\n");
+    }
+}
+
+// Utility to describe age difference
+static void describe_age_difference(struct char_data* ch, struct char_data* i) {
+    int age_diff = GET_AGE(ch) - GET_AGE(i);
+    if (age_diff >= 30) {
+        send_to_char(ch, " appears to be very much %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else if (age_diff >= 25) {
+        send_to_char(ch, " appears to be much %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else if (age_diff >= 15) {
+        send_to_char(ch, " appears to be a good amount %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else if (age_diff >= 10) {
+        send_to_char(ch, " appears to be about a decade %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else if (age_diff >= 5) {
+        send_to_char(ch, " appears to be several years %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else if (age_diff >= 2) {
+        send_to_char(ch, " appears to be a bit %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else if (age_diff != 0) {
+        send_to_char(ch, " appears to be slightly %s than you, and ", age_diff > 0 ? "younger" : "older");
+    } else {
+        send_to_char(ch, " appears to be the same age as you, and ");
+    }
+}
+
+// Utility to show equipped items
+static void show_equipped_items(struct char_data* ch, struct char_data* i) {
+    bool found = false;
+    for (int j = 0; !found && j < NUM_WEARS; j++) {
+        if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j))) {
+            found = true;
+        }
+    }
+
+    if (found && (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NOEQSEE))) {
+        send_to_char(ch, "\r\n");
+        act(PLR_FLAGGED(i, PLR_DISGUISED) ? "The disguised person is using:" : "$n is using:", false, i, nullptr, ch, TO_VICT);
+
+        for (int j = 0; j < NUM_WEARS; j++) {
+            if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) && (j != WEAR_WIELD1 && j != WEAR_WIELD2)) {
+                send_to_char(ch, "%s", wear_where[j]);
+                show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
+
+                if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
+                    for (auto obj2 : IterRef(GET_EQ(i, j)->getContents())) {
+                        send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+                        show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+                    }
+                }
+            } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) && (PLR_FLAGGED(i, PLR_THANDW))) {
+                send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
+                show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
+            }
+        }
+    }
+}
+
+// Utility to peek at inventory if the character has the skill or admin level
+static void peek_inventory(struct char_data *ch, struct char_data *i) {
+    bool found = false;
+    act("\r\nYou attempt to peek at $s inventory:", false, i, nullptr, ch, TO_VICT);
+
+    if (CAN_SEE(i, ch)) {
+        act("$n tries to evaluate what you have in your inventory.", true, ch, nullptr, i, TO_VICT);
+    }
+
+    if (GET_SKILL(ch, SKILL_KEEN) > axion_dice(0) && (!IS_NPC(i) || GET_ADMLEVEL(ch) > 1)) {
+        for (auto tmp_obj : IterRef(i->getContents())) {
+            if (CAN_SEE_OBJ(ch, tmp_obj) && (ADM_FLAGGED(ch, ADM_SEEINV) || (rand_number(0, 20) < GET_WIS(ch)))) {
+                show_obj_to_char(tmp_obj, ch, SHOW_OBJ_SHORT);
+                found = true;
+            }
+        }
+        improve_skill(ch, SKILL_KEEN, 1);
+    } else if (IS_NPC(i) && GET_ADMLEVEL(ch) < 2) {
+        return;
+    } else {
+        act("You are unsure about $s inventory.", false, i, nullptr, ch, TO_VICT);
+        if (CAN_SEE(i, ch)) {
+            act("$n didn't seem to get a good enough look.", true, ch, nullptr, i, TO_VICT);
+        }
+        improve_skill(ch, SKILL_KEEN, 1);
         return;
     }
-    if(i->form == FormID::Base || i->transforms[i->form].description == nullptr || i->transforms[i->form].description == "") {
-        if (i->look_description) {
-            send_to_char(ch, "%s", i->look_description);
-        }
-    } else {
-        send_to_char(ch, "%s", i->transforms[i->form].description);
+
+    if (!found) {
+        send_to_char(ch, "You can't see anything.\r\n");
+        improve_skill(ch, SKILL_KEEN, 1);
     }
+}
+
+static void look_at_char(struct char_data *i, struct char_data *ch) {
+    if (!ch->desc) return;
+
+    // Display character description
+    const char* description = (i->form == FormID::Base || !i->transforms[i->form].description || i->transforms[i->form].description[0] == '\0')
+        ? i->look_description
+        : i->transforms[i->form].description;
+    send_to_char(ch, "%s", description);
+    send_to_char(ch, "\r\n");
+
     if (!MOB_FLAGGED(i, MOB_JUSTDESC)) {
         bringdesc(ch, i);
     }
-    send_to_char(ch, "\r\n");
+
+    // Display limb conditions if not an NPC
     if (!IS_NPC(i)) {
-        if (GET_LIMBCOND(i, 0) >= 50 && !PLR_FLAGGED(i, PLR_CRARM)) {
-            send_to_char(ch, "            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n", GET_LIMBCOND(i, 0),
-                         "%", "%");
-        } else if (GET_LIMBCOND(i, 0) > 0 && !PLR_FLAGGED(i, PLR_CRARM)) {
-            send_to_char(ch, "            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n",
-                         GET_LIMBCOND(i, 0), "%", "%");
-        } else if (GET_LIMBCOND(i, 0) > 0 && PLR_FLAGGED(i, PLR_CRARM)) {
-            send_to_char(ch, "            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n",
-                         GET_LIMBCOND(i, 0), "%", "%");
-        } else if (GET_LIMBCOND(i, 0) <= 0) {
-            send_to_char(ch, "            @D[@cRight Arm   @D: @rMissing.            @D]@n\r\n");
-        }
-        if (GET_LIMBCOND(i, 1) >= 50 && !PLR_FLAGGED(i, PLR_CLARM)) {
-            send_to_char(ch, "            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n", GET_LIMBCOND(i, 1),
-                         "%", "%");
-        } else if (GET_LIMBCOND(i, 1) > 0 && !PLR_FLAGGED(i, PLR_CLARM)) {
-            send_to_char(ch, "            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n",
-                         GET_LIMBCOND(i, 1), "%", "%");
-        } else if (GET_LIMBCOND(i, 1) > 0 && PLR_FLAGGED(i, PLR_CLARM)) {
-            send_to_char(ch, "            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n",
-                         GET_LIMBCOND(i, 1), "%", "%");
-        } else if (GET_LIMBCOND(i, 1) <= 0) {
-            send_to_char(ch, "            @D[@cLeft Arm    @D: @rMissing.            @D]@n\r\n");
-        }
-        if (GET_LIMBCOND(i, 2) >= 50 && !PLR_FLAGGED(i, PLR_CLARM)) {
-            send_to_char(ch, "            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n", GET_LIMBCOND(i, 2),
-                         "%", "%");
-        } else if (GET_LIMBCOND(i, 2) > 0 && !PLR_FLAGGED(i, PLR_CRLEG)) {
-            send_to_char(ch, "            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n",
-                         GET_LIMBCOND(i, 2), "%", "%");
-        } else if (GET_LIMBCOND(i, 2) > 0 && PLR_FLAGGED(i, PLR_CRLEG)) {
-            send_to_char(ch, "            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n",
-                         GET_LIMBCOND(i, 2), "%", "%");
-        } else if (GET_LIMBCOND(i, 2) <= 0) {
-            send_to_char(ch, "            @D[@cRight Leg   @D: @rMissing.            @D]@n\r\n");
-        }
-        if (GET_LIMBCOND(i, 3) >= 50 && !PLR_FLAGGED(i, PLR_CLLEG)) {
-            send_to_char(ch, "            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n", GET_LIMBCOND(i, 3),
-                         "%", "%");
-        } else if (GET_LIMBCOND(i, 3) > 0 && !PLR_FLAGGED(i, PLR_CLLEG)) {
-            send_to_char(ch, "            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n",
-                         GET_LIMBCOND(i, 3), "%", "%");
-        } else if (GET_LIMBCOND(i, 3) > 0 && PLR_FLAGGED(i, PLR_CLLEG)) {
-            send_to_char(ch, "            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n",
-                         GET_LIMBCOND(i, 3), "%", "%");
-        } else if (GET_LIMBCOND(i, 3) <= 0) {
-            send_to_char(ch, "            @D[@cLeft Leg    @D: @rMissing.             @D]@n\r\n");
-        }
-        if (PLR_FLAGGED(i, PLR_HEAD)) {
-            send_to_char(ch, "            @D[@cHead        @D: @GHas.                 @D]@n\r\n");
-        }
-        if (!PLR_FLAGGED(i, PLR_HEAD)) {
-            send_to_char(ch, "            @D[@cHead        @D: @rMissing.             @D]@n\r\n");
-        }
-        if (race::hasTail(i->race) && !PLR_FLAGGED(i, PLR_TAILHIDE)) {
-            if(PLR_FLAGGED(i, PLR_TAIL))
-                send_to_char(ch, "            @D[@cTail        @D: @GHas.                 @D]@n\r\n");
-            else
-                send_to_char(ch, "            @D[@cTail        @D: @rMissing.             @D]@n\r\n");
-        }
+        describe_limb(ch, i);
     }
-    send_to_char(ch, "\r\n");
-    if (GET_CLAN(i) != nullptr && strstr(GET_CLAN(i), "None") == false) {
-        sprintf(buf, "%s", GET_CLAN(i));
-        clan = true;
-    }
-    if (GET_CLAN(i) == nullptr) {
-        clan = false;
-    }
+
+    // Show clan info
+    bool clan = GET_CLAN(i) && strstr(GET_CLAN(i), "None") == nullptr;
     if (!IS_NPC(i)) {
-        send_to_char(ch, "            @D[@mClan        @D: @W%-20s@D]@n\r\n", clan ? buf : "None.");
-    }
-    if (!IS_NPC(i)) {
+        send_to_char(ch, "            @D[@mClan        @D: @W%-20s@D]@n\r\n", clan ? GET_CLAN(i) : "None.");
         send_to_char(ch, "\r\n         @D----------------------------------------@n\r\n");
         trans_check(ch, i);
         send_to_char(ch, "         @D----------------------------------------@n\r\n");
     }
     send_to_char(ch, "\r\n");
 
-    if ((!PLR_FLAGGED(i, PLR_DISGUISED) && (readIntro(ch, i) == 1 && !IS_NPC(i)))) {
-        if (GET_SEX(i) == SEX_NEUTRAL)
-            send_to_char(ch, "%s appears to be %s %s, ", get_i_name(ch, i), AN(RACE(i)), LRACE(i));
-        else
-            send_to_char(ch, "%s appears to be %s %s %s, ", get_i_name(ch, i), AN(MAFE(i)), MAFE(i), LRACE(i));
+    // Display race and size information
+    if ((!PLR_FLAGGED(i, PLR_DISGUISED) && readIntro(ch, i) == 1 && !IS_NPC(i))) {
+        send_to_char(ch, "%s appears to be %s %s%s, ", get_i_name(ch, i), AN(MAFE(i)), MAFE(i), LRACE(i));
     } else if (ch == i || IS_NPC(i)) {
-        if (GET_SEX(i) == SEX_NEUTRAL)
-            send_to_char(ch, "%c%s appears to be %s %s, ", UPPER(*GET_NAME(i)), GET_NAME(i) + 1, AN(RACE(i)), LRACE(i));
-        else
-            send_to_char(ch, "%c%s appears to be %s %s %s, ", UPPER(*GET_NAME(i)), GET_NAME(i) + 1, AN(MAFE(i)),
-                         MAFE(i), LRACE(i));
+        send_to_char(ch, "%c%s appears to be %s %s%s, ", UPPER(*GET_NAME(i)), GET_NAME(i) + 1, AN(MAFE(i)), MAFE(i), LRACE(i));
     } else {
-        if (GET_SEX(i) == SEX_NEUTRAL)
-            send_to_char(ch, "Appears to be %s %s, ", AN(RACE(i)), LRACE(i));
-        else
-            send_to_char(ch, "Appears to be %s %s %s, ", AN(MAFE(i)), MAFE(i), LRACE(i));
+        send_to_char(ch, "Appears to be %s %s%s, ", AN(MAFE(i)), MAFE(i), LRACE(i));
     }
 
     if (IS_NPC(i)) {
         send_to_char(ch, "is %s sized, and\r\n", size_names[get_size(i)]);
-    }
-    if (!IS_NPC(i)) {
+    } else {
         auto w = i->getWeight();
         int h = i->getHeight();
-        auto wString = fmt::format("{}kg", w);
-        send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %s heavy,", size_names[get_size(i)],
-                     h, wString.c_str());
-
-        if (i == ch) {
-            send_to_char(ch, " and ");
-        } else if (GET_AGE(ch) >= GET_AGE(i) + 30) {
-            send_to_char(ch, " appears to be very much younger than you, and ");
-        } else if (GET_AGE(ch) >= GET_AGE(i) + 25) {
-            send_to_char(ch, " appears to be much younger than you, and ");
-        } else if (GET_AGE(ch) >= GET_AGE(i) + 15) {
-            send_to_char(ch, " appears to be a good amount younger than you, and ");
-        } else if (GET_AGE(ch) >= GET_AGE(i) + 10) {
-            send_to_char(ch, " appears to be about a decade younger than you, and ");
-        } else if (GET_AGE(ch) >= GET_AGE(i) + 5) {
-            send_to_char(ch, " appears to be several years younger than you, and ");
-        } else if (GET_AGE(ch) >= GET_AGE(i) + 2) {
-            send_to_char(ch, " appears to be a bit younger than you, and ");
-        } else if (GET_AGE(ch) > GET_AGE(i)) {
-            send_to_char(ch, " appears to be slightly younger than you, and ");
-        } else if (GET_AGE(ch) == GET_AGE(i)) {
-            send_to_char(ch, " appears to be the same age as you, and ");
-        }
-        if (GET_AGE(i) >= GET_AGE(ch) + 30) {
-            send_to_char(ch, " appears to be very much older than you, and ");
-        } else if (GET_AGE(i) >= GET_AGE(ch) + 25) {
-            send_to_char(ch, " appears to be much older than you, and ");
-        } else if (GET_AGE(i) >= GET_AGE(ch) + 15) {
-            send_to_char(ch, " appears to be a good amount older than you, and ");
-        } else if (GET_AGE(i) >= GET_AGE(ch) + 10) {
-            send_to_char(ch, " appears to be about a decade older than you, and ");
-        } else if (GET_AGE(i) >= GET_AGE(ch) + 5) {
-            send_to_char(ch, " appears to be several years older than you, and ");
-        } else if (GET_AGE(i) >= GET_AGE(ch) + 2) {
-            send_to_char(ch, " appears to be a bit older than you, and ");
-        } else if (GET_AGE(i) > GET_AGE(ch)) {
-            send_to_char(ch, " appears to be slightly older than you, and ");
-        }
+        send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,", size_names[get_size(i)], h, w);
+        describe_age_difference(ch, i);
     }
+
     diag_char_to_char(i, ch);
-    found = false;
-    for (j = 0; !found && j < NUM_WEARS; j++)
-        if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)))
-            found = true;
+    show_equipped_items(ch, i);
 
-    if (found && (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NOEQSEE))) {
-        send_to_char(ch, "\r\n");    /* act() does capitalization. */
-        if (!PLR_FLAGGED(i, PLR_DISGUISED)) {
-            act("$n is using:", false, i, nullptr, ch, TO_VICT);
-        } else {
-            act("The disguised person is using:", false, i, nullptr, ch, TO_VICT);
-        }
-        for (j = 0; j < NUM_WEARS; j++)
-            if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) && (j != WEAR_WIELD1 && j != WEAR_WIELD2)) {
-                send_to_char(ch, "%s", wear_where[j]);
-                show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-                if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
-                    struct obj_data *obj2 = nullptr, *next_obj = nullptr, *sheath = GET_EQ(i, j);
-                    for (obj2 = sheath->contents; obj2; obj2 = next_obj) {
-                        next_obj = obj2->next_content;
-                        if (obj2) {
-                            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-                            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-                        }
-                    }
-                    obj2 = nullptr;
-                }
-            } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) && (!PLR_FLAGGED(i, PLR_THANDW))) {
-                send_to_char(ch, "%s", wear_where[j]);
-                show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-                if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
-                    struct obj_data *obj2 = nullptr, *next_obj = nullptr, *sheath = GET_EQ(i, j);
-                    for (obj2 = sheath->contents; obj2; obj2 = next_obj) {
-                        next_obj = obj2->next_content;
-                        if (obj2) {
-                            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-                            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-                        }
-
-                    }
-                    obj2 = nullptr;
-                }
-            } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) && (PLR_FLAGGED(i, PLR_THANDW))) {
-                send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
-                show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-            }
-    }
     if (ch != i && ((GET_SKILL(ch, SKILL_KEEN) && AFF_FLAGGED(ch, AFF_SNEAK)) || GET_ADMLEVEL(ch))) {
-        found = false;
-        act("\r\nYou attempt to peek at $s inventory:", false, i, nullptr, ch, TO_VICT);
-        if (CAN_SEE(i, ch))
-            act("$n tries to evaluate what you have in your inventory.", true, ch, nullptr, i, TO_VICT);
-        if (GET_SKILL(ch, SKILL_KEEN) > axion_dice(0) && (!IS_NPC(i) || GET_ADMLEVEL(ch) > 1)) {
-            for (tmp_obj = i->contents; tmp_obj; tmp_obj = tmp_obj->next_content) {
-                if (CAN_SEE_OBJ(ch, tmp_obj) &&
-                    (ADM_FLAGGED(ch, ADM_SEEINV) || (rand_number(0, 20) < GET_WIS(ch)))) {
-                    show_obj_to_char(tmp_obj, ch, SHOW_OBJ_SHORT);
-                    found = true;
-                }
-            }
-            improve_skill(ch, SKILL_KEEN, 1);
-        } else if (IS_NPC(i) && GET_ADMLEVEL(ch) < 2) {
-            return;
-        } else {
-            act("You are unsure about $s inventory.", false, i, nullptr, ch, TO_VICT);
-            if (CAN_SEE(i, ch))
-                act("$n didn't seem to get a good enough look.", true, ch, nullptr, i, TO_VICT);
-            improve_skill(ch, SKILL_KEEN, 1);
-            return;
-        }
-        if (!found) {
-            send_to_char(ch, "You can't see anything.\r\n");
-            improve_skill(ch, SKILL_KEEN, 1);
-        }
+        peek_inventory(ch, i);
     }
 }
+
+
 
 RaceID char_data::getApparentRaceFor(char_data *viewer) {
     if((viewer == this) || (GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT))
@@ -3612,7 +3577,7 @@ void look_at_room(struct room_data *rm, struct char_data *ch, int ignore_brief) 
     }
 
     display_garden_info(rm, ch);
-    list_obj_to_char(rm->contents, ch, SHOW_OBJ_LONG, false);
+    list_obj_to_char(rm->getContents(), ch, SHOW_OBJ_LONG, false);
     list_char_to_char(rm->people, ch);
 }
 
@@ -3716,7 +3681,7 @@ static void handle_container(struct char_data *ch, struct obj_data *obj, int bit
             act("$n looks in $p.", true, ch, obj, nullptr, TO_ROOM);
         }
 
-        list_obj_to_char(obj->contents, ch, SHOW_OBJ_SHORT, true);
+        list_obj_to_char(obj->getContents(), ch, SHOW_OBJ_SHORT, true);
     }
 }
 
@@ -3930,22 +3895,22 @@ static bool handle_exdesc_look(struct char_data *ch, char *arg, struct extra_des
 static void handle_look_in_inventory(struct char_data *ch, char *arg) {
     if (handle_exdesc_look(ch, arg, nullptr, nullptr)) return;
 
-    for (int j = 0; j < NUM_WEARS; j++) {
-        struct obj_data *eq = GET_EQ(ch, j);
+    for (auto [j, ref] : ch->getEquipment()) {
+        auto eq = ref.get();
         if (eq && CAN_SEE_OBJ(ch, eq) && handle_exdesc_look(ch, arg, eq->ex_description, eq)) {
             examine_equipped_item(ch, eq, arg);
             return;
         }
     }
 
-    for (struct obj_data *obj = ch->contents; obj; obj = obj->next_content) {
+    for (auto obj : IterRef(ch->getContents())) {
         if (CAN_SEE_OBJ(ch, obj) && handle_exdesc_look(ch, arg, obj->ex_description, obj)) {
             examine_item(ch, obj, arg);
             return;
         }
     }
 
-    for (struct obj_data *obj = ch->getRoom()->contents; obj; obj = obj->next_content) {
+    for (auto obj : IterRef(ch->getLocationObjects())) {
         if (CAN_SEE_OBJ(ch, obj) && handle_exdesc_look(ch, arg, obj->ex_description, obj)) {
             examine_item(ch, obj, arg);
             return;
@@ -5354,7 +5319,7 @@ ACMD(do_inventory) {
             return;
         }
     }
-    list_obj_to_char(ch->contents, ch, SHOW_OBJ_SHORT, true);
+    list_obj_to_char(ch->getContents(), ch, SHOW_OBJ_SHORT, true);
     send_to_char(ch, "\n");
 }
 
@@ -5363,7 +5328,7 @@ static void show_equipment(struct char_data *ch, struct obj_data *equipment, con
     show_obj_to_char(equipment, ch, SHOW_OBJ_SHORT);
 
     if (OBJ_FLAGGED(equipment, ITEM_SHEATH)) {
-        for (struct obj_data *obj2 = equipment->contents; obj2; obj2 = obj2->next_content) {
+        for (auto obj2 : IterRef(equipment->getContents())) {
             if (!obj2) continue;
             send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
             show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
@@ -6775,7 +6740,7 @@ ACMD(do_scan) {
                      CCNRM(ch, C_NRM));
         send_to_char(ch, "@W          -----------------          @n\r\n");
 
-        list_obj_to_char(dest->contents, ch, SHOW_OBJ_LONG, false);
+        list_obj_to_char(dest->getContents(), ch, SHOW_OBJ_LONG, false);
         list_char_to_char(dest->people, ch);
         if (dest->geffect >= 1 && dest->geffect <= 5) {
             send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");
@@ -6799,7 +6764,7 @@ ACMD(do_scan) {
                          CCNRM(ch, C_NRM));
             send_to_char(ch, "@W          -----------------          @n\r\n");
 
-            list_obj_to_char(dest2->contents, ch, SHOW_OBJ_LONG, false);
+            list_obj_to_char(dest2->getContents(), ch, SHOW_OBJ_LONG, false);
             list_char_to_char(dest2->people, ch);
             if (dest2->geffect >= 1 && dest2->geffect <= 5) {
                 send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");

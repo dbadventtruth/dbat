@@ -287,12 +287,11 @@ ACMD(do_mjunk) {
             extract_obj(unequip_char(ch, pos));
             return;
         }
-        if ((obj = get_obj_in_list_vis(ch, arg, nullptr, ch->contents)) != nullptr)
+        if ((obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents())) != nullptr)
             extract_obj(obj);
         return;
     } else {
-        for (obj = ch->contents; obj != nullptr; obj = obj_next) {
-            obj_next = obj->next_content;
+        for (auto obj : IterRef(ch->getContents())) {
             if (arg[3] == '\0' || isname(arg + 4, obj->name)) {
                 extract_obj(obj);
             }
@@ -549,14 +548,13 @@ ACMD(do_mpurge) {
         char_data *vnext;
         obj_data *obj_next;
 
-        for (victim = ch->getRoom()->people; victim; victim = vnext) {
+        for(auto victim : IterRef(ch->getLocationPeople())) {
             vnext = victim->next_in_room;
             if (IS_NPC(victim) && victim != ch)
                 extract_char(victim);
         }
 
-        for (obj = ch->getRoom()->contents; obj; obj = obj_next) {
-            obj_next = obj->next_content;
+        for(auto obj : IterRef(ch->getLocationObjects())) {
             extract_obj(obj);
         }
 
@@ -704,7 +702,7 @@ ACMD(do_mteleport) {
             return;
         }
 
-        for (vict = ch->getRoom()->people; vict; vict = next_ch) {
+        for(auto vict : IterRef(ch->getLocationPeople())) {
             next_ch = vict->next_in_room;
 
             if (valid_dg_target(vict, DG_ALLOW_GODS)) {

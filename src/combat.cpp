@@ -1712,7 +1712,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         dmg /= 2;
 
                         /* Hit those in the current room. */
-                        for (vict = k->getRoom()->people; vict; vict = next_v) {
+                        for(auto vict : IterRef(k->getLocationPeople())) {
                             next_v = vict->next_in_room;
 
                             if (vict == ch) {
@@ -1814,7 +1814,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                     dmg /= 2;
 
                     /* Hit those in the current room. */
-                    for (vict = k->getRoom()->people; vict; vict = next_v) {
+                    for(auto vict : IterRef(k->getLocationPeople())) {
                         next_v = vict->next_in_room;
 
                         if (vict == ch) {
@@ -1893,7 +1893,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         dmg /= 2;
 
                         /* Hit those in the current room. */
-                        for (vict = k->getRoom()->people; vict; vict = next_v) {
+                        for(auto vict : IterRef(k->getLocationPeople())) {
                             next_v = vict->next_in_room;
 
                             if (vict == ch) {
@@ -1993,7 +1993,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                     dmg /= 2;
 
                     /* Hit those in the current room. */
-                    for (vict = k->getRoom()->people; vict; vict = next_v) {
+                    for(auto vict : IterRef(k->getLocationPeople())) {
                         next_v = vict->next_in_room;
 
                         if (vict == ch) {
@@ -2554,10 +2554,8 @@ parry_ki(double attperc, struct char_data *ch, struct char_data *vict, char snam
     int foundv = false, foundo = false;
     int64_t dmg = 0;
     struct obj_data *tob, *next_obj;
-    struct char_data *tch, *next_v;
 
-    for (tch = ch->getRoom()->people; tch; tch = next_v) {
-        next_v = tch->next_in_room;
+    for (auto tch : IterRef(ch->getLocationPeople())) {
 
         if (tch == ch)
             continue;
@@ -2596,8 +2594,8 @@ parry_ki(double attperc, struct char_data *ch, struct char_data *vict, char snam
         }
     }
 
-    for (tob = ch->getRoom()->contents; tob; tob = next_obj) {
-        next_obj = tob->next_content;
+    for(auto tob : IterRef(ch->getLocationObjects())) {
+
         if (OBJ_FLAGGED(tob, ITEM_UNBREAKABLE))
             continue;
         if (foundo == true)
@@ -4752,13 +4750,10 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
                 solo_gain(ch, vict);
                 struct obj_data *rew, *next_rew;
                 int founded = 0;
-                for (rew = vict->contents; rew; rew = next_rew) {
-                    next_rew = rew->next_content;
-                    if (rew) {
-                        obj_from_char(rew);
-                        obj_to_room(rew, IN_ROOM(vict));
-                        founded = 1;
-                    }
+                for (auto rew : IterRef(vict->getContents())) {
+                    obj_from_char(rew);
+                    obj_to_room(rew, IN_ROOM(vict));
+                    founded = 1;
                 }
                 if (founded == 1) {
                     act("@c$N@w leaves a reward behind out of respect.@n", true, ch, nullptr, vict, TO_CHAR);

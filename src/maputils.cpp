@@ -47,19 +47,17 @@ void ping_ship(int vnum, int vnum2) {
 }
 
 int checkship(int rnum, int vnum) {
-    struct obj_data *i = nullptr;
-    int there = false;
-
-    for (i = world[rnum].contents; i; i = i->next_content) {
-        if (!ROOM_FLAGGED(rnum, ROOM_NEBULA)) {
-            if (GET_OBJ_TYPE(i) == ITEM_VEHICLE && there != true) {
-                there = true;
-                ping_ship(GET_OBJ_VNUM(i), vnum);
-            }
-        }
+    if(ROOM_FLAGGED(rnum, ROOM_NEBULA)) {
+        return false;
     }
 
-    i = nullptr;
+    bool there = false;
+    for (auto i : IterRef(world.at(rnum).getContents())) {
+        if (GET_OBJ_TYPE(i) == ITEM_VEHICLE) {
+            ping_ship(GET_OBJ_VNUM(i), vnum);
+            there = true;
+        }
+    }
 
     return there;
 }

@@ -219,7 +219,7 @@ ACMD(do_say) {
             strcpy(verb, "say");
         }
 
-        for (tch = ch->getRoom()->people; tch; tch = tch->next_in_room) {
+        for(auto tch : IterRef(ch->getLocationPeople())) {
             if (tch != ch && tch->desc) {
                 char sayto[100];
                 sprintf(sayto, "to %s ", GET_NAME(tch));
@@ -1032,7 +1032,7 @@ ACMD(do_spec_comm) {
 static void handle_whisper(char *buf, struct char_data *ch, struct char_data *vict) {
     struct char_data *tch;
 
-    for (tch = ch->getRoom()->people; tch; tch = tch->next_in_room) {
+    for(auto tch : IterRef(ch->getLocationPeople())) {
         if (IS_NPC(tch)) {
             continue;
         }
@@ -1250,16 +1250,16 @@ ACMD(do_write) {
         return;
     }
     if (*penname) {        /* there were two arguments */
-        if (!(paper = get_obj_in_list_vis(ch, papername, nullptr, ch->contents))) {
+        if (!(paper = get_obj_in_list_vis(ch, papername, nullptr, ch->getContents()))) {
             send_to_char(ch, "You have no %s.\r\n", papername);
             return;
         }
-        if (!(pen = get_obj_in_list_vis(ch, penname, nullptr, ch->contents))) {
+        if (!(pen = get_obj_in_list_vis(ch, penname, nullptr, ch->getContents()))) {
             send_to_char(ch, "You have no %s.\r\n", penname);
             return;
         }
     } else {        /* there was one arg.. let's see what we can find */
-        if (!(paper = get_obj_in_list_vis(ch, papername, nullptr, ch->contents))) {
+        if (!(paper = get_obj_in_list_vis(ch, papername, nullptr, ch->getContents()))) {
             send_to_char(ch, "There is no %s in your inventory.\r\n", papername);
             return;
         }

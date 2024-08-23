@@ -36,7 +36,7 @@ static int player_present(struct char_data *ch) {
     if (IN_ROOM(ch) == NOWHERE)
         return 0;
 
-    for (vict = ch->getRoom()->people; vict; vict = next_v) {
+    for(auto vict : IterRef(ch->getLocationPeople())) {
         next_v = vict->next_in_room;
         if (!IS_NPC(vict)) {
             found = true;
@@ -104,10 +104,10 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
             /* Scavenger (picking up objects) */
             start = std::chrono::high_resolution_clock::now();
             if (IS_HUMANOID(ch) && !FIGHTING(ch) && !MOB_FLAGGED(ch, MOB_NOSCAVENGER) && !MOB_FLAGGED(ch, MOB_NOKILL) && (!player_present(ch) || axion_dice(0) > 118))
-                if (ch->getRoom()->contents && rand_number(1, 100) >= 95) {
+                if (auto contents = ch->getLocationObjects(); !contents.empty() && rand_number(1, 100) >= 95) {
                     max = 1;
                     best_obj = nullptr;
-                    for (obj = ch->getRoom()->contents; obj; obj = obj->next_content)
+                    for(auto obj : IterRef(contents))
                         if (CAN_GET_OBJ(ch, obj) && GET_OBJ_COST(obj) > max) {
                             best_obj = obj;
                             max = GET_OBJ_COST(obj);
@@ -170,9 +170,7 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
 
             /* RESPOND TO A HUGE ATTACK */
             start = std::chrono::high_resolution_clock::now();
-            struct obj_data *hugeatk = nullptr, *next_huge = nullptr;
-            for (hugeatk = ch->getRoom()->contents; hugeatk; hugeatk = next_huge) {
-                next_huge = hugeatk->next_content;
+            for (auto hugeatk : IterRef(ch->getLocationObjects())) {
                 if (FIGHTING(ch)) {
                     continue;
                 }
@@ -203,7 +201,7 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
             if (MOB_FLAGGED(ch, MOB_AGGRESSIVE) && !IS_AFFECTED(ch, AFF_PARALYZE)) {
                 int spot_roll = rand_number(1, GET_LEVEL(ch) + 10);
                 found = false;
-                for (vict = ch->getRoom()->people; vict && !found; vict = vict->next_in_room) {
+                for(auto vict : IterRef(ch->getLocationPeople())) {
                     if (vict == ch)
                         continue;
                     else if (FIGHTING(ch))
@@ -308,7 +306,7 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
             if (false && IS_HUMANOID(ch) && !MOB_FLAGGED(ch, MOB_NOKILL)) {
                 struct char_data *vict, *next_v;
                 int done = false;
-                for (vict = ch->getRoom()->people; vict; vict = next_v) {
+                for(auto vict : IterRef(ch->getLocationPeople())) {
                     next_v = vict->next_in_room;
                     if (vict == ch)
                         continue;
@@ -345,7 +343,7 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
             if (false && !FIGHTING(ch) && rand_number(1, 20) >= 14 && IS_HUMANOID(ch) && !MOB_FLAGGED(ch, MOB_NOKILL)) {
                 struct char_data *vict, *next_v;
                 int done = false;
-                for (vict = ch->getRoom()->people; vict; vict = next_v) {
+                for(auto vict : IterRef(ch->getLocationPeople())) {
                     next_v = vict->next_in_room;
                     if (vict == ch)
                         continue;
@@ -382,7 +380,7 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
             /* Mob Memory */
             if (IS_HUMANOID(ch) && !(ch->mob_specials.memory.empty()) && !MOB_FLAGGED(ch, MOB_DUMMY) && !IS_AFFECTED(ch, AFF_PARALYZE)) {
                 found = false;
-                for (vict = ch->getRoom()->people; vict && !found; vict = vict->next_in_room) {
+                for(auto vict : IterRef(ch->getLocationPeople())) {
                     if (IS_NPC(vict) || !CAN_SEE(ch, vict) || PRF_FLAGGED(vict, PRF_NOHASSLE))
                         continue;
                     if (FIGHTING(ch))
@@ -418,7 +416,7 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
             /* Helper Mobs */
             if (MOB_FLAGGED(ch, MOB_HELPER) && !AFF_FLAGGED(ch, AFF_BLIND) && !AFF_FLAGGED(ch, AFF_CHARM)) {
                 found = false;
-                for (vict = ch->getRoom()->people; vict && !found; vict = vict->next_in_room) {
+                for(auto vict : IterRef(ch->getLocationPeople())) {
                     if (ch == vict || !IS_NPC(vict) || !FIGHTING(vict))
                         continue;
                     if (IS_NPC(FIGHTING(vict)) || ch == FIGHTING(vict))

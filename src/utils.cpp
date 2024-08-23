@@ -1573,7 +1573,7 @@ void handle_evolution(struct char_data *ch, int64_t dmg) {
 void demon_refill_lf(struct char_data *ch, int64_t num) {
     struct char_data *tch = nullptr;
 
-    for (tch = ch->getRoom()->people; tch; tch = tch->next_in_room) {
+    for(auto tch : IterRef(ch->getLocationPeople())) {
         if (!IS_DEMON(tch))
             continue;
         if ((tch->getCurLF()) >= (tch->getMaxLF()))
@@ -1596,7 +1596,7 @@ void mob_talk(struct char_data *ch, const char *speech) {
         return;
     }
 
-    for (tch = ch->getRoom()->people; tch; tch = tch->next_in_room) {
+    for(auto tch : IterRef(ch->getLocationPeople())) {
         if (!IS_NPC(tch))
             continue;
         if (!IS_HUMANOID(tch))
@@ -2716,7 +2716,7 @@ void core_dump_real(const char *who, int line) {
 /* Is there a campfire in the room? */
 int cook_element(room_rnum room) {
     int found = 0;
-    for(auto obj = world[room].contents; obj; obj = obj->next_content) {
+    for (auto obj : IterRef(world.at(room).getContents())) {
         if(GET_OBJ_TYPE(obj) == ITEM_CAMPFIRE) {
             found = 1;
         } else if(obj->vn == 19093) return 2;

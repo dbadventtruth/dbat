@@ -551,12 +551,9 @@ int get_number(char **name) {
     return (1);
 }
 
+struct obj_data *get_obj_in_list_num(int num, const std::vector<ObjRef>& list) {
 
-/* Search a given list for an object number, and return a ptr to that obj */
-struct obj_data *get_obj_in_list_num(int num, struct obj_data *list) {
-    struct obj_data *i;
-
-    for (i = list; i; i = i->next_content)
+    for (auto i : IterRef(list))
         if (GET_OBJ_RNUM(i) == num)
             return (i);
 
@@ -657,14 +654,7 @@ void obj_from_obj(struct obj_data *obj) {
 }
 
 
-/* Set all carried_by to point to new owner */
-void object_list_new_owner(struct obj_data *list, struct char_data *ch) {
-    if (list) {
-        object_list_new_owner(list->contents, ch);
-        object_list_new_owner(list->next_content, ch);
-        list->carried_by = ch;
-    }
-}
+
 
 
 /* Extract an object from the world */
@@ -699,8 +689,7 @@ void extract_obj(struct obj_data *obj) {
         USER(obj) = nullptr;
     }
 
-    while (obj->contents)
-        extract_obj(obj->contents);
+    for (auto o : IterRef(obj->getContents())) extract_obj(o);
 
     obj->deactivate();
 
@@ -724,10 +713,8 @@ static void update_object(struct obj_data *obj, int use) {
     /* dont update objects with a timer trigger */
     if (!SCRIPT_CHECK(obj, OTRIG_TIMER) && (GET_OBJ_TIMER(obj) > 0))
         GET_OBJ_TIMER(obj) -= use;
-    if (obj->contents)
-        update_object(obj->contents, use);
-    if (obj->next_content)
-        update_object(obj->next_content, use);
+    for(auto o : IterRef(obj->getContents()))
+        update_object(o, use);
 }
 
 
@@ -753,8 +740,8 @@ void update_char_objects(struct char_data *ch) {
             update_object(GET_EQ(ch, i), 2);
         }
 
-    if (ch->contents)
-        update_object(ch->contents, 1);
+    for(auto o : IterRef(ch->getContents()))
+        update_object(o, 1);
 }
 
 
@@ -899,8 +886,7 @@ void extract_char_final(struct char_data *ch) {
 
     /* transfer objects to room, if any */
     if(IS_NPC(ch)) {
-        while (ch->contents) {
-            obj = ch->contents;
+        for (auto obj : IterRef(ch->getContents())) {
             obj_from_char(obj);
             obj_to_room(obj, IN_ROOM(ch));
         }
@@ -972,8 +958,7 @@ void extract_char(struct char_data *ch) {
         if (IS_NPC(foll->follower) && AFF_FLAGGED(foll->follower, AFF_CHARM) &&
             (IN_ROOM(foll->follower) == IN_ROOM(ch) || IN_ROOM(ch) == 1)) {
             /* transfer objects to char, if any */
-            while (foll->follower->contents) {
-                auto obj = foll->follower->contents;
+            for (auto obj : IterRef(foll->follower->getContents())) {
                 obj_from_char(obj);
                 obj_to_char(obj, ch);
             }
@@ -1085,7 +1070,7 @@ struct char_data *get_char_room_vis(struct char_data *ch, char *name, int *numbe
     if (*number == 0)
         return (get_player_vis(ch, name, nullptr, FIND_CHAR_ROOM));
 
-    for (i = ch->getRoom()->people; i && *number; i = i->next_in_room) {
+    for(auto i : IterRef(ch->getLocationPeople())) {
         if (!strcasecmp(name, "last") && LASTHIT(i) != 0 && LASTHIT(i) == GET_IDNUM(ch)) {
             if (CAN_SEE(ch, i))
                 if (--(*number) == 0)
@@ -1193,6 +1178,28 @@ struct char_data *get_char_vis(struct char_data *ch, char *name, int *number, in
         return (nullptr);
 }
 
+struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, const std::vector<ObjRef>& list) {
+    struct obj_data *i;
+    int num;
+
+    if (!number) {
+        number = &num;
+        num = get_number(&name);
+    }
+
+    if (*number == 0)
+        return (nullptr);
+
+    for (auto &r : list) {
+        i = r.get();
+        if (i && isname(name, i->name))
+            if (CAN_SEE_OBJ(ch, i) || (GET_OBJ_TYPE(i) == ITEM_LIGHT))
+                if (--(*number) == 0)
+                    return (i);
+    }
+
+    return (nullptr);
+}
 
 struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, struct obj_data *list) {
     struct obj_data *i;
@@ -1230,11 +1237,11 @@ struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number) {
         return (nullptr);
 
     /* scan items carried */
-    if ((i = get_obj_in_list_vis(ch, name, number, ch->contents)) != nullptr)
+    if ((i = get_obj_in_list_vis(ch, name, number, ch->getContents())) != nullptr)
         return (i);
 
     /* scan room */
-    if ((i = get_obj_in_list_vis(ch, name, number, ch->getRoom()->contents)) != nullptr)
+    if ((i = get_obj_in_list_vis(ch, name, number, ch->getLocationObjects())) != nullptr)
         return (i);
 
     /* ok.. no luck yet. scan the entire obj list   */
@@ -1437,12 +1444,12 @@ int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
     }
 
     if (IS_SET(bitvector, FIND_OBJ_INV)) {
-        if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, ch->contents)) != nullptr)
+        if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, ch->getContents())) != nullptr)
             return (FIND_OBJ_INV);
     }
 
     if (IS_SET(bitvector, FIND_OBJ_ROOM)) {
-        if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, ch->getRoom()->contents)) != nullptr)
+        if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, ch->getLocationObjects())) != nullptr)
             return (FIND_OBJ_ROOM);
     }
 

@@ -1978,7 +1978,7 @@ void timed_dt(struct char_data *ch) {
     *
     */
     if (ch->getRoom()->timed == 0) {
-        for (vict = ch->getRoom()->people; vict; vict = vict->next_in_room) {
+        for(auto vict : IterRef(ch->getLocationPeople())) {
             if (IS_NPC(vict))
                 continue;
             if (GET_ADMLEVEL(vict) >= ADMLVL_IMMORT)

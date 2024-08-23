@@ -137,7 +137,7 @@ int trgvar_in_room(room_vnum vnum) {
     return i;
 }
 
-obj_data *get_obj_in_list(char *name, obj_data *list) {
+obj_data *get_obj_in_list(char *name, const std::vector<ObjRef>& list) {
     obj_data *i;
     int32_t id;
 
@@ -149,10 +149,10 @@ obj_data *get_obj_in_list(char *name, obj_data *list) {
         if(uidResult->index() != 1) return nullptr;
         auto obj = std::get<1>(*uidResult);
 
-        for (i = list; i; i = i->next_content)
+        for (auto i : IterRef(list))
             if(i == obj) return obj;
     } else {
-        for (i = list; i; i = i->next_content)
+        for (auto i : IterRef(list))
             if (isname(name, i->name))
                 return i;
     }
@@ -388,7 +388,7 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
         return obj;
 
     /* is it inside ? */
-    if (obj->contents && (i = get_obj_in_list(name, obj->contents)))
+    if ((i = get_obj_in_list(name, obj->getContents())))
         return i;
 
     /* or outside ? */
@@ -409,11 +409,11 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
         return i;
         /* or carried ? */
     else if (obj->carried_by &&
-             (i = get_obj_in_list(name, obj->carried_by->contents)))
+             (i = get_obj_in_list(name, obj->carried_by->getContents())))
         return i;
     else if ((rm = obj_room(obj)) != NOWHERE) {
         /* check the floor */
-        if ((i = get_obj_in_list(name, world[rm].contents)))
+        if ((i = get_obj_in_list(name, world[rm].getContents())))
             return i;
 
         /* check peoples' inventory */
@@ -564,7 +564,7 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
     if (!strcasecmp(name, "self") || !strcasecmp(name, "me"))
         return obj;
 
-    if (obj->contents && (i = get_obj_in_list(name, obj->contents)))
+    if ((i = get_obj_in_list(name, obj->getContents())))
         return i;
 
     if (obj->in_obj && isname(name, obj->in_obj->name))
@@ -574,11 +574,11 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
         return i;
 
     if (obj->carried_by &&
-        (i = get_obj_in_list(name, obj->carried_by->contents)))
+        (i = get_obj_in_list(name, obj->carried_by->getContents())))
         return i;
 
     if (((rm = obj_room(obj)) != NOWHERE) &&
-        (i = get_obj_in_list(name, world[rm].contents)))
+        (i = get_obj_in_list(name, world.at(rm).getContents())))
         return i;
 
     return get_obj(name);
@@ -596,11 +596,11 @@ obj_data *get_obj_in_room(room_data *room, char *name) {
         if(!uidResult) return nullptr;
         if(uidResult->index() != 1) return nullptr;
         auto o = std::get<1>(*uidResult);
-        for (obj = room->contents; obj; obj = obj->next_content)
+        for (auto obj : IterRef(room->getContents()))
             if (o == obj)
                 return obj;
     } else {
-        for (obj = room->contents; obj; obj = obj->next_content)
+        for (auto obj : IterRef(room->getContents()))
             if (isname(name, obj->name))
                 return obj;
     }
@@ -621,7 +621,7 @@ obj_data *get_obj_by_room(room_data *room, char *name) {
         return std::get<1>(*uidResult);
     }
 
-    for (obj = room->contents; obj; obj = obj->next_content)
+    for (auto obj : IterRef(room->getContents()))
         if (isname(name, obj->name))
             return obj;
 
@@ -944,9 +944,11 @@ ACMD(do_attach) {
     if (is_abbrev(arg, "mobile") || is_abbrev(arg, "mtr")) {
         victim = get_char_vis(ch, targ_name, nullptr, FIND_CHAR_WORLD);
         if (!victim) { /* search room for one with this vnum */
-            for (victim = ch->getRoom()->people; victim; victim = victim->next_in_room)
+            for (auto v : IterRef(ch->getLocationPeople())) {
+                victim = v;
                 if (GET_MOB_VNUM(victim) == num_arg)
                     break;
+            }
 
             if (!victim) {
                 send_to_char(ch, "That mob does not exist.\r\n");
@@ -975,14 +977,19 @@ ACMD(do_attach) {
     } else if (is_abbrev(arg, "object") || is_abbrev(arg, "otr")) {
         object = get_obj_vis(ch, targ_name, nullptr);
         if (!object) { /* search room for one with this vnum */
-            for (object = ch->getRoom()->contents; object; object = object->next_content)
+            for (auto o : IterRef(ch->getLocationObjects())) {
+                object = o;
                 if (GET_OBJ_VNUM(object) == num_arg)
                     break;
+            }
+                
 
             if (!object) { /* search inventory for one with this vnum */
-                for (object = ch->contents; object; object = object->next_content)
-                    if (GET_OBJ_VNUM(object) == num_arg)
-                        break;
+                for (auto o : IterRef(ch->getContents())) {
+                object = o;
+                if (GET_OBJ_VNUM(object) == num_arg)
+                    break;
+            }
 
                 if (!object) {
                     send_to_char(ch, "That object does not exist.\r\n");
@@ -1139,9 +1146,11 @@ ACMD(do_detach) {
         if (is_abbrev(arg1, "mobile") || !strcasecmp(arg1, "mtr")) {
             victim = get_char_vis(ch, arg2, nullptr, FIND_CHAR_WORLD);
             if (!victim) { /* search room for one with this vnum */
-                for (victim = ch->getRoom()->people; victim; victim = victim->next_in_room)
+                for (auto v : IterRef(ch->getLocationPeople())) {
+                    victim = v;
                     if (GET_MOB_VNUM(victim) == num_arg)
                         break;
+                }
 
                 if (!victim) {
                     send_to_char(ch, "No such mobile around.\r\n");
@@ -1156,14 +1165,18 @@ ACMD(do_detach) {
         } else if (is_abbrev(arg1, "object") || !strcasecmp(arg1, "otr")) {
             object = get_obj_vis(ch, arg2, nullptr);
             if (!object) { /* search room for one with this vnum */
-                for (object = ch->getRoom()->contents; object; object = object->next_content)
+                for (auto o : IterRef(ch->getLocationObjects())) {
+                    object = o;
                     if (GET_OBJ_VNUM(object) == num_arg)
                         break;
-
+                }
+                
                 if (!object) { /* search inventory for one with this vnum */
-                    for (object = ch->contents; object; object = object->next_content)
+                    for (auto obj : IterRef(ch->getContents())) {
+                        object = obj;
                         if (GET_OBJ_VNUM(object) == num_arg)
                             break;
+                    }
 
                     if (!object) { /* give up */
                         send_to_char(ch, "No such object around.\r\n");
@@ -1179,9 +1192,9 @@ ACMD(do_detach) {
         } else {
             /* Thanks to Carlos Myers for fixing the line below */
             if ((object = get_obj_in_equip_vis(ch, arg1, nullptr, ch->equipment)));
-            else if ((object = get_obj_in_list_vis(ch, arg1, nullptr, ch->contents)));
+            else if ((object = get_obj_in_list_vis(ch, arg1, nullptr, ch->getContents())));
             else if ((victim = get_char_room_vis(ch, arg1, nullptr)));
-            else if ((object = get_obj_in_list_vis(ch, arg1, nullptr, ch->getRoom()->contents)));
+            else if ((object = get_obj_in_list_vis(ch, arg1, nullptr, ch->getLocationObjects())));
             else if ((victim = get_char_vis(ch, arg1, nullptr, FIND_CHAR_WORLD)));
             else if ((object = get_obj_vis(ch, arg1, nullptr)));
             else

@@ -181,24 +181,13 @@ int delete_object(obj_rnum rnum) {
             continue;
 
         /* extract_obj() will just axe contents. */
-        if (tmp->contents) {
-            struct obj_data *this_content, *next_content;
-            for (this_content = tmp->contents; this_content; this_content = next_content) {
-                next_content = this_content->next_content;
-                if (IN_ROOM(tmp)) {
-                    /* Transfer stuff from object to room. */
-                    obj_from_obj(this_content);
-                    obj_to_room(this_content, IN_ROOM(tmp));
-                } else if (tmp->worn_by || tmp->carried_by) {
-                    /* Transfer stuff from object to person inventory. */
-                    obj_from_char(this_content);
-                    obj_to_char(this_content, tmp->carried_by);
-                } else if (tmp->in_obj) {
-                    /* Transfer stuff from object to containing object. */
-                    obj_from_obj(this_content);
-                    obj_to_obj(this_content, tmp->in_obj);
-                }
-            }
+        if (auto cont = tmp->getContents(); !cont.empty()) {
+            auto loc = tmp->getLocation();
+            if(loc.second.type == CoordinateType::Equipped)
+                loc.second.type == CoordinateType::Inventory;
+
+            for(auto o : IterRef(cont))
+                o->setLocation(loc);
         }
         /* Remove from object_list, etc. - handles weight changes, and similar. */
         extract_obj(tmp);
@@ -420,7 +409,7 @@ void obj_data::activate() {
     if(vn == 65)
         objectSubscriptions.subscribe("healTankService", r);
 
-    if(contents) activateContents();
+    activateContents();
 }
 
 void obj_data::deactivate() {
@@ -434,7 +423,7 @@ void obj_data::deactivate() {
     for(auto t : trig_list) t->deactivate();
     
     objectSubscriptions.unsubscribeFromAll(ref());
-    if(contents) deactivateContents();
+    deactivateContents();
 }
 
 void obj_data::deserializeInstance(const nlohmann::json &j, bool isActive) {

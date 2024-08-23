@@ -38,7 +38,7 @@ SPECIAL(dump) {
     struct obj_data *k;
     int value = 0;
 
-    for (k = ch->getRoom()->contents; k; k = ch->getRoom()->contents) {
+    for(auto k : IterRef(ch->getLocationObjects())) {
         act("$p vanishes in a puff of smoke!", false, nullptr, k, nullptr, TO_ROOM);
         extract_obj(k);
     }
@@ -48,7 +48,7 @@ SPECIAL(dump) {
 
     do_drop(ch, argument, cmd, SCMD_DROP);
 
-    for (k = ch->getRoom()->contents; k; k = ch->getRoom()->contents) {
+    for(auto k : IterRef(ch->getLocationObjects())) {
         act("$p vanishes in a puff of smoke!", false, nullptr, k, nullptr, TO_ROOM);
         value += MAX(1, MIN(50, GET_OBJ_COST(k) / 10));
         extract_obj(k);
@@ -107,8 +107,7 @@ bool check_mob_in_room(mob_vnum mob, room_vnum room) {
 
 bool check_obj_in_room(obj_vnum obj, room_vnum room) {
     if(auto rfind = world.find(room); rfind != world.end()) {
-        auto &r = rfind->second;
-        for(auto o = r.contents; o; o = o->next_content)
+        for(auto o : IterRef(rfind->second.getContents()))
             if(o->vn == obj) return true;
     }
     return false;
@@ -494,8 +493,7 @@ SPECIAL(auction) {
 
     if (CMD_IS("cancel")) {
 
-        for (obj = world[auct_room].contents; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+        for (auto obj : IterRef(world.at(auct_room).getContents())) {
             if (obj && GET_AUCTER(obj) == ((ch)->id)) {
                 obj2 = obj;
                 found = true;
@@ -543,8 +541,7 @@ SPECIAL(auction) {
         struct descriptor_data *d;
         int founded = false;
 
-        for (obj = world[auct_room].contents; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+        for (auto obj : IterRef(world.at(auct_room).getContents())) {
             if (obj && GET_CURBID(obj) == ((ch)->id)) {
                 obj2 = obj;
                 found = true;
@@ -625,7 +622,7 @@ SPECIAL(auction) {
 
         value = atoi(arg2);
 
-        if (!(obj2 = get_obj_in_list_vis(ch, arg, nullptr, ch->contents))) {
+        if (!(obj2 = get_obj_in_list_vis(ch, arg, nullptr, ch->getContents()))) {
             send_to_char(ch, "You don't have that item to auction.\r\n");
             return (true);
         }
@@ -692,9 +689,10 @@ SPECIAL(healtank) {
     char arg[MAX_INPUT_LENGTH];
     one_argument(argument, arg);
 
-    for (i = ch->getRoom()->contents; i; i = i->next_content) {
+    for(auto i : IterRef(ch->getLocationObjects())) {
         if (GET_OBJ_VNUM(i) == 65) {
             htank = i;
+            break;
         } else {
             continue;
         }
@@ -943,9 +941,10 @@ SPECIAL(gravity) {
     int match = false;
 
     one_argument(argument, arg);
-    for (i = ch->getRoom()->contents; i; i = i->next_content) {
+    for(auto i : IterRef(ch->getLocationObjects())) {
         if (GET_OBJ_VNUM(i) == 11) {
             obj = i;
+            break;
         } else {
             continue;
         }
@@ -1023,9 +1022,10 @@ SPECIAL(bank) {
 
     struct obj_data *i, *obj = nullptr;
 
-    for (i = ch->getRoom()->contents; i; i = i->next_content) {
+    for(auto i : IterRef(ch->getLocationObjects())) {
         if (GET_OBJ_VNUM(i) == 3034) {
             obj = i;
+            break;
         } else {
             continue;
         }

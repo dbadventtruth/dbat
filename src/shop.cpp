@@ -61,6 +61,7 @@ static struct obj_data *
 get_purchase_obj(struct char_data *ch, char *arg, struct char_data *keeper, vnum shop_nr, int msg);
 
 static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name, struct obj_data *list);
+static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name, const std::vector<ObjRef>& list);
 
 static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name, struct obj_data *list);
 
@@ -534,6 +535,29 @@ static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name,
     return (nullptr);
 }
 
+static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name, const std::vector<ObjRef>& list) {
+    struct obj_data *last_match = nullptr;
+    int j, number;
+    char tmpname[MAX_INPUT_LENGTH];
+    char *tmp;
+
+    strlcpy(tmpname, name, sizeof(tmpname));
+    tmp = tmpname;
+    if (!(number = get_number(&tmp)))
+        return (nullptr);
+
+    for (auto i : IterRef(list)) {
+        if (isname(tmp, i->name))
+            if (CAN_SEE_OBJ(ch, i) && !same_obj(last_match, i)) {
+                if (j == number)
+                    return (i);
+                last_match = i;
+                j++;
+            }
+    }
+    return (nullptr);
+}
+
 static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name,
                                          struct obj_data *list) {
     struct obj_data *loop, *last_obj = nullptr;
@@ -556,6 +580,28 @@ static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name,
     return (nullptr);
 }
 
+static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name, const std::vector<ObjRef>& list) {
+    struct obj_data *last_obj = nullptr;
+    int qindex;
+
+    if (is_number(name))
+        qindex = atoi(name);
+    else if (is_number(name + 1))
+        qindex = atoi(name + 1);
+    else
+        return (nullptr);
+
+    for (auto loop : IterRef(list)) {
+        if (CAN_SEE_OBJ(ch, loop) && GET_OBJ_COST(loop) > 0)
+            if (!same_obj(last_obj, loop)) {
+                if (--qindex == 0)
+                    return (loop);
+                last_obj = loop;
+            }
+    }
+    return (nullptr);
+}
+
 static struct obj_data *get_purchase_obj(struct char_data *ch, char *arg,
                                          struct char_data *keeper, vnum shop_nr, int msg) {
     char name[MAX_INPUT_LENGTH];
@@ -564,9 +610,9 @@ static struct obj_data *get_purchase_obj(struct char_data *ch, char *arg,
     one_argument(arg, name);
     do {
         if (*name == '#' || is_number(name))
-            obj = get_hash_obj_vis(ch, name, keeper->contents);
+            obj = get_hash_obj_vis(ch, name, keeper->getContents());
         else
-            obj = get_slide_obj_vis(ch, name, keeper->contents);
+            obj = get_slide_obj_vis(ch, name, keeper->getContents());
         if (!obj) {
             if (msg) {
                 char buf[MAX_INPUT_LENGTH];
@@ -914,7 +960,7 @@ get_selling_obj(struct char_data *ch, char *name, struct char_data *keeper, vnum
     struct obj_data *obj;
     int result;
 
-    if (!(obj = get_obj_in_list_vis(ch, name, nullptr, ch->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, name, nullptr, ch->getContents()))) {
         if (msg) {
             char tbuf[MAX_INPUT_LENGTH];
 
@@ -1002,7 +1048,7 @@ static void sort_keeper_objs(struct char_data *keeper, vnum shop_nr) {
         temp = list;
         list = list->next_content;
         if (shop_producing(temp, shop_nr) &&
-            !get_obj_in_list_num(GET_OBJ_RNUM(temp), keeper->contents)) {
+            !get_obj_in_list_num(GET_OBJ_RNUM(temp), keeper->getContents())) {
             obj_to_char(temp, keeper);
             SHOP_SORT(shop_nr)++;
         } else
@@ -1190,28 +1236,28 @@ static void shopping_list(char *arg, struct char_data *ch, struct char_data *kee
 
     len = strlcpy(buf, " ##   Available   Item                             Min. Lvl       Cost\r\n"
                        "----------------------------------------------------------------------\r\n", sizeof(buf));
-    if (keeper->contents)
-        for (obj = keeper->contents; obj; obj = obj->next_content)
-            if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_COST(obj) > 0) {
-                if (!last_obj) {
-                    last_obj = obj;
-                    cnt = 1;
-                } else if (same_obj(last_obj, obj))
-                    cnt++;
-                else {
-                    lindex++;
-                    if (!*name || isname(name, last_obj->name)) {
-                        strncat(buf, list_object(last_obj, cnt, lindex, shop_nr, keeper, ch),
-                                sizeof(buf) - len - 1);    /* strncat: OK */
-                        len = strlen(buf);
-                        if (len + 1 >= sizeof(buf))
-                            break;
-                        found = true;
-                    }
-                    cnt = 1;
-                    last_obj = obj;
+
+    for (auto obj : IterRef(keeper->getContents()))
+        if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_COST(obj) > 0) {
+            if (!last_obj) {
+                last_obj = obj;
+                cnt = 1;
+            } else if (same_obj(last_obj, obj))
+                cnt++;
+            else {
+                lindex++;
+                if (!*name || isname(name, last_obj->name)) {
+                    strncat(buf, list_object(last_obj, cnt, lindex, shop_nr, keeper, ch),
+                            sizeof(buf) - len - 1);    /* strncat: OK */
+                    len = strlen(buf);
+                    if (len + 1 >= sizeof(buf))
+                        break;
+                    found = true;
                 }
+                cnt = 1;
+                last_obj = obj;
             }
+        }
     lindex++;
     if (!last_obj)    /* we actually have nothing in our list for sale, period */
         send_to_char(ch, "Currently, there is nothing for sale.\r\n");
@@ -1685,10 +1731,8 @@ bool shop_data::isProducing(obj_vnum vn) {
 }
 
 void shop_data::runPurge() {
-    struct obj_data *next_obj;
     for(auto keeper : getKeepers()) {
-        for (auto sobj = keeper->contents; sobj; sobj = next_obj) {
-            next_obj = sobj->next_content;
+        for (auto sobj : IterRef(keeper->getContents())) {
             if(!sobj) continue;
             if(isProducing(sobj->vn)) {
                 keeper->mod(CharMoney::Carried, GET_OBJ_COST(sobj));
