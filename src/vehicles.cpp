@@ -338,17 +338,6 @@ struct obj_data *find_hatch_by_vnum(int vnum) {
     return nullptr;
 }
 
-/* Search the given list for an object type, and return a ptr to that obj*/
-struct obj_data *get_obj_in_list_type(int type, struct obj_data *list) {
-    struct obj_data *i;
-
-    for (i = list; i; i = i->next_content)
-        if (GET_OBJ_TYPE(i) == type)
-            return i;
-
-    return nullptr;
-}
-
 struct obj_data *get_obj_in_list_type(int type, const std::vector<ObjRef>& list) {
     for (auto i : IterRef(list))
         if (GET_OBJ_TYPE(i) == type)

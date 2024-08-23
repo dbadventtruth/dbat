@@ -54,8 +54,6 @@ static void print_object_location(int num, struct obj_data *obj, struct char_dat
 
 static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mode);
 
-static void list_obj_to_char(struct obj_data *list, struct char_data *ch, int mode, int show);
-
 static void trans_check(struct char_data *ch, struct char_data *vict);
 
 static int show_obj_modifiers(struct obj_data *obj, struct char_data *ch);
@@ -2087,44 +2085,6 @@ static bool can_stack_objects(struct obj_data *a, struct obj_data *b) {
         (GET_OBJ_VNUM(a) != 255 && GET_OBJ_VNUM(b) != 255)) return true;
 
     return false;
-}
-
-static void list_obj_to_char(struct obj_data *list, struct char_data *ch, int mode, int show) {
-    struct obj_data *i, *d;
-    bool found = false;
-    int num;
-
-    for (i = list; i; i = i->next_content) {
-        if (i->room_description == nullptr || strcasecmp(i->room_description, "undefined") == 0)
-            continue;
-
-        num = 0;
-        d = i;
-
-        if (CONFIG_STACK_OBJS) {
-            for (auto j = list; j != i; j = j->next_content) {
-                if (can_stack_objects(j, i) && CAN_SEE_OBJ(ch, j)) {
-                    num++;
-                    if (d == i && !CAN_SEE_OBJ(ch, d))
-                        d = j;
-                }
-            }
-
-            if (num > 1) {
-                send_to_char(ch, "@D(@Rx@Y%2i@D)@n ", num);
-            }
-        }
-
-        if (CAN_SEE_OBJ(ch, d) &&
-            ((*d->room_description != '.' && *d->short_description != '.') || PRF_FLAGGED(ch, PRF_HOLYLIGHT)) ||
-            (GET_OBJ_TYPE(d) == ITEM_LIGHT)) {
-            show_obj_to_char(d, ch, mode);
-            found = true;
-        }
-    }
-
-    if (!found && show)
-        send_to_char(ch, " Nothing.\r\n");
 }
 
 static void list_obj_to_char(const std::vector<ObjRef>& list, struct char_data *ch, int mode, int show) {

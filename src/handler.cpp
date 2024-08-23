@@ -1190,34 +1190,12 @@ struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *numb
     if (*number == 0)
         return (nullptr);
 
-    for (auto &r : list) {
-        i = r.get();
+    for (auto i : IterRef(list)) {
         if (i && isname(name, i->name))
             if (CAN_SEE_OBJ(ch, i) || (GET_OBJ_TYPE(i) == ITEM_LIGHT))
                 if (--(*number) == 0)
                     return (i);
     }
-
-    return (nullptr);
-}
-
-struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, struct obj_data *list) {
-    struct obj_data *i;
-    int num;
-
-    if (!number) {
-        number = &num;
-        num = get_number(&name);
-    }
-
-    if (*number == 0)
-        return (nullptr);
-
-    for (i = list; i && *number; i = i->next_content)
-        if (isname(name, i->name))
-            if (CAN_SEE_OBJ(ch, i) || (GET_OBJ_TYPE(i) == ITEM_LIGHT))
-                if (--(*number) == 0)
-                    return (i);
 
     return (nullptr);
 }

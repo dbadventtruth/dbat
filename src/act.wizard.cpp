@@ -1317,6 +1317,7 @@ static void do_stat_room(struct char_data *ch) {
     if (auto cont = rm->getContents(); !cont.empty()) {
         send_to_char(ch, "Contents:@g");
         column = 9;    /* ^^^ strlen ^^^ */
+        int count = cont.size();
 
         found = 0;
         for (auto j : IterRef(cont)) {
@@ -1326,7 +1327,7 @@ static void do_stat_room(struct char_data *ch) {
 
             column += send_to_char(ch, "%s %s", found++ ? "," : "", j->short_description);
             if (column >= 62) {
-                send_to_char(ch, "%s\r\n", j->next_content ? "," : "");
+                send_to_char(ch, "%s\r\n", count-- ? "," : "");
                 found = 0;
                 column = 0;
             }
@@ -1526,6 +1527,7 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
 
     if (auto cont = j->getContents(); !cont.empty()) {
         int column;
+        int count = cont.size();
 
         send_to_char(ch, "\r\nContents:@g");
         column = 9;    /* ^^^ strlen ^^^ */
@@ -1534,7 +1536,7 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
         for (auto j2 : IterRef(cont)) {
             column += send_to_char(ch, "%s %s", found++ ? "," : "", j2->short_description);
             if (column >= 62) {
-                send_to_char(ch, "%s\r\n", j2->next_content ? "," : "");
+                send_to_char(ch, "%s\r\n", count-- ? "," : "");
                 found = 0;
                 column = 0;
             }

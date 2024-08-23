@@ -857,7 +857,7 @@ struct obj_data : public virtual unit_data, public virtual HasLocation {
     struct char_data *worn_by{};      /* Worn by? */
     int16_t worn_on{-1};          /* Worn where?		      */
 
-    struct obj_data *next_content{}; /* For 'contains' lists             */
+    struct obj_data *next_content{}; /* For 'contains' lists */
 
     struct obj_spellbook_spell *sbinfo{};  /* For spellbook info */
     struct char_data *sitting{};       /* Who is sitting on me? */

@@ -30,7 +30,6 @@
 #include "dbat/genshp.h"
 
 /* Forward/External function declarations */
-static void sort_keeper_objs(struct char_data *keeper, vnum shop_nr);
 
 /* Local variables */
 std::map<shop_vnum, struct shop_data> shop_index;
@@ -51,8 +50,6 @@ static void shopping_sell(char *arg, struct char_data *ch, struct char_data *kee
 static struct obj_data *
 get_selling_obj(struct char_data *ch, char *name, struct char_data *keeper, vnum shop_nr, int msg);
 
-static struct obj_data *slide_obj(struct obj_data *obj, struct char_data *keeper, vnum shop_nr);
-
 static void shopping_buy(char *arg, struct char_data *ch, struct char_data *keeper, vnum shop_nr);
 
 static void shopping_app(char *arg, struct char_data *ch, struct char_data *keeper, vnum shop_nr);
@@ -60,10 +57,7 @@ static void shopping_app(char *arg, struct char_data *ch, struct char_data *keep
 static struct obj_data *
 get_purchase_obj(struct char_data *ch, char *arg, struct char_data *keeper, vnum shop_nr, int msg);
 
-static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name, struct obj_data *list);
 static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name, const std::vector<ObjRef>& list);
-
-static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name, struct obj_data *list);
 
 static char *customer_string(vnum shop_nr, int detailed);
 
@@ -512,29 +506,6 @@ static char *times_message(struct obj_data *obj, char *name, int num) {
     return (buf);
 }
 
-static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name,
-                                          struct obj_data *list) {
-    struct obj_data *i, *last_match = nullptr;
-    int j, number;
-    char tmpname[MAX_INPUT_LENGTH];
-    char *tmp;
-
-    strlcpy(tmpname, name, sizeof(tmpname));
-    tmp = tmpname;
-    if (!(number = get_number(&tmp)))
-        return (nullptr);
-
-    for (i = list, j = 1; i && (j <= number); i = i->next_content)
-        if (isname(tmp, i->name))
-            if (CAN_SEE_OBJ(ch, i) && !same_obj(last_match, i)) {
-                if (j == number)
-                    return (i);
-                last_match = i;
-                j++;
-            }
-    return (nullptr);
-}
-
 static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name, const std::vector<ObjRef>& list) {
     struct obj_data *last_match = nullptr;
     int j, number;
@@ -555,28 +526,6 @@ static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name, cons
                 j++;
             }
     }
-    return (nullptr);
-}
-
-static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name,
-                                         struct obj_data *list) {
-    struct obj_data *loop, *last_obj = nullptr;
-    int qindex;
-
-    if (is_number(name))
-        qindex = atoi(name);
-    else if (is_number(name + 1))
-        qindex = atoi(name + 1);
-    else
-        return (nullptr);
-
-    for (loop = list; loop; loop = loop->next_content)
-        if (CAN_SEE_OBJ(ch, loop) && GET_OBJ_COST(loop) > 0)
-            if (!same_obj(last_obj, loop)) {
-                if (--qindex == 0)
-                    return (loop);
-                last_obj = loop;
-            }
     return (nullptr);
 }
 
@@ -725,9 +674,6 @@ static void shopping_app(char *arg, struct char_data *ch, struct char_data *keep
     if (!is_ok(keeper, ch, shop_nr))
         return;
 
-    if (SHOP_SORT(shop_nr) < IS_CARRYING_N(keeper))
-        sort_keeper_objs(keeper, shop_nr);
-
     if (!*arg) {
         char buf[MAX_INPUT_LENGTH];
 
@@ -836,9 +782,6 @@ static void shopping_buy(char *arg, struct char_data *ch, struct char_data *keep
 
     if (!is_ok(keeper, ch, shop_nr))
         return;
-
-    if (SHOP_SORT(shop_nr) < IS_CARRYING_N(keeper))
-        sort_keeper_objs(keeper, shop_nr);
 
     if ((buynum = transaction_amt(arg)) < 0) {
         char buf[MAX_INPUT_LENGTH];
@@ -995,67 +938,6 @@ get_selling_obj(struct char_data *ch, char *name, struct char_data *keeper, vnum
     return (nullptr);
 }
 
-static struct obj_data *slide_obj(struct obj_data *obj, struct char_data *keeper,
-                                  vnum shop_nr)
-/*
-   This function is a slight hack!  To make sure that duplicate items are
-   only listed once on the "list", this function groups "identical"
-   objects together on the shopkeeper's inventory list.  The hack involves
-   knowing how the list is put together, and manipulating the order of
-   the objects on the list.  (But since most of DIKU is not encapsulated,
-   and information hiding is almost never used, it isn't that big a deal) -JF
-*/
-{
-    struct obj_data *loop;
-    int temp;
-
-    if (SHOP_SORT(shop_nr) < IS_CARRYING_N(keeper))
-        sort_keeper_objs(keeper, shop_nr);
-
-    /* Extract the object if it is identical to one produced */
-    if (shop_producing(obj, shop_nr)) {
-        temp = GET_OBJ_RNUM(obj);
-        extract_obj(obj);
-        return (&obj_proto[temp]);
-    }
-    SHOP_SORT(shop_nr)++;
-    loop = keeper->contents;
-    obj_to_char(obj, keeper);
-    keeper->contents = loop;
-    while (loop) {
-        if (same_obj(obj, loop)) {
-            obj->next_content = loop->next_content;
-            loop->next_content = obj;
-            return (obj);
-        }
-        loop = loop->next_content;
-    }
-    keeper->contents = obj;
-    return (obj);
-}
-
-static void sort_keeper_objs(struct char_data *keeper, vnum shop_nr) {
-    struct obj_data *list = nullptr, *temp;
-
-    while (SHOP_SORT(shop_nr) < IS_CARRYING_N(keeper)) {
-        temp = keeper->contents;
-        obj_from_char(temp);
-        temp->next_content = list;
-        list = temp;
-    }
-
-    while (list) {
-        temp = list;
-        list = list->next_content;
-        if (shop_producing(temp, shop_nr) &&
-            !get_obj_in_list_num(GET_OBJ_RNUM(temp), keeper->getContents())) {
-            obj_to_char(temp, keeper);
-            SHOP_SORT(shop_nr)++;
-        } else
-            slide_obj(temp, keeper, shop_nr);
-    }
-}
-
 static void shopping_sell(char *arg, struct char_data *ch, struct char_data *keeper, vnum shop_nr) {
     char tempstr[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH], tempbuf[MAX_INPUT_LENGTH];
     struct obj_data *obj;
@@ -1107,7 +989,6 @@ static void shopping_sell(char *arg, struct char_data *ch, struct char_data *kee
 
         sold++;
         obj_from_char(obj);
-        slide_obj(obj, keeper, shop_nr);    /* Seems we don't use return value. */
         obj = get_selling_obj(ch, name, keeper, shop_nr, false);
     }
 
@@ -1228,9 +1109,6 @@ static void shopping_list(char *arg, struct char_data *ch, struct char_data *kee
 
     if (!is_ok(keeper, ch, shop_nr))
         return;
-
-    if (SHOP_SORT(shop_nr) < IS_CARRYING_N(keeper))
-        sort_keeper_objs(keeper, shop_nr);
 
     one_argument(arg, name);
 

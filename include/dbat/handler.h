@@ -110,7 +110,6 @@ struct obj_data *get_obj_in_list_num(int num, const std::vector<ObjRef>& list);
 
 struct obj_data *get_obj_num(obj_rnum nr);
 
-struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, struct obj_data *list);
 struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, const std::vector<ObjRef>& list);
 
 

@@ -1037,10 +1037,16 @@ in the vault (vnum: 453) now and then. you can just use
                             o->name = strdup(blah);
                         }
                     } else if (!strcasecmp(field, "next_in_list")) {
-                        if (o->next_content)
-                            snprintf(str, slen, "%s", ((o->next_content)->getUID().c_str()));
-                        else
-                            *str = '\0';
+                        if (auto loc = o->getLocation(); loc.second.type == CoordinateType::Inventory) {
+                            auto contents = loc.first->getContents();
+                            // we need to advance the iterator to be at o and then try to go one further.
+                            auto it = std::find(contents.begin(), contents.end(), o);
+                            if (it != contents.end() && ++it != contents.end()) {
+                                snprintf(str, slen, "%s", (*it)->getUID().c_str());
+                            } else {
+                                *str = '\0';
+                            }
+                        }
                     }
                     break;
                 case 'r':
