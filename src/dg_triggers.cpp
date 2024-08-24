@@ -472,7 +472,8 @@ int receive_mtrigger(char_data *ch, char_data *actor, obj_data *obj) {
             ADD_UID_VAR(buf, t, actor, "actor", 0);
             ADD_UID_VAR(buf, t, obj, "object", 0);
             ret_val = script_driver(ch, t, MOB_TRIGGER, TRIG_NEW);
-            if (DEAD(actor) || DEAD(ch) || obj->carried_by != actor)
+            auto loc = obj->getLocation();
+            if (DEAD(actor) || DEAD(ch) || loc.first != actor)
                 return 0;
             else
                 return ret_val;
@@ -861,7 +862,8 @@ int give_otrigger(obj_data *obj, char_data *actor, char_data *victim) {
              * a) the object is purged.
              * b) the object is not carried by the giver.
              */
-            if (!obj || obj->carried_by != actor)
+            auto loc = obj->getLocation();
+            if (!obj || loc.first != actor)
                 return 0;
             else
                 return ret_val;
@@ -1152,13 +1154,15 @@ int drop_wtrigger(obj_data *obj, char_data *actor) {
         return 1;
 
     room = actor->getRoom();
+    if(!room) return 1;
     for(auto t : room->trig_list)
         if (TRIGGER_CHECK(t, WTRIG_DROP) &&
             (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
             ADD_UID_VAR(buf, t, actor, "actor", 0);
             ADD_UID_VAR(buf, t, obj, "object", 0);
             ret_val = script_driver(room, t, WLD_TRIGGER, TRIG_NEW);
-            if (obj->carried_by != actor)
+            auto loc = obj->getLocation();
+            if (loc.first != actor)
                 return 0;
             else
                 return ret_val;
@@ -1177,6 +1181,7 @@ int cast_wtrigger(char_data *actor, char_data *vict, obj_data *obj, int spellnum
         return 1;
 
     room = actor->getRoom();
+    if(!room) return 1;
     for(auto t : room->trig_list) {
         if (TRIGGER_CHECK(t, WTRIG_CAST) &&
             (rand_number(1, 100) <= GET_TRIG_NARG(t))) {

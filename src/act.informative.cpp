@@ -1420,7 +1420,7 @@ static void gen_map(struct char_data *ch, int num) {
 
     initialize_map(map);
     auto room = ch->getRoom();
-    map_draw_room(map, 4, 4, ch->in_room, ch);
+    map_draw_room(map, 4, 4, ch->getRoom()->vn, ch);
 
     for (int door = 0; door < NUM_OF_DIRS; door++) {
         auto d = room->dir_option[door];
@@ -4532,9 +4532,9 @@ ACMD(do_score) {
                      add_commas(GET_GOLD(ch)).c_str(), add_commas(
                         (ch->getCarriedWeight())).c_str());
         double gravity = 1.0;
-        auto room = world.find(ch->in_room);
-        if(room != world.end()) {
-            gravity = room->second.getEnvironment(ENV_GRAVITY);
+        
+        if(auto room = ch->getRoom(); room) {
+            gravity = room->getEnvironment(ENV_GRAVITY);
         }
         std::string grav = gravity > 1.0 ? fmt::format("(Gravity:", gravity) : "";
         send_to_char(ch, "      @D[      @CBank@D| @W%-15s@D] [ @CMax Carry@D| @W%-15s@D]@n %s\n",
@@ -5959,20 +5959,27 @@ static void print_object_location(int num, struct obj_data *obj, struct char_dat
         send_to_char(ch, "O%3d. %-25s - ", num, obj->short_description);
     else
         send_to_char(ch, "%33s", " - ");
+    
+    auto loc = obj->getLocation();
 
-    if (IN_ROOM(obj) != NOWHERE)
-        send_to_char(ch, "[%5d] %s\r\n", obj->getRoomVnum(), obj->getRoom()->name);
-    else if (obj->carried_by)
-        send_to_char(ch, "carried by %s in room [%d]\r\n", PERS(obj->carried_by, ch),
-                     obj->carried_by->getRoomVnum());
-    else if (obj->worn_by)
-        send_to_char(ch, "worn by %s in room [%d]\r\n", PERS(obj->worn_by, ch), obj->worn_by->getRoomVnum());
-    else if (obj->in_obj) {
-        send_to_char(ch, "inside %s%s\r\n", obj->in_obj->short_description, (recur ? ", which is" : " "));
-        if (recur)
-            print_object_location(0, obj->in_obj, ch, recur);
-    } else
+    if(!loc.first) {
         send_to_char(ch, "in an unknown location\r\n");
+        return;
+    }
+
+    if(auto room = dynamic_cast<room_data*>(loc.first); room) {
+        send_to_char(ch, "[%5d] %s\r\n", room->vn, room->name);
+    } else if(auto mob = dynamic_cast<char_data*>(loc.first); mob) {
+        if(loc.second.type == CoordinateType::Equipped) {
+            send_to_char(ch, "worn by %s in %s\r\n", PERS(mob, ch), mob->getLocationName().c_str());
+        } else {
+            send_to_char(ch, "carried by %s in %s\r\n", PERS(mob, ch), mob->getLocationName().c_str());
+        }
+    } else if(auto obj = dynamic_cast<obj_data*>(loc.first); obj) {
+        send_to_char(ch, "inside %s, which is in %s\r\n", obj->short_description, obj->getLocationName().c_str());
+    } else {
+        send_to_char(ch, "in an unknown location: %s\r\n", obj->getLocationName().c_str());
+    }
 }
 
 static void perform_immort_where(struct char_data *ch, char *arg) {
@@ -6676,7 +6683,7 @@ ACMD(do_scan) {
         return;
     }
 
-    auto darkHere = IS_DARK(ch->in_room);
+    auto darkHere = IS_DARK(room->vn);
 
     for (i = 0; i < 10; i++) {
         auto d = room->dir_option[i];

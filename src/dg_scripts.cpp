@@ -385,29 +385,35 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     /* is it inside ? */
     if ((i = get_obj_in_list(name, obj->getContents())))
         return i;
+    
+    auto loc = obj->getLocation();
 
     /* or outside ? */
-    if (obj->in_obj) {
-        if (*name == UID_CHAR) {
-            std::optional<DgUID> result;
-            result = resolveUIDActive(name);
-            auto uidResult = result;
-            if(!uidResult) return nullptr;
-            if(uidResult->index() != 1) return nullptr;
-            auto o = std::get<1>(*uidResult);
-            if(o == obj->in_obj) return o;
-        } else if (isname(name, obj->in_obj->name))
-            return obj->in_obj;
+    if (loc.second.type == CoordinateType::Inventory) {
+        if(auto is_obj = dynamic_cast<obj_data*>(loc.first); is_obj) {
+            if (*name == UID_CHAR) {
+                std::optional<DgUID> result;
+                result = resolveUIDActive(name);
+                auto uidResult = result;
+                if(!uidResult) return nullptr;
+                if(uidResult->index() != 1) return nullptr;
+                auto o = std::get<1>(*uidResult);
+                if(o == is_obj) return o;
+            } else if (isname(name, is_obj->name))
+                return is_obj;
+            }
+        if(auto is_char = dynamic_cast<char_data*>(loc.first); is_char) {
+            if(auto i = get_obj_in_list(name, is_char->getContents()); i) return i;
+        }
     }
         /* or worn ?*/
-    else if (obj->worn_by && (i = get_object_in_equip(obj->worn_by, name)))
-        return i;
-        /* or carried ? */
-    else if (obj->carried_by &&
-             (i = get_obj_in_list(name, obj->carried_by->getContents())))
-        return i;
+    else if (loc.second.type == CoordinateType::Equipped) {
+        if(auto is_char = dynamic_cast<char_data*>(loc.first); is_char) {
+            if ((i = get_object_in_equip(is_char, name)))
+                return i;
+        }
+    }
     else {
-        
         /* check the floor */
         if ((i = get_obj_in_list(name, obj->getLocationObjects())))
             return i;
@@ -483,15 +489,10 @@ char_data *get_char_by_obj(obj_data *obj, char *name) {
         if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
             return ch;
     } else {
-        if (obj->carried_by &&
-            isname(name, obj->carried_by->name) &&
-            valid_dg_target(obj->carried_by, DG_ALLOW_GODS))
-            return obj->carried_by;
-
-        if (obj->worn_by &&
-            isname(name, obj->worn_by->name) &&
-            valid_dg_target(obj->worn_by, DG_ALLOW_GODS))
-            return obj->worn_by;
+        auto loc = obj->getLocation();
+        if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+            if(isname(name, c->name) && valid_dg_target(c, DG_ALLOW_GODS)) return c;
+        }
 
         for (auto &r : activeCharacters) {
             ch = r.get();
@@ -524,14 +525,12 @@ char_data *get_char_by_room(room_data *room, char *name) {
             return ch;
     } else {
         for (auto ch : IterRef(room->getPeople()))
-            if (isname(name, ch->name) &&
-                valid_dg_target(ch, DG_ALLOW_GODS))
+            if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
                 return ch;
 
         for (auto &r : activeCharacters) {
             ch = r.get();
-            if (ch && isname(name, ch->name) &&
-                valid_dg_target(ch, DG_ALLOW_GODS))
+            if (ch && isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
                 return ch;
         }
     }
@@ -563,19 +562,21 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
     if ((i = get_obj_in_list(name, obj->getContents())))
         return i;
 
-    if (obj->in_obj && isname(name, obj->in_obj->name))
-        return obj->in_obj;
+    auto loc = obj->getLocation();
 
-    if (obj->worn_by && (i = get_object_in_equip(obj->worn_by, name)))
-        return i;
-
-    if (obj->carried_by &&
-        (i = get_obj_in_list(name, obj->carried_by->getContents())))
-        return i;
-
-    if (((rm = obj_room(obj)) != NOWHERE) &&
-        (i = get_obj_in_list(name, world.at(rm).getContents())))
-        return i;
+    if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
+        if(loc.second.type == CoordinateType::Inventory) {
+            if(isname(name, o->name)) return o;
+        }
+    } else if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+        if(loc.second.type == CoordinateType::Inventory) {
+            if(auto i = get_obj_in_list(name, c->getContents()); i) return i;
+        } else if(loc.second.type == CoordinateType::Equipped) {
+            if(auto i = get_object_in_equip(c, name); i) return i;
+        }
+    } else if(auto r = dynamic_cast<room_data*>(loc.first); r) {
+        if(auto i = get_obj_in_list(name, r->getContents()); i) return i;
+    }
 
     return get_obj(name);
 }

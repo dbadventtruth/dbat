@@ -696,7 +696,6 @@ void remove_limb(struct char_data *vict, int num) {
 
     body_part = create_obj();
     body_part->vn = NOTHING;
-    IN_ROOM(body_part) = NOWHERE;
 
     switch (num) {
         case 0:
@@ -1630,31 +1629,28 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
     corpse = create_obj();
 
     corpse->vn = NOTHING;
-    IN_ROOM(corpse) = NOWHERE;
     objectSubscriptions.subscribe("corpseRotService", corpse->ref());
 
     /* This handles how the corpse is viewed - Iovan */
     handle_corpse_condition(corpse, ch);
 
+    auto rvn = ch->getRoomVnum();
+
     if (AFF_FLAGGED(ch, AFF_ASHED)) {
         act("@WSome ashes fall off the corpse.@n", true, ch, nullptr, nullptr, TO_ROOM);
-        struct obj_data *ashes;
+        int drop_count = 0;
         if (rand_number(1, 3) == 2) {
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
+            drop_count = 3;
         } else if (rand_number(1, 2) == 2) {
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
+            drop_count = 2;
         } else {
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
+            drop_count = 1;
         }
+        while(drop_count--) {
+            auto ashes = read_object(1305, VIRTUAL);
+            obj_to_room(ashes, rvn);
+        }
+
     }
 
     /* Let's have a chance to give animals meat */

@@ -769,9 +769,8 @@ void broken_update(uint64_t heartPulse, double deltaTime) {
 
     // Gravity generators
     for (auto k : get_vnum_list(objectVnumIndex, 11)) {
-        if (k->carried_by) {
-            continue;
-        }
+        auto loc = k->getLocation();
+        if(loc.second.type == CoordinateType::Inventory) continue;
 
         if (rand_number(1, 2) == 2) {
             continue;
@@ -799,9 +798,8 @@ void broken_update(uint64_t heartPulse, double deltaTime) {
 
     // ATMS
     for(auto k : get_vnum_list(objectVnumIndex, 3034)) {
-        if (k->carried_by) {
-            continue;
-        }
+        auto loc = k->getLocation();
+        if(loc.second.type == CoordinateType::Inventory) continue;
 
         if (rand_number(1, 2) == 2) {
             continue;
@@ -3268,4 +3266,18 @@ std::string format_double(double value) {
         // Format with up to 2 decimal places
         return fmt::format("{:.2f}", value);
     }
+}
+
+bool CAN_SEE_OBJ_CARRIER(char_data *sub, obj_data *obj) {
+    if(auto loc = obj->getLocation(); loc.first) {
+        if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+            return CAN_SEE(sub, c);
+        }
+    }
+    return false;
+}
+
+bool MORT_CAN_SEE_OBJ(char_data *sub, obj_data *obj) {
+    if(!LIGHT_OK(sub)) return false;
+    return ((obj)->getLocation().first == (sub)) && INVIS_OK_OBJ((sub), (obj)) && CAN_SEE_OBJ_CARRIER((sub), (obj));
 }

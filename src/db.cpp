@@ -1833,30 +1833,6 @@ void remove_unique_id(struct obj_data *obj) {
     obj_data::instances.erase(obj->id);
 }
 
-void log_dupe_objects(struct obj_data *obj1, struct obj_data *obj2) {
-    mudlog(BRF, ADMLVL_GOD, true, "DUPE: Dupe object found: %s [%d] [%" TMT ":%" I64T "]",
-           obj1->short_description ? obj1->short_description : "<No name>",
-           GET_OBJ_VNUM(obj1), obj1->generation, obj1->id);
-    mudlog(BRF, ADMLVL_GOD, true, "DUPE: First: In room: %d (%s), "
-                                  "In object: %s, Carried by: %s, Worn by: %s",
-           obj1->getRoomVnum(),
-           IN_ROOM(obj1) == NOWHERE ? "Nowhere" : obj1->getRoom()->name,
-           obj1->in_obj ? obj1->in_obj->short_description : "None",
-           obj1->carried_by ? GET_NAME(obj1->carried_by) : "Nobody",
-           obj1->worn_by ? GET_NAME(obj1->worn_by) : "Nobody");
-    mudlog(BRF, ADMLVL_GOD, true, "DUPE: Newer: In room: %d (%s), "
-                                  "In object: %s, Carried by: %s, Worn by: %s",
-           obj2->getRoomVnum(),
-           IN_ROOM(obj2) == NOWHERE ? "Nowhere" : obj2->getRoom()->name,
-           obj2->in_obj ? obj2->in_obj->short_description : "None",
-           obj2->carried_by ? GET_NAME(obj2->carried_by) : "Nobody",
-           obj2->worn_by ? GET_NAME(obj2->worn_by) : "Nobody");
-
-    // assign a new unique ID to obj2.
-    obj2->id = nextObjID();
-    mudlog(BRF, ADMLVL_GOD, true, "Conflicting object assigned new id: %d", obj2->id);
-}
-
 void check_unique_id(struct obj_data *obj) {
     if(obj->id == -1) {
         obj->id = nextObjID();
@@ -1864,20 +1840,6 @@ void check_unique_id(struct obj_data *obj) {
         basic_mud_log("Object Found with ID -1. Automatically fixed to ID %d", obj->id);
     }
     auto find = obj_data::instances.find(obj->id);
-
-    if(find != obj_data::instances.end() && find->second.first == obj->generation) {
-        log_dupe_objects(find->second.second, obj);
-    }
-}
-
-static void log_dupe_characters(struct char_data *ch1, struct char_data *ch2) {
-    mudlog(BRF, ADMLVL_GOD, true, "DUPE: Dupe character found: %s [%d] [%" TMT ":%" I64T "]",
-           ch1->short_description ? ch1->short_description : "<No name>",
-           ch1->vn, ch1->generation, ch1->id);
-
-    // assign a new unique ID to obj2.
-    ch2->id = nextCharID();
-    mudlog(BRF, ADMLVL_GOD, true, "Conflicting character assigned new id: %d", ch2->id);
 }
 
 void check_unique_id(struct char_data *ch) {
@@ -1887,10 +1849,6 @@ void check_unique_id(struct char_data *ch) {
         basic_mud_log("Character Found with ID -1. Automatically fixed to ID %d", ch->id);
     }
     auto find = char_data::instances.find(ch->id);
-
-    if(find != char_data::instances.end() && find->second.first == ch->generation) {
-        log_dupe_characters(find->second.second, ch);
-    }
 }
 
 void add_unique_id(struct char_data *ch) {
@@ -2226,10 +2184,10 @@ void reset_zone(zone_rnum zone) {
                             ZONE_ERROR("invalid equipment pos number");
                         } else {
                             obj = read_object(c.arg1, REAL);
-                            IN_ROOM(obj) = IN_ROOM(mob);
+                            obj_to_room(obj, IN_ROOM(mob));
                             load_otrigger(obj);
                             if (wear_otrigger(obj, mob, c.arg3)) {
-                                IN_ROOM(obj) = NOWHERE;
+                                obj_from_room(obj);
                                 equip_char(mob, obj, c.arg3);
                             } else
                                 obj_to_char(obj, mob);
@@ -2600,7 +2558,6 @@ void reset_char(struct char_data *ch) {
 
     ch->followers = nullptr;
     ch->master = nullptr;
-    IN_ROOM(ch) = NOWHERE;
     FIGHTING(ch) = nullptr;
     ch->position = POS_STANDING;
     ch->mob_specials.default_pos = POS_STANDING;

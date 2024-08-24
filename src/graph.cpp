@@ -143,7 +143,7 @@ ACMD(do_sradar) {
 
     if (!*arg) {
         if (GET_ADMLEVEL(ch) >= 1 && noship == true) {
-            printmap(ch->in_room, ch, 0, -1);
+            printmap(ch->getRoom()->vn, ch, 0, -1);
         } else {
             printmap(IN_ROOM(vehicle), ch, 0, GET_OBJ_VNUM(vehicle));
         }
@@ -440,7 +440,7 @@ ACMD(do_track) {
         auto chPlanet = ch->getMatchingArea(area_data::isPlanet);
         auto vPlanet = vict->getMatchingArea(area_data::isPlanet);
         if(chPlanet && chPlanet == vPlanet) {
-            auto &a = areas[world[vict->in_room].area.value()];
+            auto &a = areas[world[vict->getRoom()->vn].area.value()];
             send_to_char(ch, "@WSense@D: %s@n\r\n", a.name.c_str());
         }
     } else {
@@ -484,7 +484,7 @@ ACMD(do_track) {
                 break;
             default:    /* Success! */
                 if ((GET_SKILL_BASE(ch, SKILL_SENSE) >= 75)) {
-                    auto &a = areas[world[vict->in_room].area.value()];
+                    auto &a = areas[world[vict->getRoom()->vn].area.value()];
                     send_to_char(ch, "You sense them %s from here!\r\n", dirs[dir]);
                     send_to_char(ch, "@WSense@D: @Y%s@n\r\n", a.name.c_str());
                 } else {

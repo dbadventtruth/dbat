@@ -587,17 +587,7 @@ void auto_equip(struct char_data *ch, struct obj_data *obj, int location) {
 }
 
 std::string obj_data::serializeLocation() {
-    if(in_obj) {
-        return in_obj->getUID();
-    } else if(carried_by) {
-        return carried_by->getUID();
-    } else if(worn_by) {
-        return worn_by->getUID();
-    } else if(world.contains(in_room)) {
-        return world[in_room].getUID();
-    } else {
-        return ""; // this should NEVER happen!
-    }
+    // TODO: implement this again dammit
 }
 
 nlohmann::json obj_data::serializeRelations() {
@@ -639,13 +629,14 @@ bool obj_data::isProvidingLight() {
     return GET_OBJ_TYPE(this) == ITEM_LIGHT && GET_OBJ_VAL(this, VAL_LIGHT_HOURS);
 }
 
-struct room_data* obj_data::getAbsoluteRoom() {
-    if(auto room = getRoom(); room) {
-        return room;
+struct room_data* HasLocation::getAbsoluteRoom() const {
+    auto l = loc;
+    if(auto r = dynamic_cast<room_data*>(l.first); r) {
+        return r;
     }
-    if(in_obj) return in_obj->getAbsoluteRoom();
-    else if(carried_by) return carried_by->getRoom();
-    else if(worn_by) return worn_by->getRoom();
+    if(auto u = dynamic_cast<HasLocation*>(l.first); u)
+        return u->getAbsoluteRoom();
+    
     return nullptr;
 }
 
@@ -666,13 +657,6 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
 
         if(newLoc.second.type == CoordinateType::Inventory) {
             // we've been added to the character's inventory.
-            next_content = c->contents;
-            c->contents = this;
-            carried_by = c;
-            in_room = NOWHERE;
-            in_obj = nullptr;
-            worn_by = nullptr;
-            worn_on = -1;
 
             /* set flag for crash-save system, but not on mobs! */
             if (GET_OBJ_VAL(this, 0) != 0) {
@@ -685,35 +669,21 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
             // we've been equipped by the character.
             int pos = newLoc.second.x;
             GET_EQ(c, pos) = this;
-            worn_by = c;
-            worn_on = pos;
-            carried_by = nullptr;
-            in_room = NOWHERE;
-            in_obj = nullptr;
         }
     }
 
     else if(auto o = dynamic_cast<obj_data*>(newLoc.first); o) {
         // we've been added to an object's inventory.
-        next_content = o->contents;
-        o->contents = this;
-        in_obj = o;
-        worn_by = nullptr;
-        carried_by = nullptr;
-        in_room = NOWHERE;
+
     }
     
     else if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
         // we've been added to a room.
         if(type_flag == ITEM_PLANT && (r->room_flags.test(ROOM_GARDEN1) || r->room_flags.test(ROOM_GARDEN2)))
             objectSubscriptions.subscribe("growingPlants", ref());
-        
+
         if(r->vn == 80) auc_load(this);
 
-        next_content = r->contents;
-        r->contents = this;
-        in_room = r->vn;
-        carried_by = nullptr;
         GET_LAST_LOAD(this) = time(nullptr);
 
         auto &z = zone_table[r->zone];
@@ -807,14 +777,7 @@ void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
     if(auto c = dynamic_cast<char_data*>(oldLoc.first)) {
         // we've been removed from a character.
         if(oldLoc.second.type == CoordinateType::Inventory) {
-            struct obj_data *temp;
-            REMOVE_FROM_LIST(this, carried_by->contents, next_content, temp);
 
-            /* set flag for crash-save system, but not on mobs! */
-            if (!IS_NPC(carried_by))
-                carried_by->playerFlags.set(PLR_CRASH);
-
-            int64_t previous = (carried_by->getMaxPL());
 
             if (GET_OBJ_VAL(this, 0) != 0) {
                 if (vn == 16705 || vn == 16706 || vn == 16707) {
@@ -822,25 +785,15 @@ void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
                 }
             }
 
-            carried_by = nullptr;
-            next_content = nullptr;
         } else if(oldLoc.second.type == CoordinateType::Equipped) {
             int pos = oldLoc.second.x;
-            worn_by = nullptr;
-            worn_on = -1;
             GET_EQ(c, pos) = nullptr;
         }
     }
 
     else if(auto o = dynamic_cast<obj_data*>(oldLoc.first); o) {
         // we've been removed from an object's inventory.
-        struct obj_data *temp, *obj_from;
-        obj_from = in_obj;
-        temp = in_obj;
-        REMOVE_FROM_LIST(this, obj_from->contents, next_content, temp);
 
-        in_obj = nullptr;
-        next_content = nullptr;
     }
 
     else if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
@@ -850,28 +803,8 @@ void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
 
         if(type_flag == ITEM_PLANT) objectSubscriptions.unsubscribe("growingPlants", ref());
 
-        if (GET_OBJ_POSTED(this) && in_obj == nullptr) {
-            struct obj_data *obj = GET_OBJ_POSTED(this);
-            if (GET_OBJ_POSTTYPE(this) <= 0) {
-                send_to_room(IN_ROOM(obj), "%s@W shakes loose from %s@W.@n\r\n", obj->short_description,
-                            short_description);
-            } else {
-                send_to_room(IN_ROOM(obj), "%s@W comes loose from %s@W.@n\r\n", short_description,
-                            obj->short_description);
-            }
-            GET_OBJ_POSTED(obj) = nullptr;
-            GET_OBJ_POSTTYPE(obj) = 0;
-            GET_OBJ_POSTED(this) = nullptr;
-            GET_OBJ_POSTTYPE(this) = 0;
-        }
-
         auto &z = zone_table[r->zone];
         z.objectsInZone.erase(ref());
-
-        REMOVE_FROM_LIST(this, r->contents, next_content, temp);
-
-        in_room = NOWHERE;
-        next_content = nullptr;
 
     }
 

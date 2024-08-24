@@ -490,14 +490,6 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
             obj->short_description);
         return;
     }
-    if (obj->carried_by) {
-        basic_mud_log("SYSERR: EQUIP: Obj is carried_by when equip.");
-        return;
-    }
-    if (IN_ROOM(obj) != NOWHERE) {
-        basic_mud_log("SYSERR: EQUIP: Obj is in_room when equip.");
-        return;
-    }
 
     LocationStub newLoc{};
     newLoc.first = ch;
@@ -639,12 +631,6 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
 
 /* remove an object from an object */
 void obj_from_obj(struct obj_data *obj) {
-    struct obj_data *temp, *obj_from;
-
-    if (obj->in_obj == nullptr) {
-        basic_mud_log("SYSERR: (%s): trying to illegally extract obj from obj.", __FILE__);
-        return;
-    }
 
     auto loc = obj->getLocation();
     if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
@@ -675,7 +661,7 @@ void extract_obj(struct obj_data *obj) {
         SITTING(obj) = nullptr;
         SITS(ch) = nullptr;
     }
-    if (GET_OBJ_POSTED(obj) && obj->in_obj == nullptr) {
+    if (GET_OBJ_POSTED(obj)) {
         struct obj_data *obj2 = GET_OBJ_POSTED(obj);
         GET_OBJ_POSTED(obj2) = nullptr;
         GET_OBJ_POSTTYPE(obj2) = 0;

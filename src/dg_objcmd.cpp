@@ -95,16 +95,18 @@ void obj_log(obj_data *obj, const char *format, ...) {
 
 /* returns the real room number that the object or object's carrier is in */
 room_rnum obj_room(obj_data *obj) {
-    if (IN_ROOM(obj) != NOWHERE)
-        return IN_ROOM(obj);
-    else if (obj->carried_by)
-        return IN_ROOM(obj->carried_by);
-    else if (obj->worn_by)
-        return IN_ROOM(obj->worn_by);
-    else if (obj->in_obj)
-        return obj_room(obj->in_obj);
-    else
-        return NOWHERE;
+
+    auto loc = obj->getLocation();
+    while(loc.first) {
+        auto r = dynamic_cast<room_data*>(loc.first);
+        if(r) return r->vn;
+        else {
+            auto hasloc = dynamic_cast<HasLocation*>(loc.first);
+            if(hasloc) loc = hasloc->getLocation();
+            else return NOWHERE;
+        }
+    }
+    return NOWHERE;
 }
 
 

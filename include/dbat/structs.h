@@ -571,10 +571,9 @@ public:
     std::vector<std::string> buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY);
 
     // Temporarily in for compatability...
-    room_rnum in_room{NOWHERE};        /* In what room -1 when conta/carr	*/
-    struct room_data* room;
     struct room_data* getRoom() const;
     room_vnum getRoomVnum() const;
+    room_data* getAbsoluteRoom() const;
 
 protected:
     LocationStub loc{};
@@ -591,7 +590,7 @@ class Location : public virtual entity_data {
     // entity it's gonna be working with.
 public:
     // This is used for serialization and identification. It should be unique.
-    virtual std::string getLocationName(const Coordinates& coords) = 0;
+    virtual std::string getNameAt(const Coordinates& coords) = 0;
 
     // Add an entity to this location at a specific sub-location
     void addEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
@@ -685,7 +684,7 @@ struct unit_data : public virtual Location {
     std::string getRoomDescription() const;
     std::string getLookDescription() const;
 
-    std::string getLocationName(const Coordinates& coords) override;
+    std::string getNameAt(const Coordinates& coords) override;
 
     // Provides the keywords used for searching for this thing, from the given 
     // character's perspective.
@@ -738,7 +737,6 @@ struct unit_data : public virtual Location {
 
     std::unordered_map<std::string, EventVariables> variables;
     
-    struct obj_data* contents{};     /* Contains objects  */
     weight_t getInventoryWeight();
     int64_t getInventoryCount();
    
@@ -822,7 +820,6 @@ struct obj_data : public virtual unit_data, public virtual HasLocation {
     bool active{false};
     bool isActive() override;
 
-    struct room_data* getAbsoluteRoom();
     bool isWorking();
 
     ObjRef ref();
@@ -851,13 +848,6 @@ struct obj_data : public virtual unit_data, public virtual HasLocation {
     int size{SIZE_MEDIUM};           /* Size class of object                */
 
     std::array<affected_type, MAX_OBJ_AFFECT> affected;  /* affects */
-
-    struct obj_data *in_obj{};       /* In what object nullptr when none    */
-    struct char_data *carried_by{};  /* Carried by :nullptr in room/conta   */
-    struct char_data *worn_by{};      /* Worn by? */
-    int16_t worn_on{-1};          /* Worn where?		      */
-
-    struct obj_data *next_content{}; /* For 'contains' lists */
 
     struct obj_spellbook_spell *sbinfo{};  /* For spellbook info */
     struct char_data *sitting{};       /* Who is sitting on me? */
@@ -908,7 +898,6 @@ struct room_data : public virtual unit_data {
     std::array<room_direction_data*, NUM_OF_DIRS> dir_option{}; /* Directions */
     std::bitset<NUM_ROOM_FLAGS> room_flags{};   /* DEATH,DARK ... etc */
     SpecialFunc func{};
-    struct char_data *people{};    /* List of NPC / PC in room */
     int timed{};                   /* For timed Dt's                     */
     int dmg{};                     /* How damaged the room is            */
     int geffect{};            /* Effect of ground destruction       */
@@ -943,7 +932,7 @@ struct room_data : public virtual unit_data {
     std::unordered_map<int, double> environment;
 
     // Implementation of Location interface
-    std::string getLocationName(const Coordinates& coords) override;
+    std::string getNameAt(const Coordinates& coords) override;
     
     void setRoomFlag(const Coordinates& coord, int flag, bool value) override;
     bool toggleRoomFlag(const Coordinates& coord, int flag) override;
@@ -1318,7 +1307,6 @@ struct char_data : public virtual unit_data, public virtual HasLocation {
 
     struct script_memory *memory{};    /* for mob memory triggers		*/
 
-    struct char_data *next_in_room{};
     /* For fighting list			*/
     struct char_data *next_affect{};/* For affect wearoff			*/
     struct char_data *next_affectv{};

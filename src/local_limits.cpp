@@ -1454,11 +1454,11 @@ void corpseRotService(uint64_t heartPulse, double deltaTime) {
         }
 
         if(timer == 0) {
-            if(j->carried_by)
-                act("$p decays in your hands.", false, j->carried_by, j, nullptr, TO_CHAR);
-            // not sure how you'd wear a corpse, but okay.
-            if(j->worn_by)
-                act("$p decays in your hands.", false, j->worn_by, j, nullptr, TO_CHAR);
+            if(auto loc = j->getLocation(); loc.first) {
+                if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+                    act("$p decays in your hands.", false, c, j, nullptr, TO_CHAR);
+                }
+            }
         }
 
         auto witnesses = j->getLocationPeople();
@@ -1834,11 +1834,14 @@ void point_update(uint64_t heartPulse, double deltaTime) {
             processedObjects.insert(objId);
 
             /* Let's get rid of dropped norent items. */
-            if (OBJ_FLAGGED(j, ITEM_NORENT) && j->worn_by == nullptr && j->carried_by == nullptr && obj_selling != j &&
-                GET_OBJ_VNUM(j) != 7200) {
-                time_t diff = 0;
+            if (OBJ_FLAGGED(j, ITEM_NORENT) && GET_OBJ_VNUM(j) != 7200) {
+                auto loc = j->getLocation();
+                if(!loc.first) continue;
+                auto r = dynamic_cast<room_data*>(loc.first);
+                if(!r) continue;
+                
+                time_t diff = time(nullptr) - GET_LAST_LOAD(j);
 
-                diff = time(nullptr) - GET_LAST_LOAD(j);
                 if (diff > 240 && GET_LAST_LOAD(j) > 0) {
                     basic_mud_log("No rent object (%s) extracted from room (%d)", j->short_description,
                                   j->getRoomVnum());
@@ -1870,20 +1873,19 @@ void point_update(uint64_t heartPulse, double deltaTime) {
                 }
             } else if (OBJ_FLAGGED(j, ITEM_ICE)) {
                 if (GET_OBJ_VNUM(j) == 79 && rand_number(1, 2) == 2) {
+                    int melt = (5 + (GET_OBJ_WEIGHT(j) * 0.025));
                     if (j->getLocationGroundEffect() >= 1 && j->getLocationGroundEffect() <= 5) {
                         send_to_room(IN_ROOM(j),
                                      "The heat from the lava melts a great deal of the glacial wall and the lava cools a bit in turn.\r\n");
                         j->modLocationGroundEffect(-1);
-                        if (GET_OBJ_WEIGHT(j) - (5 + (GET_OBJ_WEIGHT(j) * 0.025)) > 0) {
-                            GET_OBJ_WEIGHT(j) -= 5 + (GET_OBJ_WEIGHT(j) * 0.025);
+                        if ((GET_OBJ_WEIGHT(j) - melt) > 0) {
+                            GET_OBJ_WEIGHT(j) -= melt;
                         } else {
-                            send_to_room(IN_ROOM(j),
-                                         "The glacial wall blocking off the %s direction melts completely away.\r\n",
-                                         dirs[GET_OBJ_COST(j)]);
+                            send_to_room(IN_ROOM(j), dirs[GET_OBJ_COST(j)]);
                             extract_obj(j);
                         }
-                    } else if (GET_OBJ_WEIGHT(j) - (5 + (GET_OBJ_WEIGHT(j) * 0.025)) > 0) {
-                        GET_OBJ_WEIGHT(j) -= 5 + (GET_OBJ_WEIGHT(j) * 0.025);
+                    } else if ((GET_OBJ_WEIGHT(j) - melt) > 0) {
+                        GET_OBJ_WEIGHT(j) -= melt;
                         send_to_room(IN_ROOM(j), "The glacial wall blocking off the %s direction melts some what.\r\n",
                                      dirs[GET_OBJ_COST(j)]);
                     } else {
@@ -1893,24 +1895,14 @@ void point_update(uint64_t heartPulse, double deltaTime) {
                         extract_obj(j);
                     }
                 } else if (GET_OBJ_VNUM(j) != 79) {
-                    if (j->carried_by && !j->in_obj) {
-                        int melt = 5 + (GET_OBJ_WEIGHT(j) * 0.02);
-                        if (GET_OBJ_WEIGHT(j) - (5 + (GET_OBJ_WEIGHT(j) * 0.02)) > 0) {
-                            GET_OBJ_WEIGHT(j) -= melt;
-                            send_to_char(j->carried_by, "%s @wmelts a little.\r\n", j->short_description);
-                        } else {
-                            send_to_char(j->carried_by, "%s @wmelts completely away.\r\n", j->short_description);
-                            int remainder = melt - GET_OBJ_WEIGHT(j);
-                            extract_obj(j);
-                        }
-                    } else if (IN_ROOM(j) != NOWHERE) {
-                        if (GET_OBJ_WEIGHT(j) - (5 + (GET_OBJ_WEIGHT(j) * 0.02)) > 0) {
-                            GET_OBJ_WEIGHT(j) -= 5 + (GET_OBJ_WEIGHT(j) * 0.02);
-                            send_to_room(IN_ROOM(j), "%s @wmelts a little.\r\n", j->short_description);
-                        } else {
-                            send_to_room(IN_ROOM(j), "%s @wmelts completely away.\r\n", j->short_description);
-                            extract_obj(j);
-                        }
+                    int melt = 5 + (GET_OBJ_WEIGHT(j) * 0.02);
+                    if ((GET_OBJ_WEIGHT(j) - melt) > 0) {
+                        GET_OBJ_WEIGHT(j) -= melt;
+                        j->broadcastAtLocation(fmt::format("{} @wmelts a little.\r\n", j->short_description));
+                    } else {
+                        j->broadcastAtLocation(fmt::format("{} @wmelts completely away.\r\n", j->short_description));
+                        int remainder = melt - GET_OBJ_WEIGHT(j);
+                        extract_obj(j);
                     }
                 }
             }

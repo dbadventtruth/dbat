@@ -466,7 +466,7 @@ extern bool OBJ_FLAGGED(const obj_data *obj, int flag);
 /* char utils ************************************************************/
 
 
-#define IN_ROOM(ch)    ((ch)->in_room)
+#define IN_ROOM(ch)    ((ch)->getRoomVnum())
 #define IN_ZONE(ch)   (zone_table[(world[(IN_ROOM(ch))].zone)].number)
 #define GET_WAS_IN(ch)    ((ch)->was_in_room)
 #define GET_AGE(ch)     ((ch)->time.currentAge())
@@ -800,7 +800,7 @@ extern void WAIT_STATE(struct char_data *ch, double timeToWait);
 #define IS_CORPSE(obj)        (GET_OBJ_TYPE(obj) == ITEM_CONTAINER && \
                     GET_OBJ_VAL((obj), VAL_CONTAINER_CORPSE) == 1)
 
-#define CAN_WEAR(obj, part)    OBJWEAR_FLAGGED((obj), (part))
+#define CAN_WEAR(obj, part)    (OBJWEAR_FLAGGED((obj), (part)))
 #define GET_OBJ_MATERIAL(obj)   ((obj)->value[7])
 #define GET_OBJ_SHORT(obj)    ((obj)->short_description)
 
@@ -858,20 +858,15 @@ extern void WAIT_STATE(struct char_data *ch, double timeToWait);
   (!OBJ_FLAGGED((obj), ITEM_INVISIBLE) || AFF_FLAGGED((sub), AFF_DETECT_INVIS))
 
 /* Is anyone carrying this object and if so, are they visible? */
-#define CAN_SEE_OBJ_CARRIER(sub, obj) \
-  ((!(obj)->carried_by || CAN_SEE((sub), (obj)->carried_by)) &&    \
-   (!(obj)->worn_by || CAN_SEE((sub), (obj)->worn_by)))
+extern bool CAN_SEE_OBJ_CARRIER(char_data *sub, obj_data *obj);
 
-#define MORT_CAN_SEE_OBJ(sub, obj) \
-  ((LIGHT_OK(sub) || (obj)->carried_by == (sub) || (obj)->worn_by) && INVIS_OK_OBJ((sub), (obj)) && CAN_SEE_OBJ_CARRIER((sub), (obj)))
+extern bool MORT_CAN_SEE_OBJ(char_data *sub, obj_data *obj);
 
-#define CAN_SEE_OBJ(sub, obj) \
-   (MORT_CAN_SEE_OBJ(sub, obj) || (!IS_NPC(sub) && PRF_FLAGGED((sub), PRF_HOLYLIGHT)))
+#define CAN_SEE_OBJ(sub, obj) (MORT_CAN_SEE_OBJ(sub, obj) || (!IS_NPC(sub) && PRF_FLAGGED((sub), PRF_HOLYLIGHT)))
 
 #define CAN_CARRY_OBJ(ch, obj) ((ch)->canCarryWeight((obj)) && ((IS_CARRYING_N(ch) + 1) <= CAN_CARRY_N(ch)))
 
-#define CAN_GET_OBJ(ch, obj)   \
-   (CAN_WEAR((obj), ITEM_WEAR_TAKE) && !SITTING(obj) && CAN_CARRY_OBJ((ch),(obj)) && \
+#define CAN_GET_OBJ(ch, obj) (CAN_WEAR((obj), ITEM_WEAR_TAKE) && !SITTING(obj) && CAN_CARRY_OBJ((ch),(obj)) && \
     CAN_SEE_OBJ((ch),(obj)))
 
 #define DISG(ch, vict) ((!PLR_FLAGGED(ch, PLR_DISGUISED)) || \

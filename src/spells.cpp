@@ -52,7 +52,7 @@ ASPELL(spell_create_water) {
                 GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID) = LIQ_WATER;
                 GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) += water;
                 name_to_drinkcon(obj, LIQ_WATER);
-                weight_change_object(obj, water);
+                obj->weight += water;
                 act("$p is filled.", false, ch, obj, nullptr, TO_CHAR);
             }
         }
@@ -179,15 +179,34 @@ ASPELL(spell_locate_object) {
 
         send_to_char(ch, "%c%s", UPPER(*i->short_description), (i->short_description) + 1);
 
-        if (i->carried_by)
-            send_to_char(ch, " is being carried by %s.\r\n", PERS(i->carried_by, ch));
-        else if (IN_ROOM(i) != NOWHERE)
-            send_to_char(ch, " is in %s.\r\n", i->getRoom()->name);
-        else if (i->in_obj)
-            send_to_char(ch, " is in %s.\r\n", i->in_obj->short_description);
-        else if (i->worn_by)
-            send_to_char(ch, " is being worn by %s.\r\n", PERS(i->worn_by, ch));
-        else
+        bool known = false;
+        if(auto loc = i->getLocation(); loc.first) {
+            switch(loc.second.type) {
+                case CoordinateType::Room:
+                    send_to_char(ch, " is in %s.\r\n", dynamic_cast<room_data*>(loc.first)->name);
+                    known = true;
+                    break;
+                case CoordinateType::Inventory:
+                    if(auto character = dynamic_cast<char_data*>(loc.first); character) {
+                        send_to_char(ch, " is being carried by %s.\r\n", PERS(character, ch));
+                        known = true;
+                    } else if(auto object = dynamic_cast<obj_data*>(loc.first); object) {
+                        send_to_char(ch, " is in %s.\r\n", object->short_description);
+                        known = true;
+                    }
+                    break;
+                case CoordinateType::Equipped:
+                    if(auto character = dynamic_cast<char_data*>(loc.first); character) {
+                        send_to_char(ch, " is being worn by %s.\r\n", PERS(character, ch));
+                        known = true;
+                    } else if(auto object = dynamic_cast<obj_data*>(loc.first); object) {
+                        send_to_char(ch, " is in %s.\r\n", object->short_description);
+                        known = true;
+                    }
+                    break;
+            }
+        }
+        if(!known)
             send_to_char(ch, "'s location is uncertain.\r\n");
 
         j--;

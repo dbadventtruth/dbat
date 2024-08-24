@@ -899,6 +899,22 @@ ACMD(do_send) {
         send_to_char(ch, "You send '%s' to %s.\r\n", buf, GET_NAME(vict));
 }
 
+static room_data* getAbsoluteRoom(HasLocation* ent) {
+    while(ent) {
+        auto loc = ent->getLocation();
+        if(!loc.first) break;
+        if(auto r = dynamic_cast<room_data*>(loc.first)) {
+            return r;
+        }
+        if(auto has = dynamic_cast<HasLocation*>(loc.first); has) {
+            ent = has;
+        } else {
+            break;
+        }
+    }
+    return nullptr;
+}
+
 /* take a string, and return an rnum.. used for goto, at, etc.  -je 4/6/93 */
 room_rnum find_target_room(struct char_data *ch, char *rawroomstr) {
     room_rnum location = NOWHERE;
@@ -918,35 +934,20 @@ room_rnum find_target_room(struct char_data *ch, char *rawroomstr) {
             return (NOWHERE);
         }
     } else {
-        struct char_data *target_mob;
-        struct obj_data *target_obj;
         char *mobobjstr = roomstr;
-        int num;
+        int num = get_number(&mobobjstr);
 
-        num = get_number(&mobobjstr);
-        if ((target_mob = get_char_vis(ch, mobobjstr, &num, FIND_CHAR_WORLD)) != nullptr) {
-            if ((location = IN_ROOM(target_mob)) == NOWHERE) {
-                send_to_char(ch, "That character is currently lost.\r\n");
-                return (NOWHERE);
-            }
-        } else if ((target_obj = get_obj_vis(ch, mobobjstr, &num)) != nullptr) {
-            if (IN_ROOM(target_obj) != NOWHERE)
-                location = IN_ROOM(target_obj);
-            else if (target_obj->carried_by && IN_ROOM(target_obj->carried_by) != NOWHERE)
-                location = IN_ROOM(target_obj->carried_by);
-            else if (target_obj->worn_by && IN_ROOM(target_obj->worn_by) != NOWHERE)
-                location = IN_ROOM(target_obj->worn_by);
-
-            if (location == NOWHERE) {
-                send_to_char(ch, "That object is currently not in a room.\r\n");
-                return (NOWHERE);
-            }
-        }
-
-        if (location == NOWHERE) {
+        HasLocation *ent = get_char_vis(ch, mobobjstr, &num, FIND_CHAR_WORLD);
+        if(!ent) ent = get_obj_vis(ch, mobobjstr, &num);
+        if(!ent) {
             send_to_char(ch, "Nothing exists by that name.\r\n");
-            return (NOWHERE);
+            return NOWHERE;
         }
+        if (auto absroom = getAbsoluteRoom(ent); absroom) {
+            return absroom->vn;
+        }
+        send_to_char(ch, "That target is currently lost.\r\n");
+        return NOWHERE;
     }
 
     /* a location has been found -- if you're >= GRGOD, no restrictions. */
@@ -1439,9 +1440,20 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
    * NOTE: In order to make it this far, we must already be able to see the
    *       character holding the object. Therefore, we do not need CAN_SEE().
    */
-    send_to_char(ch, "In object: %s, ", j->in_obj ? j->in_obj->short_description : "None");
-    send_to_char(ch, "Carried by: %s, ", j->carried_by ? GET_NAME(j->carried_by) : "Nobody");
-    send_to_char(ch, "Worn by: %s\r\n", j->worn_by ? GET_NAME(j->worn_by) : "Nobody");
+
+    if(auto loc = j->getLocation(); loc.first) {
+        if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
+            send_to_char(ch, "In object: %s, ", o->short_description);
+        } else if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+            if(loc.second.type == CoordinateType::Equipped) {
+                send_to_char(ch, "Equipped by: %s, ", c->getName());
+            } else {
+                send_to_char(ch, "Carried by: %s, ", c->getName());
+            }
+        } else if(auto r = dynamic_cast<room_data*>(loc.first); r) {
+            send_to_char(ch, "In room: [%d] %s, ", r->vn, r->name);
+        }
+    }
 
     switch (GET_OBJ_TYPE(j)) {
         case ITEM_LIGHT:
@@ -3118,7 +3130,7 @@ ACMD(do_zreset) {
             return;
         }
     } else if (*arg == '.' || !*arg)
-        i = real_zone_by_thing(ch->in_room);
+        i = ch->getRoom()->zone;
     else {
         i = atol(arg);
     }

@@ -880,7 +880,7 @@ static void shopping_buy(char *arg, struct char_data *ch, struct char_data *keep
     if (!ADM_FLAGGED(ch, ADM_MONEY))
         keeper->mod(CharMoney::Carried, goldamt);
 
-    strlcpy(tempstr, times_message(ch->contents, nullptr, bought), sizeof(tempstr));
+    strlcpy(tempstr, times_message(obj, nullptr, bought), sizeof(tempstr));
 
     snprintf(tempbuf, sizeof(tempbuf), "$n buys %s.", tempstr);
     act(tempbuf, false, ch, obj, nullptr, TO_ROOM);

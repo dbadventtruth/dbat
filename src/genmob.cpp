@@ -1095,19 +1095,7 @@ bool char_data::isActive() {
 }
 
 nlohmann::json char_data::serializeLocation() {
-    auto j = nlohmann::json::object();
-
-    if(IS_NPC(this)) {
-        j["in_room"] = in_room;
-    } else {
-        auto room = in_room != NOWHERE ? in_room : was_in_room;
-        if(!desc) {
-            room = load_room;
-        }
-        j["load_room"] = normalizeLoadRoom(room);
-    }
-
-    return j;
+    // TODO: Implement this.
 }
 
 nlohmann::json char_data::serializeRelations() {
@@ -1186,10 +1174,6 @@ void char_data::onAddedToLocation(const LocationStub& newLoc) {
         // We were added to a room.
         int i;
 
-        next_in_room = r->people;
-        r->people = this;
-        in_room = r->vn;
-
         auto &z = zone_table[r->zone];
         if(IS_NPC(this)) {
             z.npcsInZone.insert(ref());
@@ -1229,11 +1213,6 @@ void char_data::onRemovedFromLocation(const LocationStub& oldLoc) {
         } else {
             z.playersInZone.erase(ref());
         }
-
-        REMOVE_FROM_LIST(this, r->people, next_in_room, temp);
-        in_room = NOWHERE;
-        next_in_room = nullptr;
-
     }
 
 }

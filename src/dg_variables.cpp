@@ -953,8 +953,13 @@ in the vault (vnum: 453) now and then. you can just use
                         }
                         snprintf(str, slen, "%d", GET_OBJ_RENT(o));
                     } else if (!strcasecmp(field, "carried_by")) {
-                        if (o->carried_by)
-                            snprintf(str, slen, "%s", ((o->carried_by)->getUID().c_str()));
+                        auto loc = o->getLocation();
+                        if(loc.first && loc.second.type == CoordinateType::Inventory) {
+                            if(auto unit = dynamic_cast<unit_data*>(loc.first); u)
+                                snprintf(str, slen, "%s", u->getUID().c_str());
+                            else
+                                *str = '\0';
+                        }
                         else
                             *str = '\0';
                     } else if (!strcasecmp(field, "contents")) {
@@ -1150,10 +1155,15 @@ in the vault (vnum: 453) now and then. you can just use
                         }
                         snprintf(str, slen, "%s", fmt::format("{}", GET_OBJ_WEIGHT(o)).c_str());
                     } else if (!strcasecmp(field, "worn_by")) {
-                        if (o->worn_by)
-                            snprintf(str, slen, "%s", ((o->worn_by)->getUID().c_str()));
-                        else
+                        auto loc = o->getLocation();
+                        if(!loc.first) {
                             *str = '\0';
+                            break;
+                        }
+                        if(auto c = dynamic_cast<char_data*>(loc.first); c && loc.second.type == CoordinateType::Equipped)
+                            snprintf(str, slen, "%s", c->getUID().c_str());
+                        else
+                            *str = '\0';    
                     }
                     break;
             } /* switch *field */

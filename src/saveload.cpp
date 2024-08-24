@@ -70,7 +70,6 @@ static void dump_state_items(const std::filesystem::path &loc) {
         j2["generation"] = static_cast<int32_t>(r.first);
         j2["data"] = r.second->serializeInstance();
         j2["location"] = r.second->serializeLocation();
-        j2["slot"] = r.second->worn_on;
         j2["relations"] = r.second->serializeRelations();
         j.push_back(j2);
     }

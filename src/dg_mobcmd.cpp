@@ -135,18 +135,20 @@ ACMD(do_masound) {
 
     skip_spaces(&argument);
 
-    was_in_room = IN_ROOM(ch);
+    auto room = ch->getRoom();
     for (door = 0; door < NUM_OF_DIRS; door++) {
         struct room_direction_data *newexit;
 
-        if (((newexit = world[was_in_room].dir_option[door]) != nullptr) &&
-            newexit->to_room != NOWHERE && newexit->to_room != was_in_room) {
-            IN_ROOM(ch) = newexit->to_room;
+        if (((newexit = room->dir_option[door]) != nullptr) &&
+            newexit->to_room != NOWHERE && newexit->to_room != room->vn) {
+            char_from_room(ch);
+            char_to_room(ch, newexit->to_room);
             sub_write(argument, ch, true, TO_ROOM);
         }
     }
 
-    IN_ROOM(ch) = was_in_room;
+    char_from_room(ch);
+    char_to_room(ch, room->vn);
 }
 
 /* Heals a stat of the mob */

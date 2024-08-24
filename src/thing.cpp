@@ -50,7 +50,7 @@ room_vnum HasLocation::getRoomVnum() const {
 }
 
 std::string HasLocation::getLocationName() const {
-    if(loc.first) return loc.first->getLocationName(loc.second);
+    if(loc.first) return loc.first->getNameAt(loc.second);
     return "Unknown";
 }
 

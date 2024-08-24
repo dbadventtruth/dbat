@@ -1840,10 +1840,7 @@ static void perform_put(struct char_data *ch, struct obj_data *obj,
         send_to_char(ch, "You can not bag dragon balls.\r\n");
     else if (OBJ_FLAGGED(obj, ITEM_NORENT))
         send_to_char(ch, "That isn't worth bagging. Better keep that close if you wanna keep it at all.\r\n");
-    else if (!cont->carried_by && check_saveroom_count(ch, obj) > 150) {
-        send_to_char(ch,
-                     "The save room can not hold anymore items. (150 max, count of items in containers is halved)\r\n");
-    } else {
+    else {
         obj_from_char(obj);
         obj_to_obj(obj, cont);
 
@@ -1861,15 +1858,12 @@ static void perform_put(struct char_data *ch, struct obj_data *obj,
         } else
             act("You put $p in $P.", false, ch, obj, cont, TO_CHAR);
         /* If object placed in portal or vehicle, move it to the portal destination */
-        if ((GET_OBJ_TYPE(cont) == ITEM_PORTAL) ||
-            (GET_OBJ_TYPE(cont) == ITEM_VEHICLE)) {
+        if ((GET_OBJ_TYPE(cont) == ITEM_PORTAL) || (GET_OBJ_TYPE(cont) == ITEM_VEHICLE)) {
             obj_from_obj(obj);
             obj_to_room(obj, real_room(GET_OBJ_VAL(cont, VAL_CONTAINER_CAPACITY)));
             if (GET_OBJ_TYPE(cont) == ITEM_PORTAL) {
-                act("What? $U$p disappears from $P in a puff of smoke!",
-                    true, ch, obj, cont, TO_ROOM);
-                act("What? $U$p disappears from $P in a puff of smoke!",
-                    false, ch, obj, cont, TO_CHAR);
+                act("What? $U$p disappears from $P in a puff of smoke!", true, ch, obj, cont, TO_ROOM);
+                act("What? $U$p disappears from $P in a puff of smoke!", false, ch, obj, cont, TO_CHAR);
             }
         }
     }
@@ -2907,28 +2901,7 @@ ACMD(do_give) {
     handle_give_objects(ch, arg, argument);
 }
 
-void weight_change_object(struct obj_data *obj, int weight) {
-    struct obj_data *tmp_obj;
-    struct char_data *tmp_ch;
 
-    if (IN_ROOM(obj) != NOWHERE) {
-        GET_OBJ_WEIGHT(obj) += weight;
-    } else if ((tmp_ch = obj->carried_by)) {
-        obj_from_char(obj);
-        GET_OBJ_WEIGHT(obj) += weight;
-        obj_to_char(obj, tmp_ch);
-    } else if ((tmp_obj = obj->in_obj)) {
-        obj_from_obj(obj);
-        GET_OBJ_WEIGHT(obj) += weight;
-        obj_to_obj(obj, tmp_obj);
-    } else {
-        basic_mud_log("SYSERR: Unknown attempt to subtract weight from an object.");
-        /*  SYSERR_DESC:
-     *  weight_change_object() outputs this error when weight is attempted to
-     *  be removed from an object that is not carried or in another object.
-     */
-    }
-}
 
 void name_from_drinkcon(struct obj_data *obj) {
     char *new_name, *cur_name, *next;
@@ -3151,7 +3124,7 @@ ACMD(do_drink) {
      weight subtracted */
     if (GET_OBJ_VAL(temp, VAL_DRINKCON_CAPACITY) > 0) {
         weight = MIN(amount, GET_OBJ_WEIGHT(temp));
-        weight_change_object(temp, -weight);    /* Subtract amount */
+        temp->weight -= weight;    /* Subtract amount */
     }
 
     gain_condition(ch, DRUNK, drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][DRUNK] * amount);
@@ -3536,7 +3509,7 @@ ACMD(do_pour) {
                 act("$n empties $p.", true, ch, from_obj, nullptr, TO_ROOM);
                 act("You empty $p.", false, ch, from_obj, nullptr, TO_CHAR);
 
-                weight_change_object(from_obj, -GET_OBJ_VAL(from_obj, VAL_DRINKCON_HOWFULL)); /* Empty */
+                from_obj->weight -= GET_OBJ_VAL(from_obj, VAL_DRINKCON_HOWFULL);
 
                 name_from_drinkcon(from_obj);
                 GET_OBJ_VAL(from_obj, VAL_DRINKCON_HOWFULL) = 0;
@@ -3612,9 +3585,9 @@ ACMD(do_pour) {
 
     /* And the weight boogie for non-eternal from_objects */
     if (GET_OBJ_VAL(from_obj, VAL_DRINKCON_CAPACITY) > 0) {
-        weight_change_object(from_obj, -amount);
+        from_obj->weight -= amount;
     }
-    weight_change_object(to_obj, amount);    /* Add weight */
+    to_obj->weight += amount;    /* Add weight */
 }
 
 static void wear_message(struct char_data *ch, struct obj_data *obj, int where) {
@@ -3716,47 +3689,47 @@ static int hands(struct char_data *ch) {
     return x;
 }
 
+static const int wear_bitvectors[] = {
+    ITEM_WEAR_TAKE, ITEM_WEAR_FINGER, ITEM_WEAR_FINGER, ITEM_WEAR_NECK,
+    ITEM_WEAR_NECK, ITEM_WEAR_BODY, ITEM_WEAR_HEAD, ITEM_WEAR_LEGS,
+    ITEM_WEAR_FEET, ITEM_WEAR_HANDS, ITEM_WEAR_ARMS, ITEM_WEAR_SHIELD,
+    ITEM_WEAR_ABOUT, ITEM_WEAR_WAIST, ITEM_WEAR_WRIST, ITEM_WEAR_WRIST,
+    ITEM_WEAR_TAKE, ITEM_WEAR_TAKE, ITEM_WEAR_PACK, ITEM_WEAR_EAR,
+    ITEM_WEAR_EAR, ITEM_WEAR_SH, ITEM_WEAR_EYE
+};
+
+static const char *already_wearing[] = {
+    "You're already using a light.\r\n",
+    "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
+    "You're already wearing something on both of your ring fingers.\r\n",
+    "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
+    "You can't wear anything else around your neck.\r\n",
+    "You're already wearing something on your body.\r\n",
+    "You're already wearing something on your head.\r\n",
+    "You're already wearing something on your legs.\r\n",
+    "You're already wearing something on your feet.\r\n",
+    "You're already wearing something on your hands.\r\n",
+    "You're already wearing something on your arms.\r\n",
+    "You're already using a shield.\r\n",
+    "You're already wearing something about your body.\r\n",
+    "You already have something around your waist.\r\n",
+    "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
+    "You're already wearing something around both of your wrists.\r\n",
+    "You're already wielding a weapon.\r\n",
+    "You're already holding something.\r\n",
+    "You're already wearing something on your back.\r\n",
+    "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
+    "You're already wearing something in both ears.\r\n",
+    "You're already wearing something on your shoulders.\r\n",
+    "You're already wearing something as a scouter.\r\n"
+};
+
 void perform_wear(struct char_data *ch, struct obj_data *obj, int where) {
     /*
    * ITEM_WEAR_TAKE is used for objects that do not require special bits
    * to be put into that position (e.g. you can hold any object, not just
    * an object with a HOLD bit.)
    */
-
-    int wear_bitvectors[] = {
-            ITEM_WEAR_TAKE, ITEM_WEAR_FINGER, ITEM_WEAR_FINGER, ITEM_WEAR_NECK,
-            ITEM_WEAR_NECK, ITEM_WEAR_BODY, ITEM_WEAR_HEAD, ITEM_WEAR_LEGS,
-            ITEM_WEAR_FEET, ITEM_WEAR_HANDS, ITEM_WEAR_ARMS, ITEM_WEAR_SHIELD,
-            ITEM_WEAR_ABOUT, ITEM_WEAR_WAIST, ITEM_WEAR_WRIST, ITEM_WEAR_WRIST,
-            ITEM_WEAR_TAKE, ITEM_WEAR_TAKE, ITEM_WEAR_PACK, ITEM_WEAR_EAR,
-            ITEM_WEAR_EAR, ITEM_WEAR_SH, ITEM_WEAR_EYE
-    };
-
-    const char *already_wearing[] = {
-            "You're already using a light.\r\n",
-            "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
-            "You're already wearing something on both of your ring fingers.\r\n",
-            "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
-            "You can't wear anything else around your neck.\r\n",
-            "You're already wearing something on your body.\r\n",
-            "You're already wearing something on your head.\r\n",
-            "You're already wearing something on your legs.\r\n",
-            "You're already wearing something on your feet.\r\n",
-            "You're already wearing something on your hands.\r\n",
-            "You're already wearing something on your arms.\r\n",
-            "You're already using a shield.\r\n",
-            "You're already wearing something about your body.\r\n",
-            "You already have something around your waist.\r\n",
-            "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
-            "You're already wearing something around both of your wrists.\r\n",
-            "You're already wielding a weapon.\r\n",
-            "You're already holding something.\r\n",
-            "You're already wearing something on your back.\r\n",
-            "YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n",
-            "You're already wearing something in both ears.\r\n",
-            "You're already wearing something on your shoulders.\r\n",
-            "You're already wearing something as a scouter.\r\n"
-    };
 
     /* first, make sure that the wear position is valid. */
     if (!CAN_WEAR(obj, wear_bitvectors[where])) {
@@ -3784,8 +3757,7 @@ void perform_wear(struct char_data *ch, struct obj_data *obj, int where) {
         return;
     }
 
-    if (((where == WEAR_WIELD1) ||
-         (where == WEAR_WIELD2)) && (hands(ch) > 1)) {
+    if (((where == WEAR_WIELD1) || (where == WEAR_WIELD2)) && (hands(ch) > 1)) {
         send_to_char(ch, "Seems like you might not have enough free hands.\r\n");
         return;
     }
@@ -3796,7 +3768,7 @@ void perform_wear(struct char_data *ch, struct obj_data *obj, int where) {
     }
 
     /* See if a trigger disallows it */
-    if (!wear_otrigger(obj, ch, where) || (obj->carried_by != ch))
+    if (!wear_otrigger(obj, ch, where) || (obj->getLocation().first != ch))
         return;
 
     if (GET_OBJ_TYPE(obj) == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM)) {

@@ -321,6 +321,6 @@ std::string unit_data::getPostureString(char_data *viewer) {
     return "is here.";
 }
 
-std::string unit_data::getLocationName(const Coordinates& coords) {
+std::string unit_data::getNameAt(const Coordinates& coords) {
     return getName();
 }

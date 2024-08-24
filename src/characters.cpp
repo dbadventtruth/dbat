@@ -99,7 +99,7 @@ void char_data::resurrect(ResurrectionMode mode) {
     } else {
         char_to_room(this, real_room(sensei::getStartRoom(chclass)));
     }
-    look_at_room(in_room, this, 0);
+    look_at_room(getRoom()->vn, this, 0);
 
     // If Costless, there's not going to be any penalties.
     int dur = 100;
@@ -1485,9 +1485,8 @@ bool char_data::canCarryWeight(struct char_data *obj) {
 
 weight_t char_data::getCurrentBurden() {
     auto total = getTotalWeight();
-    auto room = world.find(in_room);
-    if(room != world.end()) {
-        total *= room->second.getEnvironment(ENV_GRAVITY);
+    if(auto room = getRoom(); room) {
+        total *= room->getEnvironment(ENV_GRAVITY);
     }
     return total;
 }

@@ -323,8 +323,8 @@ std::optional<vnum> room_data::getMatchingArea(std::function<bool(const area_dat
         if ((a.type == AreaType::Structure || a.type == AreaType::Vehicle) && a.extraVn) {
             // we need to find the a.objectVnum in the world by scanning object_list...
             if (auto obj = get_obj_num(a.extraVn.value()); obj) {
-                if(world.contains(obj->in_room)) {
-                    auto &r = world[obj->in_room];
+                if(world.contains(obj->getRoom()->vn)) {
+                    auto &r = world[obj->getRoom()->vn];
                     return r.getMatchingArea(f);
                 }
             }
@@ -542,7 +542,7 @@ double room_data::getEnvironment(int type) {
 
 
 // Location Implementation
-std::string room_data::getLocationName(const Coordinates& coord) {
+std::string room_data::getNameAt(const Coordinates& coord) {
     if(name && strlen(name)) {
         return std::string(name);
     }
