@@ -1713,7 +1713,6 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
 
                         /* Hit those in the current room. */
                         for(auto vict : IterRef(k->getLocationPeople())) {
-                            next_v = vict->next_in_room;
 
                             if (vict == ch) {
                                 continue;
@@ -1815,7 +1814,6 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
 
                     /* Hit those in the current room. */
                     for(auto vict : IterRef(k->getLocationPeople())) {
-                        next_v = vict->next_in_room;
 
                         if (vict == ch) {
                             continue;
@@ -1894,7 +1892,6 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
 
                         /* Hit those in the current room. */
                         for(auto vict : IterRef(k->getLocationPeople())) {
-                            next_v = vict->next_in_room;
 
                             if (vict == ch) {
                                 continue;
@@ -1994,7 +1991,6 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
 
                     /* Hit those in the current room. */
                     for(auto vict : IterRef(k->getLocationPeople())) {
-                        next_v = vict->next_in_room;
 
                         if (vict == ch) {
                             continue;

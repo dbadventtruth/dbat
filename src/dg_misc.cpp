@@ -134,9 +134,7 @@ void do_dg_cast(unit_data *u, trig_data *trig,
                     strdup(dynamic_cast<obj_data*>(u)->short_description);
         else if (type == WLD_TRIGGER)
             caster->short_description = strdup("The gods");
-        caster->next_in_room = caster_room->people;
-        caster_room->people = caster;
-        IN_ROOM(caster) = real_room(caster_room->vn);
+        char_to_room(caster, caster_room->vn);
         call_magic(caster, tch, tobj, spellnum, DG_SPELL_LEVEL, CAST_SPELL, t);
         extract_char(caster);
     } else

@@ -70,7 +70,7 @@ static void look_at_char(struct char_data *i, struct char_data *ch);
 
 static void list_one_char(struct char_data *i, struct char_data *ch);
 
-static void list_char_to_char(struct char_data *list, struct char_data *ch);
+static void list_char_to_char(const std::vector<CharRef>& list, struct char_data *ch);
 
 static void look_in_direction(struct char_data *ch, int dir);
 
@@ -318,7 +318,6 @@ static void search_room(struct char_data *ch) {
     WAIT_STATE(ch, PULSE_1SEC);
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
-        next_v = vict->next_in_room;
         if (AFF_FLAGGED(vict, AFF_HIDE) && vict != ch) {
             if (GET_SUPPRESS(vict) >= 1) {
                 perc *= (GET_SUPPRESS(vict) * 0.01);
@@ -3000,12 +2999,11 @@ static bool is_hidden(struct hide_node *hideinfo, struct char_data *ch) {
     return false;
 }
 
-static void list_char_to_char(struct char_data *list, struct char_data *ch) {
-    struct char_data *i, *j;
+static void list_char_to_char(const std::vector<CharRef>& list, struct char_data *ch) {
     struct hide_node *hideinfo = nullptr;
     int num;
 
-    for (i = list; i; i = i->next_in_room) {
+    for (auto i : IterRef(list)) {
         if (AFF_FLAGGED(i, AFF_HIDE) && roll_resisted(i, SKILL_HIDE, ch, SKILL_SPOT)) {
             if (GET_SKILL(i, SKILL_HIDE) && !IS_NPC(ch) && i != ch) {
                 improve_skill(i, SKILL_HIDE, 1);
@@ -3015,7 +3013,7 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
         }
     }
 
-    for (i = list; i; i = i->next_in_room) {
+    for (auto i : IterRef(list)) {
         if (ch == i || (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_HOLYLIGHT) && IS_NPC(i) &&
                         i->room_description && *i->room_description == '.')) {
             continue;
@@ -3028,7 +3026,7 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
         if (CAN_SEE(ch, i)) {
             num = 0;
             if (CONFIG_STACK_MOBS) {
-                for (j = list; j != i; j = j->next_in_room) {
+                for (auto j : IterRef(list)) {
                     if (can_stack_char(i, j) && !is_hidden(hideinfo, j)) {
                         num++;
                     }
@@ -3538,7 +3536,7 @@ void look_at_room(struct room_data *rm, struct char_data *ch, int ignore_brief) 
 
     display_garden_info(rm, ch);
     list_obj_to_char(rm->getContents(), ch, SHOW_OBJ_LONG, false);
-    list_char_to_char(rm->people, ch);
+    list_char_to_char(rm->getPeople(), ch);
 }
 
 
@@ -4218,7 +4216,7 @@ ACMD(do_look) {
 
     if(IS_DARK(room->vn) && !CAN_SEE_IN_DARK(ch)) {
         send_to_char(ch, "It is pitch black...\r\n");
-        list_char_to_char(room->people, ch);    /* glowing red eyes */
+        list_char_to_char(room->getPeople(), ch);    /* glowing red eyes */
         return;
     }
 
@@ -6701,7 +6699,7 @@ ACMD(do_scan) {
         send_to_char(ch, "@W          -----------------          @n\r\n");
 
         list_obj_to_char(dest->getContents(), ch, SHOW_OBJ_LONG, false);
-        list_char_to_char(dest->people, ch);
+        list_char_to_char(dest->getPeople(), ch);
         if (dest->geffect >= 1 && dest->geffect <= 5) {
             send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");
         }
@@ -6725,7 +6723,7 @@ ACMD(do_scan) {
             send_to_char(ch, "@W          -----------------          @n\r\n");
 
             list_obj_to_char(dest2->getContents(), ch, SHOW_OBJ_LONG, false);
-            list_char_to_char(dest2->people, ch);
+            list_char_to_char(dest2->getPeople(), ch);
             if (dest2->geffect >= 1 && dest2->geffect <= 5) {
                 send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");
             }

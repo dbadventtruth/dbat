@@ -1965,40 +1965,101 @@ void perform_act(const char *orig, struct char_data *ch, struct obj_data *obj, c
 
 }
 
-char *act(const char *str, int hide_invisible, struct char_data *ch,
-          struct obj_data *obj, const void *vict_obj, int type) {
-    struct char_data *to;
-    int to_sleeping, res_sneak, res_hide, dcval = 0, resskill = 0;
+void handle_global_emote(const char *str, struct char_data *ch, struct obj_data *obj, const void *vict_obj) {
+    struct descriptor_data *i;
+    char buf[MAX_STRING_LENGTH];
 
+    for (i = descriptor_list; i; i = i->next) {
+        if (!i->connected && i->character &&
+            !PRF_FLAGGED(i->character, PRF_NOGOSS) &&
+            !PLR_FLAGGED(i->character, PLR_WRITING) &&
+            !i->character->getLocationRoomFlag(ROOM_SOUNDPROOF)) {
+
+            snprintf(buf, sizeof(buf), "@y%s@n", str);
+            perform_act(buf, ch, obj, vict_obj, i->character);
+            char buf2[MAX_STRING_LENGTH];
+            snprintf(buf2, sizeof(buf2), "%s\r\n", buf);
+            add_history(i->character, buf2, HIST_GOSSIP);
+        }
+    }
+}
+
+void handle_special_cases(const char *str, struct char_data *ch, struct obj_data *obj, const void *vict_obj) {
+    struct descriptor_data *d;
+    for (d = descriptor_list; d; d = d->next) {
+        if (STATE(d) != CON_PLAYING)
+            continue;
+
+        if (ch && IN_ARENA(ch)) {
+            if (PRF_FLAGGED(d->character, PRF_ARENAWATCH) && arena_watch(d->character) == ch->getRoomVnum()) {
+                char buf3[MAX_STRING_LENGTH];
+                snprintf(buf3, sizeof(buf3), "@c-----@CArena@c-----@n\r\n%s\r\n@c-----@CArena@c-----@n\r\n", str);
+                perform_act(buf3, ch, obj, vict_obj, d->character);
+            }
+        }
+
+        if (GET_EAVESDROP(d->character) > 0) {
+            int roll = rand_number(1, 101);
+            if (ch && GET_EAVESDROP(d->character) == ch->getRoomVnum() &&
+                GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
+                char buf3[MAX_STRING_LENGTH];
+                snprintf(buf3, sizeof(buf3), "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str);
+                perform_act(buf3, ch, obj, vict_obj, d->character);
+            } else if (obj && GET_EAVESDROP(d->character) == obj->getRoomVnum() &&
+                       GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
+                char buf3[MAX_STRING_LENGTH];
+                snprintf(buf3, sizeof(buf3), "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str);
+                perform_act(buf3, ch, obj, vict_obj, d->character);
+            }
+        }
+    }
+}
+
+void handle_room_message(const char *str, struct char_data *ch, struct obj_data *obj, const void *vict_obj, int type, int hide_invisible, int resskill, int dcval) {
+    struct char_data *to = nullptr;
+    auto people = ch ? ch->getLocationPeople() : (obj ? obj->getLocationPeople() : std::vector<CharRef>{});
+    
+    bool to_sleeping = (type & TO_SLEEP);
+
+    for (auto tch : IterRef(people)) {
+        to = tch;
+        if (!SENDOK(to) || (to == ch))
+            continue;
+        if (hide_invisible && ch && !CAN_SEE(to, ch))
+            continue;
+        if (type != TO_ROOM && to == vict_obj)
+            continue;
+        if (resskill && roll_skill(to, resskill) < dcval)
+            continue;
+
+        perform_act(str, ch, obj, vict_obj, to);
+    }
+
+    // Handle special cases like Arena watch and Eavesdropping
+    handle_special_cases(str, ch, obj, vict_obj);
+}
+
+
+
+char *act(const char *str, int hide_invisible, struct char_data *ch, struct obj_data *obj, const void *vict_obj, int type) {
     if (!str || !*str)
         return nullptr;
 
-    /* Warning: the following TO_SLEEP code is a hack. I wanted to be able to tell
-     * act to deliver a message regardless of sleep without adding an additional
-     * argument.  TO_SLEEP is 128 (a single bit high up).  It's ONLY legal to
-     * combine TO_SLEEP with one other TO_x command.  It's not legal to combine
-     * TO_x's with each other otherwise. TO_SLEEP only works because its value
-     * "happens to be" a single bit; do not change it to something else.  In
-     * short, it is a hack.  The same applies to TO_*RESIST.  */
+    bool to_sleeping = (type & TO_SLEEP);
+    bool res_sneak = (type & TO_SNEAKRESIST);
+    bool res_hide = (type & TO_HIDERESIST);
+    int dcval = 0, resskill = 0;
 
-    /* check if TO_SLEEP is there, and remove it if it is. */
-    if ((to_sleeping = (type & TO_SLEEP)))
-        type &= ~TO_SLEEP;
-
-    if ((res_sneak = (type & TO_SNEAKRESIST)))
-        type &= ~TO_SNEAKRESIST;
-
-    if ((res_hide = (type & TO_HIDERESIST)))
-        type &= ~TO_HIDERESIST;
+    // Adjust the type to remove flags that we've already processed
+    type &= ~(TO_SLEEP | TO_SNEAKRESIST | TO_HIDERESIST);
 
     if (res_sneak && AFF_FLAGGED(ch, AFF_SNEAK)) {
-        dcval = roll_skill(ch, SKILL_MOVE_SILENTLY); /* How difficult to counter? */
+        dcval = roll_skill(ch, SKILL_MOVE_SILENTLY);
         if (GET_SKILL(ch, SKILL_BALANCE))
             dcval += GET_SKILL(ch, SKILL_BALANCE) / 10;
-        if (IS_MUTANT(ch) && (ch->genome.contains(5))) {
+        if (IS_MUTANT(ch) && ch->genome.contains(5))
             dcval += 10;
-        }
-        resskill = SKILL_SPOT;             /* Skill used to resist      */
+        resskill = SKILL_SPOT;
     } else if (res_hide && AFF_FLAGGED(ch, AFF_HIDE)) {
         dcval = roll_skill(ch, SKILL_HIDE);
         if (GET_SKILL(ch, SKILL_BALANCE))
@@ -2006,11 +2067,11 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
         resskill = SKILL_SPOT;
     }
 
-    /* this is a hack as well - DG_NO_TRIG is 256 -- Welcor */
-    /* If the bit is set, unset dg_act_check, thus the ! below */
+    // Check triggers
     if (!(dg_act_check = !IS_SET(type, DG_NO_TRIG)))
         REMOVE_BIT(type, DG_NO_TRIG);
 
+    // Handle direct messages
     if (type == TO_CHAR) {
         if (ch && SENDOK(ch) && (!resskill || (roll_skill(ch, resskill) >= dcval))) {
             perform_act(str, ch, obj, vict_obj, ch);
@@ -2020,94 +2081,25 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
     }
 
     if (type == TO_VICT) {
-        if ((to = (struct char_data *) vict_obj) != nullptr && SENDOK(to) &&
-            (!resskill || (roll_skill(to, resskill) >= dcval))) {
-            perform_act(str, ch, obj, vict_obj, to);
+        auto *vict = static_cast<struct char_data *>(const_cast<void *>(vict_obj));
+        if (vict && SENDOK(vict) && (!resskill || (roll_skill(vict, resskill) >= dcval))) {
+            perform_act(str, ch, obj, vict_obj, vict);
             return last_act_message;
         }
         return nullptr;
     }
 
+    // Handle global emotes
     if (type == TO_GMOTE) {
-        struct descriptor_data *i;
-        char buf[MAX_STRING_LENGTH];
-        for (i = descriptor_list; i; i = i->next) {
-            if (!i->connected && i->character &&
-                !PRF_FLAGGED(i->character, PRF_NOGOSS) &&
-                !PLR_FLAGGED(i->character, PLR_WRITING) &&
-                !i->character->getLocationRoomFlag(ROOM_SOUNDPROOF)) {
-
-                sprintf(buf, "@y%s@n", str);
-                perform_act(buf, ch, obj, vict_obj, i->character);
-                char buf2[MAX_STRING_LENGTH];
-                sprintf(buf2, "%s\r\n", buf);
-                add_history(i->character, buf2, HIST_GOSSIP);
-            }
-        }
+        handle_global_emote(str, ch, obj, vict_obj);
         return last_act_message;
     }
 
-    /* ASSUMPTION: at this point we know type must be TO_NOTVICT or TO_ROOM */
-
-    if (ch && IN_ROOM(ch) != NOWHERE)
-        to = ch->getRoom()->people;
-    else if (obj && IN_ROOM(obj) != NOWHERE)
-        to = obj->getRoom()->people;
-    else {
-        return nullptr;
+    // Handle room-based or non-victim messages
+    if (type == TO_ROOM || type == TO_NOTVICT) {
+        handle_room_message(str, ch, obj, vict_obj, type, hide_invisible, resskill, dcval);
     }
 
-    if ((type & TO_ROOM)) {
-        struct descriptor_data *d;
-
-        for (d = descriptor_list; d; d = d->next) {
-            if (STATE(d) != CON_PLAYING)
-                continue;
-
-            if (ch != nullptr) {
-                if (IN_ARENA(ch)) {
-                    if (PRF_FLAGGED(d->character, PRF_ARENAWATCH)) {
-                        if (arena_watch(d->character) == ch->getRoomVnum()) {
-                            char buf3[2000];
-                            *buf3 = '\0';
-                            sprintf(buf3, "@c-----@CArena@c-----@n\r\n%s\r\n@c-----@CArena@c-----@n\r\n", str);
-                            perform_act(buf3, ch, obj, vict_obj, d->character);
-                        }
-                    }
-                }
-            }
-            if (GET_EAVESDROP(d->character) > 0) {
-                int roll = rand_number(1, 101);
-                if (!resskill || (roll_skill(d->character, resskill) >= dcval)) {
-                    if (ch != nullptr && GET_EAVESDROP(d->character) == ch->getRoomVnum() &&
-                        GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
-                        char buf3[1000];
-                        *buf3 = '\0';
-                        sprintf(buf3, "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str);
-                        perform_act(buf3, ch, obj, vict_obj, d->character);
-                    } else if (obj != nullptr && GET_EAVESDROP(d->character) == obj->getRoomVnum() &&
-                               GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
-                        char buf3[1000];
-                        *buf3 = '\0';
-                        sprintf(buf3, "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str);
-                        perform_act(buf3, ch, obj, vict_obj, d->character);
-                    }
-                }
-            }
-        }
-    }
-
-    for (; to; to = to->next_in_room) {
-        if (!SENDOK(to) || (to == ch))
-            continue;
-        if (hide_invisible && ch && !CAN_SEE(to, ch))
-            continue;
-        if (type != TO_ROOM && to == vict_obj)
-            continue;
-        if (resskill && roll_skill(to, resskill) < dcval)
-            continue;
-        perform_act(str, ch, obj, vict_obj, to);
-    }
     return last_act_message;
 }
 

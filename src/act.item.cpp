@@ -2601,7 +2601,7 @@ ACMD(do_drop) {
                 send_to_char(ch, "You don't seem to be carrying anything.\r\n");
             } else {
                 bool fail = false;
-                for (auto& obj : IterRef(cont)) {
+                for (auto obj : IterRef(cont)) {
                     if (check_saveroom_count(ch, obj) > 150) {
                         fail = true;
                     } else {
@@ -2740,6 +2740,20 @@ static struct char_data *give_find_vict(struct char_data *ch, char *arg) {
     return (nullptr);
 }
 
+void log_imm_give_money(struct char_data *ch, struct char_data *vict, int amount, const char *currency) {
+    if (GET_ADMLEVEL(ch) > 0 && !IS_NPC(vict)) {
+        send_to_imm("IMM GIVE: %s has given %s %s to %s.", GET_NAME(ch), add_commas(amount).c_str(), currency, GET_NAME(vict));
+        log_imm_action("IMM GIVE: %s has given %s %s to %s.", GET_NAME(ch), add_commas(amount).c_str(), currency, GET_NAME(vict));
+    }
+}
+
+void log_imm_give(struct char_data *ch, struct char_data *vict, char *objname) {
+    if (GET_ADMLEVEL(ch) > 0 && !IS_NPC(vict)) {
+        send_to_imm("IMM GIVE: %s has given %s to %s.", GET_NAME(ch), objname, GET_NAME(vict));
+        log_imm_action("IMM GIVE: %s has given %s to %s.", GET_NAME(ch), objname, GET_NAME(vict));
+    }
+}
+
 static void perform_give_gold(struct char_data *ch, struct char_data *vict,
                               int amount) {
     char buf[MAX_STRING_LENGTH];
@@ -2773,11 +2787,12 @@ static void perform_give_gold(struct char_data *ch, struct char_data *vict,
 
 void handle_give_gold(struct char_data *ch, int amount, char *argument) {
     struct char_data *vict;
-    argument = one_argument(argument, arg);
+    char arg[MAX_STRING_LENGTH];
+    one_argument(argument, arg);
 
     if ((vict = give_find_vict(ch, arg)) != nullptr) {
         perform_give_gold(ch, vict, amount);
-        log_imm_give(ch, vict, amount, "zenni");
+        log_imm_give_money(ch, vict, amount, "zenni");
     }
 }
 
@@ -2806,6 +2821,27 @@ void handle_give_multiple(struct char_data *ch, int amount, char *arg, char *arg
     }
 }
 
+void handle_give_all(struct char_data *ch, struct char_data *vict, char *arg, int dotmode) {
+    if (dotmode == FIND_ALLDOT && !*arg) {
+        send_to_char(ch, "All of what?\r\n");
+        return;
+    }
+
+    auto cont = ch->getContents();
+
+    if (cont.empty()) {
+        send_to_char(ch, "You don't seem to be holding anything.\r\n");
+        return;
+    }
+
+    for (auto obj : IterRef(cont)) {
+        if (CAN_SEE_OBJ(ch, obj) && (dotmode == FIND_ALL || isname(arg, obj->name))) {
+            perform_give(ch, vict, obj);
+            log_imm_give(ch, vict, obj->short_description);
+        }
+    }
+}
+
 void handle_give_objects(struct char_data *ch, char *arg, char *argument) {
     struct char_data *vict;
     struct obj_data *obj;
@@ -2830,40 +2866,9 @@ void handle_give_objects(struct char_data *ch, char *arg, char *argument) {
     }
 }
 
-void handle_give_all(struct char_data *ch, struct char_data *vict, char *arg, int dotmode) {
-    if (dotmode == FIND_ALLDOT && !*arg) {
-        send_to_char(ch, "All of what?\r\n");
-        return;
-    }
 
-    auto cont = ch->getContents();
 
-    if (cont.empty()) {
-        send_to_char(ch, "You don't seem to be holding anything.\r\n");
-        return;
-    }
 
-    for (auto& obj : IterRef(cont)) {
-        if (CAN_SEE_OBJ(ch, obj) && (dotmode == FIND_ALL || isname(arg, obj->name))) {
-            perform_give(ch, vict, obj);
-            log_imm_give(ch, vict, obj->short_description);
-        }
-    }
-}
-
-void log_imm_give(struct char_data *ch, struct char_data *vict, const char *description) {
-    if (GET_ADMLEVEL(ch) > 0 && !IS_NPC(vict)) {
-        send_to_imm("IMM GIVE: %s has given %s to %s.", GET_NAME(ch), description, GET_NAME(vict));
-        log_imm_action("IMM GIVE: %s has given %s to %s.", GET_NAME(ch), description, GET_NAME(vict));
-    }
-}
-
-void log_imm_give(struct char_data *ch, struct char_data *vict, int amount, const char *currency) {
-    if (GET_ADMLEVEL(ch) > 0 && !IS_NPC(vict)) {
-        send_to_imm("IMM GIVE: %s has given %s %s to %s.", GET_NAME(ch), add_commas(amount).c_str(), currency, GET_NAME(vict));
-        log_imm_action("IMM GIVE: %s has given %s %s to %s.", GET_NAME(ch), add_commas(amount).c_str(), currency, GET_NAME(vict));
-    }
-}
 
 ACMD(do_give) {
     char arg[MAX_STRING_LENGTH];

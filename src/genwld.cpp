@@ -35,12 +35,9 @@ room_rnum add_room(struct room_data *room) {
     if (world.contains(room->vn)) {
         auto &ro = world[room->vn];
             extract_script(&ro, WLD_TRIGGER);
-        tch = ro.people;
-        tobj = ro.contents;
         // TODO: update this for new location handling somehow...
         copy_room(&ro, room);
-        ro.people = tch;
-        ro.contents = tobj;
+
         basic_mud_log("GenOLC: add_room: Updated existing room #%d.", room->vn);
         return i;
     }
@@ -148,11 +145,6 @@ int copy_room(struct room_data *to, struct room_data *from) {
     free_room_strings(to);
     *to = *from;
     copy_room_strings(to, from);
-
-    /* Don't put people and objects in two locations.
-       Am thinking this shouldn't be done here... */
-    from->people = nullptr;
-    from->contents = nullptr;
 
     return true;
 }
@@ -376,11 +368,7 @@ void room_data::activate() {
         roomSubscriptions.subscribe("roomRepairDamage", r);
 
     activateContents();
-    for(auto c = people; c; c = c->next_in_room) {
-        if(IS_NPC(c)) {
-            c->activate();
-        }
-    }
+    for(auto c : IterRef(getPeople())) if(IS_NPC(c)) c->activate();
 }
 
 void room_data::deactivate() {

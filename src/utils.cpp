@@ -2686,13 +2686,10 @@ int get_filename(char *filename, size_t fbufsize, int mode, const char *orig_nam
 
 int num_pc_in_room(struct room_data *room) {
     int i = 0;
-    struct char_data *ch;
 
-    for (ch = room->people; ch != nullptr; ch = ch->next_in_room)
-        if (!IS_NPC(ch))
-            i++;
+    for (auto ch : IterRef(room->getPeople())) if (!IS_NPC(ch)) i++;
 
-    return (i);
+    return i;
 }
 
 /* This function (derived from basic fork(); abort(); idea by Erwin S.
@@ -2842,7 +2839,7 @@ int room_is_dark(room_rnum room) {
 
     auto r = &world.at(room);
 
-    for(auto c = r->people; c; c = c->next_in_room) {
+    for(auto c : IterRef(r->getPeople())) {
         if(c->isProvidingLight()) return false;
     }
 

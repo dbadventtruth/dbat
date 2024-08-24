@@ -273,7 +273,6 @@ ACMD(do_genki) {
     }
 
     for(auto friend_char : IterRef(ch->getLocationPeople())) {
-        next_v = friend_char->next_in_room;
         if (friend_char == ch) {
             continue;
         }
@@ -1063,10 +1062,12 @@ ACMD(do_assist) {
         if (FIGHTING(helpee))
             opponent = FIGHTING(helpee);
         else
-            for (opponent = ch->getRoom()->people;
-                 opponent && (FIGHTING(opponent) != helpee);
-                 opponent = opponent->next_in_room);
-
+            for (auto opp : IterRef(ch->getLocationPeople())) {
+                if (FIGHTING(opp) && FIGHTING(opp) != ch) {
+                    opponent = FIGHTING(opp);
+                    break;
+                }
+            }
         if (!opponent)
             act("But nobody is fighting $M!", true, ch, nullptr, helpee, TO_CHAR);
         else if (!CAN_SEE(ch, opponent))

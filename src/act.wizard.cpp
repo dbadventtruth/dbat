@@ -804,7 +804,6 @@ ACMD(do_echo) {
         }
 
         for(auto vict : IterRef(ch->getLocationPeople())) {
-            next_v = vict->next_in_room;
             if (vict == ch)
                 continue;
             if (found == false) {
@@ -1301,14 +1300,17 @@ static void do_stat_room(struct char_data *ch) {
 
     send_to_char(ch, "Chars present:");
     column = 14;    /* ^^^ strlen ^^^ */
-    for (found = false, k = rm->people; k; k = k->next_in_room) {
+    found = false;
+    auto people = rm->getPeople();
+    int count = people.size();
+    for (auto k : IterRef(people)) {
         if (!CAN_SEE(ch, k))
             continue;
 
         column += send_to_char(ch, "%s @y%s@n(%s)", found++ ? "," : "", GET_NAME(k),
                                !IS_NPC(k) ? "PC" : (!IS_MOB(k) ? "NPC" : "MOB"));
         if (column >= 62) {
-            send_to_char(ch, "%s\r\n", k->next_in_room ? "," : "");
+            send_to_char(ch, "%s\r\n", count-- ? "," : "");
             found = false;
             column = 0;
         }
@@ -2980,7 +2982,6 @@ ACMD(do_force) {
                GET_NAME(ch), ch->getRoomVnum(), to_force);
 
         for(auto vict : IterRef(ch->getLocationPeople())) {
-            next_force = vict->next_in_room;
             if (!IS_NPC(vict) && GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
                 continue;
             act(buf1, true, ch, nullptr, vict, TO_VICT);
@@ -4369,7 +4370,6 @@ ACMD(do_peace) {
     send_to_room(IN_ROOM(ch), "Everything is quite peaceful now.\r\n");
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
-        next_v = vict->next_in_room;
         if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch))
             continue;
         stop_fighting(vict);

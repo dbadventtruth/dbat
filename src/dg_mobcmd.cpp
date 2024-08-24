@@ -549,7 +549,6 @@ ACMD(do_mpurge) {
         obj_data *obj_next;
 
         for(auto victim : IterRef(ch->getLocationPeople())) {
-            vnext = victim->next_in_room;
             if (IS_NPC(victim) && victim != ch)
                 extract_char(victim);
         }
@@ -703,7 +702,6 @@ ACMD(do_mteleport) {
         }
 
         for(auto vict : IterRef(ch->getLocationPeople())) {
-            next_ch = vict->next_in_room;
 
             if (valid_dg_target(vict, DG_ALLOW_GODS)) {
                 char_from_room(vict);

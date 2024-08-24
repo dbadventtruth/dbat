@@ -158,11 +158,9 @@ OCMD(do_oecho) {
     if (!*argument)
         obj_log(obj, "oecho called with no args");
 
-    else if ((room = obj_room(obj)) != NOWHERE) {
-        if (world[room].people) {
-            sub_write(argument, world[room].people, true, TO_ROOM);
-            sub_write(argument, world[room].people, true, TO_CHAR);
-        }
+    else if (auto people = obj->getLocationPeople(); !people.empty()) {
+        auto pers = *(IterRef(people).begin());
+        for(auto to : {TO_ROOM, TO_CHAR}) sub_write(argument, pers, true, to);
     } else
         obj_log(obj, "oecho called by object in NOWHERE");
 }
@@ -184,8 +182,7 @@ OCMD(do_oforce) {
         if ((room = obj_room(obj)) == NOWHERE)
             obj_log(obj, "oforce called by object in NOWHERE");
         else {
-            for (ch = world[room].people; ch; ch = next_ch) {
-                next_ch = ch->next_in_room;
+            for (auto ch : IterRef(world.at(room).getPeople())) {
                 if (valid_dg_target(ch, 0)) {
                     command_interpreter(ch, line);
                 }
@@ -390,8 +387,7 @@ OCMD(do_oteleport) {
         if (target == rm)
             obj_log(obj, "oteleport target is itself");
 
-        for (ch = world[rm].people; ch; ch = next_ch) {
-            next_ch = ch->next_in_room;
+        for (auto ch : IterRef(world.at(rm).getPeople())) {
             if (!valid_dg_target(ch, DG_ALLOW_GODS))
                 continue;
             char_from_room(ch);
@@ -538,13 +534,18 @@ OCMD(do_oasound) {
         return;
     }
 
-    for (door = 0; door < NUM_OF_DIRS; door++) {
-        if (world[room].dir_option[door] != nullptr &&
-            (world[room].dir_option[door])->to_room != NOWHERE &&
-            (world[room].dir_option[door])->to_room != room &&
-            world[(world[room].dir_option[door])->to_room].people) {
-            sub_write(argument, world[(world[room].dir_option[door])->to_room].people, true, TO_ROOM);
-            sub_write(argument, world[(world[room].dir_option[door])->to_room].people, true, TO_CHAR);
+    for (int door = 0; door < NUM_OF_DIRS; ++door) {
+        auto dir_option = world[room].dir_option[door];
+        
+        if (dir_option != nullptr) {
+            auto to_room = dir_option->to_room;
+
+            if (to_room != NOWHERE && to_room != room) {
+                if(auto people = world.at(to_room).getPeople(); !people.empty()) {
+                    auto pers = (people.begin())->get();
+                    for(auto to : {TO_ROOM, TO_CHAR}) sub_write(argument, pers, true, to);
+                }
+            }
         }
     }
 }

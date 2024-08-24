@@ -2601,7 +2601,6 @@ void reset_char(struct char_data *ch) {
     ch->followers = nullptr;
     ch->master = nullptr;
     IN_ROOM(ch) = NOWHERE;
-    ch->next_in_room = nullptr;
     FIGHTING(ch) = nullptr;
     ch->position = POS_STANDING;
     ch->mob_specials.default_pos = POS_STANDING;

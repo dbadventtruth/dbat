@@ -427,7 +427,8 @@ in the vault (vnum: 453) now and then. you can just use
                         script_log("findmob.vnum(ovnum): No room with vnum %d", atof(field));
                         strcpy(str, "0");
                     } else {
-                        for (i = 0, ch = world[rrnum].people; ch; ch = ch->next_in_room)
+                        i = 0;
+                        for (auto ch : IterRef(world.at(rrnum).getPeople()))
                             if (GET_MOB_VNUM(ch) == mvnum)
                                 i++;
 
@@ -466,18 +467,17 @@ in the vault (vnum: 453) now and then. you can just use
                                 count++;
                             }
                     } else if (type == OBJ_TRIGGER) {
-                        for (c = world[obj_room(dynamic_cast<obj_data*>(u))].people; c;
-                             c = c->next_in_room)
+                        auto o = dynamic_cast<obj_data*>(u);
+                        for (auto c : IterRef(o->getLocationPeople()))
                             if (valid_dg_target(c, DG_ALLOW_GODS)) {
                                 if (!rand_number(0, count))
                                     rndm = c;
                                 count++;
                             }
                     } else if (type == WLD_TRIGGER) {
-                        for (c = (dynamic_cast<room_data*>(u))->people; c;
-                             c = c->next_in_room)
+                        auto r = dynamic_cast<room_data*>(u);
+                        for (auto c : IterRef(r->getPeople()))
                             if (valid_dg_target(c, DG_ALLOW_GODS)) {
-
                                 if (!rand_number(0, count))
                                     rndm = c;
                                 count++;
@@ -631,15 +631,15 @@ in the vault (vnum: 453) now and then. you can just use
                     break;
                 case 'f':
                     if (!strcasecmp(field, "fighting")) {
-                        if (FIGHTING(c))
-                            snprintf(str, slen, "%s", ((((c)->fighting))->getUID().c_str()));
+                        if (auto fight = FIGHTING(c); fight)
+                            snprintf(str, slen, "%s", fight->getUID().c_str());
                         else
                             *str = '\0';
                     } else if (!strcasecmp(field, "follower")) {
                         if (!c->followers || !c->followers->follower)
                             *str = '\0';
                         else
-                            snprintf(str, slen, "%s", ((c->followers->follower)->getUID().c_str()));
+                            snprintf(str, slen, "%s", c->followers->follower->getUID().c_str());
                     }
                     break;
                 case 'h':
@@ -754,10 +754,16 @@ in the vault (vnum: 453) now and then. you can just use
                     if (!strcasecmp(field, "name")) {
                         snprintf(str, slen, "%s", GET_NAME(c));
                     } else if (!strcasecmp(field, "next_in_room")) {
-                        if (c->next_in_room)
-                            snprintf(str, slen, "%s", ((c->next_in_room)->getUID().c_str()));
-                        else
-                            *str = '\0';
+                        if (auto people = c->getLocationPeople(); !people.empty()) {
+                            auto it = std::find(people.begin(), people.end(), CharRef(c));
+                            if (it != people.end()) {
+                                if (++it != people.end()) {
+                                    snprintf(str, slen, "%s", (*it)->getUID().c_str());
+                                    return;
+                                }
+                            }
+                        }
+                    *str = '\0';
                     }
                     break;
                 case 'p':
@@ -1040,7 +1046,7 @@ in the vault (vnum: 453) now and then. you can just use
                         if (auto loc = o->getLocation(); loc.second.type == CoordinateType::Inventory) {
                             auto contents = loc.first->getContents();
                             // we need to advance the iterator to be at o and then try to go one further.
-                            auto it = std::find(contents.begin(), contents.end(), o);
+                            auto it = std::find(contents.begin(), contents.end(), ObjRef(o));
                             if (it != contents.end() && ++it != contents.end()) {
                                 snprintf(str, slen, "%s", (*it)->getUID().c_str());
                             } else {
@@ -1221,8 +1227,9 @@ in the vault (vnum: 453) now and then. you can just use
                     }
                 }
             } else if (!strcasecmp(field, "people")) {
-                if (r->people)
-                    snprintf(str, slen, "%s", ((r->people)->getUID().c_str()));
+                if (auto peo = r->getPeople(); !peo.empty()) {
+                    snprintf(str, slen, "%s", (*peo.begin()).get()->getUID().c_str());
+                }
                 else
                     *str = '\0';
             } else if (!strcasecmp(field, "id")) {

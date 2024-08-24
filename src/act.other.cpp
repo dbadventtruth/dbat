@@ -6567,7 +6567,6 @@ ACMD(do_solar) {
         true, ch, nullptr, nullptr, TO_ROOM);
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
-        next_v = vict->next_in_room;
 
         if (vict == ch)
             continue;

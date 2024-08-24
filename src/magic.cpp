@@ -650,7 +650,6 @@ void mag_masses(int level, struct char_data *ch, int spellnum) {
     struct char_data *tch, *tch_next;
 
     for(auto tch : IterRef(ch->getLocationPeople())) {
-        tch_next = tch->next_in_room;
         if (tch == ch)
             continue;
 
@@ -693,7 +692,6 @@ void mag_areas(int level, struct char_data *ch, int spellnum) {
 
 
     for(auto tch : IterRef(ch->getLocationPeople())) {
-        next_tch = tch->next_in_room;
 
         /*
          * The skips: 1: the caster

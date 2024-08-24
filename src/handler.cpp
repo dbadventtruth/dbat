@@ -569,7 +569,6 @@ struct obj_data *get_obj_num(obj_rnum nr) {
 
 /* search a room for a char, and return a pointer if found..  */
 struct char_data *get_char_room(char *name, int *number, room_rnum room) {
-    struct char_data *i;
     int num;
 
     if (!number) {
@@ -578,14 +577,14 @@ struct char_data *get_char_room(char *name, int *number, room_rnum room) {
     }
 
     if (*number == 0)
-        return (nullptr);
+        return nullptr;
 
-    for (i = world[room].people; i && *number; i = i->next_in_room)
+    for (auto i : IterRef(world.at(room).getPeople()))
         if (isname(name, i->name))
             if (--(*number) == 0)
-                return (i);
+                return i;
 
-    return (nullptr);
+    return nullptr;
 }
 
 

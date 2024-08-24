@@ -131,8 +131,7 @@ int trgvar_in_room(room_vnum vnum) {
         return (-1);
     }
 
-    for (ch = world[rnum].people; ch != nullptr; ch = ch->next_in_room)
-        i++;
+    i += world.at(rnum).getPeople().size();
 
     return i;
 }
@@ -336,14 +335,11 @@ char_data *get_char_near_obj(obj_data *obj, char *name) {
 
         if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
             return ch;
-    } else {
-        room_rnum num;
-        if ((num = obj_room(obj)) != NOWHERE)
-            for (ch = world[num].people; ch; ch = ch->next_in_room)
-                if (isname(name, ch->name) &&
-                    valid_dg_target(ch, DG_ALLOW_GODS))
-                    return ch;
     }
+
+    for (auto ch : IterRef(obj->getLocationPeople()))
+        if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
+            return ch;
 
     return nullptr;
 }
@@ -367,9 +363,8 @@ char_data *get_char_in_room(room_data *room, char *name) {
         if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
             return ch;
     } else {
-        for (ch = room->people; ch; ch = ch->next_in_room)
-            if (isname(name, ch->name) &&
-                valid_dg_target(ch, DG_ALLOW_GODS))
+        for (auto ch : IterRef(room->getPeople()))
+            if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
                 return ch;
     }
 
@@ -411,13 +406,14 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     else if (obj->carried_by &&
              (i = get_obj_in_list(name, obj->carried_by->getContents())))
         return i;
-    else if ((rm = obj_room(obj)) != NOWHERE) {
+    else {
+        
         /* check the floor */
-        if ((i = get_obj_in_list(name, world[rm].getContents())))
+        if ((i = get_obj_in_list(name, obj->getLocationObjects())))
             return i;
 
         /* check peoples' inventory */
-        for (ch = world[rm].people; ch; ch = ch->next_in_room)
+        for (auto ch : IterRef(obj->getLocationPeople()))
             if ((i = get_object_in_equip(ch, name)))
                 return i;
     }
@@ -527,7 +523,7 @@ char_data *get_char_by_room(room_data *room, char *name) {
         if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
             return ch;
     } else {
-        for (ch = room->people; ch; ch = ch->next_in_room)
+        for (auto ch : IterRef(room->getPeople()))
             if (isname(name, ch->name) &&
                 valid_dg_target(ch, DG_ALLOW_GODS))
                 return ch;

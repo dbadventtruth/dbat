@@ -37,9 +37,9 @@ static int player_present(struct char_data *ch) {
         return 0;
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
-        next_v = vict->next_in_room;
         if (!IS_NPC(vict)) {
             found = true;
+            break;
         }
     }
 
@@ -307,7 +307,6 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
                 struct char_data *vict, *next_v;
                 int done = false;
                 for(auto vict : IterRef(ch->getLocationPeople())) {
-                    next_v = vict->next_in_room;
                     if (vict == ch)
                         continue;
                     if (IS_NPC(vict) && race::isPeople(vict->race) && FIGHTING(vict) && done == false) {
@@ -344,7 +343,6 @@ void mobile_activity(uint64_t heartPulse, double deltaTime) {
                 struct char_data *vict, *next_v;
                 int done = false;
                 for(auto vict : IterRef(ch->getLocationPeople())) {
-                    next_v = vict->next_in_room;
                     if (vict == ch)
                         continue;
                     if (IS_NPC(vict) && race::isPeople(vict->race) && FIGHTING(vict) && done == false) {

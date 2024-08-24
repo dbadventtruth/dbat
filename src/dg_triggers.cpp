@@ -305,7 +305,6 @@ int command_mtrigger(char_data *actor, char *cmd, char *argument) {
         return 0;
 
     for(auto ch : IterRef(actor->getLocationPeople())) {
-        ch_next = ch->next_in_room;
 
         if (SCRIPT_CHECK(ch, MTRIG_COMMAND) && !AFF_FLAGGED(ch, AFF_CHARM) &&
             (actor != ch)) {
@@ -344,7 +343,6 @@ void speech_mtrigger(char_data *actor, char *str) {
     char buf[MAX_INPUT_LENGTH];
 
     for(auto ch : IterRef(actor->getLocationPeople())) {
-        ch_next = ch->next_in_room;
 
         if (SCRIPT_CHECK(ch, MTRIG_SPEECH) && AWAKE(ch) &&
             !AFF_FLAGGED(ch, AFF_CHARM) && (actor != ch))

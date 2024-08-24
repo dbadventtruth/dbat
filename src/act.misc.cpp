@@ -369,7 +369,6 @@ static void resolve_song(struct char_data *ch) {
     }
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
-        next_v = vict->next_in_room;
         switch ((int)GET_SONG(ch)) {
             case SONG_SAFETY:
                 if ((ch->master == vict->master || ch == vict->master || vict == ch->master) || vict == ch) {
@@ -972,7 +971,6 @@ ACMD(do_moondust) {
     struct char_data *vict = nullptr, *next_v = nullptr;
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
-        next_v = vict->next_in_room;
         if (vict == ch) {
             continue;
         }
@@ -2940,8 +2938,7 @@ ACMD(do_hydromancy) {
             act(bun, true, ch, nullptr, nullptr, TO_CHAR);
             act(bunn, true, ch, nullptr, nullptr, TO_ROOM);
 
-            for (vict = r->people; vict; vict = next_v) {
-                next_v = vict->next_in_room;
+            for (auto vict : IterRef(r->getPeople())) {
                 if (vict == ch)
                     continue;
                 if (!can_kill(ch, vict, nullptr, 1)) {
@@ -2969,7 +2966,7 @@ ACMD(do_hydromancy) {
                     hurt(0, 0, ch, vict, nullptr, cost * 4, 1);
                 }
             }
-            dest->geffect = -3;
+            ch->setLocationGroundEffect(-3);
             LASTATK(ch) = last;
             WAIT_STATE(ch, PULSE_2SEC);
             GET_COOLDOWN(ch) = 15;

@@ -1857,10 +1857,7 @@ void point_update(uint64_t heartPulse, double deltaTime) {
                     GET_OBJ_TIMER(j)--;
 
                 if (GET_OBJ_TIMER(j) == 0) {
-                    act("A glowing portal fades from existence.",
-                        true, j->getRoom()->people, j, nullptr, TO_ROOM);
-                    act("A glowing portal fades from existence.",
-                        true, j->getRoom()->people, j, nullptr, TO_CHAR);
+                    j->broadcastAtLocation("A glowing portal fades from existence.\r\n");
                     extract_obj(j);
                 }
             } else if (GET_OBJ_VNUM(j) == 1306) {
@@ -1868,10 +1865,7 @@ void point_update(uint64_t heartPulse, double deltaTime) {
                     GET_OBJ_TIMER(j)--;
 
                 if (GET_OBJ_TIMER(j) == 0) {
-                    act("The $p@n settles to the ground and goes out.",
-                        true, j->getRoom()->people, j, nullptr, TO_ROOM);
-                    act("A $p@n settles to the ground and goes out.",
-                        true, j->getRoom()->people, j, nullptr, TO_CHAR);
+                    j->broadcastAtLocation(fmt::format("The {}@n settles to the ground and goes out.\r\n", j->getShortDescription()));
                     extract_obj(j);
                 }
             } else if (OBJ_FLAGGED(j, ITEM_ICE)) {
