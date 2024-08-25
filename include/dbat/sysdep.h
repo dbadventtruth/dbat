@@ -50,6 +50,7 @@
 #include <bitset>
 #include <variant>
 #include <functional>
+#include <source_location>
 
 #define FMT_HEADER_ONLY
 #include "fmt/core.h"

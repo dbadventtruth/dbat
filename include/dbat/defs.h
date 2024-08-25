@@ -1472,7 +1472,7 @@ constexpr int ITEM_MONEY = 20;        /* Item is money (gold)		*/
 constexpr int ITEM_PEN = 21;        /* Item is a pen		*/
 constexpr int ITEM_BOAT = 22;        /* Item is a boat		*/
 constexpr int ITEM_FOUNTAIN = 23;        /* Item is a fountain		*/
-constexpr int ITEM_VEHICLE = 24;               /* Item is a vehicle            */
+constexpr int ITEM_UNUSED_VEHICLE = 24;               /* Item is a vehicle            */
 constexpr int ITEM_HATCH = 25;               /* Item is a vehicle hatch      */
 constexpr int ITEM_WINDOW = 26;               /* Item is a vehicle window     */
 constexpr int ITEM_CONTROL = 27;               /* Item is a vehicle control    */
@@ -1485,8 +1485,9 @@ constexpr int ITEM_YUM = 33;               /* This was good food           */
 constexpr int ITEM_PLANT = 34;               /* This will grow!              */
 constexpr int ITEM_FISHPOLE = 35;               /* FOR FISHING                  */
 constexpr int ITEM_FISHBAIT = 36;               /* DITTO                        */
+constexpr int ITEM_STRUCTURE = 37;     // This is some kind of area. it might be a new-style vehicle, a space station, a planet, etc.
 
-constexpr int NUM_ITEM_TYPES = 37;
+constexpr int NUM_ITEM_TYPES = 38;
 
 /* Take/Wear flags: used by obj_data.wear_flags */
 constexpr int ITEM_WEAR_TAKE = 0;  /* Item can be taken         */
@@ -1550,8 +1551,17 @@ constexpr int ITEM_MATURE = 34;
 constexpr int ITEM_CARDCASE = 35;
 constexpr int ITEM_NOPICKUP = 36;
 constexpr int ITEM_NOSTEAL = 37;
+// 38 through 45 are used exclusively by ITEM_STRUCTURE
+constexpr int ITEM_DIMENSION = 38; // sets boundaries for things like teleports
+constexpr int ITEM_CELESTIALBODY = 39; // used for 'land' and displays location, also sense life
+constexpr int ITEM_AREA = 40; // replaces zones. logical grouping of bounds. item contains rooms.
+constexpr int ITEM_ENVIRONMENT = 41; // used for buildings, ships, etc. Stopping point for environment checks.
+constexpr int ITEM_GRID = 42; // item uses the new grid system.
+constexpr int ITEM_ESSENTIAL = 43; // item is essential to the game. cannot be deleted/purged/etc.
+constexpr int ITEM_HASMOON = 44;
+constexpr int ITEM_VEHICLE = 45;
 
-// TODO: after completing migration, reduce this to 39
+// TODO: after completing migration, reduce this to 46
 constexpr int NUM_ITEM_FLAGS = 96;
 
 /* Modifier constants used with obj affects ('A' fields) */

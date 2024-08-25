@@ -16,34 +16,6 @@
 * Structures                                                          *
 **********************************************************************/
 
-
-enum class AreaType {
-    Dimension = 0,
-    CelestialBody = 1,
-    Region = 2,
-    Structure = 3,
-    Vehicle = 4
-};
-
-struct area_data {
-    area_data() = default;
-    explicit area_data(const nlohmann::json &j);
-    vnum vn{NOTHING}; /* virtual number of this area		*/
-    std::string name; /* name of this area			*/
-    std::unordered_set<room_vnum> rooms; /* rooms in this area			*/
-    std::unordered_set<vnum> children; /* child areas				*/
-    std::optional<double> gravity; /* gravity in this area			*/
-    std::optional<vnum> parent; /* parent area				*/
-    AreaType type{AreaType::Dimension}; /* type of area				*/
-    std::optional<vnum> extraVn; /* vehicle or house outer object vnum, orbit for CelBody */
-    bool ether{false}; /* is this area etheric?			*/
-    std::bitset<NUM_AREA_FLAGS> flags; /* area flags				*/
-    nlohmann::json serialize();
-    static vnum getNextID();
-    static bool isPlanet(const area_data &area);
-    std::optional<room_vnum> getLaunchDestination();
-};
-
 /* Extra description: used in objects, mobiles, and rooms */
 struct extra_descr_data {
     char *keyword;                 /* Keyword in look/examine          */
@@ -746,6 +718,9 @@ public:
     room_vnum getRoomVnum() const;
     room_data* getAbsoluteRoom() const;
    
+    // Area Rework...
+    GameEntity* getMatchingParentLocation(const std::function<bool(GameEntity*)>& f);
+    obj_data* getMatchingParentStructure(int flag);
 
     // Everything below this is legacy and should be moved to protected at the first available opportunity.
 
@@ -830,6 +805,9 @@ struct obj_data : public GameEntity {
 
     room_vnum room_loaded{NOWHERE};    /* Room loaded in, for room_max checks	*/
 
+    // TODO: add this to serializing and deserializing.
+    std::unordered_map<int, double> environment;
+
     /* legacy Values of the item (see VAL_ list in defs.h)    */
     std::array<int64_t, NUM_OBJ_VAL_POSITIONS> value;
 
@@ -873,18 +851,43 @@ struct obj_data : public GameEntity {
     struct obj_data *posted_to{};
     struct obj_data *fellow_wall{};
 
-    std::optional<double> gravity;
-
-    std::optional<vnum> getMatchingArea(const std::function<bool(const area_data&)>& f);
-
     bool isProvidingLight();
     double currentGravity();
-
 
     // GameEntity stuff
     void onAddedToLocation(const Location& loc) override;
     void onRemovedFromLocation(const Location& loc) override;
     void onRelocatedWithinLocation(const Coordinates& oldLoc, const Coordinates& newLoc) override;
+
+    // For the new vehicles and grid system
+    // Owner -1 is permanently ownerless, and -2 can be claimed if not owned.
+    int64_t owner{-1};
+    std::unordered_set<int64_t> authorizedUsers;
+
+    // grid stuff.
+    std::string gridDescription{};
+    // -1 is void, impassable.
+    int defaultGridTileType{-1};
+    // boundaries. unbounded is endless.
+    std::optional<int64_t> minX, maxX, minY, maxY, minZ, maxZ;
+    // if blank it's 0,0,0
+    std::optional<Point> gridEntrance; 
+    // overrides the grid's normal exit handling for directions. Can be used for weirdness or to create legacy style doors.
+    std::unordered_map<Point, std::unordered_map<int, Destination>> gridExits; 
+    // if a point has a special description.
+    std::unordered_map<Point, std::string> gridPointDescription;
+    // for a tile type other than default.
+    std::unordered_map<Point, int> gridTileType;
+    // Legacy room damage system.
+    std::unordered_map<Point, int> gridDamage;
+    // Legacy room Ground effects.
+    std::unordered_map<Point, int> gridGroundEffect;
+    // Environments
+    std::unordered_map<Point, std::unordered_map<int, double>> gridEnvironment;
+    // Finally, Room flags.
+    std::unordered_map<Point, std::bitset<NUM_ROOM_FLAGS>> gridRoomFlags;
+
+
 };
 /* ======================================================================= */
 
@@ -918,12 +921,9 @@ struct room_data : public GameEntity {
     nlohmann::json serialize() override;
     void deserialize(const nlohmann::json& j) override;
 
-    std::optional<vnum> getMatchingArea(std::function<bool(const area_data&)> f);
     bool isActive() override;
 
     RoomRef ref();
-
-    std::optional<room_vnum> getLaunchDestination();
 
     std::optional<std::string> dgCallMember(const std::string& member, const std::string& arg);
 
@@ -943,7 +943,6 @@ struct room_data : public GameEntity {
     std::map<int, Destination> getDirectionalDestinations(const Coordinates& coord) override;
     std::vector<GameEntity*> getEntitiesAt(const Coordinates& coords) override;
     double getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific) override;
-    std::optional<Destination> getLaunchDestination(const Coordinates& coord) override;
     int getDamage(const Coordinates& coord) override;
     int setDamage(const Coordinates& coord, int amount) override;
     int modDamage(const Coordinates& coord, int amount) override;
@@ -1173,7 +1172,7 @@ struct char_data : public GameEntity {
 
     void activate();
     void deactivate();
-    std::optional<vnum> getMatchingArea(std::function<bool(const area_data&)> f);
+
     void login();
 
     void sendGMCP(const std::string &cmd, const nlohmann::json &j);

@@ -584,7 +584,7 @@ void oedit_disp_val1_menu(struct descriptor_data *d) {
              * This is supposed to be language, but it's unused.
              */
             break;
-        case ITEM_VEHICLE:
+        case ITEM_UNUSED_VEHICLE:
             write_to_output(d, "Enter room vnum of vehicle interior : ");
             break;
         case ITEM_HATCH:
@@ -638,7 +638,7 @@ void oedit_disp_val2_menu(struct descriptor_data *d) {
             write_to_output(d, "Enter Engine Type ( 1, 2, 3) : ");
             break;
         case ITEM_CONTAINER:
-        case ITEM_VEHICLE:
+        case ITEM_UNUSED_VEHICLE:
         case ITEM_HATCH:
         case ITEM_WINDOW:
         case ITEM_PORTAL:
@@ -686,7 +686,7 @@ void oedit_disp_val3_menu(struct descriptor_data *d) {
         case ITEM_FOUNTAIN:
             oedit_liquid_type(d);
             break;
-        case ITEM_VEHICLE:
+        case ITEM_UNUSED_VEHICLE:
             write_to_output(d, "Vnum of key to unlock vehicle (-1 for no key) : ");
             break;
         case ITEM_HATCH:
@@ -727,7 +727,7 @@ void oedit_disp_val4_menu(struct descriptor_data *d) {
         case ITEM_FOOD:
             write_to_output(d, "Poisoned (0 = not poison) : ");
             break;
-        case ITEM_VEHICLE:
+        case ITEM_UNUSED_VEHICLE:
             write_to_output(d, "What is the vehicle's appearance? (-1 for transparent) : ");
             break;
         case ITEM_HATCH:
@@ -1372,7 +1372,7 @@ void oedit_parse(struct descriptor_data *d, char *arg) {
                     oedit_disp_val5_menu(d);
                     break;
                 case ITEM_CONTAINER:
-                case ITEM_VEHICLE:
+                case ITEM_UNUSED_VEHICLE:
                 case ITEM_WINDOW:
                 case ITEM_HATCH:
                 case ITEM_PORTAL:

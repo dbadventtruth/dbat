@@ -392,3 +392,26 @@ time_t GameEntity::getCreationTime() const {
 void GameEntity::setCreationTime(time_t newTime) {
     creationTime = newTime;
 }
+
+GameEntity* GameEntity::getMatchingParentLocation(const std::function<bool(GameEntity*)>& f) {
+    std::set<GameEntity*> seen;
+    auto loc = getLocation();
+    while(loc.entity) {
+        if(seen.count(loc.entity)) break;
+        seen.insert(loc.entity);
+        if(f(loc.entity)) return loc.entity;
+        loc = loc.entity->getLocation();
+    }
+    return nullptr;
+}
+
+obj_data* GameEntity::getMatchingParentStructure(int flag) {
+    auto isCorrect = [flag](GameEntity* ent) {
+        if(auto o = dynamic_cast<obj_data*>(ent); o) {
+            if(o->type_flag == ITEM_STRUCTURE && o->extra_flags.test(flag))
+            return true;
+        } else 
+            return false;
+    };
+    return dynamic_cast<obj_data*>(getMatchingParentLocation(isCorrect));
+}

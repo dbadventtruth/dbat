@@ -946,9 +946,8 @@ extern bool MORT_CAN_SEE_OBJ(char_data *sub, obj_data *obj);
 #define MOON_TIME               (time_info.hours >= 21 || time_info.hours <= 4)
 #define MOON_DATE               (time_info.day >= 20 && time_info.day <= 23)
 extern bool MOON_TIMECHECK();
-bool PLANET_FLAGGED(struct char_data *ch, int flag);
-bool ETHER_STREAM(struct char_data *ch);
-bool HAS_MOON(struct char_data *ch);
+extern bool ETHER_STREAM(struct char_data *ch);
+extern bool HAS_MOON(struct char_data *ch);
 #define HAS_ARMS(ch)            (((IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LARM) || \
                                  MOB_FLAGGED(ch, MOB_RARM))) || GET_LIMBCOND(ch, 0) > 0 || \
                                  GET_LIMBCOND(ch, 1) > 0 || \
@@ -997,29 +996,14 @@ bool HAS_MOON(struct char_data *ch);
 #define IS_FEMALE(ch)           (GET_SEX(ch) == SEX_FEMALE)
 #define IS_NEUTER(ch)           (!IS_MALE(ch) && !IS_FEMALE(ch))
 
-#define OUTSIDE(ch)    (OUTSIDE_ROOMFLAG(ch) && OUTSIDE_SECTTYPE(ch))
-
-#define OUTSIDE_ROOMFLAG(ch)    (!ROOM_FLAGGED(IN_ROOM(ch), ROOM_INDOORS) && \
-             !ROOM_FLAGGED(IN_ROOM(ch), ROOM_UNDERGROUND) && \
-                          !ROOM_FLAGGED(IN_ROOM(ch), ROOM_SPACE))
-
-#define OUTSIDE_SECTTYPE(ch)    ((ch->getLocationTileType() != SECT_INSIDE) && \
-                         (ch->getLocationTileType() != SECT_UNDERWATER) && \
-                          (ch->getLocationTileType() != SECT_IMPORTANT) && \
-                           (ch->getLocationTileType() != SECT_SHOP) && \
-                            (ch->getLocationTileType() != SECT_SPACE))
+extern bool OUTSIDE(GameEntity *e);
+extern bool OUTSIDE_ROOMFLAG(GameEntity* ent);
+extern bool OUTSIDE_SECTTYPE(GameEntity* ent);
 
 #define DIRT_ROOM(ch) (OUTSIDE_SECTTYPE(ch) && ((ch->getLocationTileType() != SECT_WATER_NOSWIM) && \
                        (ch->getLocationTileType() != SECT_WATER_SWIM)))
 
 #define SPEAKING(ch)     ((ch)->speaking)
-
-/* OS compatibility ******************************************************/
-
-
-/* there could be some strange OS which doesn't have nullptr... */
-
-
 
 
 /* defines for fseek */
@@ -1237,7 +1221,10 @@ void send_to_moon(fmt::string_view format, Args&&... args) {
 
         for(auto i = descriptor_list; i; i = i->next) {
             if(STATE(i) != CON_PLAYING || !(i->character)) continue;
-            if (!AWAKE(i->character) || !HAS_MOON(i->character)) continue;
+            if(auto planet = i->character->getMatchingParentStructure(ITEM_HASMOON); !planet) {
+                continue;
+            }
+            if (!AWAKE(i->character)) continue;
             i->output += formatted_string;
         }
     }

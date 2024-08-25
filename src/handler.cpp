@@ -639,11 +639,15 @@ void obj_from_obj(struct obj_data *obj) {
 }
 
 
-
-
-
 /* Extract an object from the world */
-void extract_obj(struct obj_data *obj) {
+void extract_obj(struct obj_data *obj, const std::source_location& srcloc) {
+
+    if(obj->extra_flags.test(ITEM_ESSENTIAL)) {
+        logger->warn("Attempted to extract essential object {} ({}) at {}:{}",
+            obj->getUID(), obj->getShortDescription(), srcloc.file_name(), srcloc.line());
+            return;
+    }
+
     struct obj_data *temp;
     struct char_data *ch;
     obj->clearLocation();

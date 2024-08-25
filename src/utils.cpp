@@ -789,8 +789,7 @@ void broken_update(uint64_t heartPulse, double deltaTime) {
             grav_change = true;
         }
         if (grav_change == true) {
-            k->gravity = rand_gravity[grav_roll];
-            GET_OBJ_WEIGHT(k) = rand_gravity[grav_roll];
+            k->dvalue["gravity"] = rand_gravity[grav_roll];
             send_to_room(IN_ROOM(k), "@RThe gravity generator malfunctions! The gravity level has changed!@n\r\n");
         }
         dice = rand_number(2, 12); // Reset the dice
@@ -1960,8 +1959,8 @@ int planet_check(struct char_data *ch, struct char_data *vict) {
         return false;
     } else {
         if (GET_ADMLEVEL(vict) <= 0) {
-            auto chPlanet = ch->getMatchingArea(area_data::isPlanet);
-            auto victPlanet = vict->getMatchingArea(area_data::isPlanet);
+            auto chPlanet = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
+            auto victPlanet = vict->getMatchingParentStructure(ITEM_CELESTIALBODY);
             if(chPlanet && chPlanet == victPlanet) return true;
             else if (ch->getLocationRoomFlag(ROOM_AL) && vict->getLocationRoomFlag(ROOM_AL)) {
                 return true;
@@ -3151,19 +3150,13 @@ bool AFF_FLAGGED(struct char_data *ch, int flag) {
     return false;
 }
 
-bool PLANET_FLAGGED(struct char_data *ch, int flag) {
-    auto planet = ch->getMatchingArea(area_data::isPlanet);
-    if(!planet) return false;
-    auto &a = areas[*planet];
-    return a.flags.test(flag);
-}
-
 bool ETHER_STREAM(struct char_data *ch) {
-    return PLANET_FLAGGED(ch, AREA_ETHER);
+    return ch->getLocationEnvironment(ENV_ETHER_STREAM) > 0;
 }
 
 bool HAS_MOON(struct char_data *ch) {
-    return PLANET_FLAGGED(ch, AREA_MOON);
+    auto planet = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
+    return (planet && planet->extra_flags.test(ITEM_HASMOON));
 }
 
 int GET_SPEEDI(struct char_data *ch) {
@@ -3280,4 +3273,32 @@ bool CAN_SEE_OBJ_CARRIER(char_data *sub, obj_data *obj) {
 bool MORT_CAN_SEE_OBJ(char_data *sub, obj_data *obj) {
     if(!LIGHT_OK(sub)) return false;
     return ((obj)->getLocation().entity == (sub)) && INVIS_OK_OBJ((sub), (obj)) && CAN_SEE_OBJ_CARRIER((sub), (obj));
+}
+
+bool OUTSIDE(GameEntity *e) {
+    return OUTSIDE_ROOMFLAG(e) && OUTSIDE_SECTTYPE(e);
+}
+
+bool OUTSIDE_ROOMFLAG(GameEntity* ent) {
+    auto loc = ent->getLocation();
+    if(!loc.entity) return false;
+    for(auto f : {ROOM_INDOORS, ROOM_UNDERGROUND, ROOM_SPACE}) {
+        if(loc.entity->getRoomFlag(loc.getCoordinates(), f)) return true;
+    }
+    return false;
+}
+
+bool OUTSIDE_SECTTYPE(GameEntity* ent) {
+    auto loc = ent->getLocation();
+    if(!loc.entity) return false;
+    switch(loc.entity->getTileType(loc.getCoordinates())) {
+        case SECT_INSIDE:
+        case SECT_UNDERWATER:
+        case SECT_SHOP:
+        case SECT_SPACE:
+            return false;
+        default:
+            return true;
+    }
+    return false;
 }

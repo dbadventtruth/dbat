@@ -1576,7 +1576,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
      */
             if (*obj->room_description == '.' && (IS_NPC(ch) || !PRF_FLAGGED(ch, PRF_HOLYLIGHT)))
                 return;
-            if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE && ch->getRoomVnum() == GET_OBJ_VAL(obj, 0)) {
+            if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && ch->getRoomVnum() == GET_OBJ_VAL(obj, 0)) {
                 return;
             }
             if (SITTING(obj) && GET_ADMLEVEL(ch) < 1) {
@@ -1617,8 +1617,8 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                 }
             }
             if (GET_OBJ_VNUM(obj) == 11) {
-                if(obj->gravity) {
-                    auto msg = fmt::format("@wA gravity generator, set to {}x gravity, is built here", obj->gravity.value());
+                if(auto grav = obj->dvalue.find("gravity"); grav != obj->dvalue.end()) {
+                    auto msg = fmt::format("@wA gravity generator, set to {}x gravity, is built here", grav->second);
                     send_to_char(ch, msg.c_str());
                 } else {
                     send_to_char(ch, "@wA gravity generator, currently on standby, is built here");
@@ -1652,7 +1652,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                     }
                 }
 
-                if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE) {
+                if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE) {
                     if (!OBJVAL_FLAGGED(obj, CONT_CLOSED) && GET_OBJ_VNUM(obj) > 19199)
                         send_to_char(ch, "\r\n@c...its outer hatch is open@n");
                     else if (!OBJVAL_FLAGGED(obj, CONT_CLOSED) && GET_OBJ_VNUM(obj) <= 19199)
@@ -1842,7 +1842,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                     display_scroll(ch, obj);
                     break;
 
-                case ITEM_VEHICLE:
+                case ITEM_UNUSED_VEHICLE:
                     if (GET_OBJ_VNUM(obj) > 19199) {
                         send_to_char(ch, "@YSyntax@D: @CUnlock hatch\r\n");
                         send_to_char(ch, "@YSyntax@D: @COpen hatch\r\n");
@@ -3313,14 +3313,22 @@ static void display_room_info(struct room_data *rm, struct char_data *ch) {
 
     send_to_char(ch, "@wLocation: %-70s@n\r\n", rm->name);
 
-    if (auto planet = ch->getMatchingArea(area_data::isPlanet); planet) {
-        auto &a = areas[planet.value()];
-        send_to_char(ch, "@wPlanet: @G%s@n\r\n", a.name.c_str());
+    auto isPlanet = [&](GameEntity* ent) {
+        if(auto o = dynamic_cast<obj_data*>(ent); o) {
+            if(o->type_flag == ITEM_STRUCTURE && o->extra_flags.test(ITEM_CELESTIALBODY))
+                return true;
+        } else 
+            return false;
+    };
+
+    if (GameEntity* planet = ch->getMatchingParentLocation(isPlanet); planet) {
+
+        send_to_char(ch, "@wPlanet: @G%s@n\r\n", planet->getDisplayNameFor(ch, 0).c_str());
     } else {
         display_dimension_info(rm, ch);
     }
 
-    double grav = rm->getEnvironment(ENV_GRAVITY);
+    double grav = ch->getLocationEnvironment(ENV_GRAVITY);
     if (grav <= 1.0) {
         send_to_char(ch, "@wGravity: @WNormal@n\r\n");
     } else {
@@ -3708,7 +3716,7 @@ static void look_in_obj(struct char_data *ch, char *arg) {
             handle_portal(ch, obj);
             break;
 
-        case ITEM_VEHICLE:
+        case ITEM_UNUSED_VEHICLE:
             handle_vehicle(ch, obj);
             break;
 
@@ -3783,7 +3791,7 @@ static void examine_item(struct char_data *ch, struct obj_data *obj, const char 
         if (GET_OBJ_TYPE(obj) == ITEM_SCROLL) {
             display_scroll(ch, obj);
         }
-        if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE) {
+        if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE) {
             send_to_char(ch, "@YSyntax@D: @CUnlock hatch\r\n");
             send_to_char(ch, "@YSyntax@D: @COpen hatch\r\n");
             send_to_char(ch, "@YSyntax@D: @CClose hatch\r\n");
@@ -5987,7 +5995,7 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
     struct obj_data *k;
     struct descriptor_data *d;
     int num = 0, num2 = 0, found = 0;
-    std::optional<vnum> planet;
+    
 
     if (!*arg) {
         mudlog(NRM, MAX(ADMLVL_GRGOD, GET_INVIS_LEV(ch)), true,
@@ -5996,10 +6004,9 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
                      "Players                  Vnum    Planet        Location\r\n-------                 ------   ----------    ----------------\r\n");
         for (d = descriptor_list; d; d = d->next)
             if (IS_PLAYING(d)) {
+                obj_data *planet;
                 if (IN_ROOM(d->character) != NOWHERE) {
-                    planet = d->character->getMatchingArea(area_data::isPlanet);
-                } else {
-                    planet.reset();
+                    planet = d->character->getMatchingParentStructure(ITEM_CELESTIALBODY);
                 }
                 i = (d->original ? d->original : d->character);
                 if (i && CAN_SEE(ch, i) && (IN_ROOM(i) != NOWHERE)) {
@@ -6008,11 +6015,7 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
                                      GET_NAME(i), d->character->getRoomVnum(),
                                      d->character->getRoom()->name, GET_NAME(d->character));
                     else {
-                        std::string locName = "UNKNOWN";
-                        if(planet) {
-                            auto &a = areas[planet.value()];
-                            locName = a.name;
-                        }
+                        std::string locName = planet ? planet->getDisplayNameFor(ch, 0) : "UNKNOWN";
                         send_to_char(ch, "%-20s - [%5d]   %-14s %s\r\n", GET_NAME(i), i->getRoomVnum(),
                                      locName.c_str(), i->getRoom()->name);
                     }

@@ -78,7 +78,7 @@ extern void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to);
 
 extern void obj_from_obj(struct obj_data *obj);
 
-extern void extract_obj(struct obj_data *obj);
+extern void extract_obj(struct obj_data *obj, const std::source_location& srcloc = std::source_location::current());
 
 /* ******* characters ********* */
 

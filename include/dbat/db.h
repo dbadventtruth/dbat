@@ -384,10 +384,9 @@ extern struct config_data config_info;
 extern std::vector<obj_vnum> dbVnums;
 
 // world data...
+//extern std::unordered_map<room_vnum, Location> legacyMap;
 extern std::map<room_vnum, room_data> world;
 extern std::map<zone_vnum, struct zone_data> zone_table;
-
-extern std::map<vnum, area_data> areas;
 
 extern struct descriptor_data *descriptor_list;
 extern std::map<int64_t, struct descriptor_data*> sessions;

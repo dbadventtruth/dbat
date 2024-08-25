@@ -171,13 +171,6 @@ static void process_dirty_zones(const std::filesystem::path &loc) {
     dump_to_file(loc, "zones.json", j);
 }
 
-static void process_dirty_areas(const std::filesystem::path &loc) {
-    nlohmann::json j;
-    for(auto &[v, a] : areas) {
-        j.push_back(a.serialize());
-    }
-    dump_to_file(loc, "areas.json", j);
-}
 
 static void process_dirty_dgscript_prototypes(const std::filesystem::path &loc) {
     nlohmann::json j;
@@ -245,7 +238,7 @@ void runSave() {
                           process_dirty_rooms, process_dirty_exits, process_dirty_item_prototypes,
                           process_dirty_npc_prototypes, process_dirty_shops,
                           process_dirty_guilds, process_dirty_zones,
-                          process_dirty_areas, process_dirty_dgscript_prototypes}) {
+                          process_dirty_dgscript_prototypes}) {
             threads.emplace_back([func, &tempPath]() {
                 func(tempPath);
             });

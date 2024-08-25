@@ -23,6 +23,7 @@
 #include "dbat/local_limits.h"
 #include "dbat/constants.h"
 #include "dbat/act.informative.h"
+#include <queue>
 
 /* local functions */
 static void handle_fall(struct char_data *ch);
@@ -234,83 +235,30 @@ void carry_drop(struct char_data *ch, int type) {
     CARRIED_BY(vict) = nullptr;
 }
 
-std::optional<room_vnum> land_location(char *arg, std::unordered_set<room_vnum>& rooms) {
-    std::vector<std::pair<room_vnum, std::string>> names;
+static std::optional<Location> land_location(char_data *ch, char *arg, std::unordered_set<room_data*>& rooms) {
+    std::vector<std::pair<room_data*, std::string>> names;
     for(auto r : rooms) {
-        auto room = world.find(r);
-        if(room == world.end()) continue;
-        names.emplace_back(r, processColors(room->second.name, false, nullptr));
+        names.emplace_back(r, processColors(r->getDisplayNameFor(ch, 0), false, nullptr));
     }
 
-    std::sort(names.begin(), names.end(), [](const std::pair<room_vnum, std::string>& a, const std::pair<room_vnum, std::string>& b) {
+    std::sort(names.begin(), names.end(), [](const std::pair<room_data*, std::string>& a, const std::pair<room_data*, std::string>& b) {
         return a.second < b.second;
     });
 
     for(auto& name : names) {
         if(boost::istarts_with(name.second, arg)) {
-            return name.first;
+            Location loc;
+            loc.entity = name.first;
+            loc.type = LocationType::Room;
+            return loc;
         }
     }
     return std::nullopt;
 
 }
 
-std::optional<vnum> governingAreaTypeFor(struct room_data *rd, std::function<bool(area_data&)>& func) {
-    if(!rd->area) return std::nullopt;
-    auto &a = areas[rd->area.value()];
-    while(true) {
-        if (func(a)) return a.vn;
-        if ((a.type == AreaType::Structure || a.type == AreaType::Vehicle) && a.extraVn) {
-            // we need to find the a.objectVnum in the world by scanning object_list...
-            if (auto obj = get_obj_num(a.extraVn.value()); obj) {
-                return governingAreaTypeFor(obj, func);
-            }
-        }
-        if (!a.parent) return std::nullopt;
-        a = areas[a.parent.value()];
-    }
-}
-
-std::optional<vnum> governingAreaTypeFor(struct char_data *ch, std::function<bool(area_data&)>& func) {
-    auto room = ch->getRoom();
-    if(!room) return std::nullopt;
-    return governingAreaTypeFor(room, func);
-}
-
-std::optional<vnum> governingAreaTypeFor(struct obj_data *obj, std::function<bool(area_data&)>& func) {
-	auto room = obj->getAbsoluteRoom();
-    if(!room) return std::nullopt;
-    return governingAreaTypeFor(room, func);
-}
-
-static std::unordered_set<vnum> _areaRecurseGuard;
-
-std::size_t recurseScanRooms(area_data &start, std::unordered_set<room_vnum>& fill, std::function<bool(room_data&)>& func) {
-    std::size_t count = 0;
-    for(auto r : start.rooms) {
-        if(auto room = world.find(r); room != world.end() && func(room->second)) {
-            if(fill.contains(r)) {
-                auto message = fmt::format("ERROR: While recursing area: {}, asked to re-add room {}", start.vn, r);
-                throw std::runtime_error(message);
-            }
-            fill.insert(r);
-            count++;
-        }
-    }
-    for(auto &child : start.children) {
-        if(_areaRecurseGuard.contains(child)) {
-            auto message = fmt::format("ERROR: While recursing area: {}, asked to re-scan area {}", start.vn, child);
-            throw std::runtime_error(message);
-        }
-        _areaRecurseGuard.insert(child);
-        count += recurseScanRooms(areas[child], fill, func);
-    }
-    return count;
-}
-
 /* This shows the player what locations the planet has to land at. */
-static void disp_locations(struct char_data *ch, vnum areaVnum, std::unordered_set<room_vnum>& rooms) {
-	auto &a = areas[areaVnum];
+static void disp_locations(struct char_data *ch, obj_data *planet, std::unordered_set<room_data*>& rooms) {
     if(rooms.empty()) {
         send_to_char(ch, "There are no landing locations on this planet.\r\n");
         return;
@@ -318,93 +266,105 @@ static void disp_locations(struct char_data *ch, vnum areaVnum, std::unordered_s
 
     std::vector<std::string> names;
     for(auto r : rooms) {
-        auto room = world.find(r);
-        if(room == world.end()) continue;
-        names.emplace_back(room->second.name);
+        names.emplace_back(r->getDisplayNameFor(ch, 0));
     }
     // Sort the names vector...
     std::sort(names.begin(), names.end());
-    send_to_char(ch, "@D------------------[ %s ]@D------------------\n", a.name.c_str());
+    send_to_char(ch, "@D------------------[ %s ]@D------------------\n", planet->getDisplayNameFor(ch, 0).c_str());
     for(auto &name : names) {
         send_to_char(ch, "%s\n", name.c_str());
     }
 }
 
-ACMD(do_land) {
-
-    int above_planet = true, inroom = ch->getRoomVnum();
+static void handle_planet_land(char_data *ch, obj_data *planet, char *argument) {
     skip_spaces(&argument);
-    std::function<bool(area_data&)> governingCelestial = [&](area_data& area) {
-        return area.type == AreaType::CelestialBody;
-    };
-    auto onPlanet = governingAreaTypeFor(ch, governingCelestial);
 
-    std::unordered_set<room_vnum> rooms;
-    std::function<bool(room_data&)> scan = [&](room_data &r) {
-        return r.room_flags.test(ROOM_LANDING);
-    };
-    std::size_t count = 0;
+    std::unordered_set<room_data*> rooms;
 
-    if(above_planet == false && !*argument) {
-        if(ch->affected_by.test(AFF_FLYING)) {
-            act("@WYou land.@n", true, ch, nullptr, nullptr, TO_CHAR);
-            act("@W$n@W lands nearby.@n", true, ch, nullptr, nullptr, TO_ROOM);
-            ch->affected_by.reset(AFF_FLYING);
-            return;
+    std::unordered_set<GameEntity*> visited;
+    std::queue<obj_data*> queue;
+    queue.push(planet);
+
+    auto internal = Coordinates{LocationType::Internal, {0, 0, 0}};
+
+    while(!queue.empty()) {
+        // we're going to recurse through freaking everything to find all candidate rooms.
+        
+        auto front = queue.front();
+        visited.insert(front);
+        queue.pop();
+
+        for(auto e : front->getEntitiesAt(internal)) {
+            if(visited.contains(e)) continue;
+            if(auto o = dynamic_cast<obj_data*>(e); o) {
+                if(o->type_flag == ITEM_STRUCTURE) {
+                    queue.push(o);
+                }
+            } else if(auto r = dynamic_cast<room_data*>(e); r && r->room_flags.test(ROOM_LANDING)) {
+                rooms.insert(r);
+            }
         }
-        send_to_char(ch, "You are not even in the lower atmosphere of a planet!\r\n");
-        return;
-    }
-
-    if(onPlanet) {
-        auto &a = areas[onPlanet.value()];
-        count = recurseScanRooms(a, rooms, scan);
-        _areaRecurseGuard.clear();
-        above_planet = (a.extraVn && inroom == a.extraVn.value());
-    } else {
-        above_planet = false;
     }
 
     if (!*argument) {
-        if (above_planet == true) {
-            send_to_char(ch, "Land where?\n");
-            disp_locations(ch, onPlanet.value(), rooms);
-            return;
-        } else {
-            send_to_char(ch, "You are not even in the lower atmosphere of a planet!\r\n");
-            return;
-        }
+        send_to_char(ch, "Land where?\n");
+        disp_locations(ch, planet, rooms);
+        return;
     }
 
-    auto checkLanding = land_location(argument, rooms);
+    auto checkLanding = land_location(ch, argument, rooms);
     if(!checkLanding) {
         send_to_char(ch, "You can't land there.\r\n");
         return;
     }
     auto landing = checkLanding.value();
 
-    if (landing != NOWHERE) {
-        auto was_in = ch->getRoomVnum();
-        auto &r = world[landing];
-        send_to_char(ch,
-                     "You descend through the upper atmosphere, and coming down through the clouds you land quickly on the ground below.\r\n");
-        std::string landName = "UNKNOWN";
-        if(r.area) {
-            auto &a = areas[r.area.value()];
-            landName = a.name;
+    auto old_loc = ch->getLocation();
+
+    send_to_char(ch,
+                    "You descend through the upper atmosphere, and coming down through the clouds you land quickly on the ground below.\r\n");
+    
+    auto area = landing.entity->getMatchingParentStructure(ITEM_AREA);
+    std::string landName = area ? area->getDisplayNameFor(ch, 0) : "UNKNOWN";
+    char sendback[MAX_INPUT_LENGTH];
+    sprintf(sendback, "@C$n@Y flies down through the atmosphere toward @G%s@Y!@n", landName.c_str());
+    act(sendback, true, ch, nullptr, nullptr, TO_ROOM);
+    ch->setLocation(landing);
+    fly_planet(planet, "can be seen landing from space nearby!@n\r\n", ch);
+    send_to_sense(1, "landing on the planet", ch);
+    send_to_scouter("A powerlevel signal has been detected landing on the planet", ch, 0, 1);
+    act("$n comes down from high above in the sky and quickly lands on the ground.", true, ch, nullptr, nullptr,
+        TO_ROOM);
+
+}
+
+ACMD(do_land) {
+
+    obj_data *planet = nullptr;
+    for(auto obj : IterRef(ch->getLocationObjects())) {
+        if(obj->type_flag == ITEM_STRUCTURE && obj->extra_flags.test(ITEM_CELESTIALBODY)) {
+            planet = obj;
+            break;
         }
-        char sendback[MAX_INPUT_LENGTH];
-        sprintf(sendback, "@C$n@Y flies down through the atmosphere toward @G%s@Y!@n", landName.c_str());
-        act(sendback, true, ch, nullptr, nullptr, TO_ROOM);
-        char_from_room(ch);
-        char_to_room(ch, real_room(landing));
-        fly_planet(landing, "can be seen landing from space nearby!@n\r\n", ch);
-        send_to_sense(1, "landing on the planet", ch);
-        send_to_scouter("A powerlevel signal has been detected landing on the planet", ch, 0, 1);
-        act("$n comes down from high above in the sky and quickly lands on the ground.", true, ch, nullptr, nullptr,
-            TO_ROOM);
+    }
+
+    if(planet) {
+        handle_planet_land(ch, planet, argument);
         return;
     }
+
+    if(argument && *argument) {
+        send_to_char(ch, "You are not even near a planet!\r\n");
+        return;
+    }
+
+     if(ch->affected_by.test(AFF_FLYING)) {
+        act("@WYou land.@n", true, ch, nullptr, nullptr, TO_CHAR);
+        act("@W$n@W lands nearby.@n", true, ch, nullptr, nullptr, TO_ROOM);
+        ch->affected_by.reset(AFF_FLYING);
+        return;
+    }
+
 }
 
 
@@ -1312,7 +1272,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
 
     if ((obj) && GET_OBJ_TYPE(obj) == ITEM_HATCH) {
         vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(obj, VAL_HATCH_DEST));
-    } else if ((obj) && GET_OBJ_TYPE(obj) == ITEM_VEHICLE) {
+    } else if ((obj) && GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE) {
         if (real_room(GET_OBJ_VAL(obj, VAL_PORTAL_DEST)) != NOWHERE) {
             num = IN_ROOM(ch);
             char_from_room(ch);
@@ -1361,7 +1321,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     }
                     vehicle = nullptr;
                 }
-                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_VEHICLE && (hatch)) {
+                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && (hatch)) {
                     OPEN_DOOR(IN_ROOM(ch), hatch, door);
                     char_from_room(ch);
                     char_to_room(ch, num);
@@ -1386,7 +1346,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
             if (!obj) {
                 send_to_char(ch, "You open the %s that leads %s.\r\n",
                              EXIT(ch, door)->keyword ? EXIT(ch, door)->keyword : "door", dirs[door]);
-            } else if (GET_OBJ_TYPE(obj) != ITEM_VEHICLE && GET_OBJ_TYPE(obj) != ITEM_HATCH) {
+            } else if (GET_OBJ_TYPE(obj) != ITEM_UNUSED_VEHICLE && GET_OBJ_TYPE(obj) != ITEM_HATCH) {
                 send_to_char(ch, "You open %s.\r\n", obj->short_description);
             }
             break;
@@ -1411,7 +1371,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     }
                     vehicle = NULL;
                 }
-                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_VEHICLE && (hatch)) {
+                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && (hatch)) {
                     CLOSE_DOOR(IN_ROOM(ch), hatch, door);
                     char_from_room(ch);
                     char_to_room(ch, num);
@@ -1438,7 +1398,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
             if (!obj) {
                 send_to_char(ch, "You close the %s that leads %s.\r\n",
                              EXIT(ch, door)->keyword ? EXIT(ch, door)->keyword : "door", dirs[door]);
-            } else if (GET_OBJ_TYPE(obj) != ITEM_VEHICLE && GET_OBJ_TYPE(obj) != ITEM_HATCH) {
+            } else if (GET_OBJ_TYPE(obj) != ITEM_UNUSED_VEHICLE && GET_OBJ_TYPE(obj) != ITEM_HATCH) {
                 send_to_char(ch, "You close %s.\r\n", obj->short_description);
             }
             break;
@@ -1449,7 +1409,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     LOCK_DOOR(IN_ROOM(ch), vehicle, door);
                     vehicle = NULL;
                 }
-                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_VEHICLE && (hatch)) {
+                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && (hatch)) {
                     LOCK_DOOR(IN_ROOM(ch), hatch, door);
                     char_from_room(ch);
                     char_to_room(ch, num);
@@ -1474,7 +1434,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     UNLOCK_DOOR(IN_ROOM(ch), vehicle, door);
                     vehicle = NULL;
                 }
-                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_VEHICLE && (hatch)) {
+                if ((obj) && GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && (hatch)) {
                     UNLOCK_DOOR(IN_ROOM(ch), hatch, door);
                     char_from_room(ch);
                     char_to_room(ch, num);
@@ -1543,7 +1503,7 @@ static int ok_pick(struct char_data *ch, obj_vnum keynum, int pickproof, int dcl
         send_to_char(ch, "You need a lock picking kit.\r\n");
         return (0);
     }
-    if (hatch != nullptr && (GET_OBJ_TYPE(hatch) == ITEM_HATCH || GET_OBJ_TYPE(hatch) == ITEM_VEHICLE)) {
+    if (hatch != nullptr && (GET_OBJ_TYPE(hatch) == ITEM_HATCH || GET_OBJ_TYPE(hatch) == ITEM_UNUSED_VEHICLE)) {
         send_to_char(ch, "No picking ship hatches.\r\n");
         hatch = nullptr;
         return (0);
@@ -1581,7 +1541,7 @@ static int ok_pick(struct char_data *ch, obj_vnum keynum, int pickproof, int dcl
 #define DOOR_IS_OPENABLE(ch, obj, door)    ((obj) ? \
             ((GET_OBJ_TYPE(obj) == ITEM_CONTAINER) && \
             OBJVAL_FLAGGED(obj, CONT_CLOSEABLE))   || \
-                        ((GET_OBJ_TYPE(obj) == ITEM_VEHICLE)   && \
+                        ((GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE)   && \
                         OBJVAL_FLAGGED(obj, CONT_CLOSEABLE))   || \
                         ((GET_OBJ_TYPE(obj) == ITEM_HATCH)     && \
                         OBJVAL_FLAGGED(obj, CONT_CLOSEABLE))   || \
@@ -1628,7 +1588,7 @@ ACMD(do_gen_door) {
     auto r = ch->getRoom();
 
     if ((obj) &&
-        (GET_OBJ_TYPE(obj) != ITEM_CONTAINER && GET_OBJ_TYPE(obj) != ITEM_VEHICLE && GET_OBJ_TYPE(obj) != ITEM_HATCH)) {
+        (GET_OBJ_TYPE(obj) != ITEM_CONTAINER && GET_OBJ_TYPE(obj) != ITEM_UNUSED_VEHICLE && GET_OBJ_TYPE(obj) != ITEM_HATCH)) {
         obj = nullptr;
         door = find_door(ch, type, dir, cmd_door[subcmd]);
     }
@@ -1794,7 +1754,7 @@ static int perform_enter_obj(struct char_data *ch, struct obj_data *obj, int nee
         return (0);
     }
 
-    if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE ||
+    if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE ||
         GET_OBJ_TYPE(obj) == ITEM_PORTAL) {
         if (OBJVAL_FLAGGED(obj, CONT_CLOSED)) {
             send_to_char(ch, "But it's closed!\r\n");
@@ -2148,10 +2108,6 @@ static int check_swim(struct char_data *ch) {
     }
 }
 
-static bool isPlanet(const area_data& a) {
-    return a.type == AreaType::CelestialBody;
-}
-
 ACMD(do_fly) {
     char arg[MAX_INPUT_LENGTH];
 
@@ -2260,11 +2216,14 @@ ACMD(do_fly) {
             return;
         }
 
-        auto r = ch->getRoom();
-        auto dest = r->getLaunchDestination();
+        auto planet = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
+        if(!planet) {
+            send_to_char(ch, "You can't fly to space from here!");
+            return;
+        }
 
-        auto planet = ch->getMatchingArea(area_data::isPlanet);
-        if(!dest) {
+        auto dest = planet->getLocation();
+        if(!dest.entity) {
             send_to_char(ch, "You can't fly to space from here!");
             return;
         }
@@ -2278,24 +2237,21 @@ ACMD(do_fly) {
         GET_ALT(ch) = 0;
         ch->affected_by.reset(AFF_FLYING);
 
-        if(planet) {
-            fly_planet(IN_ROOM(ch), "can be seen blasting off into space!@n\r\n", ch);
-            send_to_sense(1, "leaving the planet", ch);
-            send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-        }
-
+        fly_planet(planet, "can be seen blasting off into space!@n\r\n", ch);
+        send_to_sense(1, "leaving the planet", ch);
+        send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
 
         act("@CYou blast off from the ground and rocket through the air. Your speed increases until you manage to reach the brink of space!@n",
             true, ch, nullptr, nullptr, TO_CHAR);
         act("@C$n blasts off from the ground and rockets through the air. You quickly lose sight of $m as $e continues upward!@n",
             true, ch, nullptr, nullptr, TO_ROOM);
-        char_from_room(ch);
-        char_to_room(ch, dest.value());
-        if(planet) {
-            act("@C$n blasts up from the atmosphere below and then comes to a stop.@n", true, ch, nullptr, nullptr,
-            TO_ROOM);
-            send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet from here.@n\r\n");
-        }
+        ch->setLocation(dest);
+
+
+        act("@C$n blasts up from the atmosphere below and then comes to a stop.@n", true, ch, nullptr, nullptr,
+        TO_ROOM);
+        send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet from here.@n\r\n");
+
 
         if (!IS_ANDROID(ch)) {
             ch->decCurKI(ch->getMaxKI() / 10);

@@ -913,7 +913,7 @@ const char *item_types[NUM_ITEM_TYPES + 1] = {
         "PEN",
         "BOAT",
         "FOUNTAIN",
-        "VEHICLE",
+        "OLD_VEHICLE",
         "HATCH",
         "WINDOW",
         "CONTROL",
@@ -926,6 +926,7 @@ const char *item_types[NUM_ITEM_TYPES + 1] = {
         "PLANT",
         "FISHINGPOLE",
         "FISHBAIT",
+        "STRUCTURE",
         "\n"
 };
 
@@ -995,6 +996,14 @@ const char *extra_bits[NUM_ITEM_FLAGS + 1] = {
         "MOB_NOPICKUP",
         "NOSTEAL",
         "RESTRING",
+        "DIMENSION",
+        "CELESTIALBODY",
+        "AREA",
+        "ENVIRONMENT",
+        "GRID",
+        "ESSENTIAL",
+        "HASMOON",
+        "VEHICLE",
         nullptr
 };
 

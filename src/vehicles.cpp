@@ -328,7 +328,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
 
 struct obj_data *find_vehicle_by_vnum(int vnum) {
     auto o = get_last_inserted(objectVnumIndex, vnum);
-    if(o && GET_OBJ_TYPE(o) == ITEM_VEHICLE) return o;
+    if(o && GET_OBJ_TYPE(o) == ITEM_UNUSED_VEHICLE) return o;
     return nullptr;
 }
 
@@ -383,7 +383,7 @@ static void drive_into_vehicle(struct char_data *ch, struct obj_data *vehicle, c
         return;
     }
 
-    if (GET_OBJ_TYPE(vehicle_in_out) != ITEM_VEHICLE) {
+    if (GET_OBJ_TYPE(vehicle_in_out) != ITEM_UNUSED_VEHICLE) {
         send_to_char(ch, "@wThat's not a ship.\r\n");
         return;
     }
@@ -830,9 +830,14 @@ static void handle_drive_land(struct char_data *ch, struct obj_data *vehicle, co
 }
 
 static void handle_drive_launch(struct char_data *ch, struct obj_data *vehicle, struct obj_data *controls) {
-    auto room = vehicle->getRoom();
-    auto dest = room->getLaunchDestination();
-    if (!dest) {
+    auto planet = vehicle->getMatchingParentStructure(ITEM_CELESTIALBODY);
+    if (!planet) {
+        send_to_char(ch, "@wYou are not on a planet.@n\r\n");
+        return;
+    }
+
+    auto dest = planet->getLocation();
+    if(!dest.entity) {
         send_to_char(ch, "@wYou are not on a planet.@n\r\n");
         return;
     }
@@ -856,8 +861,7 @@ static void handle_drive_launch(struct char_data *ch, struct obj_data *vehicle, 
         }
     }
 
-    obj_from_room(vehicle);
-    obj_to_room(vehicle, dest.value());
+    vehicle->setLocation(dest);
     look_at_room(IN_ROOM(vehicle), ch, 0);
     send_to_char(ch, "@RFUEL@D: %s%s@n\r\n",
                  GET_FUEL(controls) >= 200 ? "@G" : GET_FUEL(controls) >= 100 ? "@Y" : "@r",
@@ -943,7 +947,7 @@ ACMD(do_ship_fire) {
 
     for(auto obj : IterRef(ch->getLocationObjects())) {
         if (shot == false) {
-            if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE && obj != vehicle) {
+            if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && obj != vehicle) {
                 if (!strcasecmp(arg1, obj->name)) {
                     obj2 = obj;
                     shot = true;

@@ -314,29 +314,6 @@ room_data::~room_data() {
     }
 }
 
-std::optional<vnum> room_data::getMatchingArea(std::function<bool(const area_data &)> f) {
-    std::optional<vnum> parent = area;
-    while(parent) {
-        auto &a = areas[parent.value()];
-        if(f(a)) return parent;
-        if ((a.type == AreaType::Structure || a.type == AreaType::Vehicle) && a.extraVn) {
-            // we need to find the a.objectVnum in the world by scanning object_list...
-            if (auto obj = get_obj_num(a.extraVn.value()); obj) {
-                if(world.contains(obj->getRoomVnum())) {
-                    auto &r = world[obj->getRoomVnum()];
-                    return r.getMatchingArea(f);
-                }
-            }
-        }
-        parent = a.parent;
-    }
-    return std::nullopt;
-}
-
-static bool checkGravity(const area_data &a) {
-    return a.gravity.has_value();
-}
-
 
 bool room_data::isActive() {
     return world.contains(vn);
@@ -390,14 +367,6 @@ struct room_data* room_direction_data::getDestination() {
     auto found = world.find(to_room);
     if(found != world.end()) return &found->second;
     return nullptr;
-}
-
-
-std::optional<room_vnum> room_data::getLaunchDestination() {
-    if(!area) return NOWHERE;
-    if(!areas.contains(area.value())) return NOWHERE;
-    auto &a = areas[area.value()];
-    return a.getLaunchDestination();
 }
 
 static const std::unordered_set<int> inside_sectors = {SECT_INSIDE, SECT_UNDERWATER, SECT_IMPORTANT, SECT_SHOP, SECT_SPACE};
@@ -473,13 +442,12 @@ double room_data::getEnvironment(int type) {
         case ENV_GRAVITY: {
             // check for a gravity generator...
             for(auto c : IterRef(getContents())) {
-                if(c->gravity) return c->gravity.value();
+                if(auto find = c->dvalue.find("gravity"); find != c->dvalue.end()) return find->second;
             }
 
             // what about area rules?
-            if(std::optional<vnum> gravArea = getMatchingArea(checkGravity); gravArea) {
-                auto &a = areas[gravArea.value()];
-                return a.gravity.value();
+            if(auto env = getMatchingParentStructure(ITEM_ENVIRONMENT); env) {
+                return env->getEnvironment(Coordinates{LocationType::Internal, {0,0,0}}, ENV_GRAVITY);
             }
 
             // special cases here..
@@ -523,15 +491,15 @@ double room_data::getEnvironment(int type) {
         case ENV_MOONLIGHT: {
             for(auto f : {ROOM_INDOORS, ROOM_UNDERGROUND, ROOM_SPACE}) if(room_flags.test(f)) return -1;
             if(inside_sectors.contains(sector_type)) return -1;
-            auto check_planet = getMatchingArea(area_data::isPlanet);
-            if(!check_planet) return -1;
-            auto &area = areas[*check_planet];
-            if(!area.flags.test(AREA_MOON)) return -1;
+            auto planet = getMatchingParentStructure(ITEM_ENVIRONMENT);
+            if(!planet || !planet->extra_flags.test(ITEM_HASMOON)) return -1;
 
             return MOON_TIMECHECK() ? 100.0 : 0.0;
         }
     }
-    if(environment.contains(type)) return environment[type];
+    if(environment.contains(type))
+        return environment[type];
+
     return 0.0;
 }
 
@@ -557,17 +525,6 @@ std::map<int, Destination> room_data::getDirectionalDestinations(const Coordinat
         }
     }
     return destinations;
-}
-
-
-std::optional<Destination> room_data::getLaunchDestination(const Coordinates& coord) {
-    auto launch = getLaunchDestination();
-    if(launch && world.contains(*launch)) {
-        Destination dest{};
-        dest.location.entity = &world.at(*launch);
-        dest.location.type = LocationType::Room;
-    }
-    return std::nullopt;
 }
 
 static std::vector<std::pair<std::pair<room_vnum, room_vnum>, std::vector<character_affect_type>>> roomRangeModifiers = {

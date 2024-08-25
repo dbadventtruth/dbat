@@ -203,25 +203,9 @@ void send_to_zone(char *messg, zone_rnum zone) {
             write_to_output(i, "%s", messg);
 }
 
-static bool isPlanet(const area_data& a) {
-    return a.type == AreaType::CelestialBody;
-}
-
-void fly_planet(room_vnum roomVnum, char *messg, struct char_data *ch) {
-    if (!messg || !*messg)
+void fly_planet(obj_data *planet, char *messg, struct char_data *ch) {
+    if (!planet || !messg || !*messg)
         return;
-
-    vnum areaVnum = NOWHERE;
-    {
-        auto &r = world[roomVnum];
-        if(auto found = r.getMatchingArea(area_data::isPlanet); found) {
-            areaVnum = *found;
-        }
-    }
-
-    if(areaVnum == NOWHERE) {
-        return;
-    }
 
     for(auto i = descriptor_list; i; i = i->next) {
         if(!i->connected) continue;
@@ -230,9 +214,9 @@ void fly_planet(room_vnum roomVnum, char *messg, struct char_data *ch) {
         if(IN_ROOM(i->character) == NOWHERE) continue;
         if(!OUTSIDE(i->character)) continue;
 
-        auto found = i->character->getMatchingArea(area_data::isPlanet);
-        if(!found) continue;
-        if(*found != areaVnum) continue;
+        auto found = i->character->getMatchingParentStructure(ITEM_CELESTIALBODY);
+        if(!found || found != planet) continue;
+
         if (PLR_FLAGGED(i->character, PLR_DISGUISED)) {
             write_to_output(i, "A disguised figure %s", messg);
         } else {
@@ -265,7 +249,7 @@ void send_to_sense(int type, char *messg, struct char_data *ch) {
     if (!messg || !*messg)
         return;
 
-    auto planet = ch->getMatchingArea(area_data::isPlanet);
+    auto planet = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
     if(!planet && type == 0) {
         return;
     }
@@ -284,11 +268,8 @@ void send_to_sense(int type, char *messg, struct char_data *ch) {
         if (!GET_SKILL(tch, SKILL_SENSE)) {
             continue;
         }
-        if(auto p = tch->getMatchingArea(area_data::isPlanet); type == 0) {
-            if (!p) {
-                continue;
-            }
-            if (*p != *planet) {
+        if(auto p = tch->getMatchingParentStructure(ITEM_CELESTIALBODY); type == 0) {
+            if (!p || p != planet) {
                 continue;
             }
         }
@@ -320,45 +301,50 @@ void send_to_sense(int type, char *messg, struct char_data *ch) {
         } else if (planet_check(ch, tch)) {
             std::string blah = "UNKNOWN";
             {
-                auto av = tch->getMatchingArea([&](auto &a) {return true;});
+                auto av = tch->getMatchingParentStructure(ITEM_AREA);
                 if(av) {
-                    blah = areas[av.value()].name;
+                    blah = av->getDisplayNameFor(i->character, 0);
                 }
             }
             char power[MAX_INPUT_LENGTH];
             char align[MAX_INPUT_LENGTH];
-            if (GET_HIT(ch) > GET_HIT(tch) * 10) {
+
+            auto tpl = tch->getPL();
+            auto cpl = ch->getPL();
+
+            if (cpl > tpl * 10) {
                 sprintf(power, ", who is @Runbelievably stronger@Y than you");
-            } else if (GET_HIT(ch) > GET_HIT(tch) * 5) {
+            } else if (cpl > tpl * 5) {
                 sprintf(power, ", who is much @Rstronger@Y than you");
-            } else if (GET_HIT(ch) > GET_HIT(tch) * 2) {
+            } else if (cpl > tpl * 2) {
                 sprintf(power, ", who is more than twice as @Rstrong@Y as you");
-            } else if (GET_HIT(ch) > GET_HIT(tch)) {
+            } else if (cpl > tpl) {
                 sprintf(power, ", who is somewhat @mstronger@Y than you");
-            } else if (GET_HIT(ch) * 10 < GET_HIT(tch)) {
+            } else if (cpl * 10 < tpl) {
                 sprintf(power, ", who is @Munbelievably weaker@Y than you");
-            } else if (GET_HIT(ch) * 5 < GET_HIT(tch)) {
+            } else if (cpl * 5 < tpl) {
                 sprintf(power, ", who is much @Mweaker@Y than you");
-            } else if (GET_HIT(ch) * 2 < GET_HIT(tch)) {
+            } else if (cpl * 2 < tpl) {
                 sprintf(power, ", who is more than twice as @Mweak@Y as you");
-            } else if (GET_HIT(ch) < GET_HIT(tch)) {
+            } else if (cpl < tpl) {
                 sprintf(power, ", who is somewhat @Wweaker@Y than you");
             } else {
                 sprintf(power, ", who is close to @Cequal@Y with you");
             }
-            if (GET_ALIGNMENT(ch) >= 1000) {
+            auto al = GET_ALIGNMENT(ch);
+            if (al >= 1000) {
                 sprintf(align, ", with a @wsaintly@Y aura,");
-            } else if (GET_ALIGNMENT(ch) >= 500) {
+            } else if (al >= 500) {
                 sprintf(align, ", with a very @Cgood@Y aura,");
-            } else if (GET_ALIGNMENT(ch) >= 200) {
+            } else if (al >= 200) {
                 sprintf(align, ", with a @cgood@Y aura,");
-            } else if (GET_ALIGNMENT(ch) > -100) {
+            } else if (al > -100) {
                 sprintf(align, ", with a near @Wneutral@Y aura,");
-            } else if (GET_ALIGNMENT(ch) > -200) {
+            } else if (al > -200) {
                 sprintf(align, ", with a sorta @revil@Y aura,");
-            } else if (GET_ALIGNMENT(ch) > -500) {
+            } else if (al > -500) {
                 sprintf(align, ", with an @revil@Y aura,");
-            } else if (GET_ALIGNMENT(ch) > -900) {
+            } else if (al > -900) {
                 sprintf(align, ", with a @rvery evil@Y aura,");
             } else {
                 sprintf(align, ", with a @rd@De@Wv@wil@Wi@Ds@rh@Y aura,");
@@ -377,7 +363,7 @@ void send_to_scouter(char *messg, struct char_data *ch, int num, int type) {
     if (!messg || !*messg)
         return;
 
-    auto planet = ch->getMatchingArea(area_data::isPlanet);
+    auto planet = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
     if(!planet && type == 0) {
         return;
     }
@@ -391,11 +377,8 @@ void send_to_scouter(char *messg, struct char_data *ch, int num, int type) {
         if (tch == ch) continue;
         if(!AWAKE(tch)) continue;
 
-        if(auto p = tch->getMatchingArea(area_data::isPlanet); type == 0) {
-            if (!p) {
-                continue;
-            }
-            if (*p != *planet) {
+        if(auto p = tch->getMatchingParentStructure(ITEM_CELESTIALBODY); type == 0) {
+            if (!p || p != planet) {
                 continue;
             }
         }
@@ -432,9 +415,9 @@ void send_to_scouter(char *messg, struct char_data *ch, int num, int type) {
         } else if (type == 2 && GET_SKILL(tch, SKILL_SENSE) < 20) {
             std::string blah = "UNKNOWN";
             {
-                auto av = tch->getMatchingArea([&](auto &a) {return true;});
+                auto av = tch->getMatchingParentStructure(ITEM_AREA);
                 if(av) {
-                    blah = areas[av.value()].name;
+                    blah = av->getDisplayNameFor(i->character, 0);
                 }
             }
             if (ch->getPL() >= obj->value[VAL_WORN_SCOUTER]) {
@@ -464,16 +447,15 @@ void send_to_worlds(struct char_data *ch) {
         return;
     }
 
-    auto p = ch->getMatchingArea(area_data::isPlanet);
+    auto p = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
     if(!p) return;
 
     for (auto i = descriptor_list; i; i = i->next) {
         if (STATE(i) != CON_PLAYING) {
             continue;
         }
-        auto op = i->character->getMatchingArea(area_data::isPlanet);
-        if(!op) continue;
-        if(op.value() != p.value()) continue;
+        auto op = i->character->getMatchingParentStructure(ITEM_CELESTIALBODY);
+        if(!op || op != p) continue;
         send_to_char(i->character, "%s", message);
     }
 }

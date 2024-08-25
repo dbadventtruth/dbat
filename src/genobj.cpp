@@ -342,12 +342,6 @@ obj_data::obj_data(const nlohmann::json &j) : obj_data() {
     
 }
 
-std::optional<vnum> obj_data::getMatchingArea(const std::function<bool(const area_data &)>& f) {
-    if(auto room = getAbsoluteRoom(); room) {
-        return room->getMatchingArea(f);
-    }
-    return std::nullopt;
-}
 
 ObjRef obj_data::ref() {
     return ObjRef(this);
@@ -623,7 +617,7 @@ void obj_data::onAddedToLocation(const Location& newLoc) {
         auto otype = GET_OBJ_TYPE(this);
         auto ovn = GET_OBJ_VNUM(this);
 
-        if (otype == ITEM_VEHICLE && !OBJ_FLAGGED(this, ITEM_UNBREAKABLE) &&
+        if (otype == ITEM_UNUSED_VEHICLE && !OBJ_FLAGGED(this, ITEM_UNBREAKABLE) &&
             GET_OBJ_VNUM(this) > 19199) {
             extra_flags.set(ITEM_UNBREAKABLE);
         }

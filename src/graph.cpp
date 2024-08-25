@@ -437,11 +437,12 @@ ACMD(do_track) {
     }
 
     if(GET_SKILL_BASE(ch, SKILL_SENSE) == 100) {
-        auto chPlanet = ch->getMatchingArea(area_data::isPlanet);
-        auto vPlanet = vict->getMatchingArea(area_data::isPlanet);
+        auto chPlanet = ch->getMatchingParentStructure(ITEM_CELESTIALBODY);
+        auto vPlanet = vict->getMatchingParentStructure(ITEM_CELESTIALBODY);
         if(chPlanet && chPlanet == vPlanet) {
-            auto &a = areas[world[vict->getRoomVnum()].area.value()];
-            send_to_char(ch, "@WSense@D: %s@n\r\n", a.name.c_str());
+            auto varea = vict->getMatchingParentStructure(ITEM_AREA);
+            std::string dispName = varea ? varea->getDisplayNameFor(ch, 0) : "Unknown";
+            send_to_char(ch, "@WSense@D: %s@n\r\n", dispName.c_str());
         }
     } else {
 
@@ -484,9 +485,10 @@ ACMD(do_track) {
                 break;
             default:    /* Success! */
                 if ((GET_SKILL_BASE(ch, SKILL_SENSE) >= 75)) {
-                    auto &a = areas[world[vict->getRoomVnum()].area.value()];
                     send_to_char(ch, "You sense them %s from here!\r\n", dirs[dir]);
-                    send_to_char(ch, "@WSense@D: @Y%s@n\r\n", a.name.c_str());
+                    if(auto area = vict->getMatchingParentStructure(ITEM_AREA); area) {
+                        send_to_char(ch, "@WSense@D: @Y%s@n\r\n", area->getDisplayNameFor(ch, 0).c_str());
+                    }
                 } else {
                     send_to_char(ch, "You sense them %s from here!\r\n", dirs[dir]);
                     break;
