@@ -198,6 +198,7 @@ ACMD(do_oasis_oedit) {
 
 void oedit_setup_new(struct descriptor_data *d) {
     OLC_OBJ(d) = new obj_data();
+    OLC_OBJ(d)->setType(ENT_OBJECT | ENT_PROTOTYPE);
 
     OLC_OBJ(d)->name = strdup("unfinished object");
     OLC_OBJ(d)->room_description = strdup("An unfinished object is lying here.");
@@ -1047,7 +1048,7 @@ void oedit_parse(struct descriptor_data *d, char *arg) {
                         send_to_char(d->character, "\r\nCommitting iedit changes.\r\n");
                         obj = OLC_IOBJ(d);
                         *obj = *(OLC_OBJ(d));
-                        ((obj)->id) = nextObjID();
+                        obj->setID(GameEntity::nextID());
                         /* find_obj helper */
                         if (GET_OBJ_VNUM(obj) != NOTHING) {
                             /* remove any old scripts */

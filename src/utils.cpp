@@ -671,12 +671,12 @@ int read_sense_memory(struct char_data *ch, struct char_data *vict) {
 
     if(IS_NPC(ch)) return 0;
 
-    auto &p = players[ch->id];
+    auto &p = players[ch->getID()];
 
     if(IS_NPC(vict)) {
         return p.senseMemory.contains(vict->vn);
     } else {
-        return p.sensePlayer.contains(vict->id);
+        return p.sensePlayer.contains(vict->getID());
     }
 }
 
@@ -687,12 +687,12 @@ void sense_memory_write(struct char_data *ch, struct char_data *vict) {
     }
 
     if(IS_NPC(ch)) return;
-    auto &p = players[ch->id];
+    auto &p = players[ch->getID()];
 
     if(IS_NPC(vict)) {
         p.senseMemory.insert(vict->vn);
     } else {
-        p.sensePlayer.insert(vict->id);
+        p.sensePlayer.insert(vict->getID());
     }
 }
 
@@ -770,7 +770,7 @@ void broken_update(uint64_t heartPulse, double deltaTime) {
     // Gravity generators
     for (auto k : get_vnum_list(objectVnumIndex, 11)) {
         auto loc = k->getLocation();
-        if(loc.second.type == CoordinateType::Inventory) continue;
+        if(loc.type == LocationType::Inventory) continue;
 
         if (rand_number(1, 2) == 2) {
             continue;
@@ -799,7 +799,7 @@ void broken_update(uint64_t heartPulse, double deltaTime) {
     // ATMS
     for(auto k : get_vnum_list(objectVnumIndex, 3034)) {
         auto loc = k->getLocation();
-        if(loc.second.type == CoordinateType::Inventory) continue;
+        if(loc.type == LocationType::Inventory) continue;
 
         if (rand_number(1, 2) == 2) {
             continue;
@@ -3269,8 +3269,8 @@ std::string format_double(double value) {
 }
 
 bool CAN_SEE_OBJ_CARRIER(char_data *sub, obj_data *obj) {
-    if(auto loc = obj->getLocation(); loc.first) {
-        if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+    if(auto loc = obj->getLocation(); loc.entity) {
+        if(auto c = dynamic_cast<char_data*>(loc.entity); c) {
             return CAN_SEE(sub, c);
         }
     }
@@ -3279,5 +3279,5 @@ bool CAN_SEE_OBJ_CARRIER(char_data *sub, obj_data *obj) {
 
 bool MORT_CAN_SEE_OBJ(char_data *sub, obj_data *obj) {
     if(!LIGHT_OK(sub)) return false;
-    return ((obj)->getLocation().first == (sub)) && INVIS_OK_OBJ((sub), (obj)) && CAN_SEE_OBJ_CARRIER((sub), (obj));
+    return ((obj)->getLocation().entity == (sub)) && INVIS_OK_OBJ((sub), (obj)) && CAN_SEE_OBJ_CARRIER((sub), (obj));
 }

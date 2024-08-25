@@ -3052,7 +3052,7 @@ ACMD(do_majinize) {
         return;
     }
     int alignmentTotal = GET_ALIGNMENT(ch) - GET_ALIGNMENT(vict);
-    if (MAJINIZED(vict) > 0 && MAJINIZED(vict) != ((ch)->id)) {
+    if (MAJINIZED(vict) > 0 && MAJINIZED(vict) != ((ch)->getID())) {
         send_to_char(ch, "They are already majinized before by someone else.\r\n");
         return;
     } else if ((vict->master != ch)) {
@@ -3067,7 +3067,7 @@ ACMD(do_majinize) {
         return;
     }
         /* Rillao: transloc, add new transes here */
-    else if (vict->permForms.contains(FormID::Majinized) && MAJINIZED(vict) == ((ch)->id)) {
+    else if (vict->permForms.contains(FormID::Majinized) && MAJINIZED(vict) == ((ch)->getID())) {
         reveal_hiding(ch, 0);
         act("You remove $N's majinization, freeing them from your influence, but also weakening them.", true, ch,
             nullptr, vict, TO_CHAR);
@@ -3104,7 +3104,7 @@ ACMD(do_majinize) {
             true, ch, nullptr, vict, TO_VICT);
         act("$n focuses power into $N, influencing their mind and increasing their strength! After the struggle ends in $S mind a glowing purple M forms on $S forehead.",
             true, ch, nullptr, vict, TO_NOTVICT);
-        MAJINIZED(vict) = ((ch)->id);
+        MAJINIZED(vict) = ((ch)->getID());
         GET_BOOSTS(ch) -= 1;
 
         GET_MAJINIZED(vict) = (vict->getBasePL()) * .4;
@@ -8335,7 +8335,7 @@ ACMD(do_snet) {
     }
 
     if (!strcasecmp(arg, "check")) {
-        send_to_char(ch, "Your personal scouter number is: %d\r\n", ((ch)->id));
+        send_to_char(ch, "Your personal scouter number is: %d\r\n", ((ch)->getID()));
         return;
     }
 
@@ -8431,13 +8431,13 @@ ACMD(do_snet) {
                         send_to_char(i->character, "@WScanner@D: @Y%s@n\r\n", sense_location(ch));
                     }
                     continue;
-                } else if (call > -1 && ((i->character)->id) == call) {
+                } else if (call > -1 && ((i->character)->getID()) == call) {
                     send_to_char(i->character, "@C%s is heard @W(@c%s@W), @D[@R#@W%d @Ycalling YOU@D] @G%s@n\r\n",
                                  voice, readIntro(i->character, ch) == 1 ? get_i_name(i->character, ch) : "Unknown",
-                                 ((ch)->id), !*arg2 ? "" : CAP(arg2));
+                                 ((ch)->getID()), !*arg2 ? "" : CAP(arg2));
                     *hist = '\0';
                     sprintf(hist, "@C%s is heard @W(@c%s@W), @D[@R#@W%d @Ycalling YOU@D] @G%s@n\r\n", voice,
-                            readIntro(i->character, ch) == 1 ? get_i_name(i->character, ch) : "Unknown", ((ch)->id),
+                            readIntro(i->character, ch) == 1 ? get_i_name(i->character, ch) : "Unknown", ((ch)->getID()),
                             !*arg2 ? "" : CAP(arg2));
                     add_history(i->character, hist, HIST_SNET);
                     if (has_scanner(i->character)) {
@@ -10435,7 +10435,7 @@ ACMD(do_fix) {
             GET_OBJ_VAL(obj, VAL_ALL_HEALTH) = 100;
             obj->extra_flags.reset(ITEM_BROKEN);
         }
-        if (obj->getLocation().first != ch && !PLR_FLAGGED(ch, PLR_REPLEARN) &&
+        if (obj->getLocation().entity != ch && !PLR_FLAGGED(ch, PLR_REPLEARN) &&
             (level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 || GET_LEVEL(ch) >= 100)) {
             int64_t gain = (level_exp(ch, GET_LEVEL(ch) + 1) * 0.0003) * GET_SKILL(ch, SKILL_REPAIR);
             send_to_char(ch, "@mYou've learned a bit from repairing it. @D[@gEXP@W: @G+%s@D]@n\r\n", add_commas(gain).c_str());

@@ -49,6 +49,12 @@ bool gameIsLoading = true;
 bool saveAll = false;
 bool isMigrating = false;
 
+int64_t GameEntity::lastID = 0;
+
+int64_t GameEntity::nextID() {
+    return ++lastID;
+}
+
 std::shared_ptr<spdlog::logger> logger;
 
 struct config_data config_info; /* Game configuration list.    */
@@ -65,6 +71,7 @@ VnumIndex<obj_data> objectVnumIndex;
 VnumIndex<char_data> characterVnumIndex;
 VnumIndex<trig_data> scriptVnumIndex;
 
+InstanceMap<GameEntity> GameEntity::instances;
 InstanceMap<char_data> char_data::instances;
 InstanceMap<obj_data> obj_data::instances;
 InstanceMap<room_data> room_data::instances;
@@ -86,7 +93,7 @@ std::vector<CharRef> getAllCharacters() {
     out.reserve(char_data::instances.size());
 
     for(const auto&[id, ent] : char_data::instances)
-        out.emplace_back(id, ent.first);
+        out.emplace_back(ent);
 
     return out;
 }
@@ -96,7 +103,7 @@ std::vector<ObjRef> getAllObjects() {
     out.reserve(obj_data::instances.size());
 
     for(const auto&[id, ent] : obj_data::instances)
-        out.emplace_back(id, ent.first);
+        out.emplace_back(ent);
 
     return out;
 }
@@ -283,69 +290,87 @@ static void db_load_players(const std::filesystem::path& loc) {
     }
 }
 
-static void db_load_characters_initial(const std::filesystem::path& loc) {
-    for(auto j : load_from_file(loc, "characters.json")) {
+static void db_load_entities_initial(const std::filesystem::path& loc) {
+    for(auto j : load_from_file(loc, "entities.json")) {
         auto id = j["id"].get<int64_t>();
-        auto generation = j["generation"].get<int>();
+        auto type = j["type"].get<int>();
         auto data = j["data"];
-        auto c = new char_data();
-        if(auto isPlayer = players.find(id); isPlayer != players.end()) {
-            c->deserializePlayer(data, false);
-            isPlayer->second.character = c;
-        } else {
-            c->deserializeInstance(data, true);
+
+        GameEntity *e = nullptr;
+
+        if(type & ENT_CHARACTER) {
+            auto c = new char_data();
+            e = c;
+            c->deserialize(data);
+            if(auto isPlayer = players.find(id); isPlayer != players.end()) {
+                isPlayer->second.character = c;
+            }
+            char_data::instances[id] = c;
         }
-        char_data::instances[id] = std::make_pair(generation, c);
+        else if(type & ENT_OBJECT) {
+            auto i = new obj_data();
+            e = i;
+            i->deserialize(data);
+            obj_data::instances[id] = i;
+        } else if(type & ENT_ROOM) {
+            // THIS SHOULD NOT HAPPEN YET!
+        }
+
+        if(e)
+            GameEntity::instances[id] = e;
     }
 }
 
-static void db_load_characters_finish(const std::filesystem::path& loc) {
-    for(auto j : load_from_file(loc, "characters.json")) {
-        auto id = j["id"].get<int64_t>();
-        auto generation = j["generation"].get<int>();
-        if(auto cf = char_data::instances.find(id); cf != char_data::instances.end()) {
-            auto c = cf->second.second;
-            if(!c) continue;
-            if(j.contains("relations"))
-                c->deserializeRelations(j["relations"]);
-            if(j.contains("location"))
-                c->deserializeLocation(j["location"]);
-            if(j.contains("dgscripts"))
-                c->deserializedgScripts(j["dgscripts"]);
+static void db_load_entities_locations(const std::filesystem::path& loc) {
+    for(auto pair : load_from_file(loc, "locations.json")) {
+        auto id = pair[0].get<int64_t>();
+        auto data = pair[1];
+        Location loc(data);
+        if(auto cf = GameEntity::instances.find(id); cf != GameEntity::instances.end()) {
+            auto e = cf->second;
+            if(!e) continue;
+            e->setLocation(loc);
         }
     }
 }
 
-static void db_load_items_initial(const std::filesystem::path& loc) {
-    for(auto j : load_from_file(loc, "items.json")) {
-        auto id = j["id"].get<int64_t>();
-        auto generation = j["generation"].get<int>();
-        auto data = j["data"];
-        auto i = new obj_data();
-        i->deserializeInstance(data, false);
-        obj_data::instances[id] = std::make_pair(generation, i);
-    }
-}
+static void db_load_entities_relations(const std::filesystem::path& loc) {
+    for(auto pair : load_from_file(loc, "relations.json")) {
+        auto id = pair[0].get<int64_t>();
+        auto data = pair[1];
 
-static void db_load_items_finish(const std::filesystem::path& loc) {
-    for(auto j : load_from_file(loc, "items.json")) {
-        auto id = j["id"].get<int64_t>();
-        auto generation = j["generation"].get<int>();
-        if(auto cf = obj_data::instances.find(id); cf != obj_data::instances.end()) {
-            auto i = cf->second.second;
-            if(!i) continue;
-            if(j.contains("relations"))
-                i->deserializeRelations(j["relations"]);
-            if(j.contains("location"))
-                i->deserializeLocation(j["location"], j["slot"].get<int>());
-            if(j.contains("dgscripts"))
-                i->deserializedgScripts(j["dgscripts"]);
+        if(auto cf = GameEntity::instances.find(id); cf != GameEntity::instances.end()) {
+            auto e = cf->second;
+            if(!e) continue;
+            e->deserializeRelations(data);
         }
     }
 }
+
+static void db_load_entities_dgscripts(const std::filesystem::path& loc) {
+    for(auto pair : load_from_file(loc, "dgscript_locations.json")) {
+        auto id = pair[0].get<int64_t>();
+        auto data = pair[1];
+
+        if(auto cf = GameEntity::instances.find(id); cf != GameEntity::instances.end()) {
+            auto e = cf->second;
+            if(!e) continue;
+            for(auto element : data) {
+                auto tid = element.get<int64_t>();
+                if(auto find  = trig_data::instances.find(tid); find != trig_data::instances.end()) {
+                    auto t = *find;
+                    t.second->owner = e;
+                    e->trig_list.push_back(t.second);
+                }
+            }
+        }
+    }
+}
+
+
 
 static void db_load_activate_entities() {
-    // activate all items which ended up "in the world".
+    // activate all things which ended up "in the world".
     for(auto &[id, r] : world) {
         r.activate();
     }
@@ -354,10 +379,9 @@ static void db_load_activate_entities() {
 static void db_load_dgscripts_initial(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "dgscripts.json")) {
         auto id = j["id"].get<int64_t>();
-        auto generation = j["generation"].get<int>();
         auto t = new trig_data();
         t->deserializeInstance(j["data"]);
-        trig_data::instances[id] = std::make_pair(generation, t);
+        trig_data::instances[id] = t;
     }
 }
 
@@ -366,19 +390,23 @@ static void db_load_dgscripts_initial(const std::filesystem::path& loc) {
 static void db_load_globaldata(const std::filesystem::path& loc) {
     auto j = load_from_file(loc, "globaldata.json");
 
+    if(j.contains("lastid")) {
+        GameEntity::lastID = j["lastid"].get<int64_t>();
+    }
+
+    if(j.contains("trig_lastid")) {
+        trig_data::lastID = j["trig_lastid"].get<int64_t>();
+    }
+
     if(j.contains("time")) {
         time_info.deserialize(j["time"]);
     }
+
     if(j.contains("era_uptime"))
         era_uptime.deserialize(j["era_uptime"]);
+
     if(j.contains("weather")) {
         weather_info.deserialize(j["weather"]);
-    }
-    if(j.contains("dgGlobals")) {
-        if(auto room = world.find(0); room != world.end()) {
-            auto &r = room->second;
-            deserializeVars(&(r.global_vars), j["dgGlobals"]);
-        }
     }
 }
 
@@ -401,24 +429,13 @@ static void db_load_dgscript_prototypes(const std::filesystem::path& loc) {
 
 static void db_load_rooms(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "rooms.json")) {
-        auto id = j["vn"].get<int64_t>();
-        auto gen = j["generation"].get<time_t>();
-        auto r = world.emplace(id, j);
-        room_data::instances[id] = std::make_pair(gen, &r.first->second);
-        r.first->second.zone = real_zone_by_thing(id);
+        auto id = j["id"].get<int64_t>();
+        auto vn = j["vn"].get<int64_t>();
+        auto r = world.emplace(vn, j);
+        room_data::instances[id] = &r.first->second;
+        GameEntity::instances[r.first->second.getID()] = &r.first->second;
+        r.first->second.zone = real_zone_by_thing(vn);
         r.first->second.activate();
-    }
-}
-
-static void db_load_rooms_finish(const std::filesystem::path& loc) {
-    for(auto j : load_from_file(loc, "rooms.json")) {
-        auto id = j["vn"].get<int64_t>();
-        auto gen = j["generation"].get<time_t>();
-        RoomRef ref(id, gen);
-        auto r = ref.get();
-        if(!r) continue;
-        if(j.contains("dgscripts"))
-            r->deserializedgScripts(j["dgscripts"]);
     }
 }
 
@@ -555,23 +572,20 @@ void boot_db_world() {
     basic_mud_log("Loading dgscript initial...");
     db_load_dgscripts_initial(latest);
 
-    basic_mud_log("Loading characters initial...");
-    db_load_characters_initial(latest);
-
-    basic_mud_log("Loading items initial...");
-    db_load_items_initial(latest);
+    basic_mud_log("Loading entities initial...");
+    db_load_entities_initial(latest);
 
     // Now that all of the game entities have been spawned, we can finish loading
     // relations between them.
 
-    basic_mud_log("Loading rooms finish...");
-    db_load_rooms_finish(latest);
+    basic_mud_log("Loading entities locations...");
+    db_load_entities_locations(latest);
 
-    basic_mud_log("Loading characters finish...");
-    db_load_characters_finish(latest);
+    basic_mud_log("Loading entities relations...");
+    db_load_entities_relations(latest);
 
-    basic_mud_log("Loading items finish...");
-    db_load_items_finish(latest);
+    basic_mud_log("Loading entities dgscripts...");
+    db_load_entities_dgscripts(latest);
 
     basic_mud_log("Running activation of entities...");
     db_load_activate_entities();
@@ -764,7 +778,7 @@ void auc_save() {
     else {
         for (auto obj : IterRef(world.at(80).getContents())) {
             if (obj) {
-                fprintf(fl, "%" I64T " %s %d %d %d %d %ld\n", obj->id, GET_AUCTERN(obj), GET_AUCTER(obj),
+                fprintf(fl, "%" I64T " %s %d %d %d %d %ld\n", obj->getID(), GET_AUCTERN(obj), GET_AUCTER(obj),
                         GET_CURBID(obj), GET_STARTBID(obj), GET_BID(obj), GET_AUCTIME(obj));
             }
         }
@@ -787,7 +801,7 @@ void auc_load(struct obj_data *obj) {
         while (!feof(fl)) {
             get_line(fl, line);
             sscanf(line, "%" I64T " %s %d %d %d %d %ld\n", &oID, filler, &aID, &bID, &startc, &cost, &timer);
-            if (obj->id == oID) {
+            if (obj->getID() == oID) {
                 GET_AUCTERN(obj) = strdup(filler);
                 GET_AUCTER(obj) = aID;
                 GET_CURBID(obj) = bID;
@@ -1239,12 +1253,11 @@ int vnum_armortype(char *searchname, struct char_data *ch) {
 /* create a character, and add it to the char list */
 struct char_data *create_char(bool activate) {
     auto ch = new char_data();
+    ch->setType(ENT_CHARACTER);
 
     if(activate) {
-        ch->id = nextCharID();
-        ch->generation = time(nullptr);
-        check_unique_id(ch);
-        add_unique_id(ch);
+        ch->setID(GameEntity::nextID());
+        ch->setCreationTime(time(nullptr));
         ch->activate();
     }
 
@@ -1266,10 +1279,9 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 
     auto mob = new char_data(proto->second);
 
-    mob->id = nextCharID();
-    mob->generation = time(nullptr);
-    check_unique_id(mob);
-    add_unique_id(mob);
+    mob->setType(ENT_CHARACTER); // clear out any possible use of ENT_PROTOTYPE!
+    mob->setID(GameEntity::nextID());
+    mob->setCreationTime(time(nullptr));
     mob->activate();
     if(race::hasTail(mob->race))
         mob->playerFlags.set(PLR_TAIL);
@@ -1817,50 +1829,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
     return mob;
 }
 
-void add_unique_id(struct obj_data *obj) {
-    if(obj->id == -1) {
-        obj->id = nextObjID();
-        obj->generation = time(nullptr);
-        basic_mud_log("Object Found with ID -1. Automatically fixed to ID {}", obj->id);
-    }
-
-    auto &o = obj_data::instances[obj->id];
-    o.first = obj->generation;
-    o.second = obj;
-}
-
-void remove_unique_id(struct obj_data *obj) {
-    obj_data::instances.erase(obj->id);
-}
-
-void check_unique_id(struct obj_data *obj) {
-    if(obj->id == -1) {
-        obj->id = nextObjID();
-        obj->generation = time(nullptr);
-        basic_mud_log("Object Found with ID -1. Automatically fixed to ID %d", obj->id);
-    }
-    auto find = obj_data::instances.find(obj->id);
-}
-
-void check_unique_id(struct char_data *ch) {
-    if(ch->id == -1) {
-        ch->id = nextCharID();
-        ch->generation = time(nullptr);
-        basic_mud_log("Character Found with ID -1. Automatically fixed to ID %d", ch->id);
-    }
-    auto find = char_data::instances.find(ch->id);
-}
-
-void add_unique_id(struct char_data *ch) {
-    if(ch->id == -1) {
-        ch->id = nextCharID();
-        ch->generation = time(nullptr);
-        basic_mud_log("Character Found with ID -1. Automatically fixed to ID %d", ch->id);
-    }
-    auto &o = char_data::instances[ch->id];
-    o.first = ch->generation;
-    o.second = ch;
-}
 
 char *sprintuniques(int low, int high) {
     return strdup("Temporarily disabled.");
@@ -1870,13 +1838,12 @@ char *sprintuniques(int low, int high) {
 /* create an object, and add it to the object list */
 struct obj_data *create_obj(bool activate) {
     auto obj = new obj_data();
+    obj->setType(ENT_OBJECT);
 
     if(activate) {
-        obj->id = nextObjID();
-        obj->generation = time(nullptr);
+        obj->setID(GameEntity::nextID());
+        obj->setCreationTime(time(nullptr));
         obj->activate();
-        check_unique_id(obj);
-        add_unique_id(obj);
     }
 
     assign_triggers(obj, OBJ_TRIGGER);
@@ -1898,14 +1865,13 @@ struct obj_data *read_object(obj_vnum nr, int type, bool activate) /* and obj_rn
         return (nullptr);
     }
     
-    auto obj = new obj_data();
-    *obj = proto->second;
+    auto obj = new obj_data(proto->second);
+
     OBJ_LOADROOM(obj) = NOWHERE;
+    obj->setType(ENT_OBJECT);
     if(activate) {
-        obj->id = nextObjID();
-        obj->generation = time(nullptr);
-        check_unique_id(obj);
-        add_unique_id(obj);
+        obj->setID(GameEntity::nextID());
+        obj->setCreationTime(time(nullptr));
         obj->activate();
     }
 
@@ -2423,7 +2389,7 @@ void free_followers(struct follow_type *k) {
 /* release memory allocated for a char struct */
 void free_char(struct char_data *ch) {
     int i;
-    char_data::instances.erase(ch->id);
+    char_data::instances.erase(ch->getID());
 
     if(ch->vn == NOBODY) {
         if (GET_NAME(ch))
@@ -2480,7 +2446,7 @@ void free_char(struct char_data *ch) {
 
 /* release memory allocated for an obj struct */
 void free_obj(struct obj_data *obj) {
-    remove_unique_id(obj);
+
     if (GET_OBJ_RNUM(obj) == NOWHERE) {
         free_object_strings(obj);
     } else {
@@ -2693,8 +2659,8 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate) {
             GET_OBJ_WEAR(obj)[1], GET_OBJ_WEAR(obj)[2], GET_OBJ_WEAR(obj)[3],
             GET_OBJ_WEIGHT(obj), GET_OBJ_COST(obj), GET_OBJ_RENT(obj));
 
-    fprintf(fp, "G\n%ld\n", obj->generation);
-    fprintf(fp, "U\n%" I64T "\n", obj->id);
+    fprintf(fp, "G\n%ld\n", obj->getCreationTime());
+    fprintf(fp, "U\n%" I64T "\n", obj->getID());
 
     fprintf(fp, "Z\n%d\n", GET_OBJ_SIZE(obj));
 
@@ -3159,20 +3125,8 @@ void load_config() {
     fclose(fl);
 }
 
-
-int64_t nextObjID() {
-    int64_t id = 0;
-    while(obj_data::instances.contains(id)) id++;
-    return id;
-}
-
-int64_t nextCharID() {
-    int64_t id = 0;
-    while(char_data::instances.contains(id)) id++;
-    return id;
-}
 // ^#(?<type>[ROC])(?<id>\d+)(?::(?<generation>\d+)?)?
-static std::regex uid_regex(R"(^#([ROC]):(\d+):(\d+)$)", std::regex::icase);
+static std::regex uid_regex(R"(^#(\d+)$)", std::regex::icase);
 
 bool isUID(const std::string& uid) {
     return std::regex_match(uid, uid_regex);
@@ -3186,26 +3140,14 @@ std::optional<UID> resolveUID(const std::string& uid) {
         return std::nullopt;
     }
 
-    char type = toupper(match[1].str()[0]); // First capture group
-    int64_t id = std::stoll(match[2].str()); // Second capture group
-    time_t generation = 0;
-    if(match[3].matched) { // Third capture group
-        generation = std::stoll(match[3].str());
-    }
+    auto find = GameEntity::instances.find(std::stoll(match[1].str()));
+    if(find == GameEntity::instances.end()) return std::nullopt;
+    auto u = find->second;
 
-    if(type == 'R') {
-        RoomRef ref{id, generation};
-        auto r = ref.get();
-        if(r) return r;
-    } else if(type == 'O') {
-        ObjRef ref{id, generation};
-        auto o = ref.get();
-        if(o) return o;
-    } else if(type == 'C') {
-        CharRef ref{id, generation};
-        auto c = ref.get();
-        if(c) return c;
-    }
+    if(auto r = dynamic_cast<room_data*>(u); r) return r;
+    else if(auto o = dynamic_cast<obj_data*>(u); o) return o;
+    else if(auto c = dynamic_cast<char_data*>(u); c) return c;
+
     return std::nullopt;
 }
 

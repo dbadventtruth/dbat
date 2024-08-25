@@ -84,7 +84,7 @@ int num_players_in_room(room_vnum room) {
             continue;
         if (!world.count(IN_ROOM(i->character)))
             continue;
-        if (i->character->getRoom()->vn != room)
+        if (i->character->getRoomVnum() != room)
             continue;
         if ((GET_ADMLEVEL(i->character) >= ADMLVL_IMMORT) &&
             (PRF_FLAGGED(i->character, PRF_NOHASSLE))) /* Ignore Imms */
@@ -153,7 +153,7 @@ SPECIAL(auction) {
     if (CMD_IS("cancel")) {
 
         for (auto obj : IterRef(world.at(auct_room).getContents())) {
-            if (obj && GET_AUCTER(obj) == ((ch)->id)) {
+            if (obj && GET_AUCTER(obj) == (ch->getID())) {
                 obj2 = obj;
                 found = true;
 
@@ -201,7 +201,7 @@ SPECIAL(auction) {
         int founded = false;
 
         for (auto obj : IterRef(world.at(auct_room).getContents())) {
-            if (obj && GET_CURBID(obj) == ((ch)->id)) {
+            if (obj && GET_CURBID(obj) == (ch->getID())) {
                 obj2 = obj;
                 found = true;
 
@@ -309,7 +309,7 @@ SPECIAL(auction) {
 
         GET_BID(obj2) = value;
         GET_STARTBID(obj2) = GET_BID(obj2);
-        GET_AUCTER(obj2) = ((ch)->id);
+        GET_AUCTER(obj2) = ch->getID();
         GET_AUCTERN(obj2) = strdup(GET_NAME(ch));
         GET_AUCTIME(obj2) = time(nullptr);
         GET_CURBID(obj2) = -1;
@@ -741,7 +741,7 @@ SPECIAL(bank) {
                 return (true);
             }
             auto id = vict->ref();
-            auto &p = players[vict->id];
+            auto &p = players[vict->getID()];
             auto &c = p.account->characters;
             auto found = std::find_if(c.begin(), c.end(), [&](auto i) {return i == id;});
             if(found != c.end()) {

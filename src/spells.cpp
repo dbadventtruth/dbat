@@ -180,26 +180,26 @@ ASPELL(spell_locate_object) {
         send_to_char(ch, "%c%s", UPPER(*i->short_description), (i->short_description) + 1);
 
         bool known = false;
-        if(auto loc = i->getLocation(); loc.first) {
-            switch(loc.second.type) {
-                case CoordinateType::Room:
-                    send_to_char(ch, " is in %s.\r\n", dynamic_cast<room_data*>(loc.first)->name);
+        if(auto loc = i->getLocation(); loc.entity) {
+            switch(loc.type) {
+                case LocationType::Room:
+                    send_to_char(ch, " is in %s.\r\n", dynamic_cast<room_data*>(loc.entity)->name);
                     known = true;
                     break;
-                case CoordinateType::Inventory:
-                    if(auto character = dynamic_cast<char_data*>(loc.first); character) {
+                case LocationType::Inventory:
+                    if(auto character = dynamic_cast<char_data*>(loc.entity); character) {
                         send_to_char(ch, " is being carried by %s.\r\n", PERS(character, ch));
                         known = true;
-                    } else if(auto object = dynamic_cast<obj_data*>(loc.first); object) {
+                    } else if(auto object = dynamic_cast<obj_data*>(loc.entity); object) {
                         send_to_char(ch, " is in %s.\r\n", object->short_description);
                         known = true;
                     }
                     break;
-                case CoordinateType::Equipped:
-                    if(auto character = dynamic_cast<char_data*>(loc.first); character) {
+                case LocationType::Equipped:
+                    if(auto character = dynamic_cast<char_data*>(loc.entity); character) {
                         send_to_char(ch, " is being worn by %s.\r\n", PERS(character, ch));
                         known = true;
-                    } else if(auto object = dynamic_cast<obj_data*>(loc.first); object) {
+                    } else if(auto object = dynamic_cast<obj_data*>(loc.entity); object) {
                         send_to_char(ch, " is in %s.\r\n", object->short_description);
                         known = true;
                     }

@@ -124,7 +124,7 @@ void trig_data_copy(trig_data *this_data, const trig_data *trg) {
 }
 
 /* for mobs and rooms: */
-void dg_read_trigger(FILE *fp, struct unit_data *proto, int type) {
+void dg_read_trigger(FILE *fp, GameEntity *proto, int type) {
     char line[READ_SIZE];
     char junk[8];
     int vnum, rnum, count;
@@ -189,7 +189,7 @@ void dg_obj_trigger(char *line, struct obj_data *obj) {
     obj->proto_script.push_back(rnum);
 }
 
-void assign_triggers(struct unit_data *i, int type) {
+void assign_triggers(GameEntity *i, int type) {
 
     // remove all duplicates from i->proto_script but do not change its order otherwise.
     std::unordered_set<trig_vnum> alreadySeen;

@@ -118,7 +118,7 @@ void extract_trigger(struct trig_data *trig) {
 }
 
 /* remove all triggers from a mob/obj/room */
-void extract_script(unit_data *thing, int type) {
+void extract_script(GameEntity *thing, int type) {
     struct trig_data *trig, *next_trig;
     char_data *mob;
     obj_data *obj;
@@ -146,11 +146,11 @@ void extract_script_mem(struct script_memory *sc) {
     }
 }
 
-void free_proto_script(struct unit_data *thing, int type) {
+void free_proto_script(GameEntity *thing, int type) {
     thing->proto_script.clear();
 }
 
-void copy_proto_script(struct unit_data *source, struct unit_data *dest, int type) {
+void copy_proto_script(GameEntity *source, GameEntity *dest, int type) {
     dest->proto_script = source->proto_script;
 }
 

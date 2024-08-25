@@ -1,5 +1,7 @@
 #pragma once
-struct unit_data;
+
+class GameEntity;
+struct room_direction_data;
 struct zone_data;
 struct reset_com;
 struct char_data;
@@ -10,7 +12,6 @@ struct command_info;
 struct descriptor_data;
 struct account_data;
 struct player_data;
-struct entity_data;
 
 class CharRef;
 class ObjRef;

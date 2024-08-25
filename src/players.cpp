@@ -24,7 +24,7 @@ std::map<int64_t, player_data> players;
 long get_id_by_name(const char *name) {
     auto find = findPlayer(name);
     if(!find) return -1;
-    return find->id;
+    return find->getID();
 }
 
 
@@ -115,15 +115,15 @@ void deletePlayerCharacter(CharRef ref) {
     characterSubscriptions.unsubscribeFromAll(ref);
 
     // Get a copy of player_data
-    player_data pdata = players.at(ch->id);
+    player_data pdata = players.at(ch->getID());
 
     // Erase the character from the players map.
-    players.erase(ch->id);
+    players.erase(ch->getID());
 
     for(auto &[id, pd] : players) {
         // cleanups....
-        pd.sensePlayer.erase(ch->id);
-        pd.dubNames.erase(ch->id);
+        pd.sensePlayer.erase(ch->getID());
+        pd.dubNames.erase(ch->getID());
     }
 
     // Now we'll deal with the account.

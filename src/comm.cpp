@@ -250,7 +250,7 @@ static void performReboot(int mode) {
         auto och = d->character;
 
         jd["user"] = d->account->vn;
-        jd["character"] = och->id;
+        jd["character"] = och->getID();
 
         auto r = IN_ROOM(och);
         auto w = GET_WAS_IN(och);

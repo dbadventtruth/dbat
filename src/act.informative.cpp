@@ -903,15 +903,15 @@ int readIntro(struct char_data *ch, struct char_data *vict) {
         return 1;
     }
 
-    auto &p = players[ch->id];
+    auto &p = players[ch->getID()];
 
-    return p.dubNames.contains(vict->id);
+    return p.dubNames.contains(vict->getID());
 }
 
 void introWrite(struct char_data *ch, struct char_data *vict, char *name) {
     std::string n(name);
-    auto &p = players[ch->id];
-    p.dubNames[vict->id] = n;
+    auto &p = players[ch->getID()];
+    p.dubNames[vict->getID()] = n;
 }
 
 ACMD(do_intro) {
@@ -1420,7 +1420,7 @@ static void gen_map(struct char_data *ch, int num) {
 
     initialize_map(map);
     auto room = ch->getRoom();
-    map_draw_room(map, 4, 4, ch->getRoom()->vn, ch);
+    map_draw_room(map, 4, 4, ch->getRoomVnum(), ch);
 
     for (int door = 0; door < NUM_OF_DIRS; door++) {
         auto d = room->dir_option[door];
@@ -2480,7 +2480,7 @@ std::string char_data::getShortDescFor(char_data *viewer) {
     // both characters are player characters, so the dub system comes into play if we are not disguised.
     if(!IS_NPC(viewer) && !playerFlags.test(PLR_DISGUISED)) {
         // In the case of
-        if(auto find = players.find(viewer->id); find != players.end()) {
+        if(auto find = players.find(viewer->getID()); find != players.end()) {
             if(auto found = find->second.dubNames.find(id); found != find->second.dubNames.end()) {
                 return found->second;
             }
@@ -2596,7 +2596,7 @@ std::vector<std::string> char_data::getKeywordsFor(char_data *viewer) {
 
     if(!IS_NPC(viewer) && !playerFlags.test(PLR_DISGUISED)) {
         // In the case of a player looking at another player, we might have a dub name.
-        if(auto find = players.find(viewer->id); find != players.end()) {
+        if(auto find = players.find(viewer->getID()); find != players.end()) {
             if(auto found = find->second.dubNames.find(id); found != find->second.dubNames.end()) {
                 boost::split(temp, found->second, boost::is_space(), boost::token_compress_on);
                 out.insert(out.end(), temp.begin(), temp.end());
@@ -2642,7 +2642,7 @@ std::string char_data::getDisplayNameFor(char_data *viewer, int ana) {
     // both characters are player characters, so the dub system comes into play if we are not disguised.
     if(!IS_NPC(viewer) && !playerFlags.test(PLR_DISGUISED)) {
         // In the case of
-        if(auto find = players.find(viewer->id); find != players.end()) {
+        if(auto find = players.find(viewer->getID()); find != players.end()) {
             if(auto found = find->second.dubNames.find(id); found != find->second.dubNames.end()) {
                 return found->second;
             }
@@ -3088,7 +3088,7 @@ static void do_auto_exits(struct room_data *room, struct char_data *ch, int exit
         send_to_char(ch, "@D------------------------------------------------------------------------@n\r\n");
     }
 
-    if (exit_mode == EXIT_NORMAL && !space && ch->getLocation().first) {
+    if (exit_mode == EXIT_NORMAL && !space && ch->getLocation().entity) {
         auto compassMasks = ch->getCompassBitmasks();
         auto compassLines = generateCompass(compassMasks.first, compassMasks.second);
         auto mapTileLines = ch->buildAutoMap(true, 8, -8, 2, -2);
@@ -5962,20 +5962,20 @@ static void print_object_location(int num, struct obj_data *obj, struct char_dat
     
     auto loc = obj->getLocation();
 
-    if(!loc.first) {
+    if(!loc.entity) {
         send_to_char(ch, "in an unknown location\r\n");
         return;
     }
 
-    if(auto room = dynamic_cast<room_data*>(loc.first); room) {
+    if(auto room = dynamic_cast<room_data*>(loc.entity); room) {
         send_to_char(ch, "[%5d] %s\r\n", room->vn, room->name);
-    } else if(auto mob = dynamic_cast<char_data*>(loc.first); mob) {
-        if(loc.second.type == CoordinateType::Equipped) {
+    } else if(auto mob = dynamic_cast<char_data*>(loc.entity); mob) {
+        if(loc.type == LocationType::Equipped) {
             send_to_char(ch, "worn by %s in %s\r\n", PERS(mob, ch), mob->getLocationName().c_str());
         } else {
             send_to_char(ch, "carried by %s in %s\r\n", PERS(mob, ch), mob->getLocationName().c_str());
         }
-    } else if(auto obj = dynamic_cast<obj_data*>(loc.first); obj) {
+    } else if(auto obj = dynamic_cast<obj_data*>(loc.entity); obj) {
         send_to_char(ch, "inside %s, which is in %s\r\n", obj->short_description, obj->getLocationName().c_str());
     } else {
         send_to_char(ch, "in an unknown location: %s\r\n", obj->getLocationName().c_str());
@@ -6579,7 +6579,7 @@ ACMD(do_history) {
     one_argument(argument, arg);
     if(IS_NPC(ch)) return;
 
-    auto &p = players[ch->id];
+    auto &p = players[ch->getID()];
 
     type = search_block(arg, history_types, false);
     if (!*arg || type < 0) {
@@ -6622,7 +6622,7 @@ void add_history(struct char_data *ch, char *str, int type) {
     if (IS_NPC(ch))
         return;
 
-    auto &p = players[ch->id];
+    auto &p = players[ch->getID()];
 
     tmp = p.comm_hist[type];
     ct = time(nullptr);
@@ -7068,8 +7068,8 @@ ACMD(do_desc) {
 }
 
 
-std::vector<std::string> Location::buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY) {
-    std::unordered_set<LocationStub> visited;
+std::vector<std::string> GameEntity::buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY) {
+    std::unordered_set<Location> visited;
     // The +1 is for the center point.
     assert(minX <= -1);
     assert(minY <= -1);
@@ -7079,10 +7079,15 @@ std::vector<std::string> Location::buildAutoMapAt(const Coordinates& coord, bool
     int width = abs(maxX) - abs(minX) + 1;
     int height = abs(maxY) - abs(minY) + 1;
 
-    std::queue<std::pair<LocationStub, std::pair<int, int>>> queue;
+    std::queue<std::pair<Location, std::pair<int, int>>> queue;
+
+    Location start;
+    start.entity = this;
+    start.type = coord.type;
+    start.point = coord.point;
 
     // BFS Initialization: Start at the initial coordinates
-    queue.push({{this, coord}, {0, 0}});
+    queue.push({start, {0, 0}});
     
     std::map<int, std::map<int, std::string>> tiles;
 
@@ -7093,14 +7098,14 @@ std::vector<std::string> Location::buildAutoMapAt(const Coordinates& coord, bool
 
         // Similar logic to determine the placement and traversal...
         if (!visited.insert(current).second) continue;
-        if (!current.first) continue;
+        if (!current.entity) continue;
         if (curX > maxX || curX < minX || curY > maxY || curY < minY) continue;
 
-        std::string tile = mark && curX == 0 && curY == 0 ? "@RX@n" : current.first->printTileType(current.second);
+        std::string tile = mark && curX == 0 && curY == 0 ? "@RX@n" : current.entity->printTileType(current.getCoordinates());
         tiles[curY][curX] = tile;
 
-        for (auto &[dir, dest] : current.first->getDirectionalDestinations(current.second)) {
-            if (!dest.location || dest.exit_flags & (EX_SECRET | EX_CLOSED)) continue;
+        for (auto &[dir, dest] : current.entity->getDirectionalDestinations(current.getCoordinates())) {
+            if (!dest.location.entity || dest.exit_flags & (EX_SECRET | EX_CLOSED)) continue;
 
             int newX = curX, newY = curY;
             switch (dir) {
@@ -7114,7 +7119,7 @@ std::vector<std::string> Location::buildAutoMapAt(const Coordinates& coord, bool
                 case WEST: newX--; break;
                 default: continue;
             }
-            queue.push({dest.getStub(), {newX, newY}});
+            queue.push({dest.location, {newX, newY}});
         }
     }
 
@@ -7186,12 +7191,12 @@ std::string room_data::printTileType(const Coordinates& coord) {
     }
 }
 
-std::vector<std::string> HasLocation::buildCompass() {
+std::vector<std::string> GameEntity::buildCompass() {
     auto bitmasks = getCompassBitmasks();
     return generateCompass(bitmasks.first, bitmasks.second);
 }
 
-std::vector<std::string> HasLocation::buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY) {
-    if(loc.first) return loc.first->buildAutoMapAt(loc.second, mark, maxX, minX, maxY, minY);
+std::vector<std::string> GameEntity::buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY) {
+    if(location.entity) return location.entity->buildAutoMapAt(location.getCoordinates(), mark, maxX, minX, maxY, minY);
     return {};
 }

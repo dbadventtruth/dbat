@@ -100,7 +100,7 @@ void mob_log(char_data *mob, const char *format, ...) {
     char output[MAX_STRING_LENGTH];
 
     snprintf(output, sizeof(output), "Mob (%s [%d], VNum %d):: %s",
-             GET_SHORT(mob), mob->id, GET_MOB_VNUM(mob), format);
+             GET_SHORT(mob), mob->getID(), GET_MOB_VNUM(mob), format);
 
     va_start(args, format);
     script_vlog(output, args);
@@ -872,7 +872,7 @@ ACMD(do_mremember) {
     }
 
     /* fill in the structure */
-    mem->id = ((victim)->id);
+    mem->id = victim->getID();
     if (argument && *argument) {
         mem->cmd = strdup(argument);
     }
@@ -916,7 +916,7 @@ ACMD(do_mforget) {
     mem = SCRIPT_MEM(ch);
     prev = nullptr;
     while (mem) {
-        if (mem->id == ((victim)->id)) {
+        if (mem->id == victim->getID()) {
             if (mem->cmd) free(mem->cmd);
             if (prev == nullptr) {
                 SCRIPT_MEM(ch) = mem->next;

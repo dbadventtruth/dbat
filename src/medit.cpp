@@ -233,6 +233,7 @@ void init_mobile(struct char_data *mob) {
     //GET_HIT(mob) = 0;
     //GET_MAX_MANA(mob) = 0;
     GET_NDD(mob) = 0;
+    mob->setType(ENT_CHARACTER | ENT_PROTOTYPE);
     mob->set(CharAppearance::Sex, SEX_MALE);
     mob->chclass = SenseiID::Commoner;
 

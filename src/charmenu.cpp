@@ -15,7 +15,7 @@ namespace net {
     nlohmann::json CharacterMenu::serialize() {
         auto j = ConnectionParser::serialize();
         j["state"] = state;
-        if(ch) j["ch"] = ch->id;
+        if(ch) j["ch"] = ch->getID();
 
         return j;
     }
@@ -23,8 +23,8 @@ namespace net {
     void CharacterMenu::deserialize(const nlohmann::json& j) {
         if(j.contains("state")) state = j.at("state").get<int>();
         if(j.contains("ch")) {
-            auto id = j["ch"].get<int>();
-            ch = char_data::instances.at(id).second;
+            auto id = j["ch"].get<int64_t>();
+            ch = char_data::instances.at(id);
         }
 
     }

@@ -43,50 +43,47 @@ static void dump_state_players(const std::filesystem::path &loc) {
     dump_to_file(loc, "players.json", j);
 }
 
-static void dump_state_characters(const std::filesystem::path &loc) {
-    nlohmann::json j;
+static void dump_state_entities(const std::filesystem::path &loc) {
+    nlohmann::json jloc, jrel, jscript, jent;
 
-    for(auto &[v, r] : char_data::instances) {
-        if(v != r.second->id) r.second->id = v;
-        nlohmann::json j2;
-        j2["id"] = v;
-        j2["generation"] = static_cast<int32_t>(r.first);
-        j2["data"] = r.second->serializeInstance();
-        j2["location"] = r.second->serializeLocation();
-        j2["relations"] = r.second->serializeRelations();
-        j.push_back(j2);
+    for(auto &[v, r] : GameEntity::instances) {
+        if(v != r->getID()) r->setID(v);
+        
+        // Todo: make rooms normal entities.
+        // Skip the entity serialization if it's a room for now.
+        if(!(r->getType() & ENT_ROOM))
+            jent.push_back(std::make_pair(v, r->serialize()));
+
+        auto loc = r->getLocation();
+        if(loc.entity) jloc.push_back(std::make_pair(v, loc.serialize()));
+
+        auto rel = r->serializeRelations();
+        if(!rel.empty()) jrel.push_back(std::make_pair(v, rel));
+
+        nlohmann::json scripts;
+        for(auto t : r->trig_list) {
+            scripts.push_back(t->id);
+        }
+
+        if(!scripts.empty()) jscript.push_back(std::make_pair(v, scripts));
     }
-    dump_to_file(loc, "characters.json", j);
 
+    if(!jent.empty()) dump_to_file(loc, "entities.json", jent);
+    if(!jloc.empty()) dump_to_file(loc, "locations.json", jloc);
+    if(!jrel.empty()) dump_to_file(loc, "relations.json", jrel);
+    if(!jscript.empty()) dump_to_file(loc, "dgscript_locations.json", jscript);
 }
 
-static void dump_state_items(const std::filesystem::path &loc) {
-    nlohmann::json j;
-
-    for(auto &[v, r] : obj_data::instances) {
-        if(v != r.second->id) r.second->id = v;
-        nlohmann::json j2;
-        j2["id"] = v;
-        j2["generation"] = static_cast<int32_t>(r.first);
-        j2["data"] = r.second->serializeInstance();
-        j2["location"] = r.second->serializeLocation();
-        j2["relations"] = r.second->serializeRelations();
-        j.push_back(j2);
-    }
-    dump_to_file(loc, "items.json", j);
-}
 
 static void dump_state_dgscripts(const std::filesystem::path &loc) {
     nlohmann::json j;
 
     for(auto &[v, r] : trig_data::instances) {
-        if(v != r.second->id) r.second->id = v;
+        if(v != r->id) r->id = v;
         nlohmann::json j2;
-        if(!r.second->owner) continue;
+        if(!r->owner) continue;
         j2["id"] = v;
-        j2["generation"] = static_cast<int32_t>(r.first);
-        j2["data"] = r.second->serializeInstance();
-        j2["location"] = r.second->serializeLocation();
+        j2["data"] = r->serializeInstance();
         j.push_back(j2);
     }
     dump_to_file(loc, "dgscripts.json", j);
@@ -95,14 +92,11 @@ static void dump_state_dgscripts(const std::filesystem::path &loc) {
 void dump_state_globalData(const std::filesystem::path &loc) {
     nlohmann::json j;
 
+    j["lastid"] = GameEntity::lastID;
+    j["trig_lastid"] = trig_data::lastID;
     j["time"] = time_info.serialize();
     j["era_uptime"] = era_uptime.serialize();
     j["weather"] = weather_info.serialize();
-    if(auto gRoom = world.find(0); gRoom != world.end()) {
-        if(gRoom->second.global_vars) {
-            j["dgGlobals"] = serializeVars(gRoom->second.global_vars);
-        }
-    }
 
     dump_to_file(loc, "globaldata.json", j);
 }
@@ -138,7 +132,7 @@ static void process_dirty_exits(const std::filesystem::path &loc) {
 static void process_dirty_item_prototypes(const std::filesystem::path &loc) {
     nlohmann::json j;
     for(auto &[v, o] : obj_proto) {
-        j.push_back(o.serializeProto());
+        j.push_back(o.serialize());
     }
     dump_to_file(loc, "itemPrototypes.json", j);
 }
@@ -147,7 +141,7 @@ static void process_dirty_npc_prototypes(const std::filesystem::path &loc) {
     nlohmann::json j;
 
     for(auto &[v, n] : mob_proto) {
-        j.push_back(n.serializeProto());
+        j.push_back(n.serialize());
     }
     dump_to_file(loc, "npcPrototypes.json", j);
 }
@@ -245,9 +239,9 @@ void runSave() {
     try {
         auto startTime = std::chrono::high_resolution_clock::now();
         std::vector<std::thread> threads;
-        for(const auto func : {dump_state_accounts, dump_state_characters,
+        for(const auto func : {dump_state_accounts, dump_state_entities,
               dump_state_players, dump_state_dgscripts,
-                          dump_state_items, dump_state_globalData,
+                          dump_state_globalData,
                           process_dirty_rooms, process_dirty_exits, process_dirty_item_prototypes,
                           process_dirty_npc_prototypes, process_dirty_shops,
                           process_dirty_guilds, process_dirty_zones,

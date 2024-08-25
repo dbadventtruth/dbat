@@ -117,7 +117,7 @@ ACMD(do_oasis_trigedit) {
 
 /* called when a mob or object is being saved to disk, so its script can */
 /* be saved */
-void script_save_to_disk(FILE *fp, struct unit_data *item, int type) {
+void script_save_to_disk(FILE *fp, GameEntity *item, int type) {
 
     for (auto p : item->proto_script) {
         fprintf(fp, "T %d\n", p);

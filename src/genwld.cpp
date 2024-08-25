@@ -255,17 +255,9 @@ room_direction_data::room_direction_data(const nlohmann::json &j) : room_directi
     if(j.contains("totalfailroom")) totalfailroom = j["totalfailroom"];
 }
 
-nlohmann::json room_data::serializeDgVars() {
-    if(global_vars)
-        return serializeVars(global_vars);
-    return nlohmann::json::array();
-}
-
 
 nlohmann::json room_data::serialize() {
-    auto j = serializeUnit();
-
-    j["generation"] = generation;
+    auto j = serialize();
 
     if(sector_type) j["sector_type"] = sector_type;
 
@@ -282,8 +274,8 @@ nlohmann::json room_data::serialize() {
     return j;
 }
 
-room_data::room_data(const nlohmann::json &j) {
-    deserializeUnit(j);
+void room_data::deserialize(const nlohmann::json& j) {
+    GameEntity::deserialize(j);
 
     if(j.contains("sector_type")) sector_type = j["sector_type"];
 
@@ -305,6 +297,13 @@ room_data::room_data(const nlohmann::json &j) {
         for(auto p : j["proto_script"]) proto_script.emplace_back(p.get<trig_vnum>());
     }
 
+    if(j.contains("dgvariables")) {
+        deserializeVars(&global_vars, j["dgvariables"]);
+    }
+}
+
+room_data::room_data(const nlohmann::json &j) {
+    deserialize(j);
 }
 
 room_data::~room_data() {
@@ -323,8 +322,8 @@ std::optional<vnum> room_data::getMatchingArea(std::function<bool(const area_dat
         if ((a.type == AreaType::Structure || a.type == AreaType::Vehicle) && a.extraVn) {
             // we need to find the a.objectVnum in the world by scanning object_list...
             if (auto obj = get_obj_num(a.extraVn.value()); obj) {
-                if(world.contains(obj->getRoom()->vn)) {
-                    auto &r = world[obj->getRoom()->vn];
+                if(world.contains(obj->getRoomVnum())) {
+                    auto &r = world[obj->getRoomVnum()];
                     return r.getMatchingArea(f);
                 }
             }
@@ -338,10 +337,6 @@ static bool checkGravity(const area_data &a) {
     return a.gravity.has_value();
 }
 
-
-std::string room_data::getUID() const {
-    return fmt::format("#R:{}:{}", id, generation);
-}
 
 bool room_data::isActive() {
     return world.contains(vn);
@@ -569,8 +564,8 @@ std::optional<Destination> room_data::getLaunchDestination(const Coordinates& co
     auto launch = getLaunchDestination();
     if(launch && world.contains(*launch)) {
         Destination dest{};
-        dest.location = &world.at(*launch);
-        dest.coords.type = CoordinateType::Room;
+        dest.location.entity = &world.at(*launch);
+        dest.location.type = LocationType::Room;
     }
     return std::nullopt;
 }
@@ -668,8 +663,8 @@ void room_data::broadcastAt(const Coordinates& coord, const std::string& message
     }
 }
 
-std::vector<HasLocation*> room_data::getEntitiesAt(const Coordinates& coords) {
-    std::vector<HasLocation*> out;
+std::vector<GameEntity*> room_data::getEntitiesAt(const Coordinates& coords) {
+    std::vector<GameEntity*> out;
     for(auto [ent, _] : entities) {
         out.push_back(ent);
     }

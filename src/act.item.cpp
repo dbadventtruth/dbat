@@ -1520,10 +1520,10 @@ ACMD(do_bid) {
         if (!obj2) {
             send_to_char(ch, "That item number is not found.\r\n");
             return;
-        } else if (GET_CURBID(obj2) == ((ch)->id)) {
+        } else if (GET_CURBID(obj2) == ((ch)->getID())) {
             send_to_char(ch, "You already have the highest bid.\r\n");
             return;
-        } else if (GET_AUCTER(obj2) == ((ch)->id)) {
+        } else if (GET_AUCTER(obj2) == ((ch)->getID())) {
             send_to_char(ch, "You auctioned the item, go to the auction house and cancel if you can.\r\n");
             return;
         } else if (GET_CURBID(obj2) > 0 && atoi(arg2) <= (GET_BID(obj2) + (GET_BID(obj2) * .1)) &&
@@ -1542,7 +1542,7 @@ ACMD(do_bid) {
             return;
         } else {
             GET_BID(obj2) = atoi(arg2);
-            GET_CURBID(obj2) = ((ch)->id);
+            GET_CURBID(obj2) = ((ch)->getID());
             auc_save();
             struct descriptor_data *d;
             int bid = atoi(arg2);
@@ -3768,7 +3768,7 @@ void perform_wear(struct char_data *ch, struct obj_data *obj, int where) {
     }
 
     /* See if a trigger disallows it */
-    if (!wear_otrigger(obj, ch, where) || (obj->getLocation().first != ch))
+    if (!wear_otrigger(obj, ch, where) || (obj->getLocation().entity != ch))
         return;
 
     if (GET_OBJ_TYPE(obj) == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM)) {

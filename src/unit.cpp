@@ -3,27 +3,37 @@
 #include "dbat/utils.h"
 
 
-std::string unit_data::getName() const {
+std::string GameEntity::getName() const {
     return name ? name : "";
 }
 
-std::string unit_data::getShortDescription() const {
+std::string GameEntity::getShortDescription() const {
     return short_description ? short_description : "";
 }
 
-std::string unit_data::getRoomDescription() const {
+std::string GameEntity::getRoomDescription() const {
     return room_description ? room_description : "";
 }
 
-std::string unit_data::getLookDescription() const {
+std::string GameEntity::getLookDescription() const {
     return look_description ? look_description : "";
 }
 
 
-nlohmann::json unit_data::serializeUnit() {
+nlohmann::json GameEntity::serialize() {
     nlohmann::json j;
 
     if(vn != NOTHING) j["vn"] = vn;
+    j["type"] = type;
+
+    if(!slug.empty()) j["slug"] = slug;
+
+    if(!(type & ENT_PROTOTYPE)) {
+        j["id"] = id;
+        j["creationTime"] = creationTime;
+    }
+
+    if(zone != NOTHING) j["zone"] = zone;
 
     if(name && strlen(name)) j["name"] = name;
     if(room_description && strlen(room_description)) j["room_description"] = room_description;
@@ -39,20 +49,26 @@ nlohmann::json unit_data::serializeUnit() {
         }
     }
 
-    if(id != NOTHING) j["id"] = id;
-    if(zone != NOTHING) j["zone"] = zone;
-
     for(auto t : trig_list) {
-        auto tr = TrigRef(t);
-        j["dgscripts"].push_back(tr.serialize());
+        j["dgscripts"].push_back(t->id);
     }
+
+    if(global_vars)
+        j["dgvariables"] = serializeVars(global_vars);
 
     return j;
 }
 
 
-void unit_data::deserializeUnit(const nlohmann::json& j) {
+void GameEntity::deserialize(const nlohmann::json& j) {
+    if(j.contains("type")) type = j["type"];
+    if(j.contains("slug")) slug = j["slug"];
+
+    if(j.contains("id")) id = j["id"];
+    if(j.contains("creationTime")) creationTime = j["creationTime"];
+    if(j.contains("zone")) zone = j["zone"];
     if(j.contains("vn")) vn = j["vn"];
+
     if(j.contains("name")) {
         if(name) free(name);
         name = strdup(j["name"].get<std::string>().c_str());
@@ -81,35 +97,51 @@ void unit_data::deserializeUnit(const nlohmann::json& j) {
         }
     }
 
-    if(j.contains("id")) id = j["id"];
-    if(j.contains("zone")) zone = j["zone"];
+    if(type & ENT_PROTOTYPE || type & ENT_ROOM) {
+        if(j.contains("proto_script")) {
+            for(auto p : j["proto_script"]) proto_script.emplace_back(p.get<trig_vnum>());
+        }
+    } else {
+        if(j.contains("dgvariables")) {
+            deserializeVars(&global_vars, j["dgvariables"]);
+        }
+    }
 
 }
 
-void unit_data::deserializedgScripts(const nlohmann::json &j) {
+void GameEntity::deserializedgScripts(const nlohmann::json &j) {
     // iterate through the sequence of pairs.
-    for(auto pair : j) {
-        TrigRef ref(pair);
-        if(auto t = ref.get(); t) {
-            t->owner = this;
-            trig_list.emplace_back(t);
+    for(auto tid : j) {
+        if(auto find  = trig_data::instances.find(tid); find != trig_data::instances.end()) {
+            auto t = *find;
+            t.second->owner = this;
+            trig_list.emplace_back(t.second);
         }
     }
 }
 
-void unit_data::activateContents() {
+void GameEntity::deserializeRelations(const nlohmann::json& j) {
+
+}
+
+nlohmann::json GameEntity::serializeRelations() {
+    nlohmann::json j;
+    return j;
+}
+
+void GameEntity::activateContents() {
     for(auto obj : IterRef(getContents())) {
         obj->activate();
     }
 }
 
-void unit_data::deactivateContents() {
+void GameEntity::deactivateContents() {
     for(auto obj : IterRef(getContents())) {
         obj->deactivate();
     }
 }
 
-double unit_data::getInventoryWeight() {
+double GameEntity::getInventoryWeight() {
     double weight = 0;
     for(auto obj : IterRef(getContents())) {
         weight += obj->getTotalWeight();
@@ -117,7 +149,7 @@ double unit_data::getInventoryWeight() {
     return weight;
 }
 
-int64_t unit_data::getInventoryCount() {
+int64_t GameEntity::getInventoryCount() {
     int64_t total = 0;
     for(auto obj : IterRef(getContents())) {
         total++;
@@ -125,7 +157,7 @@ int64_t unit_data::getInventoryCount() {
     return total;
 }
 
-struct obj_data* unit_data::findObject(const std::function<bool(struct obj_data*)> &func, bool working) {
+struct obj_data* GameEntity::findObject(const std::function<bool(struct obj_data*)> &func, bool working) {
     for(auto obj : IterRef(getContents())) {
         if(func(obj)) {
             if(working && !obj->isWorking()) continue;
@@ -136,11 +168,11 @@ struct obj_data* unit_data::findObject(const std::function<bool(struct obj_data*
     return nullptr;
 }
 
-struct obj_data* unit_data::findObjectVnum(obj_vnum objVnum, bool working) {
+struct obj_data* GameEntity::findObjectVnum(obj_vnum objVnum, bool working) {
     return findObject([objVnum](auto o) {return o->vn == objVnum;}, working);
 }
 
-std::unordered_set<struct obj_data*> unit_data::gatherObjects(const std::function<bool(struct obj_data*)> &func, bool working) {
+std::unordered_set<struct obj_data*> GameEntity::gatherObjects(const std::function<bool(struct obj_data*)> &func, bool working) {
     std::unordered_set<struct obj_data*> out;
     for(auto obj : IterRef(getContents())) {
         if(func(obj)) {
@@ -247,21 +279,21 @@ void EventVariables::clear() {
     doubles.clear();
 }
 
-std::vector<std::string> unit_data::getKeywordsFor(char_data *viewer) {
+std::vector<std::string> GameEntity::getKeywordsFor(char_data *viewer) {
     std::vector<std::string> out;
     boost::split(out, name, boost::is_space(), boost::token_compress_on);
     return;
 }
 
-std::string unit_data::getDisplayNameFor(char_data *viewer, int ana) {
+std::string GameEntity::getDisplayNameFor(char_data *viewer, int ana) {
     return getName();
 }
 
-std::string unit_data::getShortDescFor(char_data *viewer) {
+std::string GameEntity::getShortDescFor(char_data *viewer) {
     return getDisplayNameFor(viewer, 2);
 }
 
-std::vector<std::string> unit_data::getListPrefixesFor(char_data *viewer) {
+std::vector<std::string> GameEntity::getListPrefixesFor(char_data *viewer) {
     std::vector<std::string> out;
 
     if(GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT) {
@@ -273,11 +305,11 @@ std::vector<std::string> unit_data::getListPrefixesFor(char_data *viewer) {
     return out;
 }
 
-std::string unit_data::getRoomPostureFor(char_data *viewer) {
+std::string GameEntity::getRoomPostureFor(char_data *viewer) {
     return getDisplayNameFor(viewer, 2);
 }
 
-std::string unit_data::renderRoomLineFor(char_data *viewer, bool affectLines) {
+std::string GameEntity::renderRoomLineFor(char_data *viewer, bool affectLines) {
     auto mainLines = getListPrefixesFor(viewer);
     mainLines.emplace_back(getRoomPostureFor(viewer));
     auto suffixes = getListSuffixesFor(viewer);
@@ -294,11 +326,11 @@ std::string unit_data::renderRoomLineFor(char_data *viewer, bool affectLines) {
     return boost::join(mainLines, " ") + "\r\n" + boost::join(affLines, "\r\n");
 }
 
-std::vector<std::string> unit_data::renderStatusLinesFor(char_data *viewer) {
+std::vector<std::string> GameEntity::renderStatusLinesFor(char_data *viewer) {
     return {};
 }
 
-std::string unit_data::renderListLineFor(char_data* viewer) {
+std::string GameEntity::renderListLineFor(char_data* viewer) {
     auto mainLines = getListPrefixesFor(viewer);
     mainLines.emplace_back(getDisplayNameFor(viewer, 2));
     auto suffixes = getListSuffixesFor(viewer);
@@ -309,18 +341,54 @@ std::string unit_data::renderListLineFor(char_data* viewer) {
     auto mainLine = boost::join(mainLines, " ");
 }
 
-std::vector<std::string> unit_data::getListSuffixesFor(char_data *viewer) {
+std::vector<std::string> GameEntity::getListSuffixesFor(char_data *viewer) {
     return {};
 }
 
-int unit_data::getApparentSexFor(char_data *viewer) {
+int GameEntity::getApparentSexFor(char_data *viewer) {
     return 0;
 }
 
-std::string unit_data::getPostureString(char_data *viewer) {
+std::string GameEntity::getPostureString(char_data *viewer) {
     return "is here.";
 }
 
-std::string unit_data::getNameAt(const Coordinates& coords) {
+std::string GameEntity::getNameAt(const Coordinates& coords) {
     return getName();
+}
+
+int64_t GameEntity::getID() const {
+    return id;
+}
+
+void GameEntity::setID(int64_t newID) {
+    id = newID;
+}
+
+std::string GameEntity::getUID() const {
+    return fmt::format("{}{}", UID_CHAR, id);
+}
+
+int GameEntity::getType() const {
+    return type;
+}
+
+void GameEntity::setType(int newType) {
+    type = newType;
+}
+
+std::string_view GameEntity::getSlug() const {
+    return slug;
+}
+
+void GameEntity::setSlug(const std::string& val) {
+    slug = val;
+}
+
+time_t GameEntity::getCreationTime() const {
+    return creationTime;
+}
+
+void GameEntity::setCreationTime(time_t newTime) {
+    creationTime = newTime;
 }

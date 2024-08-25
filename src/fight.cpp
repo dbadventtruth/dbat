@@ -1478,15 +1478,15 @@ static void make_pcorpse(struct char_data *ch) {
     for(auto f : {ITEM_NODONATE, ITEM_UNIQUE_SAVE}) corpse->extra_flags.set(f);
     GET_OBJ_VAL(corpse, VAL_CONTAINER_CAPACITY) = 0;      /* You can't store stuff in a corpse */
     GET_OBJ_VAL(corpse, VAL_CONTAINER_CORPSE) = 1;        /* corpse identifier */
-    GET_OBJ_VAL(corpse, VAL_CONTAINER_OWNER) = ch->id;  /* corpse identifier */
+    GET_OBJ_VAL(corpse, VAL_CONTAINER_OWNER) = ch->getID();  /* corpse identifier */
     GET_OBJ_WEIGHT(corpse) = ch->getTotalWeight();
     GET_OBJ_RENT(corpse) = 100000;
     GET_OBJ_TIMER(corpse) = CONFIG_MAX_PC_CORPSE_TIME;
 
 
-    LocationStub newLoc;
-    newLoc.first = corpse;
-    newLoc.second.type = CoordinateType::Inventory;
+    Location newLoc;
+    newLoc.entity = corpse;
+    newLoc.type = LocationType::Inventory;
     for (auto ref : ch->getContents()) {
         auto obj = ref.get();
         if(!obj) continue;
@@ -1734,9 +1734,9 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
     }
 
     if (!MOB_FLAGGED(ch, MOB_HUSK)) {
-        LocationStub newLoc;
-        newLoc.first = corpse;
-        newLoc.second.type = CoordinateType::Inventory;
+        Location newLoc;
+        newLoc.entity = corpse;
+        newLoc.type = LocationType::Inventory;
         for(auto ref : ch->getContents()) {
             auto o = ref.get();
             if(!o) continue;

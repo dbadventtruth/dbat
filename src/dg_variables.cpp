@@ -237,7 +237,7 @@ static char *recho[] = {"mrecho ", "orecho ", "wrecho "};
 
 /* sets str to be the value of var.field */
 void
-find_replacement(unit_data *u, trig_data *trig, int type, char *var, char *field, char *subfield,
+find_replacement(GameEntity *u, trig_data *trig, int type, char *var, char *field, char *subfield,
                  char *str, size_t slen) {
     struct trig_var_data *vd = nullptr;
     char_data *ch, *c = nullptr, *rndm;
@@ -954,8 +954,8 @@ in the vault (vnum: 453) now and then. you can just use
                         snprintf(str, slen, "%d", GET_OBJ_RENT(o));
                     } else if (!strcasecmp(field, "carried_by")) {
                         auto loc = o->getLocation();
-                        if(loc.first && loc.second.type == CoordinateType::Inventory) {
-                            if(auto unit = dynamic_cast<unit_data*>(loc.first); u)
+                        if(loc.entity && loc.type == LocationType::Inventory) {
+                            if(auto unit = dynamic_cast<GameEntity*>(loc.entity); u)
                                 snprintf(str, slen, "%s", u->getUID().c_str());
                             else
                                 *str = '\0';
@@ -1048,8 +1048,8 @@ in the vault (vnum: 453) now and then. you can just use
                             o->name = strdup(blah);
                         }
                     } else if (!strcasecmp(field, "next_in_list")) {
-                        if (auto loc = o->getLocation(); loc.second.type == CoordinateType::Inventory) {
-                            auto contents = loc.first->getContents();
+                        if (auto loc = o->getLocation(); loc.type == LocationType::Inventory) {
+                            auto contents = loc.entity->getContents();
                             // we need to advance the iterator to be at o and then try to go one further.
                             auto it = std::find(contents.begin(), contents.end(), ObjRef(o));
                             if (it != contents.end() && ++it != contents.end()) {
@@ -1156,11 +1156,11 @@ in the vault (vnum: 453) now and then. you can just use
                         snprintf(str, slen, "%s", fmt::format("{}", GET_OBJ_WEIGHT(o)).c_str());
                     } else if (!strcasecmp(field, "worn_by")) {
                         auto loc = o->getLocation();
-                        if(!loc.first) {
+                        if(!loc.entity) {
                             *str = '\0';
                             break;
                         }
-                        if(auto c = dynamic_cast<char_data*>(loc.first); c && loc.second.type == CoordinateType::Equipped)
+                        if(auto c = dynamic_cast<char_data*>(loc.entity); c && loc.type == LocationType::Equipped)
                             snprintf(str, slen, "%s", c->getUID().c_str());
                         else
                             *str = '\0';    
@@ -1308,7 +1308,7 @@ in the vault (vnum: 453) now and then. you can just use
  */
 
 /* substitutes any variables into line and returns it as buf */
-void var_subst(unit_data *u, trig_data *trig,
+void var_subst(GameEntity *u, trig_data *trig,
                int type, char *line, char *buf) {
     char tmp[MAX_INPUT_LENGTH], repl_str[MAX_INPUT_LENGTH];
     char *var = nullptr, *field = nullptr, *p = nullptr;

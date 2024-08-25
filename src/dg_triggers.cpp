@@ -165,7 +165,7 @@ void greet_memory_mtrigger(char_data *actor) {
             continue;
         /* find memory line with command only */
         for (mem = SCRIPT_MEM(ch); mem && SCRIPT_MEM(ch); mem = mem->next) {
-            if (((actor)->id) != mem->id) continue;
+            if (actor->getID() != mem->id) continue;
             if (mem->cmd) {
                 command_interpreter(ch, mem->cmd); /* no script */
                 command_performed = 1;
@@ -250,7 +250,7 @@ void entry_memory_mtrigger(char_data *ch) {
     for(auto actor : IterRef(ch->getLocationPeople())) {
         if (actor != ch && SCRIPT_MEM(ch)) {
             for (mem = SCRIPT_MEM(ch); mem && SCRIPT_MEM(ch); mem = mem->next) {
-                if (((actor)->id) == mem->id) {
+                if (actor->getID() == mem->id) {
                     struct script_memory *prev;
                     if (mem->cmd) command_interpreter(ch, mem->cmd);
                     else {
@@ -473,7 +473,7 @@ int receive_mtrigger(char_data *ch, char_data *actor, obj_data *obj) {
             ADD_UID_VAR(buf, t, obj, "object", 0);
             ret_val = script_driver(ch, t, MOB_TRIGGER, TRIG_NEW);
             auto loc = obj->getLocation();
-            if (DEAD(actor) || DEAD(ch) || loc.first != actor)
+            if (DEAD(actor) || DEAD(ch) || loc.entity != actor)
                 return 0;
             else
                 return ret_val;
@@ -863,7 +863,7 @@ int give_otrigger(obj_data *obj, char_data *actor, char_data *victim) {
              * b) the object is not carried by the giver.
              */
             auto loc = obj->getLocation();
-            if (!obj || loc.first != actor)
+            if (!obj || loc.entity != actor)
                 return 0;
             else
                 return ret_val;
@@ -1162,7 +1162,7 @@ int drop_wtrigger(obj_data *obj, char_data *actor) {
             ADD_UID_VAR(buf, t, obj, "object", 0);
             ret_val = script_driver(room, t, WLD_TRIGGER, TRIG_NEW);
             auto loc = obj->getLocation();
-            if (loc.first != actor)
+            if (loc.entity != actor)
                 return 0;
             else
                 return ret_val;

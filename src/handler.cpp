@@ -66,9 +66,9 @@ const char *get_i_name(struct char_data *ch, struct char_data *vict) {
         return (RACE(vict));
     }
 
-    auto &p = players[ch->id];
+    auto &p = players[ch->getID()];
 
-    auto found = p.dubNames.find(vict->id);
+    auto found = p.dubNames.find(vict->getID());
     if(found == p.dubNames.end()) return RACE(vict);
 
     // print *found to name and return buf pointer.
@@ -385,8 +385,8 @@ void affect_join(struct char_data *ch, struct affected_type *af,
 
 /* move a player out of a room */
 void char_from_room(struct char_data *ch) {
-    if(auto loc = ch->getLocation(); loc.first) {
-        if(auto r = dynamic_cast<room_data*>(loc.first)) {
+    if(auto loc = ch->getLocation(); loc.entity) {
+        if(auto r = dynamic_cast<room_data*>(loc.entity)) {
             ch->clearLocation();
         }
     }
@@ -397,9 +397,9 @@ void char_from_room(struct char_data *ch) {
 void char_to_room(struct char_data *ch, room_rnum room) {
     if(!ch) return;
     if(!world.count(room)) return;
-    LocationStub stub;
-    stub.first = &world.at(room);
-    stub.second.type = CoordinateType::Room;
+    Location stub;
+    stub.entity = &world.at(room);
+    stub.type = LocationType::Room;
     ch->setLocation(stub);
 }
 
@@ -407,9 +407,9 @@ void char_to_room(struct char_data *ch, room_rnum room) {
 /* give an object to a char   */
 void obj_to_char(struct obj_data *object, struct char_data *ch) {
     if (object && ch) {
-        LocationStub newLoc{};
-        newLoc.first = ch;
-        newLoc.second.type = CoordinateType::Inventory;
+        Location newLoc{};
+        newLoc.entity = ch;
+        newLoc.type = LocationType::Inventory;
         object->setLocation(newLoc);
     } else
         basic_mud_log("SYSERR: nullptr obj or char passed to obj_to_char.");
@@ -425,8 +425,8 @@ void obj_from_char(struct obj_data *object) {
     }
 
     auto loc = object->getLocation();
-    if(auto ch = dynamic_cast<char_data*>(loc.first); ch) {
-        if(loc.second.type == CoordinateType::Inventory) {
+    if(auto ch = dynamic_cast<char_data*>(loc.entity); ch) {
+        if(loc.type == LocationType::Inventory) {
             object->clearLocation();
         }
     } 
@@ -491,16 +491,16 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
         return;
     }
 
-    LocationStub newLoc{};
-    newLoc.first = ch;
+    Location newLoc{};
+    newLoc.entity = ch;
     if (invalid_align(ch, obj) || invalid_class(ch, obj) || invalid_race(ch, obj)) {
         act("You stop wearing $p as something prevents you.", false, ch, obj, nullptr, TO_CHAR);
         act("$n stops wearing $p as something prevents $m.", false, ch, obj, nullptr, TO_ROOM);
         /* Changed to drop in inventory instead of the ground. */
-        newLoc.second.type = CoordinateType::Inventory;
+        newLoc.type = LocationType::Inventory;
     } else {
-        newLoc.second.type = CoordinateType::Equipped;
-        newLoc.second.x = pos;
+        newLoc.type = LocationType::Equipped;
+        newLoc.point.x = pos;
     }
 
     obj->setLocation(newLoc);
@@ -591,9 +591,9 @@ struct char_data *get_char_num(mob_rnum nr) {
 void obj_to_room(struct obj_data *object, room_rnum room) {
     if(!object) return;
     if(!world.count(room)) return;
-    LocationStub stub;
-    stub.first = &world.at(room);
-    stub.second.type = CoordinateType::Room;
+    Location stub;
+    stub.entity = &world.at(room);
+    stub.type = LocationType::Room;
     object->setLocation(stub);
 }
 
@@ -606,8 +606,8 @@ void obj_from_room(struct obj_data *object) {
     }
 
     auto loc = object->getLocation();
-    if(loc.first) {
-        auto r = dynamic_cast<room_data*>(loc.first);
+    if(loc.entity) {
+        auto r = dynamic_cast<room_data*>(loc.entity);
         object->clearLocation();
     }
 
@@ -622,9 +622,9 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
         return;
     }
 
-    LocationStub newLoc;
-    newLoc.first = obj_to;
-    newLoc.second.type = CoordinateType::Inventory;
+    Location newLoc;
+    newLoc.entity = obj_to;
+    newLoc.type = LocationType::Inventory;
     obj->setLocation(newLoc);
 }
 
@@ -633,7 +633,7 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
 void obj_from_obj(struct obj_data *obj) {
 
     auto loc = obj->getLocation();
-    if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
+    if(auto o = dynamic_cast<obj_data*>(loc.entity); o) {
         obj->clearLocation();
     }
 }
@@ -683,7 +683,7 @@ void extract_obj(struct obj_data *obj) {
 
         extract_script(obj, OBJ_TRIGGER);
 
-    auto found = obj_data::instances.find(obj->id);
+    auto found = obj_data::instances.find(obj->getID());
     if (found != obj_data::instances.end()) {
         obj_data::instances.erase(found);
     }
@@ -785,7 +785,7 @@ void extract_char_final(struct char_data *ch) {
 
     if (!ch->clones.empty()) {
         auto clones = ch->clones;
-        for(auto &c : clones) handle_multi_merge(c);
+        for(auto &c : clones) handle_multi_merge(c.get());
     }
 
     purge_homing(ch);
@@ -909,7 +909,7 @@ void extract_char_final(struct char_data *ch) {
 
     ch->deactivate();
     if (IS_NPC(ch)) {
-        auto found = char_data::instances.find(ch->id);
+        auto found = char_data::instances.find(ch->getID());
         if (found != char_data::instances.end()) {
             char_data::instances.erase(found);
         }

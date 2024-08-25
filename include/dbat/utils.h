@@ -624,7 +624,7 @@ extern int GET_SPEEDI(struct char_data *ch);
 #define GET_SDCOOLDOWN(ch) ((ch)->con_sdcooldown)
 #define GET_INGESTLEARNED(ch) ((ch)->ingestLearned)
 #define GET_POS(ch)        ((ch)->position)
-#define GET_IDNUM(ch)        ((ch)->id)
+#define GET_IDNUM(ch)        ((ch)->getID())
 #define IS_CARRYING_W(ch)    ((ch)->getCarriedWeight())
 #define IS_CARRYING_N(ch)    ((ch)->getInventoryCount())
 #define FIGHTING(ch)        ((ch)->fighting)
@@ -1423,8 +1423,8 @@ public:
     Message& addExcludes(std::vector<char_data*> ex);
     Message& addExcludes(std::vector<CharRef> ex);
     Message& addExclude(char_data* ex);
-    Message& addRecipientsAt(LocationStub loc);
-    Message& addRecipientsAt(HasLocation* ent);
+    Message& addRecipientsAt(Location loc);
+    Message& addRecipientsAt(GameEntity* ent);
     Message& setSource(char_data* src);
     Message& setVariable(const std::string& name, MessageVar var);
     Message& setExcludeFilter(std::function<bool(char_data*)> filter);

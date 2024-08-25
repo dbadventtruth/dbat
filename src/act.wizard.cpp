@@ -899,14 +899,14 @@ ACMD(do_send) {
         send_to_char(ch, "You send '%s' to %s.\r\n", buf, GET_NAME(vict));
 }
 
-static room_data* getAbsoluteRoom(HasLocation* ent) {
+static room_data* getAbsoluteRoom(GameEntity* ent) {
     while(ent) {
         auto loc = ent->getLocation();
-        if(!loc.first) break;
-        if(auto r = dynamic_cast<room_data*>(loc.first)) {
+        if(!loc.entity) break;
+        if(auto r = dynamic_cast<room_data*>(loc.entity)) {
             return r;
         }
-        if(auto has = dynamic_cast<HasLocation*>(loc.first); has) {
+        if(auto has = dynamic_cast<GameEntity*>(loc.entity); has) {
             ent = has;
         } else {
             break;
@@ -937,7 +937,7 @@ room_rnum find_target_room(struct char_data *ch, char *rawroomstr) {
         char *mobobjstr = roomstr;
         int num = get_number(&mobobjstr);
 
-        HasLocation *ent = get_char_vis(ch, mobobjstr, &num, FIND_CHAR_WORLD);
+        GameEntity *ent = get_char_vis(ch, mobobjstr, &num, FIND_CHAR_WORLD);
         if(!ent) ent = get_obj_vis(ch, mobobjstr, &num);
         if(!ent) {
             send_to_char(ch, "Nothing exists by that name.\r\n");
@@ -1394,10 +1394,11 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
 
     sprinttype(GET_OBJ_TYPE(j), item_types, buf, sizeof(buf));
     send_to_char(ch, "VNum: [@g%5d@n], RNum: [%5d], Idnum: [%5d], Type: %s, SpecProc: %s\r\n",
-                 vnum, GET_OBJ_RNUM(j), ((j)->id), buf, GET_OBJ_SPEC(j) ? "Exists" : "None");
+                 vnum, GET_OBJ_RNUM(j), (j->getID()), buf, GET_OBJ_SPEC(j) ? "Exists" : "None");
 
+    auto gentime = j->getCreationTime();
     send_to_char(ch, "Generation time: @g%s@nUnique ID: @g%" I64T "@n\r\n",
-                 ctime(&j->generation), j->id);
+                 ctime(&gentime), j->getID());
 
     send_to_char(ch, "Object Hit Points: [ @g%3d@n/@g%3d@n]\r\n",
                  GET_OBJ_VAL(j, VAL_ALL_HEALTH), GET_OBJ_VAL(j, VAL_ALL_MAXHEALTH));
@@ -1441,16 +1442,16 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
    *       character holding the object. Therefore, we do not need CAN_SEE().
    */
 
-    if(auto loc = j->getLocation(); loc.first) {
-        if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
+    if(auto loc = j->getLocation(); loc.entity) {
+        if(auto o = dynamic_cast<obj_data*>(loc.entity); o) {
             send_to_char(ch, "In object: %s, ", o->short_description);
-        } else if(auto c = dynamic_cast<char_data*>(loc.first); c) {
-            if(loc.second.type == CoordinateType::Equipped) {
+        } else if(auto c = dynamic_cast<char_data*>(loc.entity); c) {
+            if(loc.type == LocationType::Equipped) {
                 send_to_char(ch, "Equipped by: %s, ", c->getName());
             } else {
                 send_to_char(ch, "Carried by: %s, ", c->getName());
             }
-        } else if(auto r = dynamic_cast<room_data*>(loc.first); r) {
+        } else if(auto r = dynamic_cast<room_data*>(loc.entity); r) {
             send_to_char(ch, "In room: [%d] %s, ", r->vn, r->name);
         }
     }
@@ -1597,7 +1598,7 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
     sprinttype(GET_SEX(k), genders, buf, sizeof(buf));
     send_to_char(ch, "%s %s '%s'  IDNum: [%5d], In room [%5d], Loadroom : [%5d]\r\n",
                  buf, (!IS_NPC(k) ? "PC" : (!IS_MOB(k) ? "NPC" : "MOB")),
-                 GET_NAME(k), IS_NPC(k) ? ((k)->id) : GET_IDNUM(k), k->getRoomVnum(),
+                 GET_NAME(k), IS_NPC(k) ? ((k)->getID()) : GET_IDNUM(k), k->getRoomVnum(),
                  IS_NPC(k) ? MOB_LOADROOM(k) : GET_LOADROOM(k));
 
     send_to_char(ch, "DROOM: [%5d]\r\n", GET_DROOM(k));
@@ -1805,7 +1806,7 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
                 if(find == char_data::instances.end()) {
                     send_to_char(ch, "  ** Corrupted!\r\n");
                 } else {
-                    send_to_char(ch, "  %-20.20s <default>\r\n", GET_NAME(find->second.second));
+                    send_to_char(ch, "  %-20.20s <default>\r\n", GET_NAME(find->second));
                 }
                 mem = mem->next;
             }
@@ -3426,8 +3427,7 @@ ACMD(do_show) {
             j = 0;
             k = obj_data::instances.size();
             con = sessions.size();
-            for (auto &[id, ent] : char_data::instances) {
-                vict = ent.second;
+            for (auto &[id, vict] : char_data::instances) {
                 if (IS_NPC(vict))
                     j++;
                 else if (CAN_SEE(ch, vict)) {
@@ -4048,9 +4048,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
         case 43: SET_OR_REMOVE(PRF_FLAGS(vict), PRF_COLOR);
             break;
         case 44:
-            if (GET_IDNUM(ch) == 0 || IS_NPC(vict))
-                return (0);
-            GET_IDNUM(vict) = value;
+            return (0);
             break;
         case 45:
             if (GET_IDNUM(ch) > 1) {

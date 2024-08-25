@@ -173,11 +173,14 @@ struct trig_var_data {
 };
 
 /* structure for triggers */
-struct trig_data : public entity_data {
-    std::string getUID() const override;
+struct trig_data {
     static InstanceMap<trig_data> instances;
+    static int64_t lastID;
+    static int64_t getNextID();
+
     trig_data() = default;
     explicit trig_data(const nlohmann::json& j);
+    int64_t id{};
     nlohmann::json serializeProto();
     nlohmann::json serializeInstance();
     std::string serializeLocation();
@@ -195,7 +198,7 @@ struct trig_data : public entity_data {
     double waiting{0.0};    /* event to pause the trigger      */
     bool purged{};            /* trigger is set to be purged     */
     struct trig_var_data *var_list{};    /* list of local vars for trigger  */
-    unit_data *owner{};
+    GameEntity *owner{};
     int countLine(struct cmdlist_element *c);
 
     bool active{false};
@@ -372,10 +375,10 @@ extern void check_interval_triggers(int trigFlag);
 
 extern void find_uid_name(char *uid, char *name, size_t nlen);
 
-extern void do_sstat(struct char_data *ch, struct unit_data *ud);
+extern void do_sstat(struct char_data *ch, GameEntity *ud);
 
 
-extern void add_trigger(struct unit_data *u, trig_data *t, int loc);
+extern void add_trigger(GameEntity *u, trig_data *t, int loc);
 
 extern void script_vlog(const char *format, va_list args);
 
@@ -387,11 +390,11 @@ struct room_data *dg_room_of_obj(struct obj_data *obj);
 
 /* To maintain strict-aliasing we'll have to do this trick with a union */
 /* Thanks to Chris Gilbert for reminding me that there are other options. */
-extern int script_driver(unit_data *u, trig_data *trig, int type, int mode);
+extern int script_driver(GameEntity *u, trig_data *trig, int type, int mode);
 
 extern trig_rnum real_trigger(trig_vnum vnum);
 
-extern void process_eval(unit_data *u, trig_data *trig, int type, char *cmd);
+extern void process_eval(GameEntity *u, trig_data *trig, int type, char *cmd);
 
 extern void read_saved_vars(struct char_data *ch);
 
@@ -408,11 +411,11 @@ extern trig_data *read_trigger(int nr);
 
 extern void trig_data_copy(trig_data *this_data, const trig_data *trg);
 
-extern void dg_read_trigger(FILE *fp, struct unit_data *proto, int type);
+extern void dg_read_trigger(FILE *fp, GameEntity *proto, int type);
 
 extern void dg_obj_trigger(char *line, struct obj_data *obj);
 
-extern void assign_triggers(struct unit_data *i, int type);
+extern void assign_triggers(GameEntity *i, int type);
 
 
 /* From dg_variables.c */
@@ -424,13 +427,13 @@ extern char *skill_percent(struct char_data *ch, char *skill);
 
 extern int char_has_item(char *item, struct char_data *ch);
 
-extern void var_subst(unit_data *u, trig_data *trig,
+extern void var_subst(GameEntity *u, trig_data *trig,
                       int type, char *line, char *buf);
 
 extern int text_processed(char *field, char *subfield, struct trig_var_data *vd,
                           char *str, size_t slen);
 
-extern void find_replacement(unit_data *u, trig_data *trig,
+extern void find_replacement(GameEntity *u, trig_data *trig,
                              int type, char *var, char *field, char *subfield, char *str, size_t slen);
 
 
@@ -445,13 +448,13 @@ extern void free_trigger(trig_data *trig);
 
 extern void extract_trigger(struct trig_data *trig);
 
-extern void extract_script(unit_data *u, int type);
+extern void extract_script(GameEntity *u, int type);
 
 extern void extract_script_mem(struct script_memory *sc);
 
-extern void free_proto_script(struct unit_data *thing, int type);
+extern void free_proto_script(GameEntity *thing, int type);
 
-extern void copy_proto_script(struct unit_data *source, struct unit_data *dest, int type);
+extern void copy_proto_script(GameEntity *source, GameEntity *dest, int type);
 
 /* from dg_comm.c */
 extern char *any_one_name(char *argument, char *first_arg);
@@ -461,10 +464,10 @@ extern void sub_write(char *arg, char_data *ch, int8_t find_invis, int targets);
 extern void send_to_zone(char *messg, zone_rnum zone);
 
 /* from dg_misc.c */
-extern void do_dg_cast(unit_data *u, trig_data *trig,
+extern void do_dg_cast(GameEntity *u, trig_data *trig,
                        int type, char *cmd);
 
-extern void do_dg_affect(unit_data *u, trig_data *trig,
+extern void do_dg_affect(GameEntity *u, trig_data *trig,
                          int type, char *cmd);
 
 extern void send_char_pos(struct char_data *ch, int dam);
@@ -516,7 +519,7 @@ constexpr int OBJ_ID_BASE = 1300000; /* 250000 Rooms */
 #define TRIGGER_CHECK(t, type)   (IS_SET(GET_TRIG_TYPE(t), type) && \
                   !GET_TRIG_DEPTH(t))
 
-extern void ADD_UID_VAR(char *buf, struct trig_data *trig, struct unit_data *thing, char *name, long context);
+extern void ADD_UID_VAR(char *buf, struct trig_data *trig, GameEntity *thing, char *name, long context);
 
 extern nlohmann::json serializeVars(struct trig_var_data *vd);
 

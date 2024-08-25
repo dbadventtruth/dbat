@@ -22,63 +22,69 @@
 
 InstanceMap<trig_data> trig_data::instances;
 
+int64_t trig_data::lastID = 0;
+
+int64_t trig_data::getNextID() {
+    return ++lastID;
+}
+
 /* Local functions not used elsewhere */
 void do_stat_trigger(struct char_data *ch, trig_data *trig);
 
-void script_stat(char_data *ch, unit_data *u);
+void script_stat(char_data *ch, GameEntity *u);
 
-int remove_trigger(unit_data *u, char *name);
+int remove_trigger(GameEntity *u, char *name);
 
 bool is_num(const std::string &arg);
 
-void eval_op(char *op, char *lhs, char *rhs, char *result, unit_data *u, trig_data *trig);
+void eval_op(char *op, char *lhs, char *rhs, char *result, GameEntity *u, trig_data *trig);
 
 char *matching_paren(char *p);
 
-void eval_expr(char *line, char *result, unit_data *u,
+void eval_expr(char *line, char *result, GameEntity *u,
                trig_data *trig, int type);
 
-int eval_lhs_op_rhs(char *expr, char *result, unit_data *u,
+int eval_lhs_op_rhs(char *expr, char *result, GameEntity *u,
                     trig_data *trig, int type);
 
-int process_if(char *cond, unit_data *u,
+int process_if(char *cond, GameEntity *u,
                trig_data *trig, int type);
 
 struct cmdlist_element *find_end(trig_data *trig, struct cmdlist_element *cl);
 
 struct cmdlist_element *find_else_end(trig_data *trig,
-                                      struct cmdlist_element *cl, unit_data *u, int type);
+                                      struct cmdlist_element *cl, GameEntity *u, int type);
 
-void process_wait(unit_data *u, trig_data *trig, int type, char *cmd,
+void process_wait(GameEntity *u, trig_data *trig, int type, char *cmd,
                   struct cmdlist_element *cl);
 
-void process_set(unit_data *u, trig_data *trig, char *cmd);
+void process_set(GameEntity *u, trig_data *trig, char *cmd);
 
-void process_attach(unit_data *u, trig_data *trig,
+void process_attach(GameEntity *u, trig_data *trig,
                     int type, char *cmd);
 
-void process_detach(unit_data *u, trig_data *trig,
+void process_detach(GameEntity *u, trig_data *trig,
                     int type, char *cmd);
 
 int process_return(trig_data *trig, char *cmd);
 
-void process_unset(unit_data *u, trig_data *trig, char *cmd);
+void process_unset(GameEntity *u, trig_data *trig, char *cmd);
 
-void process_remote(unit_data *u, trig_data *trig, char *cmd);
+void process_remote(GameEntity *u, trig_data *trig, char *cmd);
 
-void process_rdelete(unit_data *u, trig_data *trig, char *cmd);
+void process_rdelete(GameEntity *u, trig_data *trig, char *cmd);
 
-void process_global(unit_data *u, trig_data *trig, char *cmd, long id);
+void process_global(GameEntity *u, trig_data *trig, char *cmd, long id);
 
-void process_context(unit_data *u, trig_data *trig, char *cmd);
+void process_context(GameEntity *u, trig_data *trig, char *cmd);
 
-void extract_value(unit_data *u, trig_data *trig, char *cmd);
+void extract_value(GameEntity *u, trig_data *trig, char *cmd);
 
-void dg_letter_value(unit_data *u, trig_data *trig, char *cmd);
+void dg_letter_value(GameEntity *u, trig_data *trig, char *cmd);
 
 struct cmdlist_element *
 find_case(struct trig_data *trig, struct cmdlist_element *cl,
-          unit_data *u, int type, char *cond);
+          GameEntity *u, int type, char *cond);
 
 struct cmdlist_element *find_done(struct cmdlist_element *cl);
 
@@ -389,8 +395,8 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     auto loc = obj->getLocation();
 
     /* or outside ? */
-    if (loc.second.type == CoordinateType::Inventory) {
-        if(auto is_obj = dynamic_cast<obj_data*>(loc.first); is_obj) {
+    if (loc.type == LocationType::Inventory) {
+        if(auto is_obj = dynamic_cast<obj_data*>(loc.entity); is_obj) {
             if (*name == UID_CHAR) {
                 std::optional<DgUID> result;
                 result = resolveUIDActive(name);
@@ -402,13 +408,13 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
             } else if (isname(name, is_obj->name))
                 return is_obj;
             }
-        if(auto is_char = dynamic_cast<char_data*>(loc.first); is_char) {
+        if(auto is_char = dynamic_cast<char_data*>(loc.entity); is_char) {
             if(auto i = get_obj_in_list(name, is_char->getContents()); i) return i;
         }
     }
         /* or worn ?*/
-    else if (loc.second.type == CoordinateType::Equipped) {
-        if(auto is_char = dynamic_cast<char_data*>(loc.first); is_char) {
+    else if (loc.type == LocationType::Equipped) {
+        if(auto is_char = dynamic_cast<char_data*>(loc.entity); is_char) {
             if ((i = get_object_in_equip(is_char, name)))
                 return i;
         }
@@ -490,7 +496,7 @@ char_data *get_char_by_obj(obj_data *obj, char *name) {
             return ch;
     } else {
         auto loc = obj->getLocation();
-        if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+        if(auto c = dynamic_cast<char_data*>(loc.entity); c) {
             if(isname(name, c->name) && valid_dg_target(c, DG_ALLOW_GODS)) return c;
         }
 
@@ -564,17 +570,17 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
 
     auto loc = obj->getLocation();
 
-    if(auto o = dynamic_cast<obj_data*>(loc.first); o) {
-        if(loc.second.type == CoordinateType::Inventory) {
+    if(auto o = dynamic_cast<obj_data*>(loc.entity); o) {
+        if(loc.type == LocationType::Inventory) {
             if(isname(name, o->name)) return o;
         }
-    } else if(auto c = dynamic_cast<char_data*>(loc.first); c) {
-        if(loc.second.type == CoordinateType::Inventory) {
+    } else if(auto c = dynamic_cast<char_data*>(loc.entity); c) {
+        if(loc.type == LocationType::Inventory) {
             if(auto i = get_obj_in_list(name, c->getContents()); i) return i;
-        } else if(loc.second.type == CoordinateType::Equipped) {
+        } else if(loc.type == LocationType::Equipped) {
             if(auto i = get_object_in_equip(c, name); i) return i;
         }
-    } else if(auto r = dynamic_cast<room_data*>(loc.first); r) {
+    } else if(auto r = dynamic_cast<room_data*>(loc.entity); r) {
         if(auto i = get_obj_in_list(name, r->getContents()); i) return i;
     }
 
@@ -798,7 +804,7 @@ void find_uid_name(char *uid, char *name, size_t nlen) {
 
 
 /* general function to display stats on script sc */
-void script_stat(char_data *ch, unit_data* u) {
+void script_stat(char_data *ch, GameEntity* u) {
     struct trig_var_data *tv;
     trig_data *t;
     char name[MAX_INPUT_LENGTH];
@@ -899,7 +905,7 @@ void script_stat(char_data *ch, unit_data* u) {
 }
 
 
-void do_sstat(struct char_data *ch, struct unit_data *ud) {
+void do_sstat(struct char_data *ch, GameEntity *ud) {
     send_to_char(ch, "Triggers:\r\n");
     if (ud->trig_list.empty()) {
         send_to_char(ch, "  None.\r\n");
@@ -1056,7 +1062,7 @@ ACMD(do_attach) {
  *  you might need to check to see if all the triggers were removed after
  *  this function returns, in order to remove the script.
  */
-int remove_trigger(unit_data *u, char *name) {
+int remove_trigger(GameEntity *u, char *name) {
     trig_data *i, *j;
     int num = 0, string = false, n;
     char *cname;
@@ -1354,7 +1360,7 @@ static bool check_truthy(const char *txt) {
 
 
 /* evaluates 'lhs op rhs', and copies to result */
-void eval_op(char *op, char *lhs, char *rhs, char *result, unit_data *u, trig_data *trig) {
+void eval_op(char *op, char *lhs, char *rhs, char *result, GameEntity *u, trig_data *trig) {
     unsigned char *p;
     int n;
 
@@ -1441,7 +1447,7 @@ char *matching_paren(char *p) {
     return --p;
 }
 
-void add_trigger(struct unit_data *u, trig_data *t, int loc) {
+void add_trigger(GameEntity *u, trig_data *t, int loc) {
 
     if (loc < 0 || loc >= u->trig_list.size()) {
         u->trig_list.push_back(t);
@@ -1453,14 +1459,13 @@ void add_trigger(struct unit_data *u, trig_data *t, int loc) {
 
     u->dgTypes |= GET_TRIG_TYPE(t);
     t->owner = u;
-    t->id = nextTrigID();
-    t->generation = time(nullptr);
-    trig_data::instances[t->id] = std::make_pair(t->generation, t);
+    t->id = trig_data::getNextID();
+    trig_data::instances[t->id] = t;
     t->activate();
 }
 
 /* evaluates line, and returns answer in result */
-void eval_expr(char *line, char *result, unit_data *u,
+void eval_expr(char *line, char *result, GameEntity *u,
                trig_data *trig, int type) {
     char expr[MAX_INPUT_LENGTH], *p;
 
@@ -1482,7 +1487,7 @@ void eval_expr(char *line, char *result, unit_data *u,
  * evaluates expr if it is in the form lhs op rhs, and copies
  * answer in result.  returns 1 if expr is evaluated, else 0
  */
-int eval_lhs_op_rhs(char *expr, char *result, unit_data *u,
+int eval_lhs_op_rhs(char *expr, char *result, GameEntity *u,
                     trig_data *trig, int type)
 {
     char *p, *tokens[MAX_INPUT_LENGTH];
@@ -1552,7 +1557,7 @@ int eval_lhs_op_rhs(char *expr, char *result, unit_data *u,
 
 
 /* returns 1 if cond is true, else 0 */
-int process_if(char *cond, unit_data *u,
+int process_if(char *cond, GameEntity *u,
                trig_data *trig, int type) {
     char result[MAX_INPUT_LENGTH], *p;
 
@@ -1608,7 +1613,7 @@ struct cmdlist_element *find_end(trig_data *trig, struct cmdlist_element *cl) {
  * returns line of elseif, else, or end if found, or last line of trigger.
  */
 struct cmdlist_element *find_else_end(trig_data *trig,
-                                      struct cmdlist_element *cl, unit_data *u, int type) {
+                                      struct cmdlist_element *cl, GameEntity *u, int type) {
     struct cmdlist_element *c;
     char *p;
 
@@ -1648,7 +1653,7 @@ struct cmdlist_element *find_else_end(trig_data *trig,
 
 
 /* processes any 'wait' commands in a trigger */
-void process_wait(unit_data *u, trig_data *trig, int type, char *cmd,
+void process_wait(GameEntity *u, trig_data *trig, int type, char *cmd,
                   struct cmdlist_element *cl) {
     char buf[MAX_INPUT_LENGTH], *arg;
     struct wait_event_data *wait_event_obj;
@@ -1713,7 +1718,7 @@ void process_wait(unit_data *u, trig_data *trig, int type, char *cmd,
 
 
 /* processes a script set command */
-void process_set(unit_data *u, trig_data *trig, char *cmd) {
+void process_set(GameEntity *u, trig_data *trig, char *cmd) {
     char arg[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH], *value;
 
     value = two_arguments(cmd, arg, name);
@@ -1731,7 +1736,7 @@ void process_set(unit_data *u, trig_data *trig, char *cmd) {
 }
 
 /* processes a script eval command */
-void process_eval(unit_data *u, trig_data *trig,
+void process_eval(GameEntity *u, trig_data *trig,
                   int type, char *cmd) {
     char arg[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH];
     char result[MAX_INPUT_LENGTH], *expr;
@@ -1757,7 +1762,7 @@ void process_eval(unit_data *u, trig_data *trig,
 
 
 /* script attaching a trigger to something */
-void process_attach(unit_data *u, trig_data *trig,
+void process_attach(GameEntity *u, trig_data *trig,
                     int type, char *cmd) {
     char arg[MAX_INPUT_LENGTH], trignum_s[MAX_INPUT_LENGTH];
     char result[MAX_INPUT_LENGTH], *id_p;
@@ -1836,7 +1841,7 @@ void process_attach(unit_data *u, trig_data *trig,
 
 
 /* script detaching a trigger from something */
-void process_detach(unit_data *u, trig_data *trig,
+void process_detach(GameEntity *u, trig_data *trig,
                     int type, char *cmd) {
     char arg[MAX_INPUT_LENGTH], trignum_s[MAX_INPUT_LENGTH];
     char result[MAX_INPUT_LENGTH], *id_p;
@@ -1944,7 +1949,7 @@ int process_return(trig_data *trig, char *cmd) {
  * removes a variable from the global vars of sc,
  * or the local vars of trig if not found in global list.
  */
-void process_unset(unit_data *u, trig_data *trig, char *cmd) {
+void process_unset(GameEntity *u, trig_data *trig, char *cmd) {
     char arg[MAX_INPUT_LENGTH], *var;
 
     var = any_one_arg(cmd, arg);
@@ -1966,7 +1971,7 @@ void process_unset(unit_data *u, trig_data *trig, char *cmd) {
  * copy a locally owned variable to the globals of another script
  *     'remote <variable_name> <uid>'
  */
-void process_remote(unit_data *u, trig_data *trig, char *cmd) {
+void process_remote(GameEntity *u, trig_data *trig, char *cmd) {
     struct trig_var_data *vd;
     char *line, *var, *uid_p;
     char arg[MAX_INPUT_LENGTH], buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
@@ -2019,7 +2024,7 @@ void process_remote(unit_data *u, trig_data *trig, char *cmd) {
     /* for PC's, context is 0 (global) */
     context = vd->context;
 
-    struct unit_data* target;
+    GameEntity* target;
 
     switch(uidResult->index()) {
         case 0:
@@ -2071,7 +2076,7 @@ ACMD(do_vdelete) {
         send_to_char(ch, "vdelete: illegal id specified.\r\n");
         return;
     }
-    struct unit_data* target;
+    GameEntity* target;
 
     switch(uidResult->index()) {
         case 0:
@@ -2152,7 +2157,7 @@ int perform_set_dg_var(struct char_data *ch, struct char_data *vict, char *val_a
  * delete a variable from the globals of another script
  *     'rdelete <variable_name> <uid>'
  */
-void process_rdelete(unit_data *u, trig_data *trig, char *cmd) {
+void process_rdelete(GameEntity *u, trig_data *trig, char *cmd) {
     struct trig_var_data *vd, *vd_prev = nullptr;
     char *line, *var, *uid_p;
     char arg[MAX_INPUT_LENGTH], buf[MAX_STRING_LENGTH], buf2[MAX_STRING_LENGTH];
@@ -2184,7 +2189,7 @@ void process_rdelete(unit_data *u, trig_data *trig, char *cmd) {
         return;
     }
 
-    struct unit_data* target;
+    GameEntity* target;
 
     switch(uidResult->index()) {
         case 0:
@@ -2223,7 +2228,7 @@ void process_rdelete(unit_data *u, trig_data *trig, char *cmd) {
 /*
  * makes a local variable into a global variable
  */
-void process_global(unit_data *u, trig_data *trig, char *cmd, long id) {
+void process_global(GameEntity *u, trig_data *trig, char *cmd, long id) {
     struct trig_var_data *vd;
     char arg[MAX_INPUT_LENGTH], *var;
 
@@ -2253,7 +2258,7 @@ void process_global(unit_data *u, trig_data *trig, char *cmd, long id) {
 
 
 /* set the current context for a script */
-void process_context(unit_data *u, trig_data *trig, char *cmd) {
+void process_context(GameEntity *u, trig_data *trig, char *cmd) {
     char arg[MAX_INPUT_LENGTH], *var;
 
     var = any_one_arg(cmd, arg);
@@ -2269,7 +2274,7 @@ void process_context(unit_data *u, trig_data *trig, char *cmd) {
     u->dgContext = atol(var);
 }
 
-void extract_value(unit_data *u, trig_data *trig, char *cmd) {
+void extract_value(GameEntity *u, trig_data *trig, char *cmd) {
     char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
     char *buf3;
     char to[128];
@@ -2312,7 +2317,7 @@ void extract_value(unit_data *u, trig_data *trig, char *cmd) {
 
 */
 
-void dg_letter_value(unit_data *u, trig_data *trig, char *cmd) {
+void dg_letter_value(GameEntity *u, trig_data *trig, char *cmd) {
     //set the letter/number at position 'num' as the variable.
     char junk[MAX_INPUT_LENGTH];
     char varname[MAX_INPUT_LENGTH];
@@ -2365,7 +2370,7 @@ void dg_letter_value(unit_data *u, trig_data *trig, char *cmd) {
 
 
 
-static int true_script_driver(unit_data *u, trig_data *trig, int type, int mode) {
+static int true_script_driver(GameEntity *u, trig_data *trig, int type, int mode) {
     static int depth = 0;
     int ret_val = 1;
     struct cmdlist_element *cl;
@@ -2573,7 +2578,7 @@ static int true_script_driver(unit_data *u, trig_data *trig, int type, int mode)
     return ret_val;
 }
 
-int script_driver(unit_data *go_adress, trig_data *trig, int type, int mode) {
+int script_driver(GameEntity *go_adress, trig_data *trig, int type, int mode) {
     auto result = true_script_driver(go_adress, trig, type, mode);
     return result;
 }
@@ -2607,7 +2612,7 @@ ACMD(do_tstat) {
 */
 struct cmdlist_element *
 find_case(struct trig_data *trig, struct cmdlist_element *cl,
-          unit_data *u, int type, char *cond) {
+          GameEntity *u, int type, char *cond) {
     char result[MAX_INPUT_LENGTH];
     struct cmdlist_element *c;
     char *p, *buf;
@@ -2884,7 +2889,6 @@ nlohmann::json trig_data::serializeInstance() {
     j["vn"] = vn;
 
     j["id"] = id;
-    j["generation"] = generation;
 
     if(depth) j["depth"] = depth;
     if(loops) j["loops"] = loops;
@@ -2915,8 +2919,7 @@ void trig_data::deserializeInstance(const nlohmann::json &j) {
     cmdlist = p->cmdlist;
     curr_state = p->cmdlist;
 
-    if(j.contains("id")) id = j["id"].get<long>();
-    if(j.contains("generation")) generation = j["generation"].get<long>();
+    if(j.contains("id")) id = j["id"].get<int64_t>();
 
     if(j.contains("waiting")) waiting = j["waiting"].get<double>();
     if(j.contains("depth")) depth = j["depth"].get<int>();
@@ -2946,32 +2949,6 @@ void trig_data::deserializeInstance(const nlohmann::json &j) {
     }
 }
 
-std::string trig_data::serializeLocation() {
-    return owner->getUID();
-}
-
-void trig_data::deserializeLocation(const std::string &txt) {
-    auto uid = resolveUID(txt);
-    if(!uid) return;
-    auto res = *uid;
-    struct room_data *r;
-    struct obj_data *o;
-    struct char_data *c;
-    switch(res.index()) {
-        case 0:
-            r = std::get<0>(res);
-            owner = r;
-            break;
-        case 1:
-            o = std::get<1>(res);
-            owner = o;
-            break;
-        case 2:
-            c = std::get<2>(res);
-            owner = c;
-            break;
-    }
-}
 
 trig_data::trig_data(const nlohmann::json &j) : trig_data() {
     if(j.contains("vn")) vn = j["vn"].get<int>();
@@ -2993,7 +2970,7 @@ trig_data::trig_data(const nlohmann::json &j) : trig_data() {
     }
 }
 
-void ADD_UID_VAR(char *buf, struct trig_data *trig, struct unit_data *thing, char *name, long context) {
+void ADD_UID_VAR(char *buf, struct trig_data *trig, GameEntity *thing, char *name, long context) {
 	auto uid = thing->getUID();
     add_var(&GET_TRIG_VARS(trig), name, (char*)uid.c_str(), context);
 }
@@ -3043,8 +3020,4 @@ void deserializeVars(struct trig_var_data **vd, const nlohmann::json &j) {
 
 nlohmann::json index_data::serializeProto() {
     return proto->serializeProto();
-}
-
-std::string trig_data::getUID() const {
-    return fmt::format("#DG:{}:{}", id, generation);
 }

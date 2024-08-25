@@ -76,7 +76,7 @@ struct character_affect_type : affect_t {
 };
 
 template <typename T>
-using InstanceMap = std::unordered_map<int64_t, std::pair<time_t, T*>>;
+using InstanceMap = std::unordered_map<int64_t, T*>;
 
 
 /* An affect structure. */
@@ -101,7 +101,7 @@ public:
     // Constructors
     RefBase() = default;
 
-    RefBase(int64_t id, time_t generation) : id(id), generation(generation) {}
+    RefBase(int64_t id) : id(id) {}
 
     explicit RefBase(const nlohmann::json& j) {
         deserialize(j);
@@ -109,24 +109,25 @@ public:
 
     RefBase(const T* obj) {
         if (obj) {
-            id = obj->id;
-            generation = obj->generation;
+            id = obj->getID();
         }
     }
 
     RefBase(const RefBase& other) = default;
 
     RefBase(RefBase&& other) noexcept
-        : id(other.id), generation(other.generation) {
-        other.id = 0;
-        other.generation = 0;
+        : id(other.id) {
+        other.id = -1;
     }
 
     // Public methods
     T* get(bool checkActive = false) const {
         auto it = T::instances.find(id);
-        if (it != T::instances.end() && it->second.first == generation) {
-            return it->second.second;
+        if (it != T::instances.end()) {
+            if(checkActive && !it->second->isActive()) {
+                return nullptr;
+            }
+            return it->second;
         }
         return nullptr;
     }
@@ -135,25 +136,19 @@ public:
         return id;
     }
 
-    time_t getGeneration() const {
-        return generation;
-    }
-
     nlohmann::json serialize() const {
         return {
             {"id", id},
-            {"generation", generation}
         };
     }
 
     void deserialize(const nlohmann::json& j) {
         if (j.contains("id")) id = j["id"];
-        if (j.contains("generation")) generation = j["generation"];
     }
 
     // Operators
     bool operator==(const Derived& other) const {
-        return id == other.id && generation == other.generation;
+        return id == other.id;
     }
 
     bool operator!=(const Derived& other) const {
@@ -161,26 +156,18 @@ public:
     }
 
     Derived& operator=(const T* obj) {
-        if (obj) {
-            id = obj->id;
-            generation = obj->generation;
-        } else {
-            id = 0;
-            generation = 0;
-        }
+        id = obj->getID() ? obj : -1;
         return *static_cast<Derived*>(this);
     }
 
     Derived& operator=(const T& obj) {
-        id = obj.id;
-        generation = obj.generation;
+        id = obj.getID();
         return *static_cast<Derived*>(this);
     }
 
     Derived& operator=(const RefBase& other) {
         if (this != &other) {
             id = other.id;
-            generation = other.generation;
         }
         return *static_cast<Derived*>(this);
     }
@@ -188,9 +175,7 @@ public:
     Derived& operator=(RefBase&& other) noexcept {
         if (this != &other) {
             id = other.id;
-            generation = other.generation;
-            other.id = 0;
-            other.generation = 0;
+            other.id = -1;
         }
         return *static_cast<Derived*>(this);
     }
@@ -204,8 +189,7 @@ public:
     }
 
 protected:
-    int64_t id{0};
-    time_t generation{0};
+    int64_t id{-1};
 };
 
 // Derived classes
@@ -239,35 +223,35 @@ namespace std {
     template <>
     struct hash<ObjRef> {
         std::size_t operator()(const ObjRef& ref) const {
-            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+            return std::hash<int64_t>()(ref.getID());
         }
     };
 
     template <>
     struct hash<CharRef> {
         std::size_t operator()(const CharRef& ref) const {
-            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+            return std::hash<int64_t>()(ref.getID());
         }
     };
 
     template <>
     struct hash<RoomRef> {
         std::size_t operator()(const RoomRef& ref) const {
-            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+            return std::hash<int64_t>()(ref.getID());
         }
     };
 
     template <>
     struct hash<TrigRef> {
         std::size_t operator()(const TrigRef& ref) const {
-            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+            return std::hash<int64_t>()(ref.getID());
         }
     };
 
     template <>
     struct hash<ASERef> {
         std::size_t operator()(const ASERef& ref) const {
-            return std::hash<int64_t>()(ref.getID()) ^ std::hash<time_t>()(ref.getGeneration());
+            return std::hash<int64_t>()(ref.getID());
         }
     };
 }
@@ -392,41 +376,46 @@ struct player_data {
     nlohmann::json serialize();
 };
 
-enum class CoordinateType : uint8_t {
-    Room = 0, // in the contents of a Room.
+enum class LocationType : uint8_t {
+    Room = 0, // in the contents of a Legacy Room.
     Grid = 1, // in the contents of a Grid at specific coordinates.
-    Space = 2, // in floating point space map at specific coordinates.
-    Inventory = 3, // in someone's inventory. order doesn't really matter.
-    Equipped = 4 // equipped. x y and z can be used to determine slot location.
+    Inventory = 2, // in someone's inventory. order doesn't really matter.
+    Equipped = 3, // equipped. x y and z can be used to determine slot location.
+    Internal = 4 // This is either a room that's inside an object, or a region-object inside another object/region-object.
 };
 
-struct HasCoordinates {
-    HasCoordinates() = default;
-    explicit HasCoordinates(const nlohmann::json& j);
-    virtual nlohmann::json serialize();
-    virtual void deserialize(const nlohmann::json& j);
-    CoordinateType type{CoordinateType::Room};
-    double x{0.0}, y{0.0}, z{0.0};
+struct Point {
+    Point() = default;
+    Point(int64_t x, int64_t y, int64_t z) : x(x), y(y), z(z) {}
+    explicit Point(const nlohmann::json& j);
+    int64_t x{};
+    int64_t y{};
+    int64_t z{};
+    nlohmann::json serialize() const;
+    void deserialize(const nlohmann::json& j);
+    bool operator==(const Point& other) const;
 };
 
-struct Coordinates : public HasCoordinates {
-    using HasCoordinates::HasCoordinates;
-    bool operator== (const Coordinates& other) const;
+namespace std {
+    template <>
+    struct hash<Point> {
+        std::size_t operator()(const Point& coords) const {
+            std::size_t seed = 0;
+            std::hash<int64_t> hasher;
+            
+            seed ^= hasher(coords.x) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hasher(coords.y) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= hasher(coords.z) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            
+            return seed;
+        }
+    };
 };
 
-using LocationStub = std::pair<Location*, Coordinates>;
-struct room_direction_data;
-
-struct Destination {
-    Destination() = default;
-    explicit Destination(room_direction_data *exit);
-    explicit Destination(room_data *room);
-    Location *location{};
-    Coordinates coords{};
-    std::string keyword{}, general_description{};
-    uint8_t exit_flags; // uses EX_ISDOOR, EX_CLOSED, EX_LOCKED, etc....
-    obj_vnum key{NOTHING};        /* Key's number (-1 for no key)		*/
-    LocationStub getStub();
+struct Coordinates {
+    LocationType type{};
+    Point point{};
+    bool operator==(const Coordinates& other) const;
 };
 
 namespace std {
@@ -434,46 +423,58 @@ namespace std {
     struct hash<Coordinates> {
         std::size_t operator()(const Coordinates& coords) const {
             std::size_t seed = 0;
-            std::hash<int> hashInt;
-            std::hash<double> hashDouble;
+            std::hash<LocationType> typeHasher;
+            std::hash<Point> pointHasher;
 
-            seed ^= hashInt(static_cast<int>(coords.type)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= hashDouble(coords.x) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= hashDouble(coords.y) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= hashDouble(coords.z) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-            return seed;
-        }
-    };
-
-    template <>
-    struct hash<Destination> {
-        std::size_t operator()(const Destination& dest) const {
-            std::size_t seed = 0;
-            std::hash<Location*> hashLocationPtr;
-            std::hash<Coordinates> hashCoordinates;
-
-            seed ^= hashLocationPtr(dest.location) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= hashCoordinates(dest.coords) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-            return seed;
-        }
-    };
-
-    template <>
-    struct hash<LocationStub> {
-        std::size_t operator()(const LocationStub& stub) const {
-            std::size_t seed = 0;
-            std::hash<Location*> hashLocationPtr;
-            std::hash<Coordinates> hashCoordinates;
-
-            seed ^= hashLocationPtr(stub.first) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            seed ^= hashCoordinates(stub.second) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= typeHasher(coords.type) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= pointHasher(coords.point) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
             return seed;
         }
     };
 }
+
+struct Location {
+    Location() = default;
+    explicit Location(const nlohmann::json& j);
+    GameEntity *entity{};
+    LocationType type{};
+    Point point{};
+    nlohmann::json serialize() const;
+    void deserialize(const nlohmann::json& j);
+    bool operator==(const Location& other) const;
+    Coordinates getCoordinates() const;
+};
+
+namespace std {
+    template <>
+    struct hash<Location> {
+        std::size_t operator()(const Location& loc) const {
+            std::size_t seed = 0;
+            std::hash<GameEntity*> entityHasher;
+            std::hash<LocationType> typeHasher;
+            std::hash<Point> coordsHasher;
+            
+            seed ^= entityHasher(loc.entity) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= typeHasher(loc.type) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= coordsHasher(loc.point) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            
+            return seed;
+        }
+    };
+}
+
+struct Destination {
+    Destination() = default;
+    explicit Destination(room_direction_data *exit);
+    explicit Destination(room_data *room);
+    explicit Destination(const Location& loc);
+    Location location{};
+    std::string keyword{}, general_description{};
+    uint8_t exit_flags; // uses EX_ISDOOR, EX_CLOSED, EX_LOCKED, etc....
+    obj_vnum key{NOTHING};        /* Key's number (-1 for no key)		*/
+};
+
 
 class EventVariables {
 public:
@@ -512,179 +513,45 @@ protected:
     std::unordered_map<std::string, double> doubles;
 };
 
-struct entity_data {
-    // TODO: Expand this significantly.
-    virtual std::string getUID() const = 0;
 
-    int64_t id{NOTHING}; /* used by DG triggers	*/
-    time_t generation{};             /* creation time for dupe check     */
-};
+constexpr int ENT_ROOM = 1 << 0;
+constexpr int ENT_OBJECT = 1 << 1;
+constexpr int ENT_CHARACTER = 1 << 2;
+constexpr int ENT_PROTOTYPE = 1 << 3;
 
-class HasLocation : public virtual entity_data {
-// abstract interface used for objects that have a location.
+class GameEntity {
 public:
+    // Statics.
+    static std::unordered_map<int64_t, GameEntity*> instances;
+    static int64_t lastID;
+    static int64_t nextID();
+
+    // Public methods
+    GameEntity() = default;
+    virtual ~GameEntity() = default;
+
+    int64_t getID() const;
+    std::string getUID() const;
+    int getType() const;
+
+    // Should only really be called by very special routines.
+    // Like deserialization or creating new instances.
+    void setID(int64_t val);
     
-    // These are the only methods that should be used to change an entity's location.
-    LocationStub getLocation();
-    LocationStub clearLocation();
-    void setLocation(const LocationStub &newLoc);
+    // Should only really be called by very special routines.
+    void setType(int val);
 
-    // Relocation hooks.
-    virtual void onAddedToLocation(const LocationStub& loc) = 0;
-    virtual void onRemovedFromLocation(const LocationStub& loc) = 0;
-    virtual void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) = 0;
+    // The slug is a unique short name for the entity. like room_1 or item_proto_5 or something.
+    std::string_view getSlug() const;
+    void setSlug(const std::string& val);
 
-    // convenience methods.
-    std::string getLocationName() const;
-    std::optional<Destination> getDirection(int dir) const;
-    std::map<int, Destination> getDirections() const;
-
-    void setLocationRoomFlag(int flag, bool value = true) const;
-    bool toggleLocationRoomFlag(int flag) const;
-    bool getLocationRoomFlag(int flag) const;
-
-    // For commands like get or look that need to find objects within touch range of unit.
-    std::vector<ObjRef> getLocationObjects() const;
-    std::vector<CharRef> getLocationPeople() const;
-    
-    double getLocationEnvironment(int type) const;
-    double setLocationEnvironment(int type, double value) const;
-    double modLocationEnvironment(int type, double value) const;
-    void clearLocationEnvironment(int type) const;
-
-    void broadcastAtLocation(const std::string& message) const;
-
-    int getLocationDamage() const;
-    int setLocationDamage(int amount) const;
-    int modLocationDamage(int amount) const;
-
-    int getLocationTileType() const;
-
-    int getLocationGroundEffect() const;
-    int setLocationGroundEffect(int val) const;
-    int modLocationGroundEffect(int val) const;
-
-    SpecialFunc getLocationSpecialFunc() const;
-
-    std::pair<uint16_t, uint16_t> getCompassBitmasks();
-    std::vector<std::string> buildCompass();
-    std::vector<std::string> buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY);
-
-    // Temporarily in for compatability...
-    struct room_data* getRoom() const;
-    room_vnum getRoomVnum() const;
-    room_data* getAbsoluteRoom() const;
-
-protected:
-    LocationStub loc{};
-
-};
-
-class Location : public virtual entity_data {
-    // This is an abstract base class that is used for the new location system.
-    // unit_data can have a Location *location field that is used to track where
-    // it is.
-
-    // Then, when doing certain things like moving around or using look, it calls
-    // the methods on this while passing in the unit_data ptr so it knows which
-    // entity it's gonna be working with.
-public:
-    // This is used for serialization and identification. It should be unique.
-    virtual std::string getNameAt(const Coordinates& coords) = 0;
-
-    // Add an entity to this location at a specific sub-location
-    void addEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
-    virtual void onAddEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
-    // Remove an entity from this location.
-    void removeEntity(HasLocation* ent, uint64_t flags);
-    virtual void onRemoveEntity(HasLocation* ent, const Coordinates& coords, uint64_t flags);
-
-    // Change an entity's coordinates within this location.
-    void relocateEntity(HasLocation *ent, const Coordinates& coords, uint64_t flags);
-    virtual void onRelocateEntity(HasLocation *ent, const Coordinates& oldCoordinates, const Coordinates& newCoordinates, uint64_t flags);
-
-    // Get the coordinates for a unit in this location. If the unit isn't in this Location,
-    // we get an empty optional.
-    virtual std::optional<Coordinates> getCoordinatesForEntity(HasLocation* ent);
-    virtual std::vector<HasLocation*> getEntitiesAt(const Coordinates& coords);
-
-    // Wrapper for dealing with legacy room flags.
-    virtual void setRoomFlag(const Coordinates& coord, int flag, bool value);
-    virtual bool toggleRoomFlag(const Coordinates& coord, int flag);
-    virtual bool getRoomFlag(const Coordinates& coord, int flag);
-
-    // Returns the exit data for a given direction. nullptr if no exit.
-    virtual std::optional<Destination> getDirectionalDestination(const Coordinates& coord, int dir);
-    virtual std::map<int, Destination> getDirectionalDestinations(const Coordinates& coord);
-    
-    // We need to be able to query our environment for things like gravity or temperature...
-    // TODO: Implement environmental enums. Example: Moonlight, Temperature, Gravity, etc.
-    virtual double getEnvironment(const Coordinates& coord, uint64_t type);
-    virtual double setEnvironment(const Coordinates& coord, uint64_t type, double value);
-    virtual double modEnvironment(const Coordinates& coord, uint64_t type, double value);
-    virtual void clearEnvironment(const Coordinates& coord, uint64_t type);
-
-    // If the location is a planet or spaceship or something it might have the ability to
-    // exit to space or another location via launching.
-    virtual std::optional<Destination> getLaunchDestination(const Coordinates& coord);
-
-    // Location might be a planet or spaceship. In which case, we provide a list of potential
-    // landing destinations, such as specially flagged rooms or maybe a hangar bay.
-    // NOTE: on second thought, this should probably go somewhere else.
-    // virtual std::vector<Destination> getLandingDestinations(unit_data *unit) = 0;
-
-    // used to get modifiers for the unit's current location.
-    virtual double getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific);
-
-    // Wrapper for the existing room damage system.
-    virtual int getDamage(const Coordinates& coord);
-    virtual int setDamage(const Coordinates& coord, int amount);
-    virtual int modDamage(const Coordinates& coord, int amount);
-
-    virtual int getTileType(const Coordinates& coord);
-    virtual std::string printTileType(const Coordinates& coord);
-    virtual int getGroundEffect(const Coordinates& coord);
-    virtual int setGroundEffect(const Coordinates& coord, int val);
-    virtual int modGroundEffect(const Coordinates& coord, int val);
-
-    virtual SpecialFunc getSpecialFunction(const Coordinates& coord);
-
-    virtual void broadcastAt(const Coordinates &coord, const std::string& message);
-
-    template<typename PtrType, typename RefType>
-    std::vector<RefType> gatherEntities(const Coordinates& coord) {
-        std::vector<RefType> out;
-        for(auto ent : getEntitiesAt(coord)) {
-            if(auto cast = dynamic_cast<PtrType*>(ent); cast) {
-                out.emplace_back(cast);
-            }
-        }
-        return out;
-    }
-
-    virtual std::vector<ObjRef> getContents();
-    virtual std::vector<CharRef> getPeople();
-
-    virtual std::map<int, ObjRef> getEquipment();
-
-    virtual std::vector<std::string> buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY);
-
-protected:
-    std::unordered_map<HasLocation*, Coordinates> entities;
-};
-
-struct unit_data : public virtual Location {
-    unit_data() = default;
-    virtual ~unit_data() = default;
-    vnum vn{NOTHING}; /* Where in database */
-    zone_vnum zone{NOTHING};
+    time_t getCreationTime() const;
+    void setCreationTime(time_t val);
 
     std::string getName() const;
     std::string getShortDescription() const;
     std::string getRoomDescription() const;
     std::string getLookDescription() const;
-
-    std::string getNameAt(const Coordinates& coords) override;
 
     // Provides the keywords used for searching for this thing, from the given 
     // character's perspective.
@@ -726,6 +593,165 @@ struct unit_data : public virtual Location {
     // Used for any special sections in [] or <> or () displayed before names or whatnot.
     virtual std::vector<std::string> getListSuffixesFor(char_data *viewer);
 
+    weight_t getInventoryWeight();
+    int64_t getInventoryCount();
+   
+    virtual nlohmann::json serialize();
+
+    void activateContents();
+    void deactivateContents();
+
+    virtual void deserialize(const nlohmann::json& j);
+    virtual nlohmann::json serializeRelations();
+    virtual void deserializeRelations(const nlohmann::json& j);
+
+    virtual bool isActive() = 0;
+
+    void deserializedgScripts(const nlohmann::json &j);
+
+    struct obj_data* findObjectVnum(obj_vnum objVnum, bool working = true);
+    virtual struct obj_data* findObject(const std::function<bool(struct obj_data*)> &func, bool working = true);
+    virtual std::unordered_set<struct obj_data*> gatherObjects(const std::function<bool(struct obj_data*)> &func, bool working = true);
+
+    // THE FOLLOWING WERE MOVED FROM the LOCATION CLASS
+    virtual std::string getNameAt(const Coordinates& coords);
+
+    // Add an entity to this location at a specific sub-location
+    void addEntity(GameEntity* ent, const Coordinates& coords, uint64_t flags);
+    virtual void onAddEntity(GameEntity* ent, const Coordinates& coords, uint64_t flags);
+    // Remove an entity from this location.
+    void removeEntity(GameEntity* ent, uint64_t flags);
+    virtual void onRemoveEntity(GameEntity* ent, const Coordinates& coords, uint64_t flags);
+
+    // Change an entity's coordinates within this location.
+    void relocateEntity(GameEntity *ent, const Coordinates& coords, uint64_t flags);
+    virtual void onRelocateEntity(GameEntity *ent, const Coordinates& oldCoord, const Coordinates& newCoord, uint64_t flags);
+
+    // Get the coordinates for a unit in this location. If the unit isn't in this Location,
+    // we get an empty optional.
+    virtual std::optional<Coordinates> getCoordinatesForEntity(GameEntity* ent);
+    virtual std::vector<GameEntity*> getEntitiesAt(const Coordinates& coords);
+
+    // Wrapper for dealing with legacy room flags.
+    virtual void setRoomFlag(const Coordinates& coord, int flag, bool value);
+    virtual bool toggleRoomFlag(const Coordinates& coord, int flag);
+    virtual bool getRoomFlag(const Coordinates& coord, int flag);
+
+    // Returns the exit data for a given direction. nullptr if no exit.
+    virtual std::optional<Destination> getDirectionalDestination(const Coordinates& coord, int dir);
+    virtual std::map<int, Destination> getDirectionalDestinations(const Coordinates& coord);
+    
+    // We need to be able to query our environment for things like gravity or temperature...
+    // TODO: Implement environmental enums. Example: Moonlight, Temperature, Gravity, etc.
+    virtual double getEnvironment(const Coordinates& coord, uint64_t type);
+    virtual double setEnvironment(const Coordinates& coord, uint64_t type, double value);
+    virtual double modEnvironment(const Coordinates& coord, uint64_t type, double value);
+    virtual void clearEnvironment(const Coordinates& coord, uint64_t type);
+
+    // If the location is a planet or spaceship or something it might have the ability to
+    // exit to space or another location via launching.
+    virtual std::optional<Destination> getLaunchDestination(const Coordinates& coord);
+
+    // Location might be a planet or spaceship. In which case, we provide a list of potential
+    // landing destinations, such as specially flagged rooms or maybe a hangar bay.
+    // NOTE: on second thought, this should probably go somewhere else.
+    // virtual std::vector<Destination> getLandingDestinations(GameEntity *unit) = 0;
+
+    // used to get modifiers for the unit's current location.
+    virtual double getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific);
+
+    // Wrapper for the existing room damage system.
+    virtual int getDamage(const Coordinates& coord);
+    virtual int setDamage(const Coordinates& coord, int amount);
+    virtual int modDamage(const Coordinates& coord, int amount);
+
+    virtual int getTileType(const Coordinates& coord);
+    virtual std::string printTileType(const Coordinates& coord);
+    virtual int getGroundEffect(const Coordinates& coord);
+    virtual int setGroundEffect(const Coordinates& coord, int val);
+    virtual int modGroundEffect(const Coordinates& coord, int val);
+
+    virtual SpecialFunc getSpecialFunction(const Coordinates& coord);
+
+    virtual void broadcastAt(const Coordinates &coord, const std::string& message);
+
+    template<typename PtrType, typename RefType>
+    std::vector<RefType> gatherEntities(const Coordinates& coord) {
+        std::vector<RefType> out;
+        for(auto ent : getEntitiesAt(coord)) {
+            if(auto cast = dynamic_cast<PtrType*>(ent); cast) {
+                out.emplace_back(cast);
+            }
+        }
+        return out;
+    }
+
+    virtual std::vector<ObjRef> getContents();
+    virtual std::vector<CharRef> getPeople();
+
+    virtual std::map<int, ObjRef> getEquipment();
+
+    virtual std::vector<std::string> buildAutoMapAt(const Coordinates& coord, bool mark, int maxX, int minX, int maxY, int minY);
+
+    // THE FOLLOWING WERE MOVED FROM the GameEntity class
+
+    // These are the only methods that should be used to change an entity's location.
+    Location getLocation();
+    Location clearLocation();
+    void setLocation(const Location &newLoc);
+
+    // Relocation hooks.
+    virtual void onAddedToLocation(const Location& loc);
+    virtual void onRemovedFromLocation(const Location& loc);
+    virtual void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord);
+
+    // convenience methods.
+    std::string getLocationName() const;
+    std::optional<Destination> getDirection(int dir) const;
+    std::map<int, Destination> getDirections() const;
+
+    void setLocationRoomFlag(int flag, bool value = true) const;
+    bool toggleLocationRoomFlag(int flag) const;
+    bool getLocationRoomFlag(int flag) const;
+
+    // For commands like get or look that need to find objects within touch range of unit.
+    std::vector<ObjRef> getLocationObjects() const;
+    std::vector<CharRef> getLocationPeople() const;
+    
+    double getLocationEnvironment(int type) const;
+    double setLocationEnvironment(int type, double value) const;
+    double modLocationEnvironment(int type, double value) const;
+    void clearLocationEnvironment(int type) const;
+
+    void broadcastAtLocation(const std::string& message) const;
+
+    int getLocationDamage() const;
+    int setLocationDamage(int amount) const;
+    int modLocationDamage(int amount) const;
+
+    int getLocationTileType() const;
+
+    int getLocationGroundEffect() const;
+    int setLocationGroundEffect(int val) const;
+    int modLocationGroundEffect(int val) const;
+
+    SpecialFunc getLocationSpecialFunc() const;
+
+    std::pair<uint16_t, uint16_t> getCompassBitmasks();
+    std::vector<std::string> buildCompass();
+    std::vector<std::string> buildAutoMap(bool mark, int maxX, int minX, int maxY, int minY);
+
+    // Temporarily in for compatability...
+    struct room_data* getRoom() const;
+    room_vnum getRoomVnum() const;
+    room_data* getAbsoluteRoom() const;
+   
+
+    // Everything below this is legacy and should be moved to protected at the first available opportunity.
+
+    vnum vn{NOTHING}; /* Where in database */
+    zone_vnum zone{NOTHING};
+
     char *name{};
     char *room_description{};      /* When thing is listed in room */
     char *look_description{};      /* what to show when looked at */
@@ -736,25 +762,6 @@ struct unit_data : public virtual Location {
     std::vector<trig_vnum> proto_script; /* list of default triggers  */
 
     std::unordered_map<std::string, EventVariables> variables;
-    
-    weight_t getInventoryWeight();
-    int64_t getInventoryCount();
-   
-    nlohmann::json serializeUnit();
-
-    void activateContents();
-    void deactivateContents();
-
-    void deserializeUnit(const nlohmann::json& j);
-
-    virtual bool isActive() = 0;
-
-    nlohmann::json serializeScripts();
-    void deserializedgScripts(const nlohmann::json &j);
-
-    struct obj_data* findObjectVnum(obj_vnum objVnum, bool working = true);
-    virtual struct obj_data* findObject(const std::function<bool(struct obj_data*)> &func, bool working = true);
-    virtual std::unordered_set<struct obj_data*> gatherObjects(const std::function<bool(struct obj_data*)> &func, bool working = true);
 
     // Direct integration of DgScripts data structures. It's simpler that way.
     long dgTypes{};                /* bitvector of trigger types */
@@ -762,6 +769,15 @@ struct unit_data : public virtual Location {
     struct trig_var_data *global_vars{};
     bool dgPurged{};
     long dgContext{};
+
+protected:
+    int64_t id{NOTHING};
+    int type{0};
+    std::string slug;
+    time_t creationTime{};
+    std::unordered_map<GameEntity*, Coordinates> entities;
+    std::unordered_map<Coordinates, std::vector<GameEntity*>> entityGrid;
+    Location location{};
 };
 
 struct room_direction_data {
@@ -789,34 +805,22 @@ struct room_direction_data {
 };
 
 /* ================== Memory Structure for Objects ================== */
-struct obj_data : public virtual unit_data, public virtual HasLocation {
-
+struct obj_data : public GameEntity {
     static InstanceMap<obj_data> instances;
     obj_data() = default;
     explicit obj_data(const nlohmann::json& j);
 
-    nlohmann::json serializeBase();
-    nlohmann::json serializeInstance();
-    nlohmann::json serializeProto();
+    nlohmann::json serialize() override;
+    void deserialize(const nlohmann::json& j) override;
 
-    std::string serializeLocation();
-    nlohmann::json serializeRelations();
-
-    void deserializeLocation(const std::string& txt, int16_t slot);
-    void deserializeRelations(const nlohmann::json& j);
-
-    void deserializeBase(const nlohmann::json& j);
-    void deserializeProto(const nlohmann::json& j);
-    void deserializeInstance(const nlohmann::json& j, bool isActive);
-    void deserializeContents(const nlohmann::json& j, bool isActive);
+    nlohmann::json serializeRelations() override;
+    void deserializeRelations(const nlohmann::json& j) override;
 
     void activate();
-
     void deactivate();
 
     double getAffectModifier(uint64_t location, uint64_t specific);
 
-    std::string getUID() const override;
     bool active{false};
     bool isActive() override;
 
@@ -877,10 +881,10 @@ struct obj_data : public virtual unit_data, public virtual HasLocation {
     double currentGravity();
 
 
-    // HasLocation stuff
-    void onAddedToLocation(const LocationStub& loc) override;
-    void onRemovedFromLocation(const LocationStub& loc) override;
-    void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) override;
+    // GameEntity stuff
+    void onAddedToLocation(const Location& loc) override;
+    void onRemovedFromLocation(const Location& loc) override;
+    void onRelocatedWithinLocation(const Coordinates& oldLoc, const Coordinates& newLoc) override;
 };
 /* ======================================================================= */
 
@@ -889,7 +893,8 @@ struct obj_data : public virtual unit_data, public virtual HasLocation {
 
 
 /* ================== Memory Structure for room ======================= */
-struct room_data : public virtual unit_data {
+struct room_data : public GameEntity {
+    
     static InstanceMap<room_data> instances;
     room_data() = default;
     ~room_data() override;
@@ -910,18 +915,15 @@ struct room_data : public virtual unit_data {
     int setDamage(int amount);
     int modDamage(int amount);
 
-    nlohmann::json serialize();
-    void deserializeContents(const nlohmann::json& j, bool isActive);
+    nlohmann::json serialize() override;
+    void deserialize(const nlohmann::json& j) override;
 
     std::optional<vnum> getMatchingArea(std::function<bool(const area_data&)> f);
-    std::string getUID() const override;
     bool isActive() override;
 
     RoomRef ref();
 
     std::optional<room_vnum> getLaunchDestination();
-
-    nlohmann::json serializeDgVars();
 
     std::optional<std::string> dgCallMember(const std::string& member, const std::string& arg);
 
@@ -939,7 +941,7 @@ struct room_data : public virtual unit_data {
     bool getRoomFlag(const Coordinates& coord, int flag) override;
     std::optional<Destination> getDirectionalDestination(const Coordinates& coord, int dir) override;
     std::map<int, Destination> getDirectionalDestinations(const Coordinates& coord) override;
-    std::vector<HasLocation*> getEntitiesAt(const Coordinates& coords) override;
+    std::vector<GameEntity*> getEntitiesAt(const Coordinates& coords) override;
     double getModifiersForCharacter(char_data *ch, uint64_t location, uint64_t specific) override;
     std::optional<Destination> getLaunchDestination(const Coordinates& coord) override;
     int getDamage(const Coordinates& coord) override;
@@ -1160,35 +1162,21 @@ struct craftTask {
 
 
 /* ================== Structure for player/non-player ===================== */
-struct char_data : public virtual unit_data, public virtual HasLocation {
+struct char_data : public GameEntity {
     static InstanceMap<char_data> instances;
     char_data() = default;
     // this constructor below is to be used only for the mob_proto map.
     explicit char_data(const nlohmann::json& j);
-    nlohmann::json serializeBase();
-    nlohmann::json serializeInstance();
 
-    nlohmann::json serializeProto();
+    nlohmann::json serialize() override;
+    void deserialize(const nlohmann::json& j) override;
 
-    void deserializeBase(const nlohmann::json& j);
-    void deserializeProto(const nlohmann::json& j);
-    void deserializeInstance(const nlohmann::json& j, bool isActive);
-    void deserializeMobile(const nlohmann::json& j);
-    void deserializePlayer(const nlohmann::json& j, bool isActive);
     void activate();
     void deactivate();
     std::optional<vnum> getMatchingArea(std::function<bool(const area_data&)> f);
     void login();
 
-    nlohmann::json serializeLocation();
-    nlohmann::json serializeRelations();
-
     void sendGMCP(const std::string &cmd, const nlohmann::json &j);
-
-    void deserializeLocation(const nlohmann::json& j);
-    void deserializeRelations(const nlohmann::json& j);
-
-    std::string getUID() const override;
 
     bool active{false};
     bool isActive() override;
@@ -1788,10 +1776,10 @@ struct char_data : public virtual unit_data, public virtual HasLocation {
     bool isProvidingLight();
     double currentGravity();
 
-    // HasLocation Stuff.
-    void onAddedToLocation(const LocationStub& loc) override;
-    void onRemovedFromLocation(const LocationStub& loc) override;
-    void onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) override;
+    // GameEntity Stuff.
+    void onAddedToLocation(const Location& loc) override;
+    void onRemovedFromLocation(const Location& loc) override;
+    void onRelocatedWithinLocation(const Coordinates& oldCoords, const Coordinates& newCoords) override;
 
 };
 
@@ -2091,9 +2079,6 @@ struct aging_data {
     int venerable;    /* Venerable age */
     int maxdice[2];    /* For roll to determine natural death beyond venerable */
 };
-
-
-
 
 
 template <typename T>

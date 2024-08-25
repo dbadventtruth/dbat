@@ -1454,8 +1454,8 @@ void corpseRotService(uint64_t heartPulse, double deltaTime) {
         }
 
         if(timer == 0) {
-            if(auto loc = j->getLocation(); loc.first) {
-                if(auto c = dynamic_cast<char_data*>(loc.first); c) {
+            if(auto loc = j->getLocation(); loc.entity) {
+                if(auto c = dynamic_cast<char_data*>(loc.entity); c) {
                     act("$p decays in your hands.", false, c, j, nullptr, TO_CHAR);
                 }
             }
@@ -1475,10 +1475,10 @@ void corpseRotService(uint64_t heartPulse, double deltaTime) {
         if(timer != 0) continue;
 
         auto loc = j->getLocation();
-        if(loc.second.type == CoordinateType::Equipped)
-            loc.second.type = CoordinateType::Inventory;
+        if(loc.type == LocationType::Equipped)
+            loc.type = LocationType::Inventory;
 
-        if(loc.first)
+        if(loc.entity)
             for (auto ref : j->getContents()) {
                 auto jj = ref.get();
                 if(!jj) continue;
@@ -1836,8 +1836,8 @@ void point_update(uint64_t heartPulse, double deltaTime) {
             /* Let's get rid of dropped norent items. */
             if (OBJ_FLAGGED(j, ITEM_NORENT) && GET_OBJ_VNUM(j) != 7200) {
                 auto loc = j->getLocation();
-                if(!loc.first) continue;
-                auto r = dynamic_cast<room_data*>(loc.first);
+                if(!loc.entity) continue;
+                auto r = dynamic_cast<room_data*>(loc.entity);
                 if(!r) continue;
                 
                 time_t diff = time(nullptr) - GET_LAST_LOAD(j);

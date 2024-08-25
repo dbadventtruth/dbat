@@ -865,19 +865,19 @@ namespace net {
     void ChargenParser::finish() {
         // CREATE PLAYER ENTRY
         auto ch = new char_data();
+        ch->setType(ENT_CHARACTER);
         ch->name = strdup(cg.name.c_str());
-        ch->id = nextCharID();
-        ch->generation = time(nullptr);
+        ch->setID(GameEntity::nextID());
+        ch->setCreationTime(time(nullptr));
         ch->pref.set(PRF_COLOR);
-        check_unique_id(ch);
-        add_unique_id(ch);
-        auto &p = players[ch->id];
+        auto &p = players[ch->getID()];
         p.name = cg.name;
-        p.id = ch->id;
+        p.id = ch->getID();
         p.account = conn->account;
         conn->account->characters.emplace_back(ch);
         p.character = ch;
-        char_data::instances[ch->id] = std::make_pair(ch->generation, ch);
+        char_data::instances[ch->getID()] = ch;
+        GameEntity::instances[ch->getID()] = ch;
 
         ch->chclass = cg.sensei;
         ch->race = cg.race;

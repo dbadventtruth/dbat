@@ -4,155 +4,155 @@
 #include "dbat/utils.h"
 #include "dbat/constants.h"
 
-LocationStub HasLocation::getLocation() {
-    return loc;
+Location GameEntity::getLocation() {
+    return location;
 }
 
-LocationStub HasLocation::clearLocation() {
-    auto old = loc;
-    if(loc.first) loc.first->removeEntity(this, 0);
-    loc = LocationStub();
+Location GameEntity::clearLocation() {
+    auto old = location;
+    if(location.entity) location.entity->removeEntity(this, 0);
+    location = Location();
     onRemovedFromLocation(old);
     return old;
 }
 
-void HasLocation::setLocation(const LocationStub& newLoc) {
-    auto old = loc;
+void GameEntity::setLocation(const Location& newLoc) {
+    auto old = location;
 
     // We are being moved within the same location.
     // So we just call the relocate routines.
-    if(old.first && old.first == newLoc.first) {
-        newLoc.first->relocateEntity(this, newLoc.second, 0);
-        onRelocatedWithinLocation(old.second, newLoc.second);
+    if(old.entity && old.entity == newLoc.entity) {
+        newLoc.entity->relocateEntity(this, newLoc.getCoordinates(), 0);
+        onRelocatedWithinLocation(old.getCoordinates(), newLoc.getCoordinates());
         return;
     }
 
     // They are not the same.
-    if(old.first) {
+    if(old.entity) {
         clearLocation();
     }
 
-    loc = newLoc;
-    newLoc.first->addEntity(this, newLoc.second, 0);
+    location = newLoc;
+    newLoc.entity->addEntity(this, newLoc.getCoordinates(), 0);
     onAddedToLocation(newLoc);
 }
 
-struct room_data* HasLocation::getRoom() const {
-    if(auto r = dynamic_cast<room_data*>(loc.first); r)
+struct room_data* GameEntity::getRoom() const {
+    if(auto r = dynamic_cast<room_data*>(location.entity); r)
         return r;
     return nullptr;
 }
 
-room_vnum HasLocation::getRoomVnum() const {
+room_vnum GameEntity::getRoomVnum() const {
     if(auto r = getRoom(); r)
         return r->vn;
     return NOWHERE;
 }
 
-std::string HasLocation::getLocationName() const {
-    if(loc.first) return loc.first->getNameAt(loc.second);
+std::string GameEntity::getLocationName() const {
+    if(location.entity) return location.entity->getNameAt(location.getCoordinates());
     return "Unknown";
 }
 
-std::optional<Destination> HasLocation::getDirection(int dir) const {
-    if(loc.first) return loc.first->getDirectionalDestination(loc.second, dir);
+std::optional<Destination> GameEntity::getDirection(int dir) const {
+    if(location.entity) return location.entity->getDirectionalDestination(location.getCoordinates(), dir);
     return {};
 }
 
-std::map<int, Destination> HasLocation::getDirections() const {
-    if(loc.first) return loc.first->getDirectionalDestinations(loc.second);
+std::map<int, Destination> GameEntity::getDirections() const {
+    if(location.entity) return location.entity->getDirectionalDestinations(location.getCoordinates());
     return {};
 }
 
-double HasLocation::getLocationEnvironment(int type) const {
-    if(loc.first) return loc.first->getEnvironment(loc.second, type);
+double GameEntity::getLocationEnvironment(int type) const {
+    if(location.entity) return location.entity->getEnvironment(location.getCoordinates(), type);
     return 0.0;
 }
 
-double HasLocation::setLocationEnvironment(int type, double value) const {
-    if(loc.first) return loc.first->setEnvironment(loc.second, type, value);
+double GameEntity::setLocationEnvironment(int type, double value) const {
+    if(location.entity) return location.entity->setEnvironment(location.getCoordinates(), type, value);
     return 0.0;
 }
 
-double HasLocation::modLocationEnvironment(int type, double value) const {
-    if(loc.first) return loc.first->modEnvironment(loc.second, type, value);
+double GameEntity::modLocationEnvironment(int type, double value) const {
+    if(location.entity) return location.entity->modEnvironment(location.getCoordinates(), type, value);
     return 0.0;
 }
 
-void HasLocation::clearLocationEnvironment(int type) const {
-    if(loc.first) return loc.first->clearEnvironment(loc.second, type);
+void GameEntity::clearLocationEnvironment(int type) const {
+    if(location.entity) return location.entity->clearEnvironment(location.getCoordinates(), type);
 }
 
-void HasLocation::setLocationRoomFlag(int flag, bool value) const {
-    if(loc.first) loc.first->setRoomFlag(loc.second, flag, value);
+void GameEntity::setLocationRoomFlag(int flag, bool value) const {
+    if(location.entity) location.entity->setRoomFlag(location.getCoordinates(), flag, value);
 }
 
-bool HasLocation::toggleLocationRoomFlag(int flag) const {
-    if(loc.first) return loc.first->toggleRoomFlag(loc.second, flag);
+bool GameEntity::toggleLocationRoomFlag(int flag) const {
+    if(location.entity) return location.entity->toggleRoomFlag(location.getCoordinates(), flag);
     return false;
 }
 
-bool HasLocation::getLocationRoomFlag(int flag) const {
-    if(loc.first) return loc.first->getRoomFlag(loc.second, flag);
+bool GameEntity::getLocationRoomFlag(int flag) const {
+    if(location.entity) return location.entity->getRoomFlag(location.getCoordinates(), flag);
     return false;
 }
 
-void HasLocation::broadcastAtLocation(const std::string& message) const {
-    if(loc.first) loc.first->broadcastAt(loc.second, message);
+void GameEntity::broadcastAtLocation(const std::string& message) const {
+    if(location.entity) location.entity->broadcastAt(location.getCoordinates(), message);
 }
 
-std::vector<ObjRef> HasLocation::getLocationObjects() const {
-    if(loc.first) return loc.first->gatherEntities<obj_data, ObjRef>(loc.second);
+std::vector<ObjRef> GameEntity::getLocationObjects() const {
+    if(location.entity) return location.entity->gatherEntities<obj_data, ObjRef>(location.getCoordinates());
     return {};
 }
 
-std::vector<CharRef> HasLocation::getLocationPeople() const {
-    if(loc.first) return loc.first->gatherEntities<char_data, CharRef>(loc.second);
+std::vector<CharRef> GameEntity::getLocationPeople() const {
+    if(location.entity) return location.entity->gatherEntities<char_data, CharRef>(location.getCoordinates());
     return {};
 }
 
-int HasLocation::getLocationDamage() const {
-    if(loc.first) return loc.first->getDamage(loc.second);
+int GameEntity::getLocationDamage() const {
+    if(location.entity) return location.entity->getDamage(location.getCoordinates());
     return 0;
 }
 
-int HasLocation::setLocationDamage(int value) const {
-    if(loc.first) return loc.first->setDamage(loc.second, value);
+int GameEntity::setLocationDamage(int value) const {
+    if(location.entity) return location.entity->setDamage(location.getCoordinates(), value);
     return 0;
 }
 
-int HasLocation::modLocationDamage(int value) const {
-    if(loc.first) return loc.first->modDamage(loc.second, value);
+int GameEntity::modLocationDamage(int value) const {
+    if(location.entity) return location.entity->modDamage(location.getCoordinates(), value);
     return 0;
 }
 
-int HasLocation::getLocationTileType() const {
-    if(loc.first) return loc.first->getTileType(loc.second);
+int GameEntity::getLocationTileType() const {
+    if(location.entity) return location.entity->getTileType(location.getCoordinates());
     return 0;
 }
 
-int HasLocation::getLocationGroundEffect() const {
-    if(loc.first) return loc.first->getGroundEffect(loc.second);
+int GameEntity::getLocationGroundEffect() const {
+    if(location.entity) return location.entity->getGroundEffect(location.getCoordinates());
     return 0;
 }
 
-int HasLocation::setLocationGroundEffect(int value) const {
-    if(loc.first) return loc.first->setGroundEffect(loc.second, value);
+int GameEntity::setLocationGroundEffect(int value) const {
+    if(location.entity) return location.entity->setGroundEffect(location.getCoordinates(), value);
     return 0;
 }
 
-int HasLocation::modLocationGroundEffect(int value) const {
-    if(loc.first) return loc.first->modGroundEffect(loc.second, value);
+int GameEntity::modLocationGroundEffect(int value) const {
+    if(location.entity) return location.entity->modGroundEffect(location.getCoordinates(), value);
     return 0;
 }
 
-SpecialFunc HasLocation::getLocationSpecialFunc() const {
-    if(loc.first) return loc.first->getSpecialFunction(loc.second);
+SpecialFunc GameEntity::getLocationSpecialFunc() const {
+    if(location.entity) return location.entity->getSpecialFunction(location.getCoordinates());
     return nullptr;
 }
 
-std::pair<uint16_t, uint16_t> HasLocation::getCompassBitmasks() {
-    if(!loc.first)
+std::pair<uint16_t, uint16_t> GameEntity::getCompassBitmasks() {
+    if(!location.entity)
         return {0, 0};
     uint16_t doors = 0, locked = 0;
 
@@ -165,9 +165,9 @@ std::pair<uint16_t, uint16_t> HasLocation::getCompassBitmasks() {
         if(dest.exit_flags & EX_LOCKED)
             locked |= (1 << dir);
         // but wait, there's more. we need to check for the door on the other side.
-        if(!dest.location) continue;
+        if(!dest.location.entity) continue;
         auto rev = rev_dir[dir];
-        if(auto rev_dest = dest.location->getDirectionalDestination(dest.coords, rev); rev_dest) {
+        if(auto rev_dest = dest.location.entity->getDirectionalDestination(dest.location.getCoordinates(), rev); rev_dest) {
             if(rev_dest->exit_flags & EX_LOCKED)
                 locked |= (1 << rev);
         }

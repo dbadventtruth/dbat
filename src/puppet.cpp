@@ -11,7 +11,7 @@ namespace net {
 
     nlohmann::json PuppetParser::serialize() {
         auto j = ConnectionParser::serialize();
-        if(ch) j["ch"] = ch->id;
+        if(ch) j["ch"] = ch->getID();
 
         return j;
     }
@@ -19,7 +19,7 @@ namespace net {
     void PuppetParser::deserialize(const nlohmann::json& j) {
         if(j.contains("ch")) {
             auto id = j["ch"].get<int>();
-            ch = char_data::instances.at(id).second;
+            ch = char_data::instances.at(id);
         }
     }
 
@@ -47,13 +47,13 @@ namespace net {
         auto desc = new descriptor_data();
         STATE(desc) = CON_LOGIN;
         desc->character = ch;
-        desc->id = ch->id;
+        desc->id = ch->getID();
         ch->desc = desc;
         conn->desc = desc;
         desc->account = conn->account;
         conn->account->descriptors.insert(desc);
         desc->conns[conn->connId] = conn;
-        sessions[ch->id] = desc;
+        sessions[ch->getID()] = desc;
 
         desc->next = descriptor_list;
         descriptor_list = desc;

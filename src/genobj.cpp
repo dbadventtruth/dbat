@@ -183,8 +183,8 @@ int delete_object(obj_rnum rnum) {
         /* extract_obj() will just axe contents. */
         if (auto cont = tmp->getContents(); !cont.empty()) {
             auto loc = tmp->getLocation();
-            if(loc.second.type == CoordinateType::Equipped)
-                loc.second.type == CoordinateType::Inventory;
+            if(loc.type == LocationType::Equipped)
+                loc.type == LocationType::Inventory;
 
             for(auto o : IterRef(cont))
                 o->setLocation(loc);
@@ -203,8 +203,8 @@ int delete_object(obj_rnum rnum) {
     return rnum;
 }
 
-nlohmann::json obj_data::serializeBase() {
-    auto j = serializeUnit();
+nlohmann::json obj_data::serialize() {
+    auto j = GameEntity::serialize();
 
     for(auto i = 0; i < NUM_OBJ_VAL_POSITIONS; i++) {
         if(value[i]) j["value"].push_back(std::make_pair(i, value[i]));
@@ -248,36 +248,10 @@ nlohmann::json obj_data::serializeBase() {
         j["affected"].push_back(i.serialize());
     }
 
-    return j;
-}
-
-
-nlohmann::json obj_data::serializeInstance() {
-    auto j = serializeBase();
-    if(id == -1) {
-        id = nextObjID();
-        generation = time(nullptr);
-        check_unique_id(this);
-        add_unique_id(this);
-    }
-
-    if(generation) j["generation"] = generation;
-
-    if(global_vars) {
-        j["dgvariables"] = serializeVars(global_vars);
-    }
-
-    if(world.contains(room_loaded)) j["room_loaded"] = room_loaded;
-
-    return j;
-}
-
-
-nlohmann::json obj_data::serializeProto() {
-    auto j = serializeBase();
-
-    for(auto p : proto_script) {
-        if(trig_index.contains(p)) j["proto_script"].push_back(p);
+    if(type & ENT_PROTOTYPE) {
+        
+    } else {
+        if(world.contains(room_loaded)) j["room_loaded"] = room_loaded;
     }
 
     return j;
@@ -285,8 +259,8 @@ nlohmann::json obj_data::serializeProto() {
 
 
 
-void obj_data::deserializeBase(const nlohmann::json &j) {
-    deserializeUnit(j);
+void obj_data::deserialize(const nlohmann::json &j) {
+    GameEntity::deserialize(j);
 
     if(j.contains("value")) {
         for(auto & i : j["value"]) {
@@ -333,20 +307,17 @@ void obj_data::deserializeBase(const nlohmann::json &j) {
         }
     }
 
-}
+    if(type & ENT_PROTOTYPE) {
 
-
-void obj_data::deserializeProto(const nlohmann::json& j) {
-    deserializeBase(j);
-
-    if(j.contains("proto_script")) {
-        for(auto p : j["proto_script"]) proto_script.emplace_back(p.get<trig_vnum>());
+    } else {
+        if(j.contains("room_loaded")) room_loaded = j["room_loaded"];
     }
+
 }
 
 
 obj_data::obj_data(const nlohmann::json &j) : obj_data() {
-    deserializeProto(j);
+    deserialize(j);
 
     if ((GET_OBJ_TYPE(this) == ITEM_PORTAL || \
        GET_OBJ_TYPE(this) == ITEM_HATCH) && \
@@ -426,28 +397,6 @@ void obj_data::deactivate() {
     deactivateContents();
 }
 
-void obj_data::deserializeInstance(const nlohmann::json &j, bool isActive) {
-    deserializeBase(j);
-
-    if(j.contains("generation")) generation = j["generation"];
-    check_unique_id(this);
-    add_unique_id(this);
-
-    if(j.contains("dgvariables")) {
-        deserializeVars(&global_vars, j["dgvariables"]);
-    }
-
-    if(j.contains("room_loaded")) room_loaded = j["room_loaded"];
-
-    auto proto = obj_proto.find(vn);
-    if(proto != obj_proto.end()) {
-        proto_script = proto->second.proto_script;
-    }
-
-    if(isActive) activate();
-
-}
-
 
 double obj_data::getAffectModifier(uint64_t location, uint64_t specific) {
     double modifier = 0;
@@ -467,9 +416,7 @@ weight_t obj_data::getTotalWeight() {
     return getWeight() + getInventoryWeight() + (sitting ? sitting->getTotalWeight() : 0);
 }
 
-std::string obj_data::getUID() const {
-    return fmt::format("#O:{}:{}", id, generation);
-}
+
 
 bool obj_data::isActive() {
     return active;
@@ -586,12 +533,8 @@ void auto_equip(struct char_data *ch, struct obj_data *obj, int location) {
         obj_to_char(obj, ch);
 }
 
-std::string obj_data::serializeLocation() {
-    // TODO: implement this again dammit
-}
-
 nlohmann::json obj_data::serializeRelations() {
-    auto j = nlohmann::json::object();
+    auto j = GameEntity::serializeRelations();
 
     if(posted_to) j["posted_to"] = posted_to->getUID();
     if(fellow_wall) j["fellow_wall"] = fellow_wall->getUID();
@@ -599,22 +542,10 @@ nlohmann::json obj_data::serializeRelations() {
     return j;
 }
 
-void obj_data::deserializeLocation(const std::string& txt, int16_t slot) {
-    auto check = resolveUID(txt);
-    if(!check) return;
-    auto idx = check->index();
-    if(idx == 0) {
-        auto &r = std::get<0>(*check);
-        obj_to_room(this, r->vn);
-    } else if(idx == 1) {
-        obj_to_obj(this, std::get<1>(*check));
-    } else if(idx == 2) {
-        auto &c = std::get<2>(*check);
-        auto_equip(c, this, slot+1);
-    }
-}
 
 void obj_data::deserializeRelations(const nlohmann::json& j) {
+    GameEntity::deserializeRelations(j);
+
     if(j.contains("posted_to")) {
         auto check = resolveUID(j["posted_to"]);
         if(check) posted_to = std::get<1>(*check);
@@ -629,12 +560,12 @@ bool obj_data::isProvidingLight() {
     return GET_OBJ_TYPE(this) == ITEM_LIGHT && GET_OBJ_VAL(this, VAL_LIGHT_HOURS);
 }
 
-struct room_data* HasLocation::getAbsoluteRoom() const {
-    auto l = loc;
-    if(auto r = dynamic_cast<room_data*>(l.first); r) {
+struct room_data* GameEntity::getAbsoluteRoom() const {
+    auto l = location;
+    if(auto r = dynamic_cast<room_data*>(l.entity); r) {
         return r;
     }
-    if(auto u = dynamic_cast<HasLocation*>(l.first); u)
+    if(auto u = dynamic_cast<GameEntity*>(l.entity); u)
         return u->getAbsoluteRoom();
     
     return nullptr;
@@ -651,11 +582,11 @@ bool obj_data::isWorking() {
     return !(OBJ_FLAGGED(this, ITEM_BROKEN) || OBJ_FLAGGED(this, ITEM_FORGED));
 }
 
-void obj_data::onAddedToLocation(const LocationStub& newLoc) {
-    if(auto c = dynamic_cast<char_data*>(newLoc.first); c) {
+void obj_data::onAddedToLocation(const Location& newLoc) {
+    if(auto c = dynamic_cast<char_data*>(newLoc.entity); c) {
         // we've been added to a character.
 
-        if(newLoc.second.type == CoordinateType::Inventory) {
+        if(newLoc.type == LocationType::Inventory) {
             // we've been added to the character's inventory.
 
             /* set flag for crash-save system, but not on mobs! */
@@ -665,19 +596,19 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
                 }
             }
 
-        } else if(newLoc.second.type == CoordinateType::Equipped) {
+        } else if(newLoc.type == LocationType::Equipped) {
             // we've been equipped by the character.
-            int pos = newLoc.second.x;
+            int pos = newLoc.point.x;
             GET_EQ(c, pos) = this;
         }
     }
 
-    else if(auto o = dynamic_cast<obj_data*>(newLoc.first); o) {
+    else if(auto o = dynamic_cast<obj_data*>(newLoc.entity); o) {
         // we've been added to an object's inventory.
 
     }
     
-    else if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
+    else if(auto r = dynamic_cast<room_data*>(newLoc.entity); r) {
         // we've been added to a room.
         if(type_flag == ITEM_PLANT && (r->room_flags.test(ROOM_GARDEN1) || r->room_flags.test(ROOM_GARDEN2)))
             objectSubscriptions.subscribe("growingPlants", ref());
@@ -773,11 +704,10 @@ void obj_data::onAddedToLocation(const LocationStub& newLoc) {
 
 }
 
-void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
-    if(auto c = dynamic_cast<char_data*>(oldLoc.first)) {
+void obj_data::onRemovedFromLocation(const Location& oldLoc) {
+    if(auto c = dynamic_cast<char_data*>(oldLoc.entity)) {
         // we've been removed from a character.
-        if(oldLoc.second.type == CoordinateType::Inventory) {
-
+        if(oldLoc.type == LocationType::Inventory) {
 
             if (GET_OBJ_VAL(this, 0) != 0) {
                 if (vn == 16705 || vn == 16706 || vn == 16707) {
@@ -785,18 +715,18 @@ void obj_data::onRemovedFromLocation(const LocationStub& oldLoc) {
                 }
             }
 
-        } else if(oldLoc.second.type == CoordinateType::Equipped) {
-            int pos = oldLoc.second.x;
+        } else if(oldLoc.type == LocationType::Equipped) {
+            int pos = oldLoc.point.x;
             GET_EQ(c, pos) = nullptr;
         }
     }
 
-    else if(auto o = dynamic_cast<obj_data*>(oldLoc.first); o) {
+    else if(auto o = dynamic_cast<obj_data*>(oldLoc.entity); o) {
         // we've been removed from an object's inventory.
 
     }
 
-    else if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
+    else if(auto r = dynamic_cast<room_data*>(oldLoc.entity); r) {
         // we've been removed from a room.
 
         struct obj_data *temp;

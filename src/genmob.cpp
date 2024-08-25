@@ -313,8 +313,8 @@ time_data::time_data(const nlohmann::json &j) : time_data() {
 }
 
 
-nlohmann::json char_data::serializeBase() {
-    auto j = serializeUnit();
+nlohmann::json char_data::serialize() {
+    auto j = GameEntity::serialize();
 
     for(auto &[id, train] : trains) {
         if(train) j["trains"].push_back(std::make_pair(id, train));
@@ -376,12 +376,151 @@ nlohmann::json char_data::serializeBase() {
     if(armor) j["armor"] = armor;
     if(damage_mod) j["damage_mod"] = damage_mod;
 
+    if(type & ENT_PROTOTYPE) {
+        auto ms = mob_specials.serialize();
+        if(!ms.empty()) j["mob_specials"] = ms;
+    } else {
+        for(auto i = 0; i < NUM_ADMFLAGS; i++)
+        if(admflags.test(i)) j["admflags"].push_back(i);
+
+        if(was_in_room != NOWHERE) j["was_in_room"] = was_in_room;
+        auto td = time.serialize();
+        if(!td.empty()) j["time"] = td;
+
+        for(auto i = 0; i < 4; i++) {
+            if(limb_condition[i]) j["limb_condition"].push_back(std::make_pair(i, limb_condition[i]));
+        }
+
+        for(auto &[type, dam] : damages) {
+            if(dam > 0.0) j["damages"].push_back(std::make_pair(type, dam));
+        }
+
+        for(auto i = 0; i < NUM_CONDITIONS; i++) {
+            if(conditions[i]) j["conditions"].push_back(std::make_pair(i, conditions[i]));
+        }
+
+        for(auto i = 0; i < gravAcclim.size() ; i++) {
+            if(gravAcclim[i]) j["gravAcclim"].push_back(std::make_pair(i, gravAcclim[i]));
+        }
+
+        if(internalGrowth) j["internalGrowth"] = internalGrowth;
+        if(lifetimeGrowth) j["lifetimeGrowth"] = lifetimeGrowth;
+        if(freeze_level) j["freeze_level"] = freeze_level;
+        if(invis_level) j["invis_level"] = invis_level;
+        if(wimp_level) j["wimp_level"] = wimp_level;
+        if(world.contains(load_room)) j["load_room"] = load_room;
+        if(world.contains(hometown)) j["hometown"] = hometown;
+
+        for(auto &[skill_id, s] : skill) {
+            auto sk = s.serialize();
+            if(!sk.empty()) j["skill"].push_back(std::make_pair(skill_id, sk));
+        }
+
+        if(speaking) j["speaking"] = speaking;
+        if(preference) j["preference"] = preference;
+
+        if(practice_points) j["practice_points"] = practice_points;
+
+        for(auto a = affected; a; a = a->next) {
+            if(a->type) {
+                auto dat = a->serialize();
+                j["affected"].push_back(dat);
+            }
+        }
+
+        for(auto a = affectedv; a; a = a->next) {
+            if(a->type) j["affectedv"].push_back(a->serialize());
+        }
+
+        if(absorbs) j["absorbs"] = absorbs;
+        if(blesslvl) j["blesslvl"] = blesslvl;
+        for(auto i = 0; i < 5; i++) {
+            if(lboard[i]) j["lboard"].push_back(std::make_pair(i, lboard[i]));
+        }
+
+        for(auto i = 0; i < MAX_BONUSES; i++) {
+            if(bonuses[i]) j["bonuses"].push_back(i);
+        }
+
+        if(boosts) j["boosts"] = boosts;
+
+        if(clan && strlen(clan)) j["clan"] = clan;
+        if(crank) j["crank"] = crank;
+        if(con_cooldown) j["con_cooldown"] = con_cooldown;
+        if(deathtime) j["deathtime"] = deathtime;
+        if(dcount) j["dcount"] = dcount;
+        if(death_type) j["death_type"] = death_type;
+        if(damage_mod) j["damage_mod"] = damage_mod;
+        if(droom) j["droom"] = droom;
+        if(accuracy_mod) j["accuracy_mod"] = accuracy_mod;
+        for(auto i : genome) j["genome"].push_back(i);
+        if(gauntlet) j["gauntlet"] = gauntlet;
+        if(ingestLearned) j["ingestLearned"] = ingestLearned;
+        if(kaioken) j["kaioken"] = kaioken;
+        if(lifeperc) j["lifeperc"] = lifeperc;
+        if(lastint) j["lastint"] = lastint;
+        if(lastpl) j["lastpl"] = lastpl;
+        if(moltexp) j["moltexp"] = moltexp;
+        if(moltlevel) j["moltlevel"] = moltlevel;
+        if(majinize) j["majinize"] = majinize;
+        if(majinizer) j["majinizer"] = majinizer;
+        if(mimic) j["mimic"] = mimic.value();
+        if(form != FormID::Base) j["form"] = form;
+        if(olc_zone) j["olc_zone"] = olc_zone;
+        if(starphase) j["starphase"] = starphase;
+        if(accuracy) j["accuracy"] = accuracy;
+        if(position) j["position"] = position;
+
+        if(rdisplay) j["rdisplay"] = rdisplay;
+        if(relax_count) j["relax_count"] = relax_count;
+        if(radar1) j["radar1"] = radar1;
+        if(radar2) j["radar2"] = radar2;
+        if(radar3) j["radar3"] = radar3;
+        if(feature) j["feature"] = feature;
+        if(ship) j["ship"] = ship;
+        if(con_sdcooldown) j["con_sdcooldown"] = con_sdcooldown;
+        if(shipr) j["shipr"] = shipr;
+        if(skill_slots) j["skill_slots"] = skill_slots;
+        if(stupidkiss) j["stupidkiss"] = stupidkiss;
+        if(suppression) j["suppression"] = suppression;
+        if(tail_growth) j["tail_growth"] = tail_growth;
+
+        for(auto i = 0; i < 3; i++) {
+            if(saving_throw[i]) j["saving_throw"].push_back(std::make_pair(i, saving_throw[i]));
+        }
+        for(auto i = 0; i < 3; i++) {
+            if(apply_saving_throw[i]) j["apply_saving_throw"].push_back(std::make_pair(i, apply_saving_throw[i]));
+        }
+        if(upgrade) j["upgrade"] = upgrade;
+        if(voice && strlen(voice)) j["voice"] = voice;
+
+        if(global_vars) {
+            j["dgvariables"] = serializeVars(global_vars);
+        }
+
+        if(relax_count) j["relax_count"] = relax_count;
+        if(ingestLearned) j["ingestLearned"] = ingestLearned;
+
+        if (poofin && strlen(poofin)) j["poofin"] = poofin;
+        if (poofout && strlen(poofout)) j["poofout"] = poofout;
+        if(players.contains(last_tell)) j["last_tell"] = last_tell;
+
+        j["transBonus"] = transBonus;
+        for(auto &[frm, tra] : transforms) {
+            j["transforms"].push_back(std::make_pair(static_cast<int>(frm), tra.serialize()));
+        }
+
+        for(auto form : permForms) {
+            j["permForms"].push_back(form);
+        }
+    }
+
     return j;
 }
 
 
-void char_data::deserializeBase(const nlohmann::json &j) {
-    deserializeUnit(j);
+void char_data::deserialize(const nlohmann::json &j) {
+    GameEntity::deserialize(j);
 
     if(j.contains("trains")) {
         for(auto j2 : j["trains"]) {
@@ -462,377 +601,179 @@ void char_data::deserializeBase(const nlohmann::json &j) {
     if(j.contains("playerFlags")) for(auto &i : j["playerFlags"]) playerFlags.set(i.get<int>());
     if(j.contains("pref")) for(auto &i : j["pref"]) pref.set(i.get<int>());
     if(j.contains("bodyparts")) for(auto &i : j["bodyparts"]) bodyparts.set(i.get<int>());
-}
 
-nlohmann::json char_data::serializeProto() {
-    auto j = serializeBase();
+    if(type & ENT_PROTOTYPE) {
 
-    auto ms = mob_specials.serialize();
-    if(!ms.empty()) j["mob_specials"] = ms;
-
-    for(auto p : proto_script) {
-        if(trig_index.contains(p)) j["proto_script"].push_back(p);
-    }
-
-    return j;
-}
-
-
-nlohmann::json char_data::serializeInstance() {
-    auto j = serializeBase();
-    if(generation) j["generation"] = generation;
-
-    for(auto i = 0; i < NUM_ADMFLAGS; i++)
-        if(admflags.test(i)) j["admflags"].push_back(i);
-
-
-    if(was_in_room != NOWHERE) j["was_in_room"] = was_in_room;
-    auto td = time.serialize();
-    if(!td.empty()) j["time"] = td;
-
-    for(auto i = 0; i < 4; i++) {
-        if(limb_condition[i]) j["limb_condition"].push_back(std::make_pair(i, limb_condition[i]));
-    }
-
-    for(auto &[type, dam] : damages) {
-        if(dam > 0.0) j["damages"].push_back(std::make_pair(type, dam));
-    }
-
-    for(auto i = 0; i < NUM_CONDITIONS; i++) {
-        if(conditions[i]) j["conditions"].push_back(std::make_pair(i, conditions[i]));
-    }
-
-    for(auto i = 0; i < gravAcclim.size() ; i++) {
-        if(gravAcclim[i]) j["gravAcclim"].push_back(std::make_pair(i, gravAcclim[i]));
-    }
-
-    if(internalGrowth) j["internalGrowth"] = internalGrowth;
-    if(lifetimeGrowth) j["lifetimeGrowth"] = lifetimeGrowth;
-    if(freeze_level) j["freeze_level"] = freeze_level;
-    if(invis_level) j["invis_level"] = invis_level;
-    if(wimp_level) j["wimp_level"] = wimp_level;
-    if(world.contains(load_room)) j["load_room"] = load_room;
-    if(world.contains(hometown)) j["hometown"] = hometown;
-
-    for(auto &[skill_id, s] : skill) {
-        auto sk = s.serialize();
-        if(!sk.empty()) j["skill"].push_back(std::make_pair(skill_id, sk));
-    }
-
-    if(speaking) j["speaking"] = speaking;
-    if(preference) j["preference"] = preference;
-
-    if(practice_points) j["practice_points"] = practice_points;
-
-    for(auto a = affected; a; a = a->next) {
-        if(a->type) {
-            auto dat = a->serialize();
-            j["affected"].push_back(dat);
-        }
-    }
-
-    for(auto a = affectedv; a; a = a->next) {
-        if(a->type) j["affectedv"].push_back(a->serialize());
-    }
-
-    if(absorbs) j["absorbs"] = absorbs;
-    if(blesslvl) j["blesslvl"] = blesslvl;
-    for(auto i = 0; i < 5; i++) {
-        if(lboard[i]) j["lboard"].push_back(std::make_pair(i, lboard[i]));
-    }
-
-    for(auto i = 0; i < MAX_BONUSES; i++) {
-        if(bonuses[i]) j["bonuses"].push_back(i);
-    }
-
-    if(boosts) j["boosts"] = boosts;
-
-    if(clan && strlen(clan)) j["clan"] = clan;
-    if(crank) j["crank"] = crank;
-    if(con_cooldown) j["con_cooldown"] = con_cooldown;
-    if(deathtime) j["deathtime"] = deathtime;
-    if(dcount) j["dcount"] = dcount;
-    if(death_type) j["death_type"] = death_type;
-    if(damage_mod) j["damage_mod"] = damage_mod;
-    if(droom) j["droom"] = droom;
-    if(accuracy_mod) j["accuracy_mod"] = accuracy_mod;
-    for(auto i : genome) j["genome"].push_back(i);
-    if(gauntlet) j["gauntlet"] = gauntlet;
-    if(ingestLearned) j["ingestLearned"] = ingestLearned;
-    if(kaioken) j["kaioken"] = kaioken;
-    if(lifeperc) j["lifeperc"] = lifeperc;
-    if(lastint) j["lastint"] = lastint;
-    if(lastpl) j["lastpl"] = lastpl;
-    if(moltexp) j["moltexp"] = moltexp;
-    if(moltlevel) j["moltlevel"] = moltlevel;
-    if(majinize) j["majinize"] = majinize;
-    if(majinizer) j["majinizer"] = majinizer;
-    if(mimic) j["mimic"] = mimic.value();
-    if(form != FormID::Base) j["form"] = form;
-    if(olc_zone) j["olc_zone"] = olc_zone;
-    if(starphase) j["starphase"] = starphase;
-    if(accuracy) j["accuracy"] = accuracy;
-    if(position) j["position"] = position;
-
-    if(rdisplay) j["rdisplay"] = rdisplay;
-    if(relax_count) j["relax_count"] = relax_count;
-    if(radar1) j["radar1"] = radar1;
-    if(radar2) j["radar2"] = radar2;
-    if(radar3) j["radar3"] = radar3;
-    if(feature) j["feature"] = feature;
-    if(ship) j["ship"] = ship;
-    if(con_sdcooldown) j["con_sdcooldown"] = con_sdcooldown;
-    if(shipr) j["shipr"] = shipr;
-    if(skill_slots) j["skill_slots"] = skill_slots;
-    if(stupidkiss) j["stupidkiss"] = stupidkiss;
-    if(suppression) j["suppression"] = suppression;
-    if(tail_growth) j["tail_growth"] = tail_growth;
-
-    for(auto i = 0; i < 3; i++) {
-        if(saving_throw[i]) j["saving_throw"].push_back(std::make_pair(i, saving_throw[i]));
-    }
-    for(auto i = 0; i < 3; i++) {
-        if(apply_saving_throw[i]) j["apply_saving_throw"].push_back(std::make_pair(i, apply_saving_throw[i]));
-    }
-    if(upgrade) j["upgrade"] = upgrade;
-    if(voice && strlen(voice)) j["voice"] = voice;
-
-    if(global_vars) {
-        j["dgvariables"] = serializeVars(global_vars);
-    }
-
-    if(relax_count) j["relax_count"] = relax_count;
-    if(ingestLearned) j["ingestLearned"] = ingestLearned;
-
-    if (poofin && strlen(poofin)) j["poofin"] = poofin;
-    if (poofout && strlen(poofout)) j["poofout"] = poofout;
-    if(players.contains(last_tell)) j["last_tell"] = last_tell;
-
-    j["transBonus"] = transBonus;
-    for(auto &[frm, tra] : transforms) {
-        j["transforms"].push_back(std::make_pair(static_cast<int>(frm), tra.serialize()));
-    }
-
-    for(auto form : permForms) {
-        j["permForms"].push_back(form);
-    }
-
-    return j;
-}
-
-
-
-void char_data::deserializeInstance(const nlohmann::json &j, bool isActive) {
-    deserializeBase(j);
-
-    if(j.contains("generation")) generation = j["generation"];
-    check_unique_id(this);
-    add_unique_id(this);
-
-    if(j.contains("admflags"))
+    } else {
+        if(j.contains("admflags"))
         for(auto &i : j["admflags"])
             admflags.set(i.get<int>());
 
-    if(j.contains("hometown")) hometown = j["hometown"];
+        if(j.contains("hometown")) hometown = j["hometown"];
 
-    if(j.contains("time")) {
-        time.deserialize(j["time"]);
-    }
-
-    if(j.contains("limb_condition")) {
-        for(auto &i : j["limb_condition"]) {
-            limb_condition[i[0].get<int>()] = i[1];
+        if(j.contains("time")) {
+            time.deserialize(j["time"]);
         }
-    }
 
-    if(j.contains("damages")) {
-        for(auto j2 : j["damages"]) {
-            auto id = j2[0].get<CharVital>();
-            damages[id] = j2[1].get<vital_t>();
+        if(j.contains("limb_condition")) {
+            for(auto &i : j["limb_condition"]) {
+                limb_condition[i[0].get<int>()] = i[1];
+            }
         }
-    }
 
-    if(j.contains("was_in_room")) was_in_room = j["was_in_room"];
-
-    if(j.contains("skill")) {
-        for(auto &i : j["skill"]) {
-            auto id = i[0].get<uint16_t>();
-            skill.emplace(id, i[1]);
+        if(j.contains("damages")) {
+            for(auto j2 : j["damages"]) {
+                auto id = j2[0].get<CharVital>();
+                damages[id] = j2[1].get<vital_t>();
+            }
         }
-    }
 
-    if(j.contains("affected")) {
-        auto ja = j["affected"];
-        // reverse iterate using .rbegin() and .rend() while filling out
-        // the linked list.
-        for(auto it = ja.rbegin(); it != ja.rend(); ++it) {
-            auto a = new affected_type(*it);
-            a->next = affected;
-            affected = a;
+        if(j.contains("was_in_room")) was_in_room = j["was_in_room"];
+
+        if(j.contains("skill")) {
+            for(auto &i : j["skill"]) {
+                auto id = i[0].get<uint16_t>();
+                skill.emplace(id, i[1]);
+            }
         }
-    }
 
-    if(j.contains("affectedv")) {
-        auto ja = j["affectedv"];
-        // reverse iterate using .rbegin() and .rend() while filling out
-        // the linked list.
-        for(auto it = ja.rbegin(); it != ja.rend(); ++it) {
-            auto a = new affected_type(*it);
-            a->next = affectedv;
-            affectedv = a;
+        if(j.contains("affected")) {
+            auto ja = j["affected"];
+            // reverse iterate using .rbegin() and .rend() while filling out
+            // the linked list.
+            for(auto it = ja.rbegin(); it != ja.rend(); ++it) {
+                auto a = new affected_type(*it);
+                a->next = affected;
+                affected = a;
+            }
         }
-    }
 
-    if(j.contains("absorbs")) absorbs = j["absorbs"];
-    if(j.contains("blesslvl")) blesslvl = j["blesslvl"];
-    if(j.contains("lboard")) {
-        for(auto &i : j["lboard"]) {
-            lboard[i[0].get<int>()] = i[1];
+        if(j.contains("affectedv")) {
+            auto ja = j["affectedv"];
+            // reverse iterate using .rbegin() and .rend() while filling out
+            // the linked list.
+            for(auto it = ja.rbegin(); it != ja.rend(); ++it) {
+                auto a = new affected_type(*it);
+                a->next = affectedv;
+                affectedv = a;
+            }
         }
-    }
 
-    if(j.contains("bonuses")) {
-        for(auto &i : j["bonuses"]) {
-            bonuses[i.get<int>()] = true;
+        if(j.contains("absorbs")) absorbs = j["absorbs"];
+        if(j.contains("blesslvl")) blesslvl = j["blesslvl"];
+        if(j.contains("lboard")) {
+            for(auto &i : j["lboard"]) {
+                lboard[i[0].get<int>()] = i[1];
+            }
         }
-    }
 
-    if(j.contains("boosts")) boosts = j["boosts"];
-
-    if(j.contains("clan")) clan = strdup(j["clan"].get<std::string>().c_str());
-    if(j.contains("crank")) crank = j["crank"];
-    if(j.contains("con_cooldown")) con_cooldown = j["con_cooldown"];
-    if(j.contains("deathtime")) deathtime = j["deathtime"];
-    if(j.contains("dcount")) dcount = j["dcount"];
-    if(j.contains("death_type")) death_type = j["death_type"];
-
-    if(j.contains("conditions")) {
-        for(auto &i : j["conditions"]) {
-            conditions[i[0].get<int>()] = i[1];
+        if(j.contains("bonuses")) {
+            for(auto &i : j["bonuses"]) {
+                bonuses[i.get<int>()] = true;
+            }
         }
-    }
 
-    if(j.contains("gravAcclim")) {
-        for(auto &i : j["gravAcclim"]) {
-            gravAcclim[i[0].get<int>()] = i[1];
+        if(j.contains("boosts")) boosts = j["boosts"];
+
+        if(j.contains("clan")) clan = strdup(j["clan"].get<std::string>().c_str());
+        if(j.contains("crank")) crank = j["crank"];
+        if(j.contains("con_cooldown")) con_cooldown = j["con_cooldown"];
+        if(j.contains("deathtime")) deathtime = j["deathtime"];
+        if(j.contains("dcount")) dcount = j["dcount"];
+        if(j.contains("death_type")) death_type = j["death_type"];
+
+        if(j.contains("conditions")) {
+            for(auto &i : j["conditions"]) {
+                conditions[i[0].get<int>()] = i[1];
+            }
         }
-    }
 
-    if(j.contains("internalGrowth")) internalGrowth = j["internalGrowth"];
-    if(j.contains("lifetimeGrowth")) lifetimeGrowth = j["lifetimeGrowth"];
-    if(j.contains("damage_mod")) damage_mod = j["damage_mod"];
-    if(j.contains("droom")) droom = j["droom"];
-    if(j.contains("accuracy_mod")) accuracy_mod = j["accuracy_mod"];
-    if(j.contains("genome")) {
-        for(auto &i : j["genome"]) {
-            genome.insert(i.get<int>());
+        if(j.contains("gravAcclim")) {
+            for(auto &i : j["gravAcclim"]) {
+                gravAcclim[i[0].get<int>()] = i[1];
+            }
         }
-    }
-    if(j.contains("gauntlet")) gauntlet = j["gauntlet"];
-    if(j.contains("ingestLearned")) ingestLearned = j["ingestLearned"];
-    if(j.contains("kaioken")) kaioken = j["kaioken"];
-    if(j.contains("lifeperc")) lifeperc = j["lifeperc"];
-    if(j.contains("lastint")) lastint = j["lastint"];
-    if(j.contains("lastpl")) lastpl = j["lastpl"];
-    if(j.contains("moltexp")) moltexp = j["moltexp"];
-    if(j.contains("moltlevel")) moltlevel = j["moltlevel"];
-    if(j.contains("majinize")) majinize = j["majinize"];
-    if(j.contains("majinizer")) majinizer = j["majinizer"];
-    if(j.contains("mimic")) mimic = j["mimic"].get<RaceID>();
-    if(j.contains("olc_zone")) olc_zone = j["olc_zone"];
-    if(j.contains("starphase")) starphase = j["starphase"];
-    if(j.contains("accuracy")) accuracy = j["accuracy"];
-    if(j.contains("position")) position = j["position"];
 
-    if(j.contains("rdisplay")) rdisplay = strdup(j["rdisplay"].get<std::string>().c_str());
-    if(j.contains("relax_count")) relax_count = j["relax_count"];
-    if(j.contains("radar1")) radar1 = j["radar1"];
-    if(j.contains("radar2")) radar2 = j["radar2"];
-    if(j.contains("radar3")) radar3 = j["radar3"];
-    if(j.contains("feature")) feature = strdup(j["feature"].get<std::string>().c_str());
-    if(j.contains("ship")) ship = j["ship"];
-    if(j.contains("con_sdcooldown")) con_sdcooldown = j["con_sdcooldown"];
-    if(j.contains("shipr")) shipr = j["shipr"];
-    if(j.contains("skill_slots")) skill_slots = j["skill_slots"];
-    if(j.contains("stupidkiss")) stupidkiss = j["stupidkiss"];
-    if(j.contains("suppression")) suppression = j["suppression"];
-    if(j.contains("tail_growth")) tail_growth = j["tail_growth"];
-
-    if(j.contains("saving_throw")) {
-        for(auto t : j["saving_throw"]) {
-            saving_throw[t[0].get<int>()] = t[1];
+        if(j.contains("internalGrowth")) internalGrowth = j["internalGrowth"];
+        if(j.contains("lifetimeGrowth")) lifetimeGrowth = j["lifetimeGrowth"];
+        if(j.contains("damage_mod")) damage_mod = j["damage_mod"];
+        if(j.contains("droom")) droom = j["droom"];
+        if(j.contains("accuracy_mod")) accuracy_mod = j["accuracy_mod"];
+        if(j.contains("genome")) {
+            for(auto &i : j["genome"]) {
+                genome.insert(i.get<int>());
+            }
         }
-    }
-    if(j.contains("apply_saving_throw")) {
-        for(auto t : j["apply_saving_throw"]) {
-            apply_saving_throw[t[0].get<int>()] = t[1];
+        if(j.contains("gauntlet")) gauntlet = j["gauntlet"];
+        if(j.contains("ingestLearned")) ingestLearned = j["ingestLearned"];
+        if(j.contains("kaioken")) kaioken = j["kaioken"];
+        if(j.contains("lifeperc")) lifeperc = j["lifeperc"];
+        if(j.contains("lastint")) lastint = j["lastint"];
+        if(j.contains("lastpl")) lastpl = j["lastpl"];
+        if(j.contains("moltexp")) moltexp = j["moltexp"];
+        if(j.contains("moltlevel")) moltlevel = j["moltlevel"];
+        if(j.contains("majinize")) majinize = j["majinize"];
+        if(j.contains("majinizer")) majinizer = j["majinizer"];
+        if(j.contains("mimic")) mimic = j["mimic"].get<RaceID>();
+        if(j.contains("olc_zone")) olc_zone = j["olc_zone"];
+        if(j.contains("starphase")) starphase = j["starphase"];
+        if(j.contains("accuracy")) accuracy = j["accuracy"];
+        if(j.contains("position")) position = j["position"];
+
+        if(j.contains("rdisplay")) rdisplay = strdup(j["rdisplay"].get<std::string>().c_str());
+        if(j.contains("relax_count")) relax_count = j["relax_count"];
+        if(j.contains("radar1")) radar1 = j["radar1"];
+        if(j.contains("radar2")) radar2 = j["radar2"];
+        if(j.contains("radar3")) radar3 = j["radar3"];
+        if(j.contains("feature")) feature = strdup(j["feature"].get<std::string>().c_str());
+        if(j.contains("ship")) ship = j["ship"];
+        if(j.contains("con_sdcooldown")) con_sdcooldown = j["con_sdcooldown"];
+        if(j.contains("shipr")) shipr = j["shipr"];
+        if(j.contains("skill_slots")) skill_slots = j["skill_slots"];
+        if(j.contains("stupidkiss")) stupidkiss = j["stupidkiss"];
+        if(j.contains("suppression")) suppression = j["suppression"];
+        if(j.contains("tail_growth")) tail_growth = j["tail_growth"];
+
+        if(j.contains("saving_throw")) {
+            for(auto t : j["saving_throw"]) {
+                saving_throw[t[0].get<int>()] = t[1];
+            }
         }
-    }
-    if(j.contains("upgrade")) upgrade = j["upgrade"];
-    if(j.contains("voice")) voice = strdup(j["voice"].get<std::string>().c_str());
-    if(j.contains("wimp_level")) wimp_level = j["wimp_level"];
-
-    if(!proto_script.empty()) {
-        assign_triggers(this, OBJ_TRIGGER);
-    }
-
-    if(j.contains("dgvariables")) {
-        deserializeVars(&global_vars, j["dgvariables"]);
-    }
-
-    auto proto = mob_proto.find(vn);
-    if(proto != mob_proto.end()) {
-        proto_script = proto->second.proto_script;
-    }
-
-    if(j.contains("load_room")) load_room = j["load_room"];
-
-    if(j.contains("transBonus")) transBonus = j["transBonus"];
-    if(j.contains("form")) form = j["form"].get<FormID>();
-    if(j.contains("transforms")) {
-        // it is a list of pairs that fills up the transforms map.
-        for(const auto &j2 : j["transforms"]) {
-            transforms.emplace(j2[0].get<FormID>(), j2[1]);
+        if(j.contains("apply_saving_throw")) {
+            for(auto t : j["apply_saving_throw"]) {
+                apply_saving_throw[t[0].get<int>()] = t[1];
+            }
         }
-    }
+        if(j.contains("upgrade")) upgrade = j["upgrade"];
+        if(j.contains("voice")) voice = strdup(j["voice"].get<std::string>().c_str());
+        if(j.contains("wimp_level")) wimp_level = j["wimp_level"];
 
-    if(j.contains("permForms")) {
-        for(auto form : j["permForms"]) {
-            permForms.insert(form.get<FormID>());
+        if(j.contains("load_room")) load_room = j["load_room"];
+
+        if(j.contains("transBonus")) transBonus = j["transBonus"];
+        if(j.contains("form")) form = j["form"].get<FormID>();
+        if(j.contains("transforms")) {
+            // it is a list of pairs that fills up the transforms map.
+            for(const auto &j2 : j["transforms"]) {
+                transforms.emplace(j2[0].get<FormID>(), j2[1]);
+            }
         }
+
+        if(j.contains("permForms")) {
+            for(auto form : j["permForms"]) {
+                permForms.insert(form.get<FormID>());
+            }
+        }
+        
+        if(j.contains("preference")) preference = j["preference"];
+        if(j.contains("freeze_level")) freeze_level = j["freeze_level"];
+        if(j.contains("practice_points")) practice_points = j["practice_points"];
+        if(j.contains("speaking")) speaking = j["speaking"];
     }
-    
-
-    if(j.contains("preference")) preference = j["preference"];
-    if(j.contains("freeze_level")) freeze_level = j["freeze_level"];
-    if(j.contains("practice_points")) practice_points = j["practice_points"];
-    if(j.contains("speaking")) speaking = j["speaking"];
-
-}
-
-void char_data::deserializeProto(const nlohmann::json &j) {
-    deserializeBase(j);
-
-    if(j.contains("proto_script")) {
-        for(const auto& p : j["proto_script"]) proto_script.emplace_back(p.get<trig_vnum>());
-    }
-
-}
-
-void char_data::deserializePlayer(const nlohmann::json &j, bool isActive) {
-    deserializeInstance(j, isActive);
-
-
-}
-
-void char_data::deserializeMobile(const nlohmann::json &j) {
-    deserializeInstance(j, true);
-
-
 }
 
 char_data::char_data(const nlohmann::json &j) : char_data() {
-    deserializeProto(j);
+    deserialize(j);
 
     if (!IS_HUMAN(this))
         affected_by.set(AFF_INFRAVISION);
@@ -1086,35 +1027,8 @@ double char_data::getTotalWeight() {
     return getWeight() + getCarriedWeight();
 }
 
-std::string char_data::getUID() const {
-    return fmt::format("#C:{}:{}", id, generation);
-}
-
 bool char_data::isActive() {
     return active;
-}
-
-nlohmann::json char_data::serializeLocation() {
-    // TODO: Implement this.
-}
-
-nlohmann::json char_data::serializeRelations() {
-    auto j = nlohmann::json::object();
-
-    return j;
-}
-
-void char_data::deserializeLocation(const nlohmann::json &j) {
-    if(j.contains("in_room")) {
-        auto vn = j["in_room"].get<room_vnum>();
-        char_to_room(this, vn);
-    } else if(j.contains("load_room")) {
-        load_room = j["load_room"].get<room_vnum>();
-    }
-}
-
-void char_data::deserializeRelations(const nlohmann::json &j) {
-
 }
 
 bool char_data::isProvidingLight() {
@@ -1131,7 +1045,7 @@ double char_data::currentGravity() {
 }
 
 struct obj_data* char_data::findObject(const std::function<bool(struct obj_data*)> &func, bool working) {
-    auto o = unit_data::findObject(func, working);
+    auto o = GameEntity::findObject(func, working);
     if(o) return o;
 
     for(auto i = 0; i < NUM_WEARS; i++) {
@@ -1147,7 +1061,7 @@ struct obj_data* char_data::findObject(const std::function<bool(struct obj_data*
 }
 
 std::unordered_set<struct obj_data*> char_data::gatherObjects(const std::function<bool(struct obj_data*)> &func, bool working) {
-    auto out = unit_data::gatherObjects(func, working);
+    auto out = GameEntity::gatherObjects(func, working);
 
     for(auto i = 0; i < NUM_WEARS; i++) {
         auto obj = equipment[i];
@@ -1169,8 +1083,8 @@ void char_data::setAge(double newAge) {
 }
 
 
-void char_data::onAddedToLocation(const LocationStub& newLoc) {
-    if(auto r = dynamic_cast<room_data*>(newLoc.first); r) {
+void char_data::onAddedToLocation(const Location& newLoc) {
+    if(auto r = dynamic_cast<room_data*>(newLoc.entity); r) {
         // We were added to a room.
         int i;
 
@@ -1182,7 +1096,7 @@ void char_data::onAddedToLocation(const LocationStub& newLoc) {
         }
 
         /* Stop fighting now, if we left. */
-        if (FIGHTING(this) && newLoc != FIGHTING(this)->loc && !AFF_FLAGGED(this, AFF_PURSUIT)) {
+        if (FIGHTING(this) && newLoc != FIGHTING(this)->getLocation() && !AFF_FLAGGED(this, AFF_PURSUIT)) {
             stop_fighting(FIGHTING(this));
             stop_fighting(this);
         }
@@ -1195,8 +1109,8 @@ void char_data::onAddedToLocation(const LocationStub& newLoc) {
     }
 }
 
-void char_data::onRemovedFromLocation(const LocationStub& oldLoc) {
-    if(auto r = dynamic_cast<room_data*>(oldLoc.first); r) {
+void char_data::onRemovedFromLocation(const Location& oldLoc) {
+    if(auto r = dynamic_cast<room_data*>(oldLoc.entity); r) {
         // we were in a room.
 
         struct char_data *temp;

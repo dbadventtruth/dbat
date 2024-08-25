@@ -653,9 +653,13 @@ static void parse_room(FILE *fl, room_vnum virtual_nr) {
     auto &z = zone_table[zone];
     auto &r = world[virtual_nr];
     z.rooms.insert(virtual_nr);
+    r.setID(GameEntity::nextID());
+    room_data::instances[r.getID()] = &r;
+    GameEntity::instances[r.getID()] = &r;
 
     r.zone = zone;
     r.vn = virtual_nr;
+    r.setSlug(fmt::format("room_{}", virtual_nr));
     r.name = fread_string(fl, buf2);
     r.look_description = fread_string(fl, buf2);
 
@@ -763,6 +767,9 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, mob_vnum nr) {
             "...expecting line of form '# # # #d#+# #d#+#'", nr);
         return 0;
     }
+
+    ch->setSlug(fmt::format("mob_proto_{}", nr));
+    ch->setType(ENT_CHARACTER | ENT_PROTOTYPE);
 
     ch->set(CharNum::Level, t[0]);
 
@@ -1231,6 +1238,9 @@ static char *parse_object(FILE *obj_f, obj_vnum nr) {
 
     auto &o = obj_proto[nr];
     auto &idx = obj_index[nr];
+
+    o.setSlug(fmt::format("obj_proto_{}", nr));
+    o.setType(ENT_OBJECT | ENT_PROTOTYPE);
 
     idx.vn = nr;
     o.vn = nr;
@@ -2192,7 +2202,7 @@ static int load_char(const char *name, struct char_data *ch) {
                     break;
 
                 case 'I':
-                    if (!strcmp(tag, "Id  ")) GET_IDNUM(ch) = atol(line);
+                    if (!strcmp(tag, "Id  ")) ch->setID(atol(line));
                     else if (!strcmp(tag, "INGl")) GET_INGESTLEARNED(ch) = atoi(line);
                     else if (!strcmp(tag, "Int ")) ch->set(CharAttribute::Intelligence, atoi(line));
                     else if (!strcmp(tag, "Invs")) GET_INVIS_LEV(ch) = atoi(line);
@@ -2365,7 +2375,7 @@ static int load_char(const char *name, struct char_data *ch) {
         ch->time.created = time(nullptr);
     }
 
-    ch->generation = ch->time.created;
+    ch->setCreationTime(ch->time.created);
 
     if (!ch->time.birth) {
         basic_mud_log("No birthday for user %s, using standard starting age determination", GET_NAME(ch));
@@ -2720,8 +2730,7 @@ void migrate_grid() {
     }
 
     for(auto &[rv, room] : world) {
-        room.generation = time(nullptr);
-        room.id = rv;
+        room.setCreationTime(time(nullptr));
         if(room.area) continue;
         auto sense = sense_location_name(rv);
         if(sense != "Unknown.") {
@@ -3901,21 +3910,20 @@ void migrate_characters() {
             delete ch;
             continue;
         }
-        auto id = ch->id;
+        auto id = ch->getID();
         auto &p = players[id];
         p.id = id;
-        if(!ch->generation) ch->generation = time(nullptr);
         p.character = ch;
         p.name = ch->name;
         auto &a = accounts[accID];
         p.account = &a;
         a.adminLevel = std::max(a.adminLevel, GET_ADMLEVEL(ch));
         a.characters.emplace_back(ch);
-        LocationStub loc;
-        loc.first = &world.at(ch->load_room);
-        loc.second.type = CoordinateType::Room;
+        Location loc;
+        loc.entity = &world.at(ch->load_room);
+        loc.type = LocationType::Room;
         ch->was_in_room = ch->load_room;
-        char_data::instances[id] = std::make_pair(ch->generation, ch);
+        char_data::instances[id] = ch;
         ch->setLocation(loc);
     }
 
@@ -3936,7 +3944,7 @@ void migrate_characters() {
             basic_mud_log("Error loading %s for sense migration.", name.c_str());
             continue;
         }
-        auto &pa = players[ch->id];
+        auto &pa = players[ch->getID()];
         // The file contains a sequence of lines, with each line containing a number.
 		// The number is the vnum of a mobile the player's sensed.
         // We will read each line and insert the vnum into the player's sensed list.
@@ -3970,7 +3978,7 @@ void migrate_characters() {
             continue;
         }
 
-        auto &pa = players[ch->id];
+        auto &pa = players[ch->getID()];
 
 		// The file contains a series of lines.
         // Each line looks like: <name> <dub>
@@ -3987,7 +3995,7 @@ void migrate_characters() {
             if(name == "Gibbles") continue;
             auto pc = findPlayer(name);
             if(!pc) continue;
-            pa.dubNames[pc->id] = dub;
+            pa.dubNames[pc->getID()] = dub;
         }
     }
 
@@ -4048,7 +4056,7 @@ void migrate_characters() {
             basic_mud_log("Error loading %s for alias migration.", name.c_str());
             continue;
         }
-        auto pa = players.find(ch->id);
+        auto pa = players.find(ch->getID());
         if(pa == players.end()) {
             basic_mud_log("Error loading %s for alias migration.", name.c_str());
             continue;
@@ -4443,7 +4451,7 @@ void migrate_data() {
     basic_mud_log("Converting Item Instances...");
 
     for(auto &[id, ent] : obj_data::instances) {
-        migrate_obj_data(ent.second);
+        migrate_obj_data(ent);
     }
 
     for(auto &[id, ent] : mob_proto) {
@@ -4451,7 +4459,7 @@ void migrate_data() {
     }
 
     for(auto &[id, ent] : char_data::instances) {
-        migrate_char_data(ent.second);
+        migrate_char_data(ent);
     }
 
 }

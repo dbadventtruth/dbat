@@ -86,7 +86,7 @@ void obj_log(obj_data *obj, const char *format, ...) {
     va_list args;
     char output[MAX_STRING_LENGTH];
 
-    snprintf(output, sizeof(output), "Obj (%s [%d], VNum %d):: %s", obj->short_description, obj->id, GET_OBJ_VNUM(obj), format);
+    snprintf(output, sizeof(output), "Obj (%s [%d], VNum %d):: %s", obj->short_description, obj->getID(), GET_OBJ_VNUM(obj), format);
 
     va_start(args, format);
     script_vlog(output, args);
@@ -97,11 +97,11 @@ void obj_log(obj_data *obj, const char *format, ...) {
 room_rnum obj_room(obj_data *obj) {
 
     auto loc = obj->getLocation();
-    while(loc.first) {
-        auto r = dynamic_cast<room_data*>(loc.first);
+    while(loc.entity) {
+        auto r = dynamic_cast<room_data*>(loc.entity);
         if(r) return r->vn;
         else {
-            auto hasloc = dynamic_cast<HasLocation*>(loc.first);
+            auto hasloc = dynamic_cast<GameEntity*>(loc.entity);
             if(hasloc) loc = hasloc->getLocation();
             else return NOWHERE;
         }
