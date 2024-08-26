@@ -1663,6 +1663,13 @@ void damage_eq(struct char_data *vict, int location) {
     }
 }
 
+static void area_explosion(char_data *ch) {
+    int zone = 0;
+    if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
+        send_to_zone("A MASSIVE explosion shakes the entire area!\r\n", zone);
+    }
+}
+
 /* This is for huge attacks that are slowly descending on a room */
 void huge_update(uint64_t heartPulse, double deltaTime) {
     int dge = 0, skill = 0, bonus = 1, count = 0;
@@ -1675,7 +1682,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
         if(!k) continue;
 
         if (GET_AUCTER(k) > 0 && GET_AUCTIME(k) + 604800 <= time(nullptr)) {
-            if (IN_ROOM(k) && k->getRoomVnum() == 80) {
+            if (k->getRoomVnum() == 80) {
                 room_vnum inroom = IN_ROOM(k);
                 extract_obj(k);
                 continue;
@@ -1691,7 +1698,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
             if (KITYPE(k) == 497) {
                 if (IN_ROOM(TARGET(k)) == IN_ROOM(k)) {
                     ch = USER(k);
-                    if (ch->getRoomVnum() == k->getRoomVnum()) {
+                    if (ch->getLocation() == k->getLocation()) {
                         bonus = 2;
                     }
 
@@ -1783,10 +1790,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                             }
                         }
                         world.at(IN_ROOM(k)).setDamage(100);
-                        int zone = 0;
-                        if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
-                            send_to_zone("A MASSIVE explosion shakes the entire area!\r\n", zone);
-                        }
+                        area_explosion(ch);
 
                         extract_obj(k);
                         continue;
@@ -1857,10 +1861,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         }
                     }
                     world.at(IN_ROOM(k)).setDamage(100);
-                    int zone = 0;
-                    if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
-                        send_to_zone("A MASSIVE explosion shakes the entire area!\r\n", zone);
-                    }
+                    area_explosion(ch);
                     extract_obj(k);
                     continue;
                 }/* End Genki */
@@ -1870,7 +1871,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
             if (KITYPE(k) == 498) {
                 if (IN_ROOM(TARGET(k)) == IN_ROOM(k)) {
                     ch = USER(k);
-                    if (ch->getRoomVnum() == k->getRoomVnum()) {
+                    if (ch->getLocation() == k->getLocation()) {
                         bonus = 2;
                     }
 
@@ -1961,10 +1962,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                             }
                         }
                         world.at(IN_ROOM(k)).setDamage(100);
-                        int zone = 0;
-                        if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
-                            send_to_zone("A MASSIVE explosion shakes the entire area!\r\n", zone);
-                        }
+                        area_explosion(ch);
                         extract_obj(k);
                         continue;
                     } /* It isn't stopped! */
@@ -2033,10 +2031,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         }
                     }
                     world.at(IN_ROOM(k)).setDamage(100);
-                    int zone = 0;
-                    if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
-                        send_to_zone("A MASSIVE explosion shakes the entire area!\r\n", zone);
-                    }
+                    area_explosion(ch);
                     extract_obj(k);
                     continue;
                 }/* End Genocide */
@@ -2736,10 +2731,7 @@ parry_ki(double attperc, struct char_data *ch, struct char_data *vict, char snam
         if (ROOM_DAMAGE(IN_ROOM(ch)) <= 95) {
             world.at(IN_ROOM(ch)).modDamage(5);
         }
-        int zone = 0;
-        if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
-            send_to_zone("An explosion shakes the entire area!\r\n", zone);
-        }
+        area_explosion(ch);
         return;
     }
 }
@@ -2863,10 +2855,7 @@ void dodge_ki(struct char_data *ch, struct char_data *vict, int type, int type2,
         if (ROOM_DAMAGE(IN_ROOM(ch)) <= 95) {
             world.at(IN_ROOM(ch)).modDamage(5);
         }
-        int zone = 0;
-        if ((zone = real_zone_by_thing(ch->getRoomVnum())) != NOWHERE) {
-            send_to_zone("An explosion shakes the entire area!\r\n", zone);
-        }
+        area_explosion(ch);
     }
     if (type == 1) {
         if (rand_number(1, 3) != 2) {

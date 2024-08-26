@@ -806,8 +806,8 @@ ACMD(do_selfd) {
     } else {
         dmg += GET_CHARGE(ch);
         GET_CHARGE(ch) = 0;
-        dmg += (ch->getBasePL()) * 0.6;
-        dmg += (ch->getBaseST());
+        dmg += ch->getBasePL() * 0.6;
+        dmg += ch->getBaseST();
         dmg *= 1.5;
         ch->decCurHealthPercent(1, 1);
         GET_SUPPRESS(ch) = 0;

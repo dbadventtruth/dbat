@@ -1990,8 +1990,10 @@ void handle_special_cases(const char *str, struct char_data *ch, struct obj_data
         if (STATE(d) != CON_PLAYING)
             continue;
 
+        auto rvn = ch->getRoomVnum();
+
         if (ch && IN_ARENA(ch)) {
-            if (PRF_FLAGGED(d->character, PRF_ARENAWATCH) && arena_watch(d->character) == ch->getRoomVnum()) {
+            if (PRF_FLAGGED(d->character, PRF_ARENAWATCH) && arena_watch(d->character) == rvn) {
                 char buf3[MAX_STRING_LENGTH];
                 snprintf(buf3, sizeof(buf3), "@c-----@CArena@c-----@n\r\n%s\r\n@c-----@CArena@c-----@n\r\n", str);
                 perform_act(buf3, ch, obj, vict_obj, d->character);
@@ -2000,7 +2002,7 @@ void handle_special_cases(const char *str, struct char_data *ch, struct obj_data
 
         if (GET_EAVESDROP(d->character) > 0) {
             int roll = rand_number(1, 101);
-            if (ch && GET_EAVESDROP(d->character) == ch->getRoomVnum() &&
+            if (ch && GET_EAVESDROP(d->character) == rvn &&
                 GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
                 char buf3[MAX_STRING_LENGTH];
                 snprintf(buf3, sizeof(buf3), "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str);

@@ -2033,8 +2033,9 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
         ch->decCurHealthPercent(1);
         extract_char(ch);
     } else {
+        auto rvn = ch->getRoomVnum();
         if (!AFF_FLAGGED(ch, AFF_SPIRIT) && !ch->getLocationRoomFlag(ROOM_PAST) &&
-            (ch->getRoomVnum() < 17900 || ch->getRoomVnum() > 17999)) {
+            (rvn < 17900 || rvn > 17999)) {
             if (!PLR_FLAGGED(ch, PLR_ABSORBED)) {
                 make_pcorpse(ch);
                 loadmap(ch);
@@ -2147,7 +2148,8 @@ void die(struct char_data *ch, struct char_data *killer) {
         for(auto f : {PLR_KILLER, PLR_THIEF}) ch->playerFlags.reset(f);
         for(auto f : {AFF_KNOCKED, AFF_SLEEP, AFF_PARALYZE}) ch->affected_by.reset(f);
         if (!AFF_FLAGGED(ch, AFF_SPIRIT) && !ch->getLocationRoomFlag(ROOM_PAST) && !ch->is_newbie()) {
-            if (ch->getRoomVnum() >= 2002 && ch->getRoomVnum() <= 2011) {
+            auto rvn = ch->getRoomVnum();
+            if (rvn >= 2002 && rvn <= 2011) {
                 GET_DTIME(ch) = time(nullptr);
             } else if (ch->getLocationRoomFlag(ROOM_AL) || ch->getLocationRoomFlag(ROOM_HELL)) {
                 send_to_char(ch, "Your soul is saved from destruction by King Yemma. Why? Who knows.\r\n");

@@ -29,40 +29,41 @@ static void disp_ship_locations(struct char_data *ch, struct obj_data *vehicle);
 
 /* This shows the player what locations the planet has to land at. */
 static void disp_ship_locations(struct char_data *ch, struct obj_data *vehicle) {
-    if (vehicle->getRoomVnum() == 50) { // Above Earth
+    auto rvn = vehicle->getRoomVnum();
+    if (rvn == 50) { // Above Earth
         send_to_char(ch, "@D------------------[ @GEarth@D ]------------------@c\n");
         send_to_char(ch, "Nexus City, South Ocean, Nexus field, Cherry Blossom Mountain,\n");
         send_to_char(ch, "Sandy Desert, Northern Plains, Korin's Tower, Kami's Lookout,\n");
         send_to_char(ch, "Shadow Forest, Decrepit Area, West City, Hercule Beach, Satan City.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 51) { // Above Frigid
+    } else if (rvn == 51) { // Above Frigid
         send_to_char(ch, "@D------------------[ @CFrigid@D ]------------------@c\n");
         send_to_char(ch, "Ice Crown City, Ice Highway, Topica Snowfield, Glug's Volcano,\n");
         send_to_char(ch, "Platonic Sea, Slave City, Acturian Woods, Desolate Demesne,\n");
         send_to_char(ch, "Chateau Ishran, Wyrm Spine Mountain, Cloud Ruler Temple, Koltoan mine.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 52) { // Above Konack
+    } else if (rvn == 52) { // Above Konack
         send_to_char(ch, "@D------------------[ @MKonack@D ]------------------@c\n");
         send_to_char(ch, "Great Oroist Temple, Elzthuan Forest, Mazori Farm, Dres,\n");
         send_to_char(ch, "Colvian Farm, St Alucia, Meridius Memorial, Desert of Illusion,\n");
         send_to_char(ch, "Plains of Confusion, Turlon Fair, Wetlands, Kerberos,\n");
         send_to_char(ch, "Shaeras Mansion, Slavinus Ravine, Furian Citadel.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 53) { // Above Vegeta
+    } else if (rvn == 53) { // Above Vegeta
         send_to_char(ch, "@D------------------[ @YVegeta@D ]------------------@c\n");
         send_to_char(ch, "Vegetos City, Blood Dunes, Ancestral Mountains, Destopa Swamp,\n");
         send_to_char(ch, "Pride Forest, Pride tower, Ruby Cave.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 198) { // Above Cerria
+    } else if (rvn == 198) { // Above Cerria
         send_to_char(ch, "@D------------------[ @MCerria@D ]------------------@c\n");
         send_to_char(ch, "Cerria Colony, Fistarl Volcano, Crystalline Forest.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 54) { // Above Namek
+    } else if (rvn == 54) { // Above Namek
         send_to_char(ch, "@D------------------[ @gNamek@D ]------------------@c\n");
         send_to_char(ch, "Senzu Village, Guru's House, Crystalline Cave, Elder Village,\n");
         send_to_char(ch, "Frieza's Ship, Kakureta Village.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 55) { // Above Aether
+    } else if (rvn == 55) { // Above Aether
         send_to_char(ch, "@D------------------[ @BAether@D ]-----------------@c\n");
         send_to_char(ch, "Haven City, Serenity Lake, Kaiju Forest, Ortusian Temple,\n");
         send_to_char(ch, "Silent Glade.\n");
@@ -71,19 +72,19 @@ static void disp_ship_locations(struct char_data *ch, struct obj_data *vehicle) 
         send_to_char(ch, "Haven City, Serenity Lake, Kaiju Forest, Ortusian Temple,\n");
         send_to_char(ch, "Silent Glade.\n");
         send_to_char(ch, "@D--------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 56) { // Above Yardrat
+    } else if (rvn == 56) { // Above Yardrat
         send_to_char(ch, "@D-----------------[ @mYardrat@D ]-----------------@c\n");
         send_to_char(ch, "Yardra City, Jade Forest, Jade Cliffs, Mount Valaria.\n");
         send_to_char(ch, "@D-------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 57) { // Above Zennith
+    } else if (rvn == 57) { // Above Zennith
         send_to_char(ch, "@D-----------------[ @CZennith@D ]-----------------@c\n");
         send_to_char(ch, "Utatlan City, Zenith Jungle, Ancient Castle.\n");
         send_to_char(ch, "@D-------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 58) { // Above Kanassa
+    } else if (rvn == 58) { // Above Kanassa
         send_to_char(ch, "@D-----------------[ @CKanassa@D ]-----------------@c\n");
         send_to_char(ch, "Aquis City, Yunkai Pirate Base.\n");
         send_to_char(ch, "@D-------------------------------------------@n\n");
-    } else if (vehicle->getRoomVnum() == 59) { // Above Arlia
+    } else if (rvn == 59) { // Above Arlia
         send_to_char(ch, "@D------------------[ @MArlia@D ]------------------@c\n");
         send_to_char(ch, "Janacre, Arlian Wasteland, Arlia Mine, Kemabra Wastes.\n");
         send_to_char(ch, "@D---------------------------------------------@n\n");
@@ -94,7 +95,10 @@ static void disp_ship_locations(struct char_data *ch, struct obj_data *vehicle) 
 
 static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, char *arg) {
     int landspot = 50;
-    if (vehicle->getRoomVnum() == 50) { // Above Earth
+
+    auto rvn = vehicle->getRoomVnum();
+    
+    if (rvn == 50) { // Above Earth
         if (!strcasecmp(arg, "Nexus City")) {
             landspot = 300;
             landspot += rand_number(0, 63);
@@ -146,7 +150,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "You don't know where that made up place is, but decided to land anyway.");
             return (300);
         }
-    } else if (vehicle->getRoomVnum() == 51) { // Above Frigid
+    } else if (rvn == 51) { // Above Frigid
         if (!strcasecmp(arg, "Ice Crown City")) {
             return (4264);
         } else if (!strcasecmp(arg, "Ice Highway")) {
@@ -175,7 +179,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "You don't know where that made up place is, but decided to land anyway.");
             return (4264);
         }
-    } else if (vehicle->getRoomVnum() == 52) { // Above Konack
+    } else if (rvn == 52) { // Above Konack
         if (!strcasecmp(arg, "Tiranoc City")) {
             return (8006);
         } else if (!strcasecmp(arg, "Great Oroist Temple")) {
@@ -212,7 +216,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (8006);
         }
-    } else if (vehicle->getRoomVnum() == 53) { // Above Vegeta
+    } else if (rvn== 53) { // Above Vegeta
         if (!strcasecmp(arg, "Vegetos City")) {
             return (2226);
         } else if (!strcasecmp(arg, "Blood Dunes")) {
@@ -231,7 +235,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (2226);
         }
-    } else if (vehicle->getRoomVnum() == 54) { // Above Namek
+    } else if (rvn == 54) { // Above Namek
         if (!strcasecmp(arg, "Senzu Village")) {
             return (11600);
         } else if (!strcasecmp(arg, "Guru's House")) {
@@ -248,7 +252,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (11600);
         }
-    } else if (vehicle->getRoomVnum() == 55) { // Above Aether
+    } else if (rvn == 55) { // Above Aether
         if (!strcasecmp(arg, "Haven City")) {
             return (12010);
         } else if (!strcasecmp(arg, "Serenity Lake")) {
@@ -263,7 +267,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (12010);
         }
-    } else if (vehicle->getRoomVnum() == 56) { // Above Yardrat
+    } else if (rvn == 56) { // Above Yardrat
         if (!strcasecmp(arg, "Yardra City")) {
             return (14008);
         } else if (!strcasecmp(arg, "Jade Forest")) {
@@ -276,7 +280,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (14008);
         }
-    } else if (vehicle->getRoomVnum() == 198) { // Above Cerria
+    } else if (rvn == 198) { // Above Cerria
         if (!strcasecmp(arg, "Cerria Colony")) {
             return (17531);
         } else if (!strcasecmp(arg, "Crystalline Forest")) {
@@ -287,7 +291,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (17531);
         }
-    } else if (vehicle->getRoomVnum() == 57) { // Above Zennith
+    } else if (rvn == 57) { // Above Zennith
         if (!strcasecmp(arg, "Utatlan City")) {
             return (3412);
         } else if (!strcasecmp(arg, "Zenith Jungle")) {
@@ -298,7 +302,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (3412);
         }
-    } else if (vehicle->getRoomVnum() == 58) { // Above Kanassa
+    } else if (rvn == 58) { // Above Kanassa
         if (!strcasecmp(arg, "Aquis City")) {
             return (14904);
         } else if (!strcasecmp(arg, "Yunkai Pirate Base")) {
@@ -307,7 +311,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
             send_to_char(ch, "you don't know where that made up place is, but decided to land anyway.");
             return (14904);
         }
-    } else if (vehicle->getRoomVnum() == 59) { // Above Arlia
+    } else if (rvn == 59) { // Above Arlia
         if (!strcasecmp(arg, "Janacre")) {
             return (16009);
         } else if (!strcasecmp(arg, "Arlian Wasteland")) {
@@ -884,10 +888,10 @@ static void handle_buoy_launch(struct char_data *ch, struct obj_data *vehicle, c
     } else {
         act("@wYou enter a unique code and launch a marker buoy.@n\r\n", false, ch, nullptr, nullptr, TO_CHAR);
         act("@C$n@w manipulates the ship controls.@n\r\n", false, ch, nullptr, nullptr, TO_ROOM);
-
-        if (marker == "1") GET_RADAR1(ch) = vehicle->getRoomVnum();
-        if (marker == "2") GET_RADAR2(ch) = vehicle->getRoomVnum();
-        if (marker == "3") GET_RADAR3(ch) = vehicle->getRoomVnum();
+        auto rvn = vehicle->getRoomVnum();
+        if (marker == "1") GET_RADAR1(ch) = rvn;
+        if (marker == "2") GET_RADAR2(ch) = rvn;
+        if (marker == "3") GET_RADAR3(ch) = rvn;
     }
 }
 
