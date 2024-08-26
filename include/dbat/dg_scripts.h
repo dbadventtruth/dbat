@@ -173,14 +173,15 @@ struct trig_var_data {
 };
 
 /* structure for triggers */
-struct trig_data {
+struct trig_data : public Editable {
     static InstanceMap<trig_data> instances;
     static int64_t lastID;
     static int64_t getNextID();
 
     trig_data() = default;
     explicit trig_data(const nlohmann::json& j);
-    int64_t id{};
+    int64_t id{NOTHING};
+    std::string getSlug() const override;
     nlohmann::json serializeProto();
     nlohmann::json serializeInstance();
     std::string serializeLocation();

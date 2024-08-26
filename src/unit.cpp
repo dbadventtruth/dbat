@@ -62,7 +62,6 @@ nlohmann::json GameEntity::serialize() {
 
 void GameEntity::deserialize(const nlohmann::json& j) {
     if(j.contains("type")) type = j["type"];
-    if(j.contains("slug")) slug = j["slug"];
 
     if(j.contains("id")) id = j["id"];
     if(j.contains("creationTime")) creationTime = j["creationTime"];
@@ -377,12 +376,14 @@ void GameEntity::setType(int newType) {
     type = newType;
 }
 
-std::string_view GameEntity::getSlug() const {
-    return slug;
-}
-
-void GameEntity::setSlug(const std::string& val) {
-    slug = val;
+std::string GameEntity::getSlug() const {
+    if(type & ENT_PROTOTYPE) {
+        if(type & ENT_CHARACTER)
+            return fmt::format("mob_proto_{}", vn);
+        else if(type & ENT_OBJECT)
+            return fmt::format("obj_proto_{}", vn);
+    }
+    return fmt::format("entity_{}", id);
 }
 
 time_t GameEntity::getCreationTime() const {

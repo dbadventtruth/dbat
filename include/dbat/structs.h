@@ -15,6 +15,12 @@
 /**********************************************************************
 * Structures                                                          *
 **********************************************************************/
+struct Editable {
+    virtual std::string getSlug() const = 0;
+    void handleEdit(descriptor_data *desc, const std::string &argument);
+    void displayEditor(descriptor_data *desc);
+};
+
 
 /* Extra description: used in objects, mobiles, and rooms */
 struct extra_descr_data {
@@ -295,9 +301,10 @@ auto IterRef(const Collection& collection) {
     return RefRange<Collection, RefType>(collection);
 }
 
-struct account_data {
+struct account_data : public Editable {
     account_data() = default;
     explicit account_data(const nlohmann::json& j);
+    std::string getSlug() const override;
     vnum vn{NOTHING};
     std::string name;
     std::string passHash;
@@ -491,7 +498,7 @@ constexpr int ENT_OBJECT = 1 << 1;
 constexpr int ENT_CHARACTER = 1 << 2;
 constexpr int ENT_PROTOTYPE = 1 << 3;
 
-class GameEntity {
+class GameEntity : public Editable {
 public:
     // Statics.
     static std::unordered_map<int64_t, GameEntity*> instances;
@@ -514,8 +521,7 @@ public:
     void setType(int val);
 
     // The slug is a unique short name for the entity. like room_1 or item_proto_5 or something.
-    std::string_view getSlug() const;
-    void setSlug(const std::string& val);
+    std::string getSlug() const override;
 
     time_t getCreationTime() const;
     void setCreationTime(time_t val);
@@ -748,7 +754,6 @@ public:
 protected:
     int64_t id{NOTHING};
     int type{0};
-    std::string slug;
     time_t creationTime{};
     std::unordered_map<GameEntity*, Coordinates> entities;
     std::unordered_map<Coordinates, std::vector<GameEntity*>> entityGrid;

@@ -1626,3 +1626,7 @@ void shop_purge(uint64_t heartPulse, double deltaTime) {
         shop.runPurge();
     }
 }
+
+std::string shop_data::getSlug() const {
+    return fmt::format("shop_{}", vnum);
+}

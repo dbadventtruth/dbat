@@ -308,10 +308,11 @@ struct reset_com {
 constexpr int CUR_WORLD_VERSION = 1;
 constexpr int CUR_ZONE_VERSION = 2;
 
-struct zone_data {
+struct zone_data : public Editable {
     zone_data() = default;
     explicit zone_data(const nlohmann::json& j);
     ~zone_data();
+    std::string getSlug() const override;
     char *name{};            /* name of this zone                  */
     char *builders{};          /* namelist of builders allowed to    */
     /* modify this zone.		  */

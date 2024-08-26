@@ -3156,3 +3156,6 @@ std::optional<UID> resolveUIDActive(const std::string& uid) {
     return {};
 }
 
+std::string zone_data::getSlug() const {
+    return fmt::format("zone_{}", number);
+}

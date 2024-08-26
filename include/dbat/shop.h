@@ -26,9 +26,10 @@ struct shop_buy_data {
 
 constexpr int SW_ARRAY_MAX = 4;
 
-struct shop_data {
+struct shop_data : public Editable {
     shop_data() = default;
     explicit shop_data(const nlohmann::json& j);
+    std::string getSlug() const override;
     nlohmann::json serialize();
     ~shop_data();
     void add_product(obj_vnum v);
