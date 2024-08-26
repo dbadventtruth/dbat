@@ -291,9 +291,9 @@ static void db_load_players(const std::filesystem::path& loc) {
 
 static void db_load_entities_initial(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "entities.json")) {
-        auto id = j["id"].get<int64_t>();
-        auto type = j["type"].get<int>();
-        auto data = j["data"];
+        auto id = j[0].get<int64_t>();
+        auto data = j[1];
+        auto type = data["type"].get<int>();
 
         GameEntity *e = nullptr;
 
@@ -1229,6 +1229,8 @@ struct char_data *create_char(bool activate) {
 
     if(activate) {
         ch->setID(GameEntity::nextID());
+        char_data::instances[ch->getID()] = ch;
+        GameEntity::instances[ch->getID()] = ch;
         ch->setCreationTime(time(nullptr));
         ch->activate();
     }
@@ -1253,6 +1255,8 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 
     mob->setType(ENT_CHARACTER); // clear out any possible use of ENT_PROTOTYPE!
     mob->setID(GameEntity::nextID());
+    char_data::instances[mob->getID()] = mob;
+    GameEntity::instances[mob->getID()] = mob;
     mob->setCreationTime(time(nullptr));
     mob->activate();
     if(race::hasTail(mob->race))
@@ -1814,6 +1818,8 @@ struct obj_data *create_obj(bool activate) {
 
     if(activate) {
         obj->setID(GameEntity::nextID());
+        obj_data::instances[obj->getID()] = obj;
+        GameEntity::instances[obj->getID()] = obj;
         obj->setCreationTime(time(nullptr));
         obj->activate();
     }
@@ -1843,6 +1849,8 @@ struct obj_data *read_object(obj_vnum nr, int type, bool activate) /* and obj_rn
     obj->setType(ENT_OBJECT);
     if(activate) {
         obj->setID(GameEntity::nextID());
+        obj_data::instances[obj->getID()] = obj;
+        GameEntity::instances[obj->getID()] = obj;
         obj->setCreationTime(time(nullptr));
         obj->activate();
     }

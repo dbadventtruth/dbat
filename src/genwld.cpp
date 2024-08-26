@@ -257,7 +257,7 @@ room_direction_data::room_direction_data(const nlohmann::json &j) : room_directi
 
 
 nlohmann::json room_data::serialize() {
-    auto j = serialize();
+    auto j = GameEntity::serialize();
 
     if(sector_type) j["sector_type"] = sector_type;
 

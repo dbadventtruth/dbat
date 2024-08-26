@@ -2512,7 +2512,7 @@ struct AreaDef {
     std::unordered_set<int> itemFlags;
     std::unordered_map<int, double> environment;
     
-    obj_data *parent;
+    obj_data *parent{};
 
     std::optional<vnum> orbit;
 
@@ -3712,7 +3712,9 @@ void migrate_grid() {
         sdata.itemFlags = {ITEM_VEHICLE, ITEM_ENVIRONMENT};
         auto ship = assembleArea(sdata);
 
-        obj_to_room(ship, data.location.value());
+        room_vnum toRoom = data.hatch_room.value_or(16694);
+
+        obj_to_room(ship, toRoom);
         // todo: make sure hatch area has controls...
 
         return ship;
@@ -3725,27 +3727,6 @@ void migrate_grid() {
     for(auto &sd : customs) {
         crunch_ship(sd);
     }
-
-    auto &newPod = obj_proto[16326];
-    newPod.setType(ENT_OBJECT | ENT_PROTOTYPE);
-    newPod.name = strdup("saiyan pod ship hatch");
-    newPod.short_description = strdup("@yS@Ya@yi@Yy@ya@Yn @WP@Do@Wd@n");
-    newPod.type_flag = ITEM_STRUCTURE;
-    for(auto f : {ITEM_UNBREAKABLE, ITEM_GRID, ITEM_ENVIRONMENT, ITEM_VEHICLE})
-        newPod.extra_flags.set(f);
-    newPod.owner = -2; // -2 can be claimed.
-    // Tiniest grid ever.
-    newPod.minX = 0;
-    newPod.maxX = 0;
-    newPod.minY = 0;
-    newPod.maxY = 0;
-    newPod.minZ = 0;
-    newPod.maxZ = 0;
-    newPod.defaultGridTileType = SECT_INSIDE;
-    newPod.gridDescription = "@WThis compartment is filled with a high tech surface designed for maximum\r\n"
-                        "safety for both the pod and its occupant. Behind the seat the ship's small\r\n"
-                        "Icerian Gravitic Drive can be seen. To the right of the ship hatch the ship\r\n"
-                        "controls can be seen.@n";
 
     // A very luxurious player custom home
     AreaDef dunnoHouse;

@@ -43,8 +43,16 @@ Location::Location(const nlohmann::json& j) {
 
 void Location::deserialize(const nlohmann::json& j) {
     if(j.contains("type")) type = static_cast<LocationType>(j.at("type").get<int>());
-    if(j.contains("entity")) entity = GameEntity::instances.at(j.at("entity").get<int>());
-    if(j.contains("point")) point.deserialize(j.at("coords"));
+    
+    if(j.contains("entity")) {
+        auto entityID = j.at("entity").get<int64_t>();
+        if(GameEntity::instances.contains(entityID))
+            entity = GameEntity::instances.at(entityID);
+        else {
+            basic_mud_log("Location::deserialize: entity not found for ID %ld", entityID);
+        }
+    }
+    if(j.contains("point")) point.deserialize(j.at("point"));
 }
 
 bool Location::operator==(const Location& other) const {
