@@ -53,7 +53,7 @@ int checkship(int rnum, int vnum) {
 
     bool there = false;
     for (auto i : IterRef(world.at(rnum).getContents())) {
-        if (GET_OBJ_TYPE(i) == ITEM_UNUSED_VEHICLE) {
+        if (GET_OBJ_TYPE(i) == ITEM_STRUCTURE) {
             ping_ship(GET_OBJ_VNUM(i), vnum);
             there = true;
         }

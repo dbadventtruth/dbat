@@ -717,7 +717,7 @@ ACMD(do_pack) {
                 packed->setLocation(ch->getLocation());
             }
             return;
-        } else if (GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 19199 && GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE) {
+        } else if (GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 19199 && GET_OBJ_TYPE(obj) == ITEM_STRUCTURE) {
             if (!*arg2) {
                 send_to_char(ch,
                              "This will sell off your house and delete everything inside. Are you sure? If you are then enter the command again with a yes at the end.\nSyntax: pack (house) yes\r\n");
@@ -1855,7 +1855,7 @@ static void perform_put(struct char_data *ch, struct obj_data *obj,
         } else
             act("You put $p in $P.", false, ch, obj, cont, TO_CHAR);
         /* If object placed in portal or vehicle, move it to the portal destination */
-        if ((GET_OBJ_TYPE(cont) == ITEM_PORTAL) || (GET_OBJ_TYPE(cont) == ITEM_UNUSED_VEHICLE)) {
+        if ((GET_OBJ_TYPE(cont) == ITEM_PORTAL) || (GET_OBJ_TYPE(cont) == ITEM_STRUCTURE)) {
             obj_from_obj(obj);
             obj_to_room(obj, real_room(GET_OBJ_VAL(cont, VAL_CONTAINER_CAPACITY)));
             if (GET_OBJ_TYPE(cont) == ITEM_PORTAL) {
@@ -1885,7 +1885,7 @@ static bool validate_container(struct char_data *ch, struct obj_data *cont) {
 
     if (GET_OBJ_TYPE(cont) != ITEM_CONTAINER &&
         GET_OBJ_TYPE(cont) != ITEM_PORTAL &&
-        GET_OBJ_TYPE(cont) != ITEM_UNUSED_VEHICLE) {
+        GET_OBJ_TYPE(cont) != ITEM_STRUCTURE) {
         act("$p is not a container.", false, ch, cont, nullptr, TO_CHAR);
         return false;
     }
@@ -2267,7 +2267,7 @@ ACMD(do_get) {
             mode = generic_find(arg2, FIND_OBJ_INV | FIND_OBJ_EQUIP | FIND_OBJ_ROOM, ch, &tmp_char, &cont);
             if (!cont)
                 send_to_char(ch, "You don't have %s %s.\r\n", AN(arg2), arg2);
-            else if (GET_OBJ_TYPE(cont) == ITEM_UNUSED_VEHICLE)
+            else if (GET_OBJ_TYPE(cont) == ITEM_STRUCTURE)
                 send_to_char(ch, "You will need to enter it first.\r\n");
             else if ((GET_OBJ_TYPE(cont) != ITEM_CONTAINER) &&
                      !((GET_OBJ_TYPE(cont) == ITEM_PORTAL) && (OBJVAL_FLAGGED(cont, CONT_CLOSEABLE))))

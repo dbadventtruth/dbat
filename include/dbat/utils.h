@@ -1304,7 +1304,7 @@ void send_to_room(room_rnum room, fmt::string_view format, Args&&... args) {
 
 template<typename... Args>
 void send_to_location(GameEntity *ent, fmt::string_view format, Args&&... args) {
-    ent->broadcastAtLocation(fmt::sprintf(fmt::runtime(format), std::forward<Args>(args)...));
+    ent->broadcastAtLocation(fmt::sprintf(format, std::forward<Args>(args)...));
 }
 
 template<typename... Args>

@@ -2056,7 +2056,7 @@ void reset_zone(zone_rnum zone) {
                     oproto = obj_proto.find(c.arg1);
                     if(oproto != obj_proto.end()) {
                         if(oproto->second.type_flag == ITEM_HATCH || oproto->second.type_flag == ITEM_CONTROL
-                        || oproto->second.type_flag == ITEM_WINDOW || oproto->second.type_flag == ITEM_UNUSED_VEHICLE) {
+                        || oproto->second.type_flag == ITEM_WINDOW || oproto->second.type_flag == ITEM_STRUCTURE) {
                             c.arg2 = 1;
                             c.arg4 = 1;
                         }

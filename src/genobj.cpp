@@ -619,7 +619,7 @@ void obj_data::onAddedToLocation(const Location& newLoc) {
         auto otype = GET_OBJ_TYPE(this);
         auto ovn = GET_OBJ_VNUM(this);
 
-        if (otype == ITEM_UNUSED_VEHICLE && !OBJ_FLAGGED(this, ITEM_UNBREAKABLE) &&
+        if (otype == ITEM_STRUCTURE && !OBJ_FLAGGED(this, ITEM_UNBREAKABLE) &&
             GET_OBJ_VNUM(this) > 19199) {
             extra_flags.set(ITEM_UNBREAKABLE);
         }
@@ -737,4 +737,34 @@ void obj_data::onRemovedFromLocation(const Location& oldLoc) {
 
 void obj_data::onRelocatedWithinLocation(const Coordinates& oldCoord, const Coordinates& newCoord) {
     
+}
+
+
+std::optional<Location> obj_data::getEnterLocation() {
+    if(GET_OBJ_TYPE(this) == ITEM_PORTAL) {
+        auto pdest = value[VAL_PORTAL_DEST];
+        if(world.count(pdest)) {
+            Location toLoc;
+            toLoc.entity = &world.at(pdest);
+            toLoc.type = LocationType::Room;
+            return toLoc;
+        }
+    } else if(GET_OBJ_TYPE(this) == ITEM_STRUCTURE) {
+        if(extra_flags.test(ITEM_AREA)) {
+            auto pdest = value[VAL_PORTAL_DEST];
+            if(world.count(pdest)) {
+                Location toLoc;
+                toLoc.entity = &world.at(pdest);
+                toLoc.type = LocationType::Room;
+                return toLoc;
+            }
+        } else if(extra_flags.test(ITEM_GRID)) {
+            Location toLoc;
+            toLoc.entity = this;
+            toLoc.type = LocationType::Grid;
+            if(gridEntrance) toLoc.point = gridEntrance.value();
+            return toLoc;
+        }
+    }
+    return {};
 }

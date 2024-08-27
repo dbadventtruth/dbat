@@ -587,10 +587,13 @@ constexpr int ROOM_FERTILE2 = 62;
 constexpr int ROOM_FISHING = 63;
 constexpr int ROOM_FISHFRESH = 64;
 constexpr int ROOM_CANREMODEL = 65;
-constexpr int ROOM_LANDING = 66;
+constexpr int ROOM_LANDING = 66; // room can be landed to.
 constexpr int ROOM_SAVE = 67; /* room saves contents */
+constexpr int ROOM_HATCH = 68; /* room has a hatch to the outside */
+constexpr int ROOM_WINDOW = 69; /* room has a window */
+constexpr int ROOM_DOCKINGBAY = 70; // room is a dockingbay, can hold / land spaceships.
 
-constexpr int NUM_ROOM_FLAGS = 68;
+constexpr int NUM_ROOM_FLAGS = 71;
 
 // I'm thinking that rooms with lava might automatically have a considerable heat value.
 // They might also generate light. Molten lava glows.
@@ -1472,7 +1475,7 @@ constexpr int ITEM_MONEY = 20;        /* Item is money (gold)		*/
 constexpr int ITEM_PEN = 21;        /* Item is a pen		*/
 constexpr int ITEM_BOAT = 22;        /* Item is a boat		*/
 constexpr int ITEM_FOUNTAIN = 23;        /* Item is a fountain		*/
-constexpr int ITEM_UNUSED_VEHICLE = 24;               /* Item is a vehicle            */
+constexpr int ITEM_STRUCTURE = 24;     // This is some kind of area. it might be a new-style vehicle, a space station, a planet, etc.
 constexpr int ITEM_HATCH = 25;               /* Item is a vehicle hatch      */
 constexpr int ITEM_WINDOW = 26;               /* Item is a vehicle window     */
 constexpr int ITEM_CONTROL = 27;               /* Item is a vehicle control    */
@@ -1485,9 +1488,8 @@ constexpr int ITEM_YUM = 33;               /* This was good food           */
 constexpr int ITEM_PLANT = 34;               /* This will grow!              */
 constexpr int ITEM_FISHPOLE = 35;               /* FOR FISHING                  */
 constexpr int ITEM_FISHBAIT = 36;               /* DITTO                        */
-constexpr int ITEM_STRUCTURE = 37;     // This is some kind of area. it might be a new-style vehicle, a space station, a planet, etc.
 
-constexpr int NUM_ITEM_TYPES = 38;
+constexpr int NUM_ITEM_TYPES = 37;
 
 /* Take/Wear flags: used by obj_data.wear_flags */
 constexpr int ITEM_WEAR_TAKE = 0;  /* Item can be taken         */

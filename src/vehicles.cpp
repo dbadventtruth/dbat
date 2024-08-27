@@ -332,7 +332,7 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle, ch
 
 struct obj_data *find_vehicle_by_vnum(int vnum) {
     auto o = get_last_inserted(objectVnumIndex, vnum);
-    if(o && GET_OBJ_TYPE(o) == ITEM_UNUSED_VEHICLE) return o;
+    if(o && GET_OBJ_TYPE(o) == ITEM_STRUCTURE) return o;
     return nullptr;
 }
 
@@ -387,7 +387,7 @@ static void drive_into_vehicle(struct char_data *ch, struct obj_data *vehicle, c
         return;
     }
 
-    if (GET_OBJ_TYPE(vehicle_in_out) != ITEM_UNUSED_VEHICLE) {
+    if (GET_OBJ_TYPE(vehicle_in_out) != ITEM_STRUCTURE) {
         send_to_char(ch, "@wThat's not a ship.\r\n");
         return;
     }
@@ -950,7 +950,7 @@ ACMD(do_ship_fire) {
 
     for(auto obj : IterRef(ch->getLocationObjects())) {
         if (shot == false) {
-            if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && obj != vehicle) {
+            if (GET_OBJ_TYPE(obj) == ITEM_STRUCTURE && obj != vehicle) {
                 if (!strcasecmp(arg1, obj->name)) {
                     obj2 = obj;
                     shot = true;

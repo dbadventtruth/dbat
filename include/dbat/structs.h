@@ -873,6 +873,8 @@ struct obj_data : public GameEntity {
     int64_t owner{-1};
     std::unordered_set<int64_t> authorizedUsers;
 
+    std::optional<Location> getEnterLocation();
+
     // grid stuff.
     std::string gridDescription{};
     // -1 is void, impassable.

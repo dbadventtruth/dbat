@@ -1574,7 +1574,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
      */
             if (*obj->room_description == '.' && (IS_NPC(ch) || !PRF_FLAGGED(ch, PRF_HOLYLIGHT)))
                 return;
-            if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE && ch->getRoomVnum() == GET_OBJ_VAL(obj, 0)) {
+            if (GET_OBJ_TYPE(obj) == ITEM_STRUCTURE && ch->getRoomVnum() == GET_OBJ_VAL(obj, 0)) {
                 return;
             }
             if (SITTING(obj) && GET_ADMLEVEL(ch) < 1) {
@@ -1650,7 +1650,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                     }
                 }
 
-                if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE) {
+                if (GET_OBJ_TYPE(obj) == ITEM_STRUCTURE) {
                     if (!OBJVAL_FLAGGED(obj, CONT_CLOSED) && GET_OBJ_VNUM(obj) > 19199)
                         send_to_char(ch, "\r\n@c...its outer hatch is open@n");
                     else if (!OBJVAL_FLAGGED(obj, CONT_CLOSED) && GET_OBJ_VNUM(obj) <= 19199)
@@ -1840,7 +1840,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch, int mod
                     display_scroll(ch, obj);
                     break;
 
-                case ITEM_UNUSED_VEHICLE:
+                case ITEM_STRUCTURE:
                     if (GET_OBJ_VNUM(obj) > 19199) {
                         send_to_char(ch, "@YSyntax@D: @CUnlock hatch\r\n");
                         send_to_char(ch, "@YSyntax@D: @COpen hatch\r\n");
@@ -3722,7 +3722,7 @@ static void look_in_obj(struct char_data *ch, char *arg) {
             handle_portal(ch, obj);
             break;
 
-        case ITEM_UNUSED_VEHICLE:
+        case ITEM_STRUCTURE:
             handle_vehicle(ch, obj);
             break;
 
@@ -3797,7 +3797,7 @@ static void examine_item(struct char_data *ch, struct obj_data *obj, const char 
         if (GET_OBJ_TYPE(obj) == ITEM_SCROLL) {
             display_scroll(ch, obj);
         }
-        if (GET_OBJ_TYPE(obj) == ITEM_UNUSED_VEHICLE) {
+        if (GET_OBJ_TYPE(obj) == ITEM_STRUCTURE) {
             send_to_char(ch, "@YSyntax@D: @CUnlock hatch\r\n");
             send_to_char(ch, "@YSyntax@D: @COpen hatch\r\n");
             send_to_char(ch, "@YSyntax@D: @CClose hatch\r\n");

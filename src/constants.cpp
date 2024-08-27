@@ -383,6 +383,9 @@ const char *room_bits[NUM_ROOM_FLAGS + 1] = {
         "CANREMODEL",
         "LANDING",
         "SAVE",
+        "HATCH",
+        "WINDOW",
+        "DOCKINGBAY",
         "\n"
 };
 
@@ -913,7 +916,7 @@ const char *item_types[NUM_ITEM_TYPES + 1] = {
         "PEN",
         "BOAT",
         "FOUNTAIN",
-        "OLD_VEHICLE",
+        "STRUCTURE",
         "HATCH",
         "WINDOW",
         "CONTROL",
@@ -926,7 +929,6 @@ const char *item_types[NUM_ITEM_TYPES + 1] = {
         "PLANT",
         "FISHINGPOLE",
         "FISHBAIT",
-        "STRUCTURE",
         "\n"
 };
 
