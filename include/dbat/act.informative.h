@@ -27,7 +27,7 @@ extern char *find_exdesc(char *word, struct extra_descr_data *list);
 extern void add_history(struct char_data *ch, char *str, int type);
 
 extern void introWrite(struct char_data *ch, struct char_data *vict, char *name);
-
+extern void look_at_location(const Location& loc, char_data *ch, int ignore_brief);
 extern void look_at_room(struct room_data *rm, struct char_data *ch, int ignore_brief);
 extern void look_at_room(room_rnum target_room, struct char_data *ch, int ignore_brief);
 

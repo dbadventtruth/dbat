@@ -68,7 +68,7 @@ ASPELL(spell_recall) {
     char_from_room(victim);
     char_to_room(victim, real_room(CONFIG_MORTAL_START));
     act("$n appears in the middle of the room.", true, victim, nullptr, nullptr, TO_ROOM);
-    look_at_room(IN_ROOM(victim), victim, 0);
+    look_at_location(victim->getLocation(), victim, 0);
     entry_memory_mtrigger(victim);
     greet_mtrigger(victim, -1);
     greet_memory_mtrigger(victim);
@@ -90,7 +90,7 @@ ASPELL(spell_teleport) {
     char_from_room(victim);
     char_to_room(victim, to_room);
     act("$n slowly fades into existence.", false, victim, nullptr, nullptr, TO_ROOM);
-    look_at_room(IN_ROOM(victim), victim, 0);
+    look_at_location(victim->getLocation(), victim, 0);
     entry_memory_mtrigger(victim);
     greet_mtrigger(victim, -1);
     greet_memory_mtrigger(victim);
@@ -139,12 +139,11 @@ ASPELL(spell_summon) {
 
     act("$n disappears suddenly.", true, victim, nullptr, nullptr, TO_ROOM);
 
-    char_from_room(victim);
-    char_to_room(victim, IN_ROOM(ch));
+    victim->setLocation(ch->getLocation());
 
     act("$n arrives suddenly.", true, victim, nullptr, nullptr, TO_ROOM);
     act("$n has summoned you!", false, ch, nullptr, victim, TO_VICT);
-    look_at_room(IN_ROOM(victim), victim, 0);
+    look_at_location(victim->getLocation(), victim, 0);
     entry_memory_mtrigger(victim);
     greet_mtrigger(victim, -1);
     greet_memory_mtrigger(victim);
@@ -473,7 +472,7 @@ ASPELL(spell_portal) {
     GET_OBJ_VAL(portal, VAL_PORTAL_HEALTH) = 100;
     GET_OBJ_VAL(portal, VAL_PORTAL_MAXHEALTH) = 100;
     GET_OBJ_TIMER(portal) = (int) (level / 10);
-    obj_to_room(portal, IN_ROOM(ch));
+    portal->setLocation(ch->getLocation());
     act("$n opens a portal in thin air.",
         true, ch, nullptr, nullptr, TO_ROOM);
     act("You open a portal out of thin air.",
@@ -484,7 +483,7 @@ ASPELL(spell_portal) {
     GET_OBJ_VAL(tportal, VAL_PORTAL_HEALTH) = 100;
     GET_OBJ_VAL(tportal, VAL_PORTAL_MAXHEALTH) = 100;
     GET_OBJ_TIMER(tportal) = (int) (level / 10);
-    obj_to_room(tportal, IN_ROOM(victim));
+    tportal->setLocation(victim->getLocation());
     act("A shimmering portal appears out of thin air.",
         true, victim, nullptr, nullptr, TO_ROOM);
     act("A shimmering portal opens here for you.",
@@ -555,7 +554,7 @@ ASPELL(art_abundant_step) {
 
     act("$n is suddenly present.", true, ch, nullptr, nullptr, TO_ROOM);
 
-    look_at_room(IN_ROOM(ch), ch, 0);
+    look_at_location(ch->getLocation(), ch, 0);
 
     return;
 }

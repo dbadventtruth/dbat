@@ -85,7 +85,7 @@ ACMD(do_oasis_hedit) {
     }
 
     STATE(d) = CON_HEDIT;
-    /*send_to_room(IN_ROOM(ch), "%s starts using OLC.\r\n", GET_NAME(ch));*/
+    /*send_to_location(ch, "%s starts using OLC.\r\n", GET_NAME(ch));*/
     act("$n starts using OLC.", true, ch, nullptr, nullptr, TO_ROOM);
     HEDITS = true;
     ch->playerFlags.set(PLR_WRITING);

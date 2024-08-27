@@ -59,6 +59,10 @@ bool Location::operator==(const Location& other) const {
     return type == other.type && entity == other.entity && point == other.point;
 }
 
+Location::operator bool() const {
+    return entity != nullptr;
+}
+
 Coordinates Location::getCoordinates() const {
     return {type, point};
 }
@@ -78,6 +82,8 @@ Destination::Destination(room_direction_data* exit) {
     location.entity = &r;
     exit_flags = exit->exit_info;
     key = exit->key;
+    dcskill = exit->dcskill;
+    dcmove = exit->dcmove;
 
     if(exit->keyword && strlen(exit->keyword))
         keyword = exit->keyword;

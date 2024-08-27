@@ -381,12 +381,12 @@ namespace atk {
             int vicDivine = GET_SKILL(victim, (int16_t) SkillID::DivineHalo);
             if(isKiAttack() && divine > 0 && divine >= axion_dice(0)) {
                 send_to_char(user, "You feel your Halo intensify, purging the impurity of your attack.\n");
-                send_to_room(user->getRoom(), "%s's halo flares, leaving their attack shimmering as it moves.\n", user->name);
+                send_to_location(user, "%s's halo flares, leaving their attack shimmering as it moves.\n", user->name);
                 calcDamage *= divine / 2;
             }
             if(isKiAttack() && vicDivine > 0 && vicDivine >= axion_dice(0)) {
                 send_to_char(user, "You feel your Halo intensify, burning away at your opponents attack.\n");
-                send_to_room(user->getRoom(), "%s's halo flares, burning away part of the blast coming for them.\n", user->name);
+                send_to_location(user, "%s's halo flares, burning away part of the blast coming for them.\n", user->name);
                 calcDamage /= (vicDivine / 50);
             }
 
@@ -1086,7 +1086,7 @@ namespace atk {
                 actVictim("@C$n@W disappears, reappearing in front of you, and $e grabs you! Spinning quickly $e sends you flying into the ground!@n");
                 actOthers("@c$n@W disappears, reappearing in front of @C$N@W, and grabs $M! Spinning quickly $e sends $M flying into the ground!@n");
 
-                if (ROOM_DAMAGE(IN_ROOM(victim)) <= 95 && !victim->getLocationRoomFlag(ROOM_SPACE)) {
+                if (victim->getLocationDamage() <= 95 && !victim->getLocationRoomFlag(ROOM_SPACE)) {
                         act("@W$N@W slams into the ground forming a large crater with $S body!@n", true, user, nullptr,
                             victim,
                             TO_CHAR);
@@ -2529,10 +2529,10 @@ namespace atk {
                 pcost(user, attPerc, 0);
             }
             if (user->getLocationGroundEffect() < -1) {
-                send_to_room(IN_ROOM(user), "The water surrounding the area evaporates some!\r\n");
+                send_to_location(user, "The water surrounding the area evaporates some!\r\n");
                 user->modLocationGroundEffect(1);
             } else if (user->getLocationGroundEffect() == -1) {
-                send_to_room(IN_ROOM(user), "The water surrounding the area evaporates completely away!\r\n");
+                send_to_location(user, "The water surrounding the area evaporates completely away!\r\n");
                 user->setLocationGroundEffect(0);
             }
             victim->affected_by.reset(AFF_ASHED);
@@ -2540,10 +2540,10 @@ namespace atk {
 
     void Honoo::postProcess() {
         if (user->getLocationGroundEffect() < -1) {
-            send_to_room(IN_ROOM(user), "The water surrounding the area evaporates some!\r\n");
+            send_to_location(user, "The water surrounding the area evaporates some!\r\n");
             user->modLocationGroundEffect(1);
         } else if (user->getLocationGroundEffect() == -1) {
-            send_to_room(IN_ROOM(user), "The water surrounding the area evaporates completely away!\r\n");
+            send_to_location(user, "The water surrounding the area evaporates completely away!\r\n");
             user->setLocationGroundEffect(0);
         }
     }   
@@ -4318,8 +4318,8 @@ namespace atk {
     void Kakusanha::postProcess() {
         int count = targets.size();
         if (count < 5 && !user->getLocationRoomFlag(ROOM_SPACE)) {
-            send_to_room(IN_ROOM(user), "The rest of the beams slam into the ground!@n\r\n");
-            send_to_room(IN_ROOM(user), "@wBright explosions erupt from the impacts!\r\n");
+            send_to_location(user, "The rest of the beams slam into the ground!@n\r\n");
+            send_to_location(user, "@wBright explosions erupt from the impacts!\r\n");
             const auto tile = user->getLocationTileType();
             if (tile != SECT_INSIDE) {
                 impact_sound(user, "@wA loud roar is heard nearby!@n\r\n");

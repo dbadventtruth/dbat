@@ -67,34 +67,29 @@ void handle_teleport(struct char_data *ch, struct char_data *tar, int location) 
         char_to_room(ch, real_room(location));
         success = true;
     } else if (tar != nullptr) { /* Teleport to a particular character */
-        char_from_room(ch);
-        char_to_room(ch, IN_ROOM(tar));
+        ch->setLocation(tar->getLocation());
         success = true;
     }
 
     if (success == true) { /* We have made it. */
         act("@w$n@w appears in an instant out of nowhere!@n", true, ch, nullptr, nullptr, TO_ROOM);
         if (DRAGGING(ch) && !IS_NPC(DRAGGING(ch))) {
-            char_from_room(DRAGGING(ch));
-            char_to_room(DRAGGING(ch), IN_ROOM(ch));
+            DRAGGING(ch)->setLocation(ch->getLocation());
             act("@w$n@w appears in an instant out of nowhere being dragged by $N!@n", true, DRAGGING(ch), nullptr, ch,
                 TO_NOTVICT);
         }
         if (GRAPPLING(ch) && !IS_NPC(GRAPPLING(ch))) {
-            char_from_room(GRAPPLING(ch));
-            char_to_room(GRAPPLING(ch), IN_ROOM(ch));
+            GRAPPLING(ch)->setLocation(ch->getLocation());
             act("@w$n@w appears in an instant out of nowhere being grappled by $N!@n", true, GRAPPLING(ch), nullptr, ch,
                 TO_NOTVICT);
         }
         if (CARRYING(ch)) {
-            char_from_room(CARRYING(ch));
-            char_to_room(CARRYING(ch), IN_ROOM(ch));
+            CARRYING(ch)->setLocation(ch->getLocation());
             act("@w$n@w appears in an instant out of nowhere being carried by $N!@n", true, CARRYING(ch), nullptr, ch,
                 TO_NOTVICT);
         }
         if (GRAPPLED(ch) && !IS_NPC(GRAPPLED(ch))) {
-            char_from_room(GRAPPLED(ch));
-            char_to_room(GRAPPLED(ch), IN_ROOM(ch));
+            GRAPPLED(ch)->setLocation(ch->getLocation());
             act("@w$n@w appears in an instant out of nowhere being grappled by $N!@n", true, GRAPPLED(ch), nullptr, ch,
                 TO_NOTVICT);
         }
@@ -373,11 +368,6 @@ static int has_boat(struct char_data *ch) {
     struct obj_data *obj;
     int i;
 
-/*
-  if (ROOM_IDENTITY(IN_ROOM(ch)) == DEAD_SEA)
-    return (1);
-*/
-
     if (ADM_FLAGGED(ch, ADM_WALKANYWHERE) || GET_ADMLEVEL(ch) > 4)
         return (1);
 
@@ -386,9 +376,8 @@ static int has_boat(struct char_data *ch) {
 
     /* non-wearable boats in inventory will do it */
     auto isBoat = [](const auto& o) {return GET_OBJ_TYPE(o) == ITEM_BOAT;};
-    if(ch->findObject(isBoat)) return true;
-
-    return false;
+    
+    return ch->findObject(isBoat) != nullptr;
 }
 
 /* simple function to determine if char can fly */
@@ -462,26 +451,44 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         return (0);
 
     /* blocked by a leave trigger ? */
-    if (!leave_mtrigger(ch, dir) || IN_ROOM(ch) != was_in) /* prevent teleport crashes */
+    // moved into a block due to these only working with old rooms.
+    if(was_in != NOWHERE) {
+        if (!leave_mtrigger(ch, dir) || IN_ROOM(ch) != was_in) /* prevent teleport crashes */
         return 0;
-    if (!leave_wtrigger(ch->getRoom(), ch, dir) || IN_ROOM(ch) != was_in) /* prevent teleport crashes */
-        return 0;
-    if (!leave_otrigger(ch->getRoom(), ch, dir) || IN_ROOM(ch) != was_in) /* prevent teleport crashes */
-        return 0;
+        if (!leave_wtrigger(ch->getRoom(), ch, dir) || IN_ROOM(ch) != was_in) /* prevent teleport crashes */
+            return 0;
+        if (!leave_otrigger(ch->getRoom(), ch, dir) || IN_ROOM(ch) != was_in) /* prevent teleport crashes */
+            return 0;
+    }
+    
     /* charmed? */
-    if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master && IN_ROOM(ch) == IN_ROOM(ch->master)) {
+    if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master && ch->getLocation() == ch->master->getLocation()) {
         send_to_char(ch, "The thought of leaving your master makes you weep.\r\n");
         act("$n bursts into tears.", false, ch, nullptr, nullptr, TO_ROOM);
         return (0);
     }
 
-    auto r = ch->getRoom();
-    auto e = r->dir_option[dir];
-    auto dest = e->getDestination();
+    auto loc = ch->getLocation();
+    if(!loc.entity) {
+        send_to_char(ch, "You can't go that way.\r\n");
+        return 0;
+    }
+    auto destOp = loc.entity->getDirectionalDestination(loc.getCoordinates(), dir);
+    if(!destOp) {
+        send_to_char(ch, "You can't go that way.\r\n");
+        return 0;
+    }
+    auto dest = destOp.value();
+    auto coord = dest.location.getCoordinates();
+    auto ent = dest.location.entity;
+    
+    auto curSectorType = ch->getLocationTileType();
+    auto destTile = ent->getTileType(coord);
+
 
     int willfall = false;
     /* if this room or the one we're going to needs flight, check for it */
-    if ((r->sector_type == SECT_FLYING) || (dest->sector_type == SECT_FLYING)) {
+    if ((curSectorType == SECT_FLYING) || (destTile == SECT_FLYING)) {
         if (!has_flight(ch)) {
             if (dir != 4) {
                 willfall = true;
@@ -492,7 +499,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         }
     }
 
-    if (((r->sector_type == SECT_WATER_NOSWIM) || (dest->sector_type == SECT_WATER_NOSWIM)) &&
+    if (((curSectorType == SECT_WATER_NOSWIM) || (destTile == SECT_WATER_NOSWIM)) &&
         IS_HUMANOID(ch)) {
         if (IS_KANASSAN(ch) && !has_flight(ch)) {
             act("@CYou swim swiftly.@n", true, ch, nullptr, nullptr, TO_CHAR);
@@ -511,7 +518,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         }
     }
 
-    if (r->room_flags.test(ROOM_SPACE)) {
+    if (ch->getLocationRoomFlag(ROOM_SPACE)) {
         if (!IS_ANDROID(ch)) {
             if (!check_swim(ch)) {
                 return (0);
@@ -519,15 +526,15 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         }
     }
 
-    if (dest->geffect == 6 && !IS_HUMANOID(ch) && IS_NPC(ch)) {
+    if (loc.entity->getGroundEffect(coord) == 6 && !IS_HUMANOID(ch) && IS_NPC(ch)) {
         return (0);
     }
 
-    if (IS_NPC(ch) && dest->room_flags.test(ROOM_NOMOB) && !ch->master) {
+    if (IS_NPC(ch) && loc.entity->getRoomFlag(coord, ROOM_NOMOB) && !ch->master) {
         return (0);
     }
 
-    if (r->getEnvironment(ENV_WATER) >= 100.0 || dest->getEnvironment(ENV_WATER) >= 100.0) {
+    if (ch->getLocationEnvironment(ENV_WATER) >= 100.0 || ent->getEnvironment(coord, ENV_WATER) >= 100.0) {
         if (!has_o2(ch) &&
             ((group_bonus(ch, 2) != 10 && (ch->getCurKI()) < GET_MAX_MANA(ch) / 200) || (group_bonus(ch, 2) == 10 &&
                                                                                          (ch->getCurKI()) <
@@ -556,7 +563,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
     /* move points needed is avg. move loss for src and destination sect type */
     if(!IS_NPC(ch)) {
-        auto gravity = r->getEnvironment(ENV_GRAVITY);
+        auto gravity = ch->getLocationEnvironment(ENV_GRAVITY);
         need_movement = (gravity * gravity) * ch->getBurdenRatio();
     }
 
@@ -605,10 +612,10 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     }
 
     /* Check if the character needs a skill check to go that way. */
-    if (e->dcskill != 0) {
-        if (e->dcmove > roll_skill(ch, e->dcskill)) {
+    if (dest.dcskill != 0) {
+        if (dest.dcmove > roll_skill(ch, dest.dcskill)) {
             send_to_char(ch, "Your skill in %s isn't enough to move that way!\r\n",
-                         spell_info[e->dcskill].name);
+                         spell_info[dest.dcskill].name);
             /* A failed skill check still spends the movement points! */
             if (!ADM_FLAGGED(ch, ADM_WALKANYWHERE) && !IS_NPC(ch) && !AFF_FLAGGED(ch, AFF_FLYING))
                 ch->decCurST(need_movement);
@@ -619,7 +626,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     }
 
 
-    if (dest->room_flags.test(ROOM_TUNNEL) && (num_pc_in_room(dest) >= CONFIG_TUNNEL_SIZE)) {
+    if (ent->getRoomFlag(coord, ROOM_TUNNEL) && (num_pc_in_room(dest) >= CONFIG_TUNNEL_SIZE)) {
         if (CONFIG_TUNNEL_SIZE > 1)
             send_to_char(ch, "There isn't enough room for you to go there!\r\n");
         else
@@ -627,46 +634,49 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         return (0);
     }
     /* Mortals and low level gods cannot enter greater god rooms. */
-    if (dest->room_flags.test(ROOM_GODROOM) &&
+    if (ent->getRoomFlag(coord, ROOM_GODROOM) &&
         GET_ADMLEVEL(ch) < ADMLVL_GRGOD) {
         send_to_char(ch, "You aren't godly enough to use that room!\r\n");
         return (0);
     }
 
     /******* Zone flag checks *******/
+    if(dest.location.type == LocationType::Room) {
+        auto rm = static_cast<room_data*>(ent);
+        auto rvn = rm->vn;
 
-    rm = dest;
+        if (!IS_NPC(ch) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) &&
+            (GET_MAX_HIT(ch) < ZONE_MINLVL(rm->zone)) && (ZONE_MINLVL(rm->zone) > 0)) {
+            send_to_char(ch, "Sorry, you are too low a level to enter this zone.\r\n");
+            return (0);
+        }
 
-    if (!IS_NPC(ch) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) &&
-        (GET_MAX_HIT(ch) < ZONE_MINLVL(rm->zone)) && (ZONE_MINLVL(rm->zone) > 0)) {
-        send_to_char(ch, "Sorry, you are too low a level to enter this zone.\r\n");
-        return (0);
+        if ((GET_ADMLEVEL(ch) < ADMLVL_IMMORT) && (GET_MAX_HIT(ch) > ZONE_MAXLVL(rm->zone)) &&
+            (ZONE_MAXLVL(rm->zone) > 0)) {
+            send_to_char(ch, "Sorry, you are too high a level to enter this zone.\r\n");
+            return (0);
+        }
+
+        if ((GET_ADMLEVEL(ch) < ADMLVL_IMMORT) && ZONE_FLAGGED(rm->zone, ZONE_CLOSED)) {
+            send_to_char(ch, "This zone is currently closed to mortals.\r\n");
+            return (0);
+        }
+
+        if ((GET_ADMLEVEL(ch) >= ADMLVL_IMMORT && GET_ADMLEVEL(ch) < ADMLVL_GRGOD)
+            && ZONE_FLAGGED(rm->zone, ZONE_NOIMMORT)) {
+            send_to_char(ch, "This zone is closed to all.\r\n");
+            return (0);
+        }
+
+        /* No low level immortal scouting */
+        if ((GET_ADMLEVEL(ch) >= ADMLVL_IMMORT && GET_ADMLEVEL(ch) < ADMLVL_GOD) &&
+            !can_edit_zone(ch, rm->zone) && ZONE_FLAGGED(rm->zone, ZONE_QUEST)) {
+            send_to_char(ch, "This is a Quest zone.\r\n");
+            return (0);
+        }
     }
 
-    if ((GET_ADMLEVEL(ch) < ADMLVL_IMMORT) && (GET_MAX_HIT(ch) > ZONE_MAXLVL(rm->zone)) &&
-        (ZONE_MAXLVL(rm->zone) > 0)) {
-        send_to_char(ch, "Sorry, you are too high a level to enter this zone.\r\n");
-        return (0);
-    }
-
-    if ((GET_ADMLEVEL(ch) < ADMLVL_IMMORT) && ZONE_FLAGGED(rm->zone, ZONE_CLOSED)) {
-        send_to_char(ch, "This zone is currently closed to mortals.\r\n");
-        return (0);
-    }
-
-    if ((GET_ADMLEVEL(ch) >= ADMLVL_IMMORT && GET_ADMLEVEL(ch) < ADMLVL_GRGOD)
-        && ZONE_FLAGGED(rm->zone, ZONE_NOIMMORT)) {
-        send_to_char(ch, "This zone is closed to all.\r\n");
-        return (0);
-    }
-
-    /* No low level immortal scouting */
-    if ((GET_ADMLEVEL(ch) >= ADMLVL_IMMORT && GET_ADMLEVEL(ch) < ADMLVL_GOD) &&
-        !can_edit_zone(ch, rm->zone) && ZONE_FLAGGED(rm->zone, ZONE_QUEST)) {
-        send_to_char(ch, "This is a Quest zone.\r\n");
-        return (0);
-    }
-
+    
     /* Now we know we're allowed to go into the room. */
     if (!ADM_FLAGGED(ch, ADM_WALKANYWHERE) && !IS_NPC(ch) && !AFF_FLAGGED(ch, AFF_FLYING)) {
         ch->decCurST(need_movement);
@@ -698,8 +708,6 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         act(buf2, true, ch, nullptr, nullptr, TO_ROOM);
     }
 
-    was_in = IN_ROOM(ch);
-    auto oldRoom = ch->getRoom();
     if (DRAGGING(ch)) {
         act("@C$n@w drags @c$N@w with $m.@n", true, ch, nullptr, DRAGGING(ch), TO_ROOM);
     }
@@ -707,21 +715,22 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         act("@C$n@w carries @c$N@w with $m.@n", true, ch, nullptr, CARRYING(ch), TO_ROOM);
     }
     ch->affected_by.set(AFF_PURSUIT);
-    char_from_room(ch);
-    char_to_room(ch, dest->vn);
-    if ((ch->getRoom()->zone != world[was_in].zone) && !IS_NPC(ch) && !IS_ANDROID(ch)) {
-        send_to_sense(0, "You sense someone", ch);
-        sprintf(buf3, "@D[@GBlip@D]@Y %s\r\n@RSomeone has entered your scouter detection range@n.",
-                add_commas(ch->getPL()).c_str());
-        send_to_scouter(buf3, ch, 0, 0);
-    }
-    /* move them first, then move them back if they aren't allowed to go. */
-    /* see if an entry trigger disallows the move */
-    if (!entry_mtrigger(ch) || !enter_wtrigger(ch->getRoom(), ch, dir)) {
-        char_from_room(ch);
-        char_to_room(ch, was_in);
-        ch->affected_by.reset(AFF_PURSUIT);
-        return 0;
+    ch->setLocation(dest.location);
+
+    if(dest.location.type == LocationType::Room) {
+        if ((ch->getRoom()->zone != world[was_in].zone) && !IS_NPC(ch) && !IS_ANDROID(ch)) {
+            send_to_sense(0, "You sense someone", ch);
+            sprintf(buf3, "@D[@GBlip@D]@Y %s\r\n@RSomeone has entered your scouter detection range@n.",
+                    add_commas(ch->getPL()).c_str());
+            send_to_scouter(buf3, ch, 0, 0);
+        }
+        /* move them first, then move them back if they aren't allowed to go. */
+        /* see if an entry trigger disallows the move */
+        if (!entry_mtrigger(ch) || !enter_wtrigger(ch->getRoom(), ch, dir)) {
+            ch->setLocation(loc);
+            ch->affected_by.reset(AFF_PURSUIT);
+            return 0;
+        }
     }
 
     snprintf(buf2, sizeof(buf2), "%s%s",
@@ -730,9 +739,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
               (dir == DOWN) ? "above" : dirs[rev_dir[dir]]));
     act("$n arrives from $T.", true, ch, nullptr, buf2, TO_ROOM | TO_SNEAKRESIST);
     if (FIGHTING(ch)) {
-        auto to_room = oldRoom->dir_option[dir]->to_room;
-        auto r = &world.at(to_room);
-        if (r->sector_type != SECT_FLYING && r->sector_type != SECT_WATER_NOSWIM && r->geffect == 0) {
+        if (destTile != SECT_FLYING && destTile != SECT_WATER_NOSWIM && ch->getLocationGroundEffect() == 0) {
             roll_pursue(FIGHTING(ch), ch);
         }
         ch->affected_by.reset(AFF_PURSUIT);
@@ -740,11 +747,9 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     if (DRAGGING(ch)) {
         act("@wYou drag @C$N@w with you.@n", true, ch, nullptr, DRAGGING(ch), TO_CHAR);
         act("@C$n@w drags @c$N@w with $m.@n", true, ch, nullptr, DRAGGING(ch), TO_ROOM);
-        char_from_room(DRAGGING(ch));
-        char_to_room(DRAGGING(ch), IN_ROOM(ch));
-        if (SITS(DRAGGING(ch))) {
-            obj_from_room(SITS(DRAGGING(ch)));
-            obj_to_room(SITS(DRAGGING(ch)), IN_ROOM(ch));
+        DRAGGING(ch)->setLocation(ch->getLocation());
+        if (auto sits = SITS(DRAGGING(ch)); sits) {
+            sits->setLocation(ch->getLocation());
         }
         if (!AFF_FLAGGED(DRAGGING(ch), AFF_KNOCKED) && !AFF_FLAGGED(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
             send_to_char(DRAGGING(ch), "You feel your sleeping body being moved.\r\n");
@@ -756,15 +761,14 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     if (CARRYING(ch)) {
         act("@wYou carry @C$N@w with you.@n", true, ch, nullptr, CARRYING(ch), TO_CHAR);
         act("@C$n@w carries @c$N@w with $m.@n", true, ch, nullptr, CARRYING(ch), TO_ROOM);
-        char_from_room(CARRYING(ch));
-        char_to_room(CARRYING(ch), IN_ROOM(ch));
+        CARRYING(ch)->setLocation(ch->getLocation());
         if (!AFF_FLAGGED(CARRYING(ch), AFF_KNOCKED) && !AFF_FLAGGED(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
             send_to_char(CARRYING(ch), "You feel your sleeping body being moved.\r\n");
         }
     }
 
     if (ch->desc != nullptr) {
-        look_at_room(IN_ROOM(ch), ch, 0);
+        look_at_location(ch->getLocation(), ch, 0);
         if (AFF_FLAGGED(ch, AFF_SNEAK) && !IS_NPC(ch) && GET_SKILL(ch, SKILL_MOVE_SILENTLY) &&
             GET_SKILL(ch, SKILL_MOVE_SILENTLY) < rand_number(1, 101)) {
             send_to_char(ch, "@wYou make a noise as you arrive and are no longer sneaking!@n\r\n");
@@ -774,7 +778,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         }
     }
 
-    if (ch->getLocationGroundEffect() == 6 || oldRoom->geffect == 6) {
+    if (ch->getLocationGroundEffect() == 6 || loc.entity->getGroundEffect(loc.getCoordinates()) == 6) {
         if (!IS_DEMON(ch) && !AFF_FLAGGED(ch, AFF_FLYING) && group_bonus(ch, 2) != 14) {
             act("@rYour legs are burned by the lava!@n", true, ch, nullptr, nullptr, TO_CHAR);
             act("@R$n@r's legs are burned by the lava!@n", true, ch, nullptr, nullptr, TO_ROOM);
@@ -812,9 +816,8 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
     entry_memory_mtrigger(ch);
     if (!greet_mtrigger(ch, dir)) {
-        char_from_room(ch);
-        char_to_room(ch, was_in);
-        look_at_room(IN_ROOM(ch), ch, 0);
+        ch->setLocation(loc);
+        look_at_location(ch->getLocation(), ch, 0);
     } else greet_memory_mtrigger(ch);
     if (willfall == true) {
         handle_fall(ch);
@@ -826,7 +829,6 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 }
 
 int perform_move(struct char_data *ch, int dir, int need_specials_check) {
-    room_rnum was_in;
     struct follow_type *k, *next;
 
     if (GRAPPLING(ch) || GRAPPLED(ch)) {
@@ -847,22 +849,32 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
     if (ch == nullptr || dir < 0 || dir >= NUM_OF_DIRS)
         return 0;
 
-    if ((!EXIT(ch, dir) && !buildwalk(ch, dir)) || EXIT(ch, dir)->to_room == NOWHERE ||
-             (EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET) && (EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED)))) {
+    auto loc = ch->getLocation();
+    auto destOp = loc.entity->getDirectionalDestination(loc.getCoordinates(), dir);
+    if(!destOp) {
         send_to_char(ch, "Alas, you cannot go that way...\r\n");
         return 0;
     }
 
-    if (EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED)) {
-        if (EXIT(ch, dir)->keyword)
-            send_to_char(ch, "The %s seems to be closed.\r\n", fname(EXIT(ch, dir)->keyword));
-        else
-            send_to_char(ch, "It seems to be closed.\r\n");
+    auto dest = destOp.value();
+    auto coord = dest.location.getCoordinates();
+    auto ent = dest.location.entity;
+
+    if(!ent) {
+        send_to_char(ch, "Alas, you cannot go that way...\r\n");
         return 0;
     }
 
-    if (GET_ROOM_VNUM(EXIT(ch, dir)->to_room) == 0 || GET_ROOM_VNUM(EXIT(ch, dir)->to_room) == 1) {
-        send_to_char(ch, "Report this direction, it is illegal.\r\n");
+    if ((dest.exit_flags & (EX_SECRET | EX_CLOSED))) {
+        send_to_char(ch, "Alas, you cannot go that way...\r\n");
+        return 0;
+    }
+
+    if (dest.exit_flags & EX_CLOSED) {
+        if (!dest.keyword.empty())
+            send_to_char(ch, "The %s seems to be closed.\r\n", dest.keyword.c_str());
+        else
+            send_to_char(ch, "It seems to be closed.\r\n");
         return 0;
     }
 
@@ -879,19 +891,19 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
     if (!ch->followers)
         return do_simple_move(ch, dir, need_specials_check);
 
-    was_in = IN_ROOM(ch);
+    auto was_in = ch->getLocation();
     if (!do_simple_move(ch, dir, need_specials_check))
         return 0;
 
     for (k = ch->followers; k; k = next) {
         next = k->next;
-        if ((IN_ROOM(k->follower) == was_in) &&
+        if ((k->follower->getLocation() == was_in) &&
             (GET_POS(k->follower) >= POS_STANDING) &&
             (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
              (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k->follower, AFF_GROUP)))) {
             act("You follow $N.\r\n", false, k->follower, nullptr, ch, TO_CHAR);
             perform_move(k->follower, dir, 1);
-        } else if ((IN_ROOM(k->follower) == was_in) &&
+        } else if ((k->follower->getLocation() == was_in) &&
                    (GET_POS(k->follower) >= POS_STANDING) &&
                    (AFF_FLAGGED(ch, AFF_ZANZOKEN) && AFF_FLAGGED(k->follower, AFF_ZANZOKEN)) &&
                    (!AFF_FLAGGED(ch, AFF_GROUP) || !AFF_FLAGGED(k->follower, AFF_GROUP))) {
@@ -903,7 +915,7 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
                 ch, TO_VICT);
             for(auto c : {ch, k->follower}) c->affected_by.reset(AFF_ZANZOKEN);
             perform_move(k->follower, dir, 1);
-        } else if ((IN_ROOM(k->follower) == was_in) &&
+        } else if ((k->follower->getLocation() == was_in) &&
                    (GET_POS(k->follower) >= POS_STANDING) &&
                    (AFF_FLAGGED(ch, AFF_ZANZOKEN) && !AFF_FLAGGED(k->follower, AFF_ZANZOKEN))) {
             act("You try to follow $N, but $E disappears in a flash of movement!\r\n", false, k->follower, nullptr,
@@ -1305,18 +1317,18 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                 if ((obj) && GET_OBJ_TYPE(obj) == ITEM_HATCH && (vehicle)) {
                     OPEN_DOOR(IN_ROOM(ch), vehicle, door);
                     if (GET_OBJ_VNUM(obj) > 19199) {
-                        send_to_room(IN_ROOM(ch),
+                        send_to_location(ch,
                                      "@wThe ship hatch opens slowly and settles onto the ground outside.\r\n");
-                        send_to_room(IN_ROOM(vehicle),
+                        send_to_location(vehicle,
                                      "@wThe ship hatch opens slowly and settles onto the ground.\r\n");
                         if (vehicle->getLocationRoomFlag(ROOM_SPACE)) {
-                            send_to_room(IN_ROOM(ch),
+                            send_to_location(ch,
                                          "@wA great vortex forms as air begins to get sucked out into the void!\r\n");
                         }
                     } else {
                         act("@wYou open @c$p@w.", true, ch, obj, 0, TO_CHAR);
                         act("@C$n@w opens @c$p@w.", true, ch, obj, 0, TO_ROOM);
-                        send_to_room(IN_ROOM(vehicle), "@wThe door to %s@w is opened from the other side.\r\n",
+                        send_to_location(vehicle, "@wThe door to %s@w is opened from the other side.\r\n",
                                      vehicle->short_description);
                     }
                     vehicle = nullptr;
@@ -1327,14 +1339,14 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     char_to_room(ch, num);
                     if (GET_OBJ_VNUM(obj) > 19199) {
                         send_to_room(num, "@wThe ship hatch opens slowly and settles onto the ground.\r\n");
-                        send_to_room(IN_ROOM(hatch), "@wThe ship hatch opens slowly.\r\n");
+                        send_to_location(hatch, "@wThe ship hatch opens slowly.\r\n");
                         if (obj->getLocationRoomFlag(ROOM_SPACE)) {
                             send_to_room(num, "@wThe air starts getting sucked out into space as the hatch opens!\r\n");
                         }
                     } else {
                         act("@wYou open @c$p@w.", true, ch, obj, 0, TO_CHAR);
                         act("@C$n@w opens @c$p@w.", true, ch, obj, 0, TO_ROOM);
-                        send_to_room(IN_ROOM(hatch), "@wThe door is opened from the other side.\r\n");
+                        send_to_location(hatch, "@wThe door is opened from the other side.\r\n");
                     }
                     hatch = nullptr;
                 }
@@ -1356,17 +1368,17 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                 if ((obj) && GET_OBJ_TYPE(obj) == ITEM_HATCH && (vehicle)) {
                     CLOSE_DOOR(IN_ROOM(ch), vehicle, door);
                     if (GET_OBJ_VNUM(obj) > 19199) {
-                        send_to_room(IN_ROOM(ch),
+                        send_to_location(ch,
                                      "@wThe ship hatch slowly closes, sealing the ship from the outside.\r\n");
-                        send_to_room(IN_ROOM(vehicle), "@wThe ship hatch slowly closes, sealing the ship.\r\n");
+                        send_to_location(vehicle, "@wThe ship hatch slowly closes, sealing the ship.\r\n");
                         if (vehicle->getLocationRoomFlag(ROOM_SPACE)) {
-                            send_to_room(IN_ROOM(ch),
+                            send_to_location(ch,
                                          "@wThe air stops getting sucked out into space as the hatch seals!\r\n");
                         }
                     } else {
                         act("@wYou close @c$p@w.", true, ch, obj, 0, TO_CHAR);
                         act("@C$n@w closes @c$p@w.", true, ch, obj, 0, TO_ROOM);
-                        send_to_room(IN_ROOM(vehicle), "@wThe door to %s@w is closed from the other side.\r\n",
+                        send_to_location(vehicle, "@wThe door to %s@w is closed from the other side.\r\n",
                                      vehicle->short_description);
                     }
                     vehicle = NULL;
@@ -1377,7 +1389,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     char_to_room(ch, num);
                     if (GET_OBJ_VNUM(obj) > 19199) {
                         send_to_room(num, "@wThe ship hatch slowly closes, sealing the ship.\r\n");
-                        send_to_room(IN_ROOM(hatch),
+                        send_to_location(hatch,
                                      "@wThe ship hatch slowly closes, sealing the ship from the outside.\r\n");
                         if (obj->getLocationRoomFlag(ROOM_SPACE)) {
                             send_to_room(num, "@wAir stops getting sucked out into space as the hatch seals!\r\n");
@@ -1385,7 +1397,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door, int
                     } else {
                         act("@wYou close @c$p@w.", true, ch, obj, 0, TO_CHAR);
                         act("@C$n@w closes @c$p@w.", true, ch, obj, 0, TO_ROOM);
-                        send_to_room(IN_ROOM(hatch), "@wThe door to %s@w is closed from the other side.\r\n",
+                        send_to_location(hatch, "@wThe door to %s@w is closed from the other side.\r\n",
                                      hatch->short_description);
                     }
                     hatch = NULL;
@@ -1636,7 +1648,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj, int need_
 
     /* charmed? */
     if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master &&
-        IN_ROOM(ch) == IN_ROOM(ch->master)) {
+        ch->getLocation() == ch->master->getLocation()) {
         send_to_char(ch, "The thought of leaving your master makes you weep.\r\n");
         act("$n bursts into tears.", false, ch, nullptr, nullptr, TO_ROOM);
         return (0);
@@ -1698,38 +1710,34 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj, int need_
         act("$n arrives from $p.", false, ch, obj, nullptr, TO_ROOM | TO_SNEAKRESIST);
     else
         act("$n arrives from outside.", false, ch, nullptr, nullptr, TO_ROOM | TO_SNEAKRESIST);
-    if (DRAGGING(ch)) {
-        act("@wYou drag @C$N@w with you.@n", true, ch, nullptr, DRAGGING(ch), TO_CHAR);
-        act("@C$n@w drags @c$N@w with $m.@n", true, ch, nullptr, DRAGGING(ch), TO_ROOM);
-        if (!AFF_FLAGGED(DRAGGING(ch), AFF_KNOCKED) && !AFF_FLAGGED(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
-            send_to_char(DRAGGING(ch), "You feel your sleeping body being moved.\r\n");
-            if (IS_NPC(DRAGGING(ch)) && !FIGHTING(DRAGGING(ch))) {
-                set_fighting(DRAGGING(ch), ch);
+    if (auto dragging = DRAGGING(ch); dragging) {
+        act("@wYou drag @C$N@w with you.@n", true, ch, nullptr, dragging, TO_CHAR);
+        act("@C$n@w drags @c$N@w with $m.@n", true, ch, nullptr, dragging, TO_ROOM);
+        if (!AFF_FLAGGED(dragging, AFF_KNOCKED) && !AFF_FLAGGED(dragging, AFF_SLEEP) && rand_number(1, 3)) {
+            send_to_char(dragging, "You feel your sleeping body being moved.\r\n");
+            if (IS_NPC(dragging) && !FIGHTING(dragging)) {
+                set_fighting(dragging, ch);
             }
         }
-        char_from_room(DRAGGING(ch));
-        char_to_room(DRAGGING(ch), IN_ROOM(ch));
-        if (SITS(DRAGGING(ch))) {
-            obj_from_room(SITS(DRAGGING(ch)));
-            obj_to_room(SITS(DRAGGING(ch)), IN_ROOM(ch));
+        dragging->setLocation((ch->getLocation()));
+        if (auto sits = SITS(dragging); sits) {
+            sits->setLocation(ch->getLocation());
         }
     }
-    if (CARRYING(ch)) {
-        act("@wYou carry @C$N@w with you.@n", true, ch, nullptr, CARRYING(ch), TO_CHAR);
-        act("@C$n@w carries @c$N@w with $m.@n", true, ch, nullptr, CARRYING(ch), TO_ROOM);
-        if (!AFF_FLAGGED(CARRYING(ch), AFF_KNOCKED) && !AFF_FLAGGED(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
-            send_to_char(CARRYING(ch), "You feel your sleeping body being moved.\r\n");
+    if (auto carry = CARRYING(ch); carry) {
+        act("@wYou carry @C$N@w with you.@n", true, ch, nullptr, carry, TO_CHAR);
+        act("@C$n@w carries @c$N@w with $m.@n", true, ch, nullptr, carry, TO_ROOM);
+        if (!AFF_FLAGGED(carry, AFF_KNOCKED) && !AFF_FLAGGED(carry, AFF_SLEEP) && rand_number(1, 3)) {
+            send_to_char(carry, "You feel your sleeping body being moved.\r\n");
         }
-        char_from_room(CARRYING(ch));
-        char_to_room(CARRYING(ch), IN_ROOM(ch));
-        if (SITS(CARRYING(ch))) {
-            obj_from_room(SITS(CARRYING(ch)));
-            obj_to_room(SITS(CARRYING(ch)), IN_ROOM(ch));
+        carry->setLocation(ch->getLocation());
+        if (auto sits = SITS(carry); sits) {
+            sits->setLocation(ch->getLocation());
         }
     }
 
     if (ch->desc != nullptr)
-        look_at_room(IN_ROOM(ch), ch, 0);
+        look_at_location(ch->getLocation(), ch, 0);
 
     if (ch->getLocationRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
         log_death_trap(ch);
@@ -1745,7 +1753,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj, int need_
 }
 
 static int perform_enter_obj(struct char_data *ch, struct obj_data *obj, int need_specials_check) {
-    room_rnum was_in = IN_ROOM(ch);
+    auto was_in = ch->getLocation();
     int could_move = false;
     struct follow_type *k;
 
@@ -1777,7 +1785,7 @@ static int perform_enter_obj(struct char_data *ch, struct obj_data *obj, int nee
             }
             if ((could_move = do_simple_enter(ch, obj, need_specials_check)))
                 for (k = ch->followers; k; k = k->next)
-                    if ((IN_ROOM(k->follower) == was_in) &&
+                    if ((k->follower->getLocation() == was_in) &&
                         (GET_POS(k->follower) >= POS_STANDING)) {
                         act("You follow $N.\r\n", false, k->follower, nullptr, ch, TO_CHAR);
                         perform_enter_obj(k->follower, obj, 1);
@@ -1876,7 +1884,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj, int need_
 
     /* charmed? */
     if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master &&
-        IN_ROOM(ch) == IN_ROOM(ch->master)) {
+        ch->getLocation() == ch->master->getLocation()) {
         send_to_char(ch, "The thought of leaving your master makes you weep.\r\n");
         act("$n bursts into tears.", false, ch, nullptr, nullptr, TO_ROOM);
         return (0);
@@ -1933,11 +1941,9 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj, int need_
     if (DRAGGING(ch)) {
         act("@wYou drag @C$N@w with you.@n", true, ch, nullptr, DRAGGING(ch), TO_CHAR);
         act("@C$n@w drags @c$N@w with $m.@n", true, ch, nullptr, DRAGGING(ch), TO_ROOM);
-        char_from_room(DRAGGING(ch));
-        char_to_room(DRAGGING(ch), IN_ROOM(ch));
+        DRAGGING(ch)->setLocation(ch->getLocation());
         if (SITS(DRAGGING(ch))) {
-            obj_from_room(SITS(DRAGGING(ch)));
-            obj_to_room(SITS(DRAGGING(ch)), IN_ROOM(ch));
+            SITS(DRAGGING(ch))->setLocation(ch->getLocation());
         }
         if (!AFF_FLAGGED(DRAGGING(ch), AFF_KNOCKED) && !AFF_FLAGGED(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
             send_to_char(DRAGGING(ch), "You feel your sleeping body being moved.\r\n");
@@ -1949,11 +1955,9 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj, int need_
     if (CARRYING(ch)) {
         act("@wYou carry @C$N@w with you.@n", true, ch, nullptr, CARRYING(ch), TO_CHAR);
         act("@C$n@w carries @c$N@w with $m.@n", true, ch, nullptr, CARRYING(ch), TO_ROOM);
-        char_from_room(CARRYING(ch));
-        char_to_room(CARRYING(ch), IN_ROOM(ch));
+        CARRYING(ch)->setLocation(ch->getLocation());
         if (SITS(CARRYING(ch))) {
-            obj_from_room(SITS(CARRYING(ch)));
-            obj_to_room(SITS(CARRYING(ch)), IN_ROOM(ch));
+            SITS(CARRYING(ch))->setLocation(ch->getLocation());
         }
         if (!AFF_FLAGGED(CARRYING(ch), AFF_KNOCKED) && !AFF_FLAGGED(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
             send_to_char(CARRYING(ch), "You feel your sleeping body being moved.\r\n");
@@ -1968,7 +1972,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj, int need_
 
     if (ch->desc != nullptr) {
         act(obj->look_description, true, ch, obj, nullptr, TO_CHAR);
-        look_at_room(IN_ROOM(ch), ch, 0);
+        look_at_location(ch->getLocation(), ch, 0);
     }
 
     if (ch->getLocationRoomFlag(ROOM_DEATH) && !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
@@ -2062,7 +2066,7 @@ static void handle_fall(struct char_data *ch) {
             ch->decCurHealth(ch->getMaxPL() / 20, 1);
 
             act("@rYou slam into the ground!@n", true, ch, nullptr, nullptr, TO_CHAR);
-            look_at_room(IN_ROOM(ch), ch, 0);
+            look_at_location(ch->getLocation(), ch, 0);
         } else {
             act("@r$n pummets down toward the ground below!@n", true, ch, nullptr, nullptr, TO_ROOM);
         }

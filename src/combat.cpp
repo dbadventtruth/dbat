@@ -284,7 +284,7 @@ int handle_defender(struct char_data *vict, struct char_data *ch) {
         struct char_data *def = GET_DEFENDER(vict);
         int64_t defnum = (GET_SPEEDI(def) * 0.01) * rand_number(-10, 10);
         int64_t chnum = (GET_SPEEDI(ch) * 0.01) * rand_number(-5, 10);
-        if (GET_SPEEDI(def) + defnum > GET_SPEEDI(ch) + chnum && IN_ROOM(def) == IN_ROOM(vict) &&
+        if (GET_SPEEDI(def) + defnum > GET_SPEEDI(ch) + chnum && def->getLocation() == vict->getLocation() &&
             GET_POS(def) > POS_SITTING) {
             act("@YYou move to and manage to intercept the attack aimed at @y$N@Y!@n", true, def, nullptr, vict,
                 TO_CHAR);
@@ -293,7 +293,7 @@ int handle_defender(struct char_data *vict, struct char_data *ch) {
             act("@y$n@Y moves to and manages to intercept the attack aimed at @y$N@Y!@n", true, def, nullptr, vict,
                 TO_NOTVICT);
             result = true;
-        } else if (IN_ROOM(def) == IN_ROOM(vict) && GET_POS(def) > POS_SITTING) {
+        } else if (def->getLocation() == vict->getLocation() && GET_POS(def) > POS_SITTING) {
             act("@YYou move to intercept the attack aimed at @y$N@Y, but just not fast enough!@n", true, def, nullptr,
                 vict, TO_CHAR);
             act("@y$n@Y moves to intercept the attack aimed at YOU, but $e wasn't fast enough!@n", true, def, nullptr,
@@ -341,8 +341,7 @@ void handle_disarm(struct char_data *ch, struct char_data *vict) {
             act("@YYou manage to disarm @R$n@Y! The @w$p@Y falls from $s grasp!@n", true, ch, obj, vict, TO_VICT);
             perform_remove(ch, 16);
             if (GET_OBJ_VNUM(obj) != 20098) {
-                obj_from_char(obj);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
             }
         } else if (GET_EQ(ch, WEAR_WIELD1) && handled == true) {
             obj = GET_EQ(ch, WEAR_WIELD1);
@@ -367,8 +366,7 @@ void handle_disarm(struct char_data *ch, struct char_data *vict) {
             act("@YYou manage to disarm @R$n@Y! The @w$p@Y falls from $s grasp!@n", true, ch, obj, vict, TO_VICT);
             perform_remove(ch, 17);
             if (GET_OBJ_VNUM(obj) != 20098) {
-                obj_from_char(obj);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
             }
         }
     }
@@ -1696,7 +1694,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
         } else if (KIDIST(k) <= 0) {
             /* Genki Dama Section */
             if (KITYPE(k) == 497) {
-                if (IN_ROOM(TARGET(k)) == IN_ROOM(k)) {
+                if (TARGET(k)->getLocation() == k->getLocation()) {
                     ch = USER(k);
                     if (ch->getLocation() == k->getLocation()) {
                         bonus = 2;
@@ -1706,7 +1704,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         true, TARGET(k), nullptr, nullptr, TO_CHAR);
                     act("@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends on @C$n@W! It completely obscures $m from view as it crushes into $s body! It appears to be facing some resistance from $m!@n",
                         true, TARGET(k), nullptr, nullptr, TO_ROOM);
-                    send_to_room(IN_ROOM(k), "\r\n");
+                    send_to_location(k, "\r\n");
                     if (GET_HIT(TARGET(k)) * bonus < KICHARGE(k) * 5) {
 
                         act("@WYour strength is no match for the power of the attack! It slowly grinds into you before exploding into a massive blast!@n",
@@ -1789,7 +1787,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                                 continue;
                             }
                         }
-                        world.at(IN_ROOM(k)).setDamage(100);
+                        k->setLocationDamage(100);
                         area_explosion(ch);
 
                         extract_obj(k);
@@ -1805,10 +1803,10 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         extract_obj(k);
                         continue;
                     }
-                } else if (IN_ROOM(TARGET(k)) != IN_ROOM(k)) {
+                } else if (TARGET(k)->getLocation() != k->getLocation()) {
                     ch = USER(k);
 
-                    send_to_room(IN_ROOM(k),
+                    send_to_location(k,
                                  "@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends on the area! It slowly burns into the ground before exploding magnificently!@n\r\n");
 
 
@@ -1860,7 +1858,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                             continue;
                         }
                     }
-                    world.at(IN_ROOM(k)).setDamage(100);
+                    k->setLocationDamage(100);
                     area_explosion(ch);
                     extract_obj(k);
                     continue;
@@ -1869,7 +1867,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
             }
             /* Genocide Section */
             if (KITYPE(k) == 498) {
-                if (IN_ROOM(TARGET(k)) == IN_ROOM(k)) {
+                if (TARGET(k)->getLocation() == k->getLocation()) {
                     ch = USER(k);
                     if (ch->getLocation() == k->getLocation()) {
                         bonus = 2;
@@ -1879,7 +1877,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         true, TARGET(k), nullptr, nullptr, TO_CHAR);
                     act("@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on @C$n@W! It completely obscures $m from view as it crushes into $s body! It appears to be facing some resistance from $m!@n",
                         true, TARGET(k), nullptr, nullptr, TO_ROOM);
-                    send_to_room(IN_ROOM(k), "\r\n");
+                    send_to_location(k, "\r\n");
                     if (GET_HIT(TARGET(k)) * bonus < KICHARGE(k) * 10) {
 
                         act("@WYour strength is no match for the power of the attack! It slowly grinds into you before exploding into a massive blast!@n",
@@ -1961,7 +1959,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                                 continue;
                             }
                         }
-                        world.at(IN_ROOM(k)).setDamage(100);
+                        k->setLocationDamage(100);
                         area_explosion(ch);
                         extract_obj(k);
                         continue;
@@ -1976,10 +1974,10 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                         extract_obj(k);
                         continue;
                     }
-                } else if (IN_ROOM(TARGET(k)) != IN_ROOM(k)) {
+                } else if (TARGET(k)->getLocation() != k->getLocation()) {
                     ch = USER(k);
 
-                    send_to_room(IN_ROOM(k),
+                    send_to_location(k,
                                  "@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on the area! It slowly burns into the ground before exploding magnificantly!@n\r\n");
 
 
@@ -2030,7 +2028,7 @@ void huge_update(uint64_t heartPulse, double deltaTime) {
                             continue;
                         }
                     }
-                    world.at(IN_ROOM(k)).setDamage(100);
+                    k->setLocationDamage(100);
                     area_explosion(ch);
                     extract_obj(k);
                     continue;
@@ -2068,16 +2066,15 @@ void homing_update(uint64_t heartPulse, double deltaTime) {
 
         if (GET_OBJ_VNUM(k) == 80) { // Tsuihidan
             if (KICHARGE(k) <= 0) {
-                send_to_room(IN_ROOM(k), "%s has lost all its energy and disappears.\r\n",
+                send_to_location(k, "%s has lost all its energy and disappears.\r\n",
                              k->short_description);
                 extract_obj(k);
                 continue;
             }
-            if (IN_ROOM(k) != IN_ROOM(vict)) {
+            if (k->getLocation() != vict->getLocation()) {
                 act("@wThe $p@w pursues after you!@n", true, vict, k, nullptr, TO_CHAR);
                 act("@wThe $p@W pursues after @C$n@w!@n", true, vict, k, nullptr, TO_ROOM);
-                obj_from_room(k);
-                obj_to_room(k, IN_ROOM(vict));
+                k->setLocation(vict->getLocation());
                 continue;
             } else {
                 act("@RThe $p@R makes a tight turn and rockets straight for you!@n", true, vict, k, nullptr,
@@ -2100,7 +2097,7 @@ void homing_update(uint64_t heartPulse, double deltaTime) {
                         true, vict, k, nullptr, TO_ROOM);
                     KICHARGE(k) -= KICHARGE(k) * 0.1;
                     if (KICHARGE(k) <= 0) {
-                        send_to_room(IN_ROOM(k), "%s has lost all its energy and disappears.\r\n",
+                        send_to_location(k, "%s has lost all its energy and disappears.\r\n",
                                      k->short_description);
                         extract_obj(k);
                     }
@@ -2110,8 +2107,8 @@ void homing_update(uint64_t heartPulse, double deltaTime) {
                         true, vict, k, nullptr, TO_CHAR);
                     act("@C$n @wmanages to deflect the $p@w sending it flying away into the nearby surroundings!@n",
                         true, vict, k, nullptr, TO_ROOM);
-                    if (ROOM_DAMAGE(IN_ROOM(vict)) <= 95) {
-                        world.at(IN_ROOM(vict)).modDamage(5);
+                    if (vict->getLocationDamage() <= 95) {
+                        vict->modLocationDamage(5);
                     }
                     extract_obj(k);
                     continue;
@@ -2119,7 +2116,7 @@ void homing_update(uint64_t heartPulse, double deltaTime) {
             }
             continue;
         } else if (GET_OBJ_VNUM(k) == 81 || GET_OBJ_VNUM(k) == 84) { // Spirit Ball
-            if (IN_ROOM(k) != IN_ROOM(vict)) {
+            if (k->getLocation() != vict->getLocation()) {
                 act("@wYou lose sight of @C$N@W and let $p@W fly away!@n", true, ch, k, vict, TO_CHAR);
                 act("@wYou manage to escape @C$n's@W $p@W!@n", true, ch, k, vict, TO_VICT);
                 act("@C$n@W loses sight of @c$N@W and lets $s $p@W fly away!@n", true, ch, k, vict, TO_NOTVICT);
@@ -2214,7 +2211,7 @@ void homing_update(uint64_t heartPulse, double deltaTime) {
                         true, vict, k, nullptr, TO_ROOM);
                     KICHARGE(k) -= KICHARGE(k) / 10;
                     if (KICHARGE(k) <= 0) {
-                        send_to_room(IN_ROOM(k), "%s has lost all its energy and disappears.\r\n",
+                        send_to_location(k, "%s has lost all its energy and disappears.\r\n",
                                      k->short_description);
                         extract_obj(k);
                     }
@@ -2224,8 +2221,8 @@ void homing_update(uint64_t heartPulse, double deltaTime) {
                         true, vict, k, nullptr, TO_CHAR);
                     act("@C$n @wmanages to deflect the $p@w sending it flying away into the nearby surroundings!@n",
                         true, vict, k, nullptr, TO_ROOM);
-                    if (ROOM_DAMAGE(IN_ROOM(vict)) <= 95) {
-                        world.at(IN_ROOM(vict)).modDamage(5);
+                    if (vict->getLocationDamage() <= 95) {
+                        vict->modLocationDamage(5);
                     }
                     extract_obj(k);
                     continue;
@@ -2728,8 +2725,8 @@ parry_ki(double attperc, struct char_data *ch, struct char_data *vict, char snam
                     break;
             }
         }
-        if (ROOM_DAMAGE(IN_ROOM(ch)) <= 95) {
-            world.at(IN_ROOM(ch)).modDamage(5);
+        if (ch->getLocationDamage() <= 95) {
+            ch->modLocationDamage(5);
         }
         area_explosion(ch);
         return;
@@ -2852,8 +2849,8 @@ void dodge_ki(struct char_data *ch, struct char_data *vict, int type, int type2,
                     break;
             }
         }
-        if (ROOM_DAMAGE(IN_ROOM(ch)) <= 95) {
-            world.at(IN_ROOM(ch)).modDamage(5);
+        if (ch->getLocationDamage() <= 95) {
+            ch->modLocationDamage(5);
         }
         area_explosion(ch);
     }
@@ -2877,7 +2874,7 @@ void dodge_ki(struct char_data *ch, struct char_data *vict, int type, int type2,
             }
 
             obj = read_object(num, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
 
             TARGET(obj) = vict;
             KICHARGE(obj) = damtype(ch, type2, skill, .2);
@@ -2922,7 +2919,7 @@ void dodge_ki(struct char_data *ch, struct char_data *vict, int type, int type2,
         }
 
         obj = read_object(num, VIRTUAL);
-        obj_to_room(obj, IN_ROOM(ch));
+        obj->setLocation(ch->getLocation());
 
         TARGET(obj) = vict;
         KICHARGE(obj) = damtype(ch, type2, skill, .3);
@@ -4285,7 +4282,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
         }
         if (AFF_FLAGGED(ch, AFF_POTENT)) {
             dmg += dmg * 0.3;
-            send_to_room(IN_ROOM(ch), "@wThere is a bright flash of @Yyellow@w light in the wake of the attack!@n\r\n");
+            send_to_location(ch, "@wThere is a bright flash of @Yyellow@w light in the wake of the attack!@n\r\n");
         }
     }
 
@@ -4294,7 +4291,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
         if (dmg > 0) {
             if (ch->getCurKI() - infuse_cost) {
                 ch->decCurKI(infuse_cost);
-                send_to_room(IN_ROOM(ch), "@CA swirl of ki explodes from the attack!@n\r\n");
+                send_to_location(ch, "@CA swirl of ki explodes from the attack!@n\r\n");
             } else {
                 act("@wYou can no longer infuse ki into your attacks!@n", true, ch, nullptr, nullptr, TO_CHAR);
                 act("@c$n@w can no longer infuse ki into $s attacks!@n", true, ch, nullptr, nullptr, TO_ROOM);
@@ -4736,8 +4733,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
                 struct obj_data *rew, *next_rew;
                 int founded = 0;
                 for (auto rew : IterRef(vict->getContents())) {
-                    obj_from_char(rew);
-                    obj_to_room(rew, IN_ROOM(vict));
+                    rew->setLocation(vict->getLocation());
                     founded = 1;
                 }
                 if (founded == 1) {
@@ -4775,11 +4771,11 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
                 send_to_all("@R%s@r manages to defeat @R%s@r in the Arena!@n\r\n", GET_NAME(ch), GET_NAME(vict));
                 char_from_room(ch);
                 char_to_room(ch, real_room(17875));
-                look_at_room(IN_ROOM(ch), ch, 0);
+                look_at_location(ch->getLocation(), ch, 0);
                 char_from_room(vict);
                 char_to_room(vict, real_room(17875));
                 vict->setCurHealth(1);
-                look_at_room(IN_ROOM(vict), vict, 0);
+                look_at_location(vict->getLocation(), vict, 0);
                 if (FIGHTING(vict)) {
                     stop_fighting(vict);
                 }
@@ -6000,7 +5996,7 @@ void handle_spiral(struct char_data *ch, struct char_data *vict, int skill, int 
                         nullptr, vict, TO_VICT);
                     act("@C$N@W manages to dodge @c$n's@W Spiral Comet blast, letting it slam into the surroundings!@n",
                         false, ch, nullptr, vict, TO_NOTVICT);
-                    send_to_room(IN_ROOM(vict), "@wA bright explosion erupts from the impact!\r\n");
+                    send_to_location(vict, "@wA bright explosion erupts from the impact!\r\n");
 
                     dodge_ki(ch, vict, 0, 45, skill, SKILL_SPIRAL); /* Effects on the room from dodging a ki attack
                                Num 1: [ 0 for non-homing, 1 for homing ki attacks, 2 for guided ]

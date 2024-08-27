@@ -284,7 +284,7 @@ static void generate_multiform(struct char_data *ch, int count) {
         ch->clones.insert(clone->ref());
 
         GET_ORIGINAL(clone) = ch;
-        char_to_room(clone, IN_ROOM(ch));
+        clone->setLocation(ch->getLocation());
         add_follower(clone, ch);
     }
 }
@@ -1644,7 +1644,7 @@ static void catch_fish(struct char_data *ch, int quality) {
     GET_OBJ_WEIGHT(fish) += weight;
 
     GET_OBJ_VAL(pole, 0) = 0;
-    obj_to_room(fish, IN_ROOM(ch));
+    fish->setLocation(ch->getLocation());
     do_get(ch, "fish", 0, 0);
     send_to_char(ch, "@D[@cFish Weight@D: @G%" I64T "@D]@n\r\n", GET_OBJ_WEIGHT(fish));
     ch->playerFlags.reset(PLR_FISHING);
@@ -2399,17 +2399,17 @@ ACMD(do_ashcloud) {
     act("@r$n@R takes a handful of ashes and $e breathes ki infused flames at the pile of ashes! The flames and ashes mix and fill the surrounding area with a hot burning ash!@n",
         true, ch, nullptr, nullptr, TO_ROOM);
     ashcloud = read_object(1306, VIRTUAL);
-    obj_to_room(ashcloud, IN_ROOM(ch));
+    ashcloud->setLocation(ch->getLocation());
     extract_obj(ash);
     GET_OBJ_TIMER(ashcloud) = otimer;
     GET_OBJ_COST(ashcloud) = ocost;
 
     switch(level) {
         case 3:
-            send_to_room(IN_ROOM(ch), "@WThe ashes ripple with an intense aftershock of power.@n\r\n");
+            send_to_location(ch, "@WThe ashes ripple with an intense aftershock of power.@n\r\n");
             break;
         case 2:
-            send_to_room(IN_ROOM(ch), "@WThe ashes ripple with a strong aftershock of power.@n\r\n");
+            send_to_location(ch, "@WThe ashes ripple with a strong aftershock of power.@n\r\n");
             break;
         default:
             break;
@@ -2888,7 +2888,7 @@ ACMD(do_hydromancy) {
         else {
             send_to_char(ch, "You are unable to hold it and so let it go at your feet.\r\n");
             act("@C$n@w drops an ice spike.@n", true, ch, nullptr, nullptr, TO_ROOM);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
         }
         improve_skill(ch, SKILL_STYLE, 1);
         GET_COOLDOWN(ch) = 10;
@@ -3369,8 +3369,7 @@ ACMD(do_bury) {
                 act("@C$n@Y starts digging in a spot of soft sand. Once $e has an appropriately sized hole $e drops @G$p@Y in and then covers it.@n",
                     true, ch, obj, nullptr, TO_ROOM);
             }
-            obj_from_char(obj);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
             obj->extra_flags.set(ITEM_BURIED);
         }
     } else if (!strcasecmp(arg, "uncover")) {
@@ -3413,81 +3412,88 @@ ACMD(do_arena) {
         send_to_char(ch,
                      "Syntax: arena (fighter number of participant)\r\n        arena look\r\n        arena scan\r\n        arena stop\r\n");
         return;
-    } else if (!strcasecmp(arg, "stop")) {
+    }
+    
+    if (!strcasecmp(arg, "stop")) {
         send_to_char(ch, "You stop viewing what's going on in the arena.\r\n");
         ch->pref.reset(PRF_ARENAWATCH);
         ARENA_IDNUM(ch) = -1;
         return;
-    } else if (ch->getRoomVnum() != 17875) {
+    }
+    
+    if (ch->getRoomVnum() != 17875) {
         send_to_char(ch, "You are not close enough to the arena floor to see it.\r\n");
         return;
-    } else if (!strcasecmp(arg, "look")) {
+    }
+    
+    if (!strcasecmp(arg, "look")) {
         if (!PRF_FLAGGED(ch, PRF_ARENAWATCH)) {
             send_to_char(ch, "You are not even watching anyone in the arena.\r\n");
-            return;
         } else if (arena_watch(ch) != NOWHERE) {
             look_at_room(real_room(arena_watch(ch)), ch, 0);
         }
-    } else if (!strcasecmp(arg, "scan")) {
-        if (ch->getRoomVnum() == 17875) {
-            int found = false;
-            struct descriptor_data *d;
-
-            send_to_char(ch, "@D---@CFighters in the arena@D---@n\r\n");
-            for (d = descriptor_list; d; d = d->next) {
-                if (STATE(d) != CON_PLAYING)
-                    continue;
-
-                if (IN_ARENA(d->character)) {
-                    char buf[MAX_INPUT_LENGTH];
-                    sprintf(buf, "@YFighter Number@D: @w%d, $N.@n", GET_IDNUM(d->character));
-                    act(buf, true, ch, nullptr, d->character, TO_CHAR);
-                    found = true;
-                }
-            }
-
-            if (found == false) {
-                send_to_char(ch, "@wNone.@n\r\n");
-            }
-        } else {
-            send_to_char(ch, "You are not close enough to see what fighters are in the arena.\r\n");
+        return;
+    }
+    
+    if (!strcasecmp(arg, "scan")) {
+        if(ch->getRoomVnum() != 17875) {
+            send_to_char(ch, "You are not close enough to the arena floor to see it.\r\n");
             return;
         }
+
+        int found = false;
+        struct descriptor_data *d;
+
+        send_to_char(ch, "@D---@CFighters in the arena@D---@n\r\n");
+        for (d = descriptor_list; d; d = d->next) {
+            if (STATE(d) != CON_PLAYING)
+                continue;
+
+            if (IN_ARENA(d->character)) {
+                char buf[MAX_INPUT_LENGTH];
+                sprintf(buf, "@YFighter Number@D: @w%d, $N.@n", GET_IDNUM(d->character));
+                act(buf, true, ch, nullptr, d->character, TO_CHAR);
+                found = true;
+            }
+        }
+
+        if (found == false) {
+            send_to_char(ch, "@wNone.@n\r\n");
+        }
+        return;
+    }
+    int num = atoi(arg);
+
+    if (num < 0) {
+        send_to_char(ch, "That is not a valid fighter number\r\n");
+        return;
+    }
+    struct descriptor_data *d;
+    int found = false;
+
+    for (d = descriptor_list; d; d = d->next) {
+        if (STATE(d) != CON_PLAYING)
+            continue;
+
+        if (GET_IDNUM(d->character) == num) {
+            if (IN_ARENA(d->character)) {
+                found = true;
+            }
+        }
+
+    }
+
+    if (found == true) {
+        act("@wYou start watching the action surrounding that particular fighter in the arena.@n", true, ch,
+            nullptr, nullptr, TO_CHAR);
+        act("@C$n@w starts watching the action in the arena.@n", true, ch, nullptr, nullptr, TO_ROOM);
+        ch->pref.set(PRF_ARENAWATCH);
+        ARENA_IDNUM(ch) = num;
     } else {
-        int num = atoi(arg);
-
-        if (num < 0) {
-            send_to_char(ch, "That is not a valid fighter number\r\n");
-            return;
-        } else {
-            struct descriptor_data *d;
-            int found = false;
-
-            for (d = descriptor_list; d; d = d->next) {
-                if (STATE(d) != CON_PLAYING)
-                    continue;
-
-                if (GET_IDNUM(d->character) == num) {
-                    if (IN_ARENA(d->character)) {
-                        found = true;
-                    }
-                }
-
-            }
-
-            if (found == true) {
-                act("@wYou start watching the action surrounding that particular fighter in the arena.@n", true, ch,
-                    nullptr, nullptr, TO_CHAR);
-                act("@C$n@w starts watching the action in the arena.@n", true, ch, nullptr, nullptr, TO_ROOM);
-                ch->pref.set(PRF_ARENAWATCH);
-                ARENA_IDNUM(ch) = num;
-            } else {
-                send_to_char(ch, "A fighter with such a number was not found in the arena.\r\n");
-                return;
-            }
-        } /* Secondary else end */
-    } /* Main Else end */
-} /* End of Arena Function */
+        send_to_char(ch, "A fighter with such a number was not found in the arena.\r\n");
+        return;
+    }
+}
 
 ACMD(do_ensnare) {
 
@@ -3681,7 +3687,7 @@ ACMD(do_silk) {
                     return;
                 } else {
                     weaved = read_object(16705, VIRTUAL);
-                    obj_to_room(weaved, IN_ROOM(ch));
+                    weaved->setLocation(ch->getLocation());
                     if (GET_OBJ_VNUM(obj) == 16708) {
                         armor *= 20;
                         str = 4;
@@ -3745,7 +3751,7 @@ ACMD(do_silk) {
                     return;
                 } else {
                     weaved = read_object(16706, VIRTUAL);
-                    obj_to_room(weaved, IN_ROOM(ch));
+                    weaved->setLocation(ch->getLocation());
                     if (GET_OBJ_VNUM(obj) == 16708) {
                         armor *= 20;
                         str = 4;
@@ -3809,7 +3815,7 @@ ACMD(do_silk) {
                     return;
                 } else {
                     weaved = read_object(16707, VIRTUAL);
-                    obj_to_room(weaved, IN_ROOM(ch));
+                    weaved->setLocation(ch->getLocation());
                     if (GET_OBJ_VNUM(obj) == 16708) {
                         armor *= 20;
                         str = 4;
@@ -3895,7 +3901,7 @@ ACMD(do_silk) {
             }
             if (super == true) {
                 obj = read_object(16708, VIRTUAL);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
                 act("@YYou concentrate your ki into your silk sacs and begin to spit silk out of your mouth. You gently weave the silk and in no time at all you have a $p@Y piled at your feet!@n",
                     true, ch, obj, nullptr, TO_CHAR);
                 send_to_char(ch, "@YIt's SUPER grand!@n\r\n");
@@ -3904,7 +3910,7 @@ ACMD(do_silk) {
                 ch->decCurKI(cost);
             } else if (prob > perc && prob >= 100) { /* Second Best Quality */
                 obj = read_object(16700, VIRTUAL);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
                 act("@WYou concentrate your ki into your silk sacs and begin to spit silk out of your mouth. You gently weave the silk and in no time at all you have a $p@W piled at your feet!@n",
                     true, ch, obj, nullptr, TO_CHAR);
                 act("@C$n@W seems to concentrate for a moment before spitting out a golden colored silk from $s mouth. Gently $e weaves the silk and in no time at all $e has a $p@W piled at $s feet!@n",
@@ -3912,7 +3918,7 @@ ACMD(do_silk) {
                 ch->decCurKI(cost);
             } else if (prob > perc && prob >= 90) { /* Great Quality */
                 obj = read_object(16701, VIRTUAL);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
                 act("@WYou concentrate your ki into your silk sacs and begin to spit silk out of your mouth. You gently weave the silk and in no time at all you have a $p@W piled at your feet!@n",
                     true, ch, obj, nullptr, TO_CHAR);
                 act("@C$n@W seems to concentrate for a moment before spitting out a golden colored silk from $s mouth. Gently $e weaves the silk and in no time at all $e has a $p@W piled at $s feet!@n",
@@ -3920,7 +3926,7 @@ ACMD(do_silk) {
                 ch->decCurKI(cost);
             } else if (prob > perc && prob >= 80) { /* Good Quality */
                 obj = read_object(16702, VIRTUAL);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
                 act("@WYou concentrate your ki into your silk sacs and begin to spit silk out of your mouth. You gently weave the silk and in no time at all you have a $p@W piled at your feet!@n",
                     true, ch, obj, nullptr, TO_CHAR);
                 act("@C$n@W seems to concentrate for a moment before spitting out a golden colored silk from $s mouth. Gently $e weaves the silk and in no time at all $e has a $p@W piled at $s feet!@n",
@@ -3928,7 +3934,7 @@ ACMD(do_silk) {
                 ch->decCurKI(cost);
             } else if (prob > perc && prob >= 50) { /* Decent Quality */
                 obj = read_object(16703, VIRTUAL);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
                 act("@WYou concentrate your ki into your silk sacs and begin to spit silk out of your mouth. You gently weave the silk and in no time at all you have a $p@W piled at your feet!@n",
                     true, ch, obj, nullptr, TO_CHAR);
                 act("@C$n@W seems to concentrate for a moment before spitting out a golden colored silk from $s mouth. Gently $e weaves the silk and in no time at all $e has a $p@W piled at $s feet!@n",
@@ -3936,7 +3942,7 @@ ACMD(do_silk) {
                 ch->decCurKI(cost);
             } else if (prob > perc) { /* Bad Quality */
                 obj = read_object(16704, VIRTUAL);
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
                 act("@WYou concentrate your ki into your silk sacs and begin to spit silk out of your mouth. You gently weave the silk and in no time at all you have a $p@W piled at your feet!@n",
                     true, ch, obj, nullptr, TO_CHAR);
                 act("@C$n@W seems to concentrate for a moment before spitting out a golden colored silk from $s mouth. Gently $e weaves the silk and in no time at all $e has a $p@W piled at $s feet!@n",
@@ -5374,12 +5380,10 @@ ACMD(do_obstruct) {
         
     }
 
-    struct obj_data *obj2, *obj3;
-
-    obj2 = read_object(79, VIRTUAL);
+    auto obj2 = read_object(79, VIRTUAL);
     obj_to_room(obj2, newroom);
-    obj3 = read_object(79, VIRTUAL);
-    obj_to_room(obj3, IN_ROOM(ch));
+    auto obj3 = read_object(79, VIRTUAL);
+    obj3->setLocation(ch->getLocation());
 
     int64_t strength = (((GET_INT(ch) * skill) * GET_WIS(ch)) * 20) + (GET_MAX_MANA(ch) * 0.001);
 
@@ -5650,8 +5654,7 @@ ACMD(do_spoil) {
     GET_OBJ_VAL(body_part, 5) = 1;
     GET_OBJ_WEIGHT(body_part) = rand_number(4, 10);
     GET_OBJ_RENT(body_part) = 0;
-    obj_to_room(body_part, IN_ROOM(ch));
-    obj_from_room(body_part);
+    body_part->setLocation(ch->getLocation());
     obj_to_char(body_part, ch);
 
 }

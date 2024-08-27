@@ -137,7 +137,7 @@ ACMD(do_geno) {
 
     vict = nullptr;
     if (!*arg || !(vict = get_char_vis(ch, arg, nullptr, FIND_CHAR_ROOM))) {
-        if (FIGHTING(ch) && IN_ROOM(FIGHTING(ch)) == IN_ROOM(ch)) {
+        if (FIGHTING(ch) && ch->getLocation() == FIGHTING(ch)->getLocation()) {
             vict = FIGHTING(ch);
         } else {
             send_to_char(ch, "No one around here by that name.\r\n");
@@ -181,7 +181,7 @@ ACMD(do_geno) {
     }
 
     obj = read_object(83, VIRTUAL);
-    obj_to_room(obj, IN_ROOM(vict));
+    obj->setLocation(ch->getLocation());
     objectSubscriptions.subscribe("hugeKiAttacks", obj->ref());
 
     GET_CHARGE(ch) += GET_MAX_HIT(ch) / 10;
@@ -240,7 +240,7 @@ ACMD(do_genki) {
 
     vict = nullptr;
     if (!*arg || !(vict = get_char_vis(ch, arg, nullptr, FIND_CHAR_ROOM))) {
-        if (FIGHTING(ch) && IN_ROOM(FIGHTING(ch)) == IN_ROOM(ch)) {
+        if (FIGHTING(ch) && FIGHTING(ch)->getLocation() == ch->getLocation()) {
             vict = FIGHTING(ch);
         } else {
             send_to_char(ch, "No one around here by that name.\r\n");
@@ -296,7 +296,7 @@ ACMD(do_genki) {
     struct obj_data *obj;
 
     obj = read_object(82, VIRTUAL);
-    obj_to_room(obj, IN_ROOM(vict));
+    obj->setLocation(vict->getLocation());
 
     TARGET(obj) = vict;
     KICHARGE(obj) = damtype(ch, 40, prob, attperc);
@@ -506,7 +506,7 @@ ACMD(do_blessedhammer) {
                         false, ch, nullptr, vict, TO_VICT);
                     act("@C$N@W manages to dodge @c$n's@W @WB@Dl@We@Ds@Ws@De@Wd @DH@Wa@Dm@Wm@De@Wr@W, letting it slam into the surroundings!@n",
                         false, ch, nullptr, vict, TO_NOTVICT);
-                    send_to_room(IN_ROOM(vict), "@wA bright explosion erupts from the impact!\r\n");
+                    send_to_location(vict, "@wA bright explosion erupts from the impact!\r\n");
 
                     dodge_ki(ch, vict, 0, 17, skill, SKILL_BLESSEDHAMMER); /* Effects on the room from dodging a ki attack
                                Num 1: [ 0 for non-homing, 1 for homing ki attacks, 2 for guided ]

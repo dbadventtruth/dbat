@@ -755,7 +755,7 @@ void remove_limb(struct char_data *vict, int num) {
     GET_OBJ_VAL(body_part, 5) = 1;
     GET_OBJ_WEIGHT(body_part) = rand_number(4, 10);
     GET_OBJ_RENT(body_part) = 0;
-    obj_to_room(body_part, IN_ROOM(vict));
+    body_part->setLocation(vict->getLocation());
 }
 
 /* Weapon attack texts */
@@ -938,7 +938,7 @@ void fight_stack(uint64_t heartPulse, double deltaTime) {
             continue;
         }
 
-        if (FIGHTING(ch) && (IN_ROOM(FIGHTING(ch)) != IN_ROOM(ch))) {
+        if (FIGHTING(ch) && (FIGHTING(ch)->getLocation() != ch->getLocation())) {
             for(auto c : {FIGHTING(ch), ch}) stop_fighting(c);
         }
         if (FIGHTING(ch) && DRAGGING(ch)) {
@@ -1114,7 +1114,7 @@ void fight_stack(uint64_t heartPulse, double deltaTime) {
 
             vict = FIGHTING(ch);
             sprintf(buf, "%s", GET_NAME(vict));
-            if (IN_ROOM(ch) == IN_ROOM(vict) && !MOB_FLAGGED(ch, MOB_DUMMY) && !AFF_FLAGGED(ch, AFF_KNOCKED) &&
+            if (ch->getLocation() == vict->getLocation() && !MOB_FLAGGED(ch, MOB_DUMMY) && !AFF_FLAGGED(ch, AFF_KNOCKED) &&
                 GET_POS(ch) != POS_SITTING && GET_POS(ch) != POS_RESTING && GET_POS(ch) != POS_SLEEPING) {
 
                 if (IS_NPC(ch) && rand_number(1, 30) <= 12)
@@ -1446,22 +1446,10 @@ static void make_pcorpse(struct char_data *ch) {
 
     if (AFF_FLAGGED(ch, AFF_ASHED)) {
         act("@WSome ashes fall off the corpse.@n", true, ch, nullptr, nullptr, TO_ROOM);
-        struct obj_data *ashes;
-        if (rand_number(1, 3) == 2) {
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-        } else if (rand_number(1, 2) == 2) {
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
-        } else {
-            ashes = read_object(1305, VIRTUAL);
-            obj_to_room(ashes, IN_ROOM(ch));
+        auto ashcount = rand_number(1, 3);
+        while(ashcount--) {
+            auto ashes = read_object(1305, VIRTUAL);
+            ashes->setLocation(ch->getLocation());
         }
     }
 
@@ -1508,8 +1496,7 @@ static void make_pcorpse(struct char_data *ch) {
         }
         ch->set(CharMoney::Carried, 0);
     }
-
-    obj_to_room(corpse, IN_ROOM(ch));
+    corpse->setLocation(ch->getLocation());
 }
 
 /* This handles how corpses are viewed. How many limbs they have. If they were *
@@ -1765,8 +1752,7 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
         }
         ch->set(CharMoney::Carried, 0);
     }
-
-    obj_to_room(corpse, IN_ROOM(ch));
+    corpse->setLocation(ch->getLocation());
 
 }
 
@@ -1966,63 +1952,44 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
     if (IS_NPC(ch) && !MOB_FLAGGED(ch, MOB_DUMMY)) {
         int shadowed = false;
         ch->decCurHealthPercent(1);
+        obj_data *dball;
         if (IS_SHADOW_DRAGON1(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON1 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe one star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(20, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe one star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(20, VIRTUAL);
             shadowed = true;
         } else if (IS_SHADOW_DRAGON2(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON2 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe two star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(21, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe two star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(21, VIRTUAL);
             shadowed = true;
         } else if (IS_SHADOW_DRAGON3(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON3 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe three star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(22, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe three star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(22, VIRTUAL);
             shadowed = true;
         } else if (IS_SHADOW_DRAGON4(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON4 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe four star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(23, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe four star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(23, VIRTUAL);
             shadowed = true;
         } else if (IS_SHADOW_DRAGON5(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON5 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe five star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(24, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe five star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(24, VIRTUAL);
             shadowed = true;
         } else if (IS_SHADOW_DRAGON6(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON6 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe six star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(25, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe six star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(25, VIRTUAL);
             shadowed = true;
         } else if (IS_SHADOW_DRAGON7(ch)) {
-            struct obj_data *obj = nullptr;
             SHADOW_DRAGON7 = -1;
-            send_to_room(IN_ROOM(ch), "@YThe seven star dragon ball falls to the ground!@n\r\n");
-
-            obj = read_object(26, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            send_to_location(ch, "@YThe seven star dragon ball falls to the ground!@n\r\n");
+            dball = read_object(26, VIRTUAL);
             shadowed = true;
         }
+        if(dball) dball->setLocation(ch->getLocation());
         make_corpse(ch, killer);
         purge_homing(ch);
         extract_char(ch);
@@ -2167,7 +2134,7 @@ void die(struct char_data *ch, struct char_data *killer) {
                 char_from_room(ch);
                 char_to_room(ch, real_room(17875));
                 ch->decCurHealthPercent(1, 1);
-                look_at_room(IN_ROOM(ch), ch, 0);
+                look_at_location(ch->getLocation(), ch, 0);
                 final_combat_resolve(ch);
                 return;
             } else {
@@ -2348,7 +2315,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
     if (!(k = ch->master))
         k = ch;
 
-    if (AFF_FLAGGED(k, AFF_GROUP) && (IN_ROOM(k) == IN_ROOM(ch))) {
+    if (AFF_FLAGGED(k, AFF_GROUP) && (k->getLocation() == ch->getLocation())) {
         tot_levels = GET_LEVEL(k);
         tot_members = 1;
     } else {
@@ -2357,7 +2324,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
     }
 
     for (f = k->followers; f; f = f->next)
-        if (AFF_FLAGGED(f->follower, AFF_GROUP) && IN_ROOM(f->follower) == IN_ROOM(ch)) {
+        if (AFF_FLAGGED(f->follower, AFF_GROUP) && f->follower->getLocation() == ch->getLocation()) {
             if (!IS_WEIGHTED(f->follower)) {
                 tot_levels += GET_LEVEL(f->follower);
                 tot_members++;
@@ -2390,27 +2357,10 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
     } else
         base = 0;
 
-    /*
-    if (AFF_FLAGGED(k, AFF_GROUP) && IN_ROOM(k) == IN_ROOM(ch)) {
-     if (!IS_WEIGHTED(k)) {
-      perform_group_gain(k, base, victim);
-     } else if (k != ch && (k->getEffMaxPL()) >= (ch->getEffMaxPL()) * 0.5) {
-      perform_group_gain(k, base, victim);
-     } else if (k == ch && (k->getEffMaxPL()) >= GET_MAX_HIT(ch) * 0.5) {
-      perform_group_gain(k, base, victim);
-     } else {
-      if (k == ch) {
-       send_to_char(ch, "You can not group gain while your powerlevel is weighted down more than half of your max.\r\n");
-      } else {
-       send_to_char(ch, "You can not group gain while your powerlevel is weighted down more than half of the leader's adjusted powerlevel.\r\n");
-      }
-     }
-    }
-     */
     perform_group_gain(k, base, victim);
 
     for (f = k->followers; f; f = f->next) {
-        if (AFF_FLAGGED(f->follower, AFF_GROUP) && IN_ROOM(f->follower) == IN_ROOM(ch)) {
+        if (AFF_FLAGGED(f->follower, AFF_GROUP) && f->follower->getLocation() == ch->getLocation()) {
             //if ((f->follower->getEffMaxPL()) >= GET_MAX_HIT(ch) * 0.5)
             perform_group_gain(f->follower, base, victim);
         }

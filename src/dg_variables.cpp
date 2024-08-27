@@ -783,7 +783,7 @@ in the vault (vnum: 453) now and then. you can just use
                     } else if (!strcasecmp(field, "prac")) {
                         if (IS_NPC(c)) {
                             if (IN_ROOM(c) != NOWHERE) {
-                                send_to_room(IN_ROOM(c),
+                                send_to_location(c,
                                              "Error!: Report this trigger error to the coding authorities!\r\n");
                             }
                         }
@@ -816,8 +816,8 @@ in the vault (vnum: 453) now and then. you can just use
                     if (!strcasecmp(field, "room")) {  /* in NOWHERE, return the void */
 /* see note in dg_scripts.h */
 #ifdef ACTOR_ROOM_IS_UID
-						if(auto roomFound = world.find(IN_ROOM(c)); roomFound != world.end()) {
-                            snprintf(str, slen, "%s", roomFound->second.getUID().c_str());
+						if(auto roomFound = c->getRoom(); roomFound) {
+                            snprintf(str, slen, "%s", roomFound->getUID().c_str());
                         }
 #else
                         snprintf(str, slen, "%d", (IN_ROOM(c)!= NOWHERE) ? c->getRoom()->number : 0);

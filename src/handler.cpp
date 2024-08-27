@@ -738,7 +738,7 @@ void extract_char_final(struct char_data *ch) {
     struct obj_data *obj;
     int i;
 
-    if (IN_ROOM(ch) == NOWHERE) {
+    if (!ch->getLocation()) {
         basic_mud_log("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)",
             GET_NAME(ch), __FILE__);
         shutdown_game(1);
@@ -871,14 +871,13 @@ void extract_char_final(struct char_data *ch) {
     /* transfer objects to room, if any */
     if(IS_NPC(ch)) {
         for (auto obj : IterRef(ch->getContents())) {
-            obj_from_char(obj);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
         }
 
         /* transfer equipment to room, if any */
         for (i = 0; i < NUM_WEARS; i++)
             if (GET_EQ(ch, i))
-                obj_to_room(unequip_char(ch, i), IN_ROOM(ch));
+                unequip_char(ch, i)->setLocation(ch->getLocation());
     }
 
     if (FIGHTING(ch))
@@ -936,7 +935,7 @@ void extract_char(struct char_data *ch) {
 
     for (auto foll = ch->followers; foll; foll = foll->next) {
         if (IS_NPC(foll->follower) && AFF_FLAGGED(foll->follower, AFF_CHARM) &&
-            (IN_ROOM(foll->follower) == IN_ROOM(ch) || IN_ROOM(ch) == 1)) {
+            (foll->follower->getLocation() == ch->getLocation() || IN_ROOM(ch) == 1)) {
             /* transfer objects to char, if any */
             for (auto obj : IterRef(foll->follower->getContents())) {
                 obj_from_char(obj);
@@ -996,7 +995,7 @@ struct char_data *get_player_vis(struct char_data *ch, char *name, int *number, 
         if(!i) continue;
         if (IS_NPC(i))
             continue;
-        if (inroom == FIND_CHAR_ROOM && IN_ROOM(i) != IN_ROOM(ch))
+        if (inroom == FIND_CHAR_ROOM && i->getLocation() != ch->getLocation())
             continue;
         if (GET_ADMLEVEL(ch) < 1 && GET_ADMLEVEL(i) < 1 && !IS_NPC(ch) && !IS_NPC(i)) {
             if (strcasecmp(RACE(i), name) && !strstr(RACE(i), name)) {
@@ -1112,7 +1111,7 @@ struct char_data *get_char_world_vis(struct char_data *ch, char *name, int *numb
     for (auto &r : activeCharacters) {
         i = r.get();
         if(!i) continue;
-        if (IN_ROOM(ch) == IN_ROOM(i))
+        if (ch->getLocation() == i->getLocation())
             continue;
         if (GET_ADMLEVEL(ch) < 1 && GET_ADMLEVEL(i) < 1 && !IS_NPC(ch) && !IS_NPC(i)) {
             if (strcasecmp(RACE(i), name) && !strstr(RACE(i), name)) {

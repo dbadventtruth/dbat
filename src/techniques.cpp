@@ -75,7 +75,7 @@ bool tech_handle_targeting(char_data *ch, char *arg, char_data **vict, obj_data 
     *vict = nullptr;
     *obj = nullptr;
     if (!*arg || !(*vict = get_char_vis(ch, arg, nullptr, FIND_CHAR_ROOM))) {
-        if (FIGHTING(ch) && IN_ROOM(FIGHTING(ch)) == IN_ROOM(ch)) {
+        if (FIGHTING(ch) && FIGHTING(ch)->getLocation() == ch->getLocation()) {
             *vict = FIGHTING(ch);
             return true;
         } else if (!(*obj = get_obj_in_list_vis(ch, arg, nullptr, ch->getLocationObjects()))) {

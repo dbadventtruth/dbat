@@ -212,7 +212,7 @@ static int64_t mana_gain(struct char_data *ch) {
         gain = GET_MAX_MANA(ch) / 70;
     } else {
         if (ch->getLocationRoomFlag(ROOM_REGEN) ||
-            (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
+            (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ch->getLocationDamage() >= 75)) {
             if (IS_KONATSU(ch)) {
                 gain = GET_MAX_MANA(ch) / 12;
             }
@@ -370,7 +370,7 @@ int64_t hit_gain(struct char_data *ch) {
         /* Neat and fast */
         gain = GET_MAX_HIT(ch) / 70;
     } else {
-        if (ch->getLocationRoomFlag(ROOM_REGEN) || (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
+        if (ch->getLocationRoomFlag(ROOM_REGEN) || (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ch->getLocationDamage() >= 75)) {
             if (IS_HUMAN(ch)) {
                 gain = GET_MAX_HIT(ch) / 20;
             }
@@ -519,7 +519,7 @@ static int64_t move_gain(struct char_data *ch) {
         gain = GET_MAX_MOVE(ch) / 70;
     } else {
         if (ch->getLocationRoomFlag(ROOM_REGEN) ||
-            (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ROOM_DAMAGE(IN_ROOM(ch)) >= 75)) {
+            (GET_BONUS(ch, BONUS_DESTROYER) > 0 && ch->getLocationDamage() >= 75)) {
             if (IS_MUTANT(ch)) {
                 gain = GET_MAX_MOVE(ch) / 7;
             }
@@ -1125,7 +1125,7 @@ void androidAbsorbSystem(uint64_t heartPulse, double deltaTime) {
             characterSubscriptions.unsubscribe("androidAbsorbSystem", r);
         }
         
-        if(IN_ROOM(ch) != IN_ROOM(victim)) {
+        if(ch->getLocation() != victim->getLocation()) {
             send_to_char(ch, "You stop absorbing %s!\r\n", GET_NAME(ABSORBING(ch)));
             ABSORBBY(ABSORBING(ch)) = nullptr;
             ABSORBING(ch) = nullptr;
@@ -1875,21 +1875,21 @@ void point_update(uint64_t heartPulse, double deltaTime) {
                 if (GET_OBJ_VNUM(j) == 79 && rand_number(1, 2) == 2) {
                     int melt = (5 + (GET_OBJ_WEIGHT(j) * 0.025));
                     if (j->getLocationGroundEffect() >= 1 && j->getLocationGroundEffect() <= 5) {
-                        send_to_room(IN_ROOM(j),
+                        send_to_location(j,
                                      "The heat from the lava melts a great deal of the glacial wall and the lava cools a bit in turn.\r\n");
                         j->modLocationGroundEffect(-1);
                         if ((GET_OBJ_WEIGHT(j) - melt) > 0) {
                             GET_OBJ_WEIGHT(j) -= melt;
                         } else {
-                            send_to_room(IN_ROOM(j), dirs[GET_OBJ_COST(j)]);
+                            send_to_location(j, dirs[GET_OBJ_COST(j)]);
                             extract_obj(j);
                         }
                     } else if ((GET_OBJ_WEIGHT(j) - melt) > 0) {
                         GET_OBJ_WEIGHT(j) -= melt;
-                        send_to_room(IN_ROOM(j), "The glacial wall blocking off the %s direction melts some what.\r\n",
+                        send_to_location(j, "The glacial wall blocking off the %s direction melts some what.\r\n",
                                      dirs[GET_OBJ_COST(j)]);
                     } else {
-                        send_to_room(IN_ROOM(j),
+                        send_to_location(j,
                                      "The glacial wall blocking off the %s direction melts completely away.\r\n",
                                      dirs[GET_OBJ_COST(j)]);
                         extract_obj(j);
@@ -1936,9 +1936,6 @@ void timed_dt(struct char_data *ch) {
             auto vict = d->character;
 
             if (IS_NPC(vict))
-                continue;
-
-            if (IN_ROOM(vict) == NOWHERE)
                 continue;
 
             if (!vict->getLocationRoomFlag(ROOM_TIMED_DT))

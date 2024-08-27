@@ -423,6 +423,7 @@ struct Location {
     void deserialize(const nlohmann::json& j);
     bool operator==(const Location& other) const;
     Coordinates getCoordinates() const;
+    explicit operator bool() const;
 };
 
 namespace std {
@@ -452,6 +453,8 @@ struct Destination {
     std::string keyword{}, general_description{};
     uint8_t exit_flags; // uses EX_ISDOOR, EX_CLOSED, EX_LOCKED, etc....
     obj_vnum key{NOTHING};        /* Key's number (-1 for no key)		*/
+    int dcskill{};
+    int dcmove{};
 };
 
 

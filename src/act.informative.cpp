@@ -600,7 +600,7 @@ ACMD(do_shuffle) {
     }
     send_to_char(ch, "You shuffle the cards carefully.\r\n");
     act("$n shuffles their deck.", true, ch, nullptr, nullptr, TO_ROOM);
-    send_to_room(IN_ROOM(ch), "There were %d cards in the deck.\r\n", total);
+    send_to_location(ch, "There were %d cards in the deck.\r\n", total);
 }
 
 ACMD(do_hand) {
@@ -701,8 +701,7 @@ ACMD(do_post) {
         }
         act("@WYou post $p@W on a nearby structure.@n", true, ch, obj, nullptr, TO_CHAR);
         act("@C$n@W posts $p@W on a nearby structure.@n", true, ch, obj, nullptr, TO_ROOM);
-        obj_from_char(obj);
-        obj_to_room(obj, IN_ROOM(ch));
+        obj->setLocation(ch->getLocation());
         GET_OBJ_POSTTYPE(obj) = 1;
         return;
     } else {
@@ -720,8 +719,7 @@ ACMD(do_post) {
             sprintf(buf, "@C$n@W posts %s@W on %s@W.@n", obj->short_description, obj2->short_description);
             send_to_char(ch, "@WYou post %s@W on %s@W.@n\r\n", obj->short_description, obj2->short_description);
             act(buf, true, ch, nullptr, nullptr, TO_ROOM);
-            obj_from_char(obj);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
             GET_OBJ_POSTTYPE(obj) = 2;
             GET_OBJ_POSTED(obj) = obj2;
             GET_OBJ_POSTED(obj2) = obj;
@@ -2736,7 +2734,7 @@ std::string char_data::getPostureString(char_data *viewer) {
         if (fight == viewer) {
             out += " @rYOU@w";
         } else {
-            if (IN_ROOM(this) == IN_ROOM(fight)) {
+            if (this->location == fight->getLocation()) {
                 out += " " + fight->getDisplayNameFor(viewer, 1);
             } else {
                 out += " someone who has already left";
@@ -3547,6 +3545,14 @@ void look_at_room(struct room_data *rm, struct char_data *ch, int ignore_brief) 
     list_char_to_char(rm->getPeople(), ch);
 }
 
+void look_at_location(const Location& loc, char_data *ch, int ignore_brief) {
+    if(loc.type == LocationType::Room) {
+        if(auto r = dynamic_cast<room_data*>(loc.entity); r) {
+            look_at_room(r, ch, ignore_brief);
+        }
+    }
+}
+
 
 static void look_in_direction(struct char_data *ch, int dir) {
     auto r = ch->getRoom();
@@ -4224,7 +4230,7 @@ ACMD(do_look) {
 
     if(IS_DARK(room->vn) && !CAN_SEE_IN_DARK(ch)) {
         send_to_char(ch, "It is pitch black...\r\n");
-        list_char_to_char(room->getPeople(), ch);    /* glowing red eyes */
+        list_char_to_char(ch->getLocationPeople(), ch);    /* glowing red eyes */
         return;
     }
 
@@ -4244,7 +4250,7 @@ ACMD(do_look) {
         if (subcmd == SCMD_SEARCH) {
             search_room(ch);
         } else {
-            look_at_room(room, ch, 1);
+            look_at_location(ch->getLocation(), ch, 1);
             if (GET_ADMLEVEL(ch) < 1 && !AFF_FLAGGED(ch, AFF_HIDE)) {
                 //act("@w$n@w looks around the room.@n", TRUE, ch, 0, 0, TO_ROOM);
             }
@@ -4305,7 +4311,7 @@ ACMD(do_look) {
         struct extra_descr_data *i;
         int found = 0;
 
-        for (i = ch->getRoom()->ex_description; i; i = i->next) {
+        for (i = room->ex_description; i; i = i->next) {
             if (*i->keyword != '.') {
                 send_to_char(ch, "%s%s:\r\n%s",
                              (found ? "\r\n" : ""), i->keyword, i->description);
@@ -4314,7 +4320,7 @@ ACMD(do_look) {
         }
         if (!found)
             send_to_char(ch, "You couldn't find anything noticeable.\r\n");
-    } else if (find_exdesc(arg, ch->getRoom()->ex_description) != nullptr) {
+    } else if (find_exdesc(arg, room->ex_description) != nullptr) {
         look_at_target(ch, arg, 0);
     } else {
         if (subcmd == SCMD_SEARCH)
@@ -5560,7 +5566,7 @@ ACMD(do_who) {
                 hide += 1;
                 continue;
             }
-            if (who_room && (IN_ROOM(tch) != IN_ROOM(ch)))
+            if (who_room && (tch->getLocation() != ch->getLocation()))
                 continue;
             if (showgroup && (!tch->master || !AFF_FLAGGED(tch, AFF_GROUP)))
                 continue;
@@ -5602,7 +5608,7 @@ ACMD(do_who) {
                 continue;
             if (localwho && ch->getRoom()->zone != tch->getRoom()->zone)
                 continue;
-            if (who_room && (IN_ROOM(tch) != IN_ROOM(ch)))
+            if (who_room && (tch->getLocation() != ch->getLocation()))
                 continue;
             if (PRF_FLAGGED(tch, PRF_HIDE) && tch != ch && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
                 continue;
@@ -5938,7 +5944,7 @@ static void perform_mortal_where(struct char_data *ch, char *arg) {
                 continue;
             if ((i = (d->original ? d->original : d->character)) == nullptr)
                 continue;
-            if (IN_ROOM(i) == NOWHERE || !CAN_SEE(ch, i))
+            if (!i->getLocation() || !CAN_SEE(ch, i))
                 continue;
             if (ch->getRoom()->zone != i->getRoom()->zone)
                 continue;
@@ -5948,7 +5954,7 @@ static void perform_mortal_where(struct char_data *ch, char *arg) {
         for (auto &r : activeCharacters) {
             i = r.get();
             if(!i) continue;
-            if (IN_ROOM(i) == NOWHERE || i == ch)
+            if (!i->getLocation() || i == ch)
                 continue;
             if (!CAN_SEE(ch, i) || i->getRoom()->zone != ch->getRoom()->zone)
                 continue;
@@ -6003,24 +6009,20 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
         send_to_char(ch,
                      "Players                  Vnum    Planet        Location\r\n-------                 ------   ----------    ----------------\r\n");
         for (d = descriptor_list; d; d = d->next)
-            if (IS_PLAYING(d)) {
-                obj_data *planet;
-                if (IN_ROOM(d->character) != NOWHERE) {
-                    planet = d->character->getMatchingParentStructure(ITEM_CELESTIALBODY);
+            if (!IS_PLAYING(d)) continue;
+            auto planet = d->character->getMatchingParentStructure(ITEM_CELESTIALBODY);
+            i = (d->original ? d->original : d->character);
+            if (i && CAN_SEE(ch, i) && i->getLocation()) {
+                if (d->original)
+                    send_to_char(ch, "%-20s - [%5d]   %s (in %s)\r\n",
+                                    GET_NAME(i), d->character->getRoomVnum(),
+                                    d->character->getLocationName().c_str(), GET_NAME(d->character));
+                else {
+                    std::string locName = planet ? planet->getDisplayNameFor(ch, 0) : "UNKNOWN";
+                    send_to_char(ch, "%-20s - [%5d]   %-14s %s\r\n", GET_NAME(i), i->getRoomVnum(),
+                                    locName.c_str(), i->getLocationName().c_str());
                 }
-                i = (d->original ? d->original : d->character);
-                if (i && CAN_SEE(ch, i) && (IN_ROOM(i) != NOWHERE)) {
-                    if (d->original)
-                        send_to_char(ch, "%-20s - [%5d]   %s (in %s)\r\n",
-                                     GET_NAME(i), d->character->getRoomVnum(),
-                                     d->character->getRoom()->name, GET_NAME(d->character));
-                    else {
-                        std::string locName = planet ? planet->getDisplayNameFor(ch, 0) : "UNKNOWN";
-                        send_to_char(ch, "%-20s - [%5d]   %-14s %s\r\n", GET_NAME(i), i->getRoomVnum(),
-                                     locName.c_str(), i->getRoom()->name);
-                    }
 
-                }
             }
     } else {
         mudlog(NRM, MAX(ADMLVL_GRGOD, GET_INVIS_LEV(ch)), true, "GODCMD: %s has checked where for the location of %s",
@@ -6028,10 +6030,10 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
         for (auto &r : activeCharacters) {
             i = r.get();
             if(!i) continue;
-            if (CAN_SEE(ch, i) && IN_ROOM(i) != NOWHERE && isname(arg, i->name)) {
+            if (CAN_SEE(ch, i) && i->getLocation() && isname(arg, i->name)) {
                 found = 1;
                 send_to_char(ch, "M%3d. %-25s - [%5d] %-25s", ++num, GET_NAME(i),
-                             i->getRoomVnum(), i->getRoom()->name);
+                             i->getRoomVnum(), i->getLocationName().c_str());
                 send_to_char(ch, "\r\n");
             }
         }

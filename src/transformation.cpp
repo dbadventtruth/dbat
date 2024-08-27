@@ -1463,7 +1463,7 @@ namespace trans {
             FormID::BirthPhase, {
                                         {APPLY_CVIT_REGEN_MULT, 1.0, ~0},
                                         {APPLY_CVIT_MULT, 1.0, ~0, [](auto ch) {
-                                            return (IN_ROOM(ch) != NOWHERE && ch->getLocationEnvironment(ENV_ETHER_STREAM)) ? 0.5 : 0.0;
+                                            return (ch->getLocationEnvironment(ENV_ETHER_STREAM)) ? 0.5 : 0.0;
                                         }},
                                         {APPLY_CATTR_BASE, 5.0, static_cast<int>(CharAttribute::Speed)},
                 },
@@ -1472,7 +1472,7 @@ namespace trans {
             FormID::LifePhase, {
                                        {APPLY_CVIT_REGEN_MULT, 2.0, ~0},
                                        {APPLY_CVIT_MULT, 2.0, ~0, [](auto ch) {
-                                           return (IN_ROOM(ch) != NOWHERE && ch->getLocationEnvironment(ENV_ETHER_STREAM)) ? 0.5 : 0.0;
+                                           return (ch->getLocationEnvironment(ENV_ETHER_STREAM)) ? 0.5 : 0.0;
                                        }},
                                        {APPLY_CATTR_BASE, 8.0, static_cast<int>(CharAttribute::Speed)},
                 },

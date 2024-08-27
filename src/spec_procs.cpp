@@ -82,7 +82,7 @@ int num_players_in_room(room_vnum room) {
             continue;
         if (!(i->character))
             continue;
-        if (!world.count(IN_ROOM(i->character)))
+        if (!world.count(i->character->getRoomVnum()))
             continue;
         if (i->character->getRoomVnum() != room)
             continue;
@@ -659,7 +659,7 @@ SPECIAL(gravity) {
                 auto room = ch->getRoom();
                 if (room->room_flags.test(ROOM_AURA)) {
                     room->room_flags.reset(ROOM_AURA);
-                    send_to_room(IN_ROOM(ch), "The increased gravity forces the aura to disappear.\r\n");
+                    send_to_location(ch, "The increased gravity forces the aura to disappear.\r\n");
                 }
             } else {
                 send_to_char(ch,

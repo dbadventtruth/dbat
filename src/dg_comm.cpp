@@ -262,7 +262,7 @@ void send_to_sense(int type, char *messg, struct char_data *ch) {
         if (tch == ch) {
             continue;
         }
-        if (IN_ROOM(ch) == IN_ROOM(tch))
+        if (ch->getLocation() == tch->getLocation())
             continue;
         auto obj = GET_EQ(tch, WEAR_EYE);
         if (!GET_SKILL(tch, SKILL_SENSE)) {
@@ -389,7 +389,7 @@ void send_to_scouter(char *messg, struct char_data *ch, int num, int type) {
         if (IS_ANDROID(ch)) continue;
 
         if (!obj) continue;
-        if (IN_ROOM(ch) == IN_ROOM(tch)) continue;
+        if (ch->getLocation() == tch->getLocation()) continue;
 
         if (type == 0) {
             if (num == 1) {

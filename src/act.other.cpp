@@ -992,7 +992,7 @@ ACMD(do_trip) {
 
     vict = nullptr;
     if (!*arg || !(vict = get_char_vis(ch, arg, nullptr, FIND_CHAR_ROOM))) {
-        if (FIGHTING(ch) && IN_ROOM(FIGHTING(ch)) == IN_ROOM(ch)) {
+        if (FIGHTING(ch) && FIGHTING(ch)->getLocation() == ch->getLocation()) {
             vict = FIGHTING(ch);
         } else {
             send_to_char(ch, "That target isn't here.\r\n");
@@ -2771,7 +2771,7 @@ ACMD(do_telepathy) {
         } else if (GET_SKILL(vict, SKILL_TELEPATHY) + GET_INT(vict) > GET_SKILL(ch, SKILL_TELEPATHY) + GET_INT(ch)) {
             send_to_char(ch, "They throw off your attempt with their own telepathic abilities!\r\n");
             return;
-        } else if (IN_ROOM(ch) == IN_ROOM(vict)) {
+        } else if (ch->getLocation() == vict->getLocation()) {
             send_to_char(ch, "They are in the same room as you!\r\n");
             return;
         } else if (AFF_FLAGGED(vict, AFF_BLIND)) {
@@ -2781,7 +2781,7 @@ ACMD(do_telepathy) {
             send_to_char(ch, "Their eyes are closed!\r\n");
             return;
         } else {
-            look_at_room(IN_ROOM(vict), ch, 0);
+            look_at_location(vict->getLocation(), ch, 0);
             send_to_char(ch, "You see all this through their eyes!\r\n");
             if (GET_INT(vict) > GET_INT(ch)) {
                 send_to_char(ch, "You feel like someone was using your mind for something...\r\n");
@@ -3815,7 +3815,7 @@ ACMD(do_form) {
             return;
         } else {
             obj = read_object(87, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
             GET_OBJ_SIZE(obj) = get_size(ch);
             reveal_hiding(ch, 0);
             GET_COOLDOWN(ch) = 10;
@@ -3844,7 +3844,7 @@ ACMD(do_form) {
             return;
         } else {
             obj = read_object(86, VIRTUAL);
-            obj_to_room(obj, IN_ROOM(ch));
+            obj->setLocation(ch->getLocation());
             GET_OBJ_SIZE(obj) = get_size(ch);
             reveal_hiding(ch, 0);
             GET_COOLDOWN(ch) = 10;
@@ -7087,15 +7087,15 @@ void load_shadow_dragons() {
 void handleShenronAppearance(int &DRAGONC) {
     switch (DRAGONC) {
         case 300:
-            send_to_room(real_room(DRAGONR), "@WThe dragon balls on the ground begin to glow yellow in slow pulses.@n\r\n");
+            send_to_location(EDRAGON,  "@WThe dragon balls on the ground begin to glow yellow in slow pulses.@n\r\n");
             send_to_planet(0, ROOM_EARTH, "@DThe sky begins to grow dark and cloudy suddenly.@n\r\n");
             break;
         case 295:
-            send_to_room(real_room(DRAGONR), "@WSuddenly lightning shoots into the sky, twisting about as a roar can be heard for miles!@n\r\n");
+            send_to_location(EDRAGON,  "@WSuddenly lightning shoots into the sky, twisting about as a roar can be heard for miles!@n\r\n");
             send_to_planet(0, ROOM_EARTH, "@DThe sky flashes with lightning.@n\r\n");
             break;
         case 290:
-            send_to_room(real_room(DRAGONR), "@WThe lightning takes shape and slowly the Eternal Dragon, Shenron, can be made out from the glow!@n\r\n");
+            send_to_location(EDRAGON,  "@WThe lightning takes shape and slowly the Eternal Dragon, Shenron, can be made out from the glow!@n\r\n");
             char_from_room(EDRAGON);
             char_to_room(EDRAGON, real_room(DRAGONR));
             break;
@@ -7103,22 +7103,22 @@ void handleShenronAppearance(int &DRAGONC) {
             send_to_planet(0, ROOM_EARTH, "@DThe lightning stops suddenly, but the sky remains mostly dark.@n\r\n");
             break;
         case 280:
-            send_to_room(real_room(DRAGONR), "@WThe glow around Shenron becomes subdued as the Eternal Dragon coils so that his head is looking down on the dragon balls!@n\r\n");
+            send_to_location(EDRAGON,  "@WThe glow around Shenron becomes subdued as the Eternal Dragon coils so that his head is looking down on the dragon balls!@n\r\n");
             break;
         case 275:
-            send_to_room(real_room(DRAGONR), "@wShenron says, '@CWho summoned me? I will grant you any two wishes that are within my power.@w'@n\r\n");
+            send_to_location(EDRAGON,  "@wShenron says, '@CWho summoned me? I will grant you any two wishes that are within my power.@w'@n\r\n");
             break;
         case 180:
-            send_to_room(real_room(DRAGONR), "@wShenron says, '@CMake your wish already, you only have 3 minutes remaining.@w'@n\r\n");
+            send_to_location(EDRAGON,  "@wShenron says, '@CMake your wish already, you only have 3 minutes remaining.@w'@n\r\n");
             break;
         case 120:
-            send_to_room(real_room(DRAGONR), "@wShenron says, '@CMake your wish. I am losing patience, you only have 2 minutes left.@w'@n\r\n");
+            send_to_location(EDRAGON,  "@wShenron says, '@CMake your wish. I am losing patience, you only have 2 minutes left.@w'@n\r\n");
             break;
         case 60:
-            send_to_room(real_room(DRAGONR), "@wShenron says, '@CMake your wish now! You only have 1 minute left.@w'@n\r\n");
+            send_to_location(EDRAGON,  "@wShenron says, '@CMake your wish now! You only have 1 minute left.@w'@n\r\n");
             break;
         case 0:
-            send_to_room(real_room(DRAGONR), "Shenron growls and disappears with a blinding flash that is absorbed into the dragon balls. The glowing dragon balls then float high into the sky, splitting into several directions and streaking across the sky!@n\r\n");
+            send_to_location(EDRAGON,  "Shenron growls and disappears with a blinding flash that is absorbed into the dragon balls. The glowing dragon balls then float high into the sky, splitting into several directions and streaking across the sky!@n\r\n");
             send_to_planet(0, ROOM_EARTH, "@DThe sky grows brighter again as the clouds disappear magicly.@n\r\n");
             extract_char(EDRAGON);
             SHENRON = false;
@@ -7196,7 +7196,7 @@ void wishSYS(uint64_t heartPulse, double deltaTime) {
             WISH[1] = 0;
         }
     } else {
-        send_to_room(real_room(DRAGONR), "@RThe dragon balls suddenly begin to crack and darkness begins to pour out through the cracks! Shenron begins to turn pitch black slowly as the darkness escapes. Suddenly Shenron explodes out into the distance in seven parts. Each part taking a dragon ball with it!@n\r\n");
+        send_to_location(EDRAGON,  "@RThe dragon balls suddenly begin to crack and darkness begins to pour out through the cracks! Shenron begins to turn pitch black slowly as the darkness escapes. Suddenly Shenron explodes out into the distance in seven parts. Each part taking a dragon ball with it!@n\r\n");
         DRAGONC = 0;
         WISH[0] = 0;
         WISH[1] = 0;
@@ -8149,19 +8149,22 @@ void base_update(uint64_t heartPulse, double deltaTime) {
                 send_to_char(d->character, "Your body has recovered from your last selfdestruct.\r\n");
             }
         } /* Andros End */
+
+        auto loc = d->character->getLocation();
+
         if (CARRYING(d->character)) {
-            if (IN_ROOM(CARRYING(d->character)) != IN_ROOM(d->character)) {
+            if (CARRYING(d->character)->getLocation() != loc) {
                 carry_drop(d->character, 3);
             }
         }
         if (GET_DEFENDER(d->character)) {
-            if (IN_ROOM(d->character) != IN_ROOM(GET_DEFENDER(d->character))) {
+            if (loc != GET_DEFENDER(d->character)->getLocation()) {
                 GET_DEFENDING(GET_DEFENDER(d->character)) = nullptr;
                 GET_DEFENDER(d->character) = nullptr;
             }
         }
         if (GET_DEFENDING(d->character)) {
-            if (IN_ROOM(d->character) != IN_ROOM(GET_DEFENDING(d->character))) {
+            if (loc != GET_DEFENDING(d->character)->getLocation()) {
                 GET_DEFENDER(GET_DEFENDING(d->character)) = nullptr;
                 GET_DEFENDING(d->character) = nullptr;
             }
@@ -8172,7 +8175,7 @@ void base_update(uint64_t heartPulse, double deltaTime) {
             d->character->affected_by.reset(AFF_POSITION);
         }
         if (SITS(d->character)) {
-            if (IN_ROOM(d->character) != IN_ROOM(SITS(d->character))) {
+            if (loc != SITS(d->character)->getLocation()) {
                 struct obj_data *chair = SITS(d->character);
                 SITTING(chair) = nullptr;
                 SITS(d->character) = nullptr;
@@ -8249,7 +8252,7 @@ void base_update(uint64_t heartPulse, double deltaTime) {
 
         if (BLOCKS(d->character)) {
             struct char_data *vict = BLOCKS(d->character);
-            if (IN_ROOM(vict) != IN_ROOM(d->character)) {
+            if (vict->getLocation() != d->character->getLocation()) {
                 BLOCKED(vict) = nullptr;
                 BLOCKS(d->character) = nullptr;
             }
@@ -8375,7 +8378,7 @@ ACMD(do_snet) {
             if (i->character == ch) {
                 continue;
             }
-            if (IN_ROOM(i->character) == IN_ROOM(ch)) {
+            if (i->character->getLocation() == ch->getLocation()) {
                 continue;
             }
             if (i->character->getLocationRoomFlag(ROOM_HBTC)) {
@@ -8724,8 +8727,8 @@ ACMD(do_quit) {
     }
     if (MINDLINK(ch) && LINKER(ch) == 0) {
         send_to_char(ch, "@RYou feel like the mind that is linked with yours is preventing you from quiting!@n\r\n");
-        if (IN_ROOM(MINDLINK(ch)) != NOWHERE) {
-            look_at_room(IN_ROOM(MINDLINK(ch)), ch, 0);
+        if (MINDLINK(ch)->getLocation()) {
+            look_at_location(MINDLINK(ch)->getLocation(), ch, 0);
             send_to_char(ch, "You get an impression of where this interference is originating from.\r\n");
         }
         return;
@@ -9419,7 +9422,7 @@ ACMD(do_split) {
         ch->mod(CharMoney::Carried, -amount);
         k = (ch->master ? ch->master : ch);
 
-        if (AFF_FLAGGED(k, AFF_GROUP) && (IN_ROOM(k) == IN_ROOM(ch)))
+        if (AFF_FLAGGED(k, AFF_GROUP) && (k->getLocation() == ch->getLocation()))
             num = 1;
         else
             num = 0;
@@ -9427,7 +9430,7 @@ ACMD(do_split) {
         for (f = k->followers; f; f = f->next)
             if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
                 (!IS_NPC(f->follower)) && f->follower != ch &&
-                (IN_ROOM(f->follower) == IN_ROOM(ch)))
+                (f->follower->getLocation() == ch->getLocation()))
                 num++;
 
         if (num > 0 && AFF_FLAGGED(ch, AFF_GROUP)) {
@@ -9448,7 +9451,7 @@ ACMD(do_split) {
                      "%d zenni %s not splitable, so %s keeps the money.\r\n", rest, (rest == 1) ? "was" : "were",
                      GET_NAME(ch));
         }
-        if (AFF_FLAGGED(k, AFF_GROUP) && IN_ROOM(k) == IN_ROOM(ch) &&
+        if (AFF_FLAGGED(k, AFF_GROUP) && k->getLocation() == ch->getLocation() &&
             !IS_NPC(k) && k != ch) {
             k->mod(CharMoney::Carried, share);
             send_to_char(k, "%s", buf);
@@ -9457,7 +9460,7 @@ ACMD(do_split) {
         for (f = k->followers; f; f = f->next) {
             if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
                 (!IS_NPC(f->follower)) &&
-                (IN_ROOM(f->follower) == IN_ROOM(ch)) &&
+                (f->follower->getLocation() == ch->getLocation()) &&
                 f->follower != ch) {
 
                 f->follower->mod(CharMoney::Carried, share);
@@ -10530,7 +10533,7 @@ ACMD(do_resurrect) {
     if (rm != NOWHERE) {
         char_from_room(ch);
         char_to_room(ch, rm);
-        look_at_room(IN_ROOM(ch), ch, 0);
+        look_at_location(ch->getLocation(), ch, 0);
     }
 
     act("$n's body forms in a pool of @Bblue light@n.", true, ch, nullptr, nullptr, TO_ROOM);

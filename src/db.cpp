@@ -2158,7 +2158,7 @@ void reset_zone(zone_rnum zone) {
                             ZONE_ERROR("invalid equipment pos number");
                         } else {
                             obj = read_object(c.arg1, REAL);
-                            obj_to_room(obj, IN_ROOM(mob));
+                            obj->setLocation(mob->getLocation());
                             load_otrigger(obj);
                             if (wear_otrigger(obj, mob, c.arg3)) {
                                 obj_from_room(obj);

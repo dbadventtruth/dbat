@@ -736,7 +736,7 @@ ACMD(do_recall) {
         if (real_room(2) != NOWHERE) {
             char_from_room(ch);
             char_to_room(ch, real_room(2));
-            look_at_room(IN_ROOM(ch), ch, 0);
+            look_at_location(ch->getLocation(), ch, 0);
             GET_LOADROOM(ch) = ch->getRoomVnum();
         }
     }
@@ -977,7 +977,7 @@ room_rnum find_target_room(struct char_data *ch, char *rawroomstr) {
 
 ACMD(do_at) {
     char command[MAX_INPUT_LENGTH], buf[MAX_INPUT_LENGTH];
-    room_rnum location, original_loc;
+    room_rnum location;
 
     half_chop(argument, buf, command);
     if (!*buf) {
@@ -994,15 +994,15 @@ ACMD(do_at) {
         return;
 
     /* a location has been found. */
-    original_loc = IN_ROOM(ch);
+    auto original_loc = ch->getLocation();
     char_from_room(ch);
     char_to_room(ch, location);
+    auto newLoc = ch->getLocation();
     command_interpreter(ch, command);
 
     /* check if the char is still there */
-    if (IN_ROOM(ch) == location) {
-        char_from_room(ch);
-        char_to_room(ch, original_loc);
+    if (ch->getLocation() == newLoc) {
+        ch->setLocation(original_loc);
     }
 }
 
@@ -1026,7 +1026,7 @@ ACMD(do_goto) {
     snprintf(buf, sizeof(buf), "$n %s", POOFIN(ch) ? POOFIN(ch) : "appears with an ear-splitting bang.");
     act(buf, true, ch, nullptr, nullptr, TO_ROOM);
 
-    look_at_room(IN_ROOM(ch), ch, 0);
+    look_at_location(ch->getLocation(), ch, 0);
     enter_wtrigger(ch->getRoom(), ch, -1);
 }
 
@@ -1053,11 +1053,10 @@ ACMD(do_trans) {
                 return;
             }
             act("$n disappears in a mushroom cloud.", false, victim, nullptr, nullptr, TO_ROOM);
-            char_from_room(victim);
-            char_to_room(victim, IN_ROOM(ch));
+            victim->setLocation(ch->getLocation());
             act("$n arrives from a puff of smoke.", false, victim, nullptr, nullptr, TO_ROOM);
             act("$n has transferred you!", false, ch, nullptr, victim, TO_VICT);
-            look_at_room(IN_ROOM(victim), victim, 0);
+            look_at_location(victim->getLocation(), victim, 0);
             enter_wtrigger(victim->getRoom(), victim, -1);
         }
     } else {            /* Trans All */
@@ -1072,11 +1071,10 @@ ACMD(do_trans) {
                 if (GET_ADMLEVEL(victim) >= GET_ADMLEVEL(ch))
                     continue;
                 act("$n disappears in a mushroom cloud.", false, victim, nullptr, nullptr, TO_ROOM);
-                char_from_room(victim);
-                char_to_room(victim, IN_ROOM(ch));
+                victim->setLocation(ch->getLocation());
                 act("$n arrives from a puff of smoke.", false, victim, nullptr, nullptr, TO_ROOM);
                 act("$n has transferred you!", false, ch, nullptr, victim, TO_VICT);
-                look_at_room(IN_ROOM(victim), victim, 0);
+                look_at_location(victim->getLocation(), victim, 0);
                 enter_wtrigger(victim->getRoom(), victim, -1);
             }
         send_to_char(ch, "%s", CONFIG_OK);
@@ -1111,7 +1109,7 @@ ACMD(do_teleport) {
         char_to_room(victim, target);
         act("$n arrives from a puff of smoke.", false, victim, nullptr, nullptr, TO_ROOM);
         act("$n has teleported you!", false, ch, nullptr, (char *) victim, TO_VICT);
-        look_at_room(IN_ROOM(victim), victim, 0);
+        look_at_location(victim->getLocation(), victim, 0);
         enter_wtrigger(victim->getRoom(), victim, -1);
     }
 }
@@ -1435,7 +1433,7 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
                  wString.c_str(), GET_OBJ_COST(j), GET_OBJ_RENT(j), GET_OBJ_TIMER(j), GET_OBJ_LEVEL(j));
 
     send_to_char(ch, "In room: %d (%s), ", j->getRoomVnum(),
-                 IN_ROOM(j) == NOWHERE ? "Nowhere" : j->getRoom()->name);
+                 !j->getLocation() ? "Nowhere" : j->getLocationName().c_str());
 
     /*
    * NOTE: In order to make it this far, we must already be able to see the
@@ -2180,7 +2178,7 @@ ACMD(do_load) {
         }
         for (i = 0; i < n; i++) {
             mob = read_mobile(r_num, REAL);
-            char_to_room(mob, IN_ROOM(ch));
+            mob->setLocation(ch->getLocation());
 
             act("$n makes a quaint, magical gesture with one hand.", true, ch, nullptr, nullptr, TO_ROOM);
             act("$n has created $N!", false, ch, nullptr, mob, TO_ROOM);
@@ -2204,7 +2202,7 @@ ACMD(do_load) {
             if (CONFIG_LOAD_INVENTORY)
                 obj_to_char(obj, ch);
             else
-                obj_to_room(obj, IN_ROOM(ch));
+                obj->setLocation(ch->getLocation());
             act("$n makes a strange magical gesture.", true, ch, nullptr, nullptr, TO_ROOM);
             act("$n has created $p!", false, ch, obj, nullptr, TO_ROOM);
             act("You create $p.", false, ch, obj, nullptr, TO_CHAR);
@@ -2488,7 +2486,7 @@ ACMD(do_purge) {
 
         act("$n gestures... You are surrounded by scorching flames!",
             false, ch, nullptr, nullptr, TO_ROOM);
-        send_to_room(IN_ROOM(ch), "The world seems a little cleaner.\r\n");
+        send_to_location(ch, "The world seems a little cleaner.\r\n");
 
         for(auto vict : IterRef(ch->getLocationPeople())) {
             if (!IS_NPC(vict))
@@ -3542,7 +3540,7 @@ ACMD(do_show) {
                     continue;
                 if (STATE(d) != CON_PLAYING || GET_ADMLEVEL(ch) < GET_ADMLEVEL(d->character))
                     continue;
-                if (!CAN_SEE(ch, d->character) || IN_ROOM(d->character) == NOWHERE)
+                if (!CAN_SEE(ch, d->character) || !d->character->getLocation())
                     continue;
                 i++;
                 send_to_char(ch, "%-10s - snooped by %s.\r\n", GET_NAME(d->snooping->character),
@@ -4002,8 +4000,6 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
                 send_to_char(ch, "No room exists with that number.\r\n");
                 return (0);
             }
-            if (IN_ROOM(vict) != NOWHERE)    /* Another Eric Green special. */
-                char_from_room(vict);
             char_to_room(vict, rnum);
             break;
         case 36: SET_OR_REMOVE(PRF_FLAGS(vict), PRF_ROOMFLAGS);
@@ -4377,7 +4373,7 @@ ACMD(do_plist) {
 
 ACMD(do_peace) {
     struct char_data *vict, *next_v;
-    send_to_room(IN_ROOM(ch), "Everything is quite peaceful now.\r\n");
+    send_to_location(ch, "Everything is quite peaceful now.\r\n");
 
     for(auto vict : IterRef(ch->getLocationPeople())) {
         if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch))
