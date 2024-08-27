@@ -584,6 +584,7 @@ public:
     virtual void deserializeRelations(const nlohmann::json& j);
 
     virtual bool isActive() = 0;
+    virtual void activate();
 
     void deserializedgScripts(const nlohmann::json &j);
 
@@ -796,7 +797,7 @@ struct obj_data : public GameEntity {
     nlohmann::json serializeRelations() override;
     void deserializeRelations(const nlohmann::json& j) override;
 
-    void activate();
+    void activate() override;
     void deactivate();
 
     double getAffectModifier(uint64_t location, uint64_t specific);
@@ -916,7 +917,7 @@ struct room_data : public GameEntity {
     int geffect{};            /* Effect of ground destruction       */
     std::optional<vnum> area;      /* Area number; empty for unassigned     */
 
-    void activate();
+    void activate() override;
     void deactivate();
 
     int getDamage();
@@ -1175,7 +1176,7 @@ struct char_data : public GameEntity {
     nlohmann::json serialize() override;
     void deserialize(const nlohmann::json& j) override;
 
-    void activate();
+    void activate() override;
     void deactivate();
 
     void login();

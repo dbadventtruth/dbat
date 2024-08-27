@@ -392,6 +392,10 @@ void GameEntity::setCreationTime(time_t newTime) {
     creationTime = newTime;
 }
 
+void GameEntity::activate() {
+    
+}
+
 GameEntity* GameEntity::getMatchingParentLocation(const std::function<bool(GameEntity*)>& f) {
     std::set<GameEntity*> seen;
     auto loc = getLocation();

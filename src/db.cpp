@@ -358,6 +358,7 @@ static void db_load_entities_dgscripts(const std::filesystem::path& loc) {
         if(auto cf = GameEntity::instances.find(id); cf != GameEntity::instances.end()) {
             auto e = cf->second;
             if(!e) continue;
+
             for(auto element : data) {
                 auto tid = element.get<int64_t>();
                 if(auto find  = trig_data::instances.find(tid); find != trig_data::instances.end()) {
@@ -374,8 +375,16 @@ static void db_load_entities_dgscripts(const std::filesystem::path& loc) {
 
 static void db_load_activate_entities() {
     // activate all things which ended up "in the world".
-    for(auto &[id, r] : world) {
-        r.activate();
+    for(auto &[id, ent] : GameEntity::instances) {
+        if(auto loc = ent->getLocation(); loc.entity) {
+            switch(loc.type) {
+                case LocationType::Room:
+                case LocationType::Grid:
+                case LocationType::Internal:
+                    ent->activate();
+                    break;
+            }
+        }
     }
 }
 
@@ -523,6 +532,9 @@ void boot_db_world() {
 
     auto latest = dumps.front();
 
+    basic_mud_log("Loading global data...");
+    db_load_globaldata(latest);
+
     basic_mud_log("Loading Zones...");
     db_load_zones(latest);
 
@@ -546,9 +558,6 @@ void boot_db_world() {
 
     basic_mud_log("Loading exits.");
     db_load_exits(latest);
-
-    basic_mud_log("Loading global data...");
-    db_load_globaldata(latest);
 
     basic_mud_log("Loading accounts.");
     db_load_accounts(latest);

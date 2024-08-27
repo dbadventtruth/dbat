@@ -673,8 +673,7 @@ void obj_data::onAddedToLocation(const Location& newLoc) {
             }
         }
 
-        if (EXIT(this, 5) &&
-            (getLocationTileType() == SECT_UNDERWATER || getLocationTileType() == SECT_WATER_NOSWIM)) {
+        if (EXIT(this, 5) && (getLocationTileType() == SECT_UNDERWATER || getLocationTileType() == SECT_WATER_NOSWIM)) {
             act("$p @Bsinks to deeper waters.@n", true, nullptr, this, nullptr, TO_ROOM);
             int numb = GET_ROOM_VNUM(EXIT(this, 5)->to_room);
             obj_from_room(this);

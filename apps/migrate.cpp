@@ -2530,7 +2530,7 @@ obj_data* assembleArea(const AreaDef &def) {
     obj->type_flag = ITEM_STRUCTURE;
     obj->short_description = strdup(def.name.c_str());
     // TODO: set the name based on a filtered version of the short description.
-    obj->vn = NOTHING;
+
     for(auto &f : def.itemFlags) {
         obj->extra_flags.set(f);
     }
@@ -3710,7 +3710,7 @@ void migrate_grid() {
         sdata.itemFlags = {ITEM_VEHICLE, ITEM_ENVIRONMENT};
         auto ship = assembleArea(sdata);
 
-        room_vnum toRoom = data.hatch_room.value_or(16694);
+        room_vnum toRoom = data.location.value_or(16694);
 
         obj_to_room(ship, toRoom);
         // todo: make sure hatch area has controls...

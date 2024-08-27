@@ -1986,11 +1986,11 @@ void handle_global_emote(const char *str, struct char_data *ch, struct obj_data 
 
 void handle_special_cases(const char *str, struct char_data *ch, struct obj_data *obj, const void *vict_obj) {
     struct descriptor_data *d;
+    
+    auto rvn = ch ? ch->getRoomVnum() : NOTHING;
     for (d = descriptor_list; d; d = d->next) {
         if (STATE(d) != CON_PLAYING)
             continue;
-
-        auto rvn = ch->getRoomVnum();
 
         if (ch && IN_ARENA(ch)) {
             if (PRF_FLAGGED(d->character, PRF_ARENAWATCH) && arena_watch(d->character) == rvn) {
