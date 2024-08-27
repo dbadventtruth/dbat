@@ -38,6 +38,7 @@ void parse_trigger(FILE *trig_f, trig_vnum nr) {
 
     idx.proto = trig;
     trig->vn = nr;
+    editables[trig->getSlug()] = trig;
     auto &z = zone_table[real_zone_by_thing(nr)];
     z.triggers.insert(nr);
 

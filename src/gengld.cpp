@@ -62,6 +62,7 @@ int add_guild(struct guild_data *ngld) {
     if(!exists) mudlog(BRF, ADMLVL_BUILDER, true, "SYSERR: GenOLC: Creating new guild.");
 
     copy_guild(&g, ngld);
+    if(!exists) editables[g.getSlug()] = &g;
 
     return rguild;
 }

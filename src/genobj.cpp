@@ -68,6 +68,7 @@ obj_rnum insert_object(struct obj_data *obj, obj_vnum ovnum) {
     auto exists = obj_proto.count(ovnum);
     auto &o = obj_proto[ovnum];
     o = *obj;
+    editables[o.getSlug()] = &o;
 
     /* Not found, place at 0. */
     return false;
@@ -170,6 +171,7 @@ int delete_object(obj_rnum rnum) {
         return NOTHING;
 
     obj = &obj_proto[rnum];
+    editables.erase(obj->getSlug());
 
     zrnum = real_zone_by_thing(rnum);
 

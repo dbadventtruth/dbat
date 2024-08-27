@@ -55,6 +55,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum) {
 
     auto &m = mob_proto[vnum];
     m = *mob;
+    editables[mob->getSlug()] = &m;
 
     m.vn = 0;
     copy_mobile_strings(&m, mob);
@@ -103,6 +104,9 @@ int delete_mobile(mob_rnum refpt) {
         basic_mud_log("SYSERR: GenOLC: delete_mobile: Invalid rnum %d.", refpt);
         return NOBODY;
     }
+
+    auto &m = mob_proto[refpt];
+    editables.erase(m.getSlug());
 
     vnum = mob_index[refpt].vn;
     extract_mobile_all(vnum);

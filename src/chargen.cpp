@@ -878,6 +878,7 @@ namespace net {
         p.character = ch;
         char_data::instances[ch->getID()] = ch;
         GameEntity::instances[ch->getID()] = ch;
+        editables[ch->getSlug()] = ch;
 
         ch->chclass = cg.sensei;
         ch->race = cg.race;

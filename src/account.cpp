@@ -6,6 +6,10 @@
 
 std::map<vnum, account_data> accounts;
 
+std::string account_data::getSlug() const {
+    return fmt::format("account_{}", vn);
+}
+
 struct account_data *findAccount(const std::string &name) {
     for (auto &[aid, account] : accounts) {
         if (boost::iequals(account.name, name)) {
@@ -113,6 +117,7 @@ account_data *createAccount(const std::string &name, const std::string &password
     a.passHash = hash.value();
     a.created = time(nullptr);
     a.lastLogin = time(nullptr);
+    editables[a.getSlug()] = &a;
 
-    return nullptr;
+    return &a;
 }

@@ -10,10 +10,11 @@
 
 constexpr int GW_ARRAY_MAX = 4;
 
-struct guild_data {
+struct guild_data : public Editable {
     guild_data() = default;
     explicit guild_data(const nlohmann::json& j);
     nlohmann::json serialize();
+    std::string getSlug() const override;
     room_vnum vnum{NOBODY};                /* number of the guild */
     void toggle_skill(uint16_t skill_id);
     void toggle_feat(uint16_t skill_id);

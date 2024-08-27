@@ -149,6 +149,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
      */
     auto &z = zone_table[vzone_num];
     z.number = vzone_num;
+    editables[z.getSlug()] = &z;
     
     /*
      * Ok, insert the new zone here.

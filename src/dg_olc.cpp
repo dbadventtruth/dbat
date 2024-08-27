@@ -478,6 +478,7 @@ void trigedit_save(struct descriptor_data *d) {
             t.vn = OLC_NUM(d);
             t.proto = new trig_data();
             trig_data_copy(t.proto, trig);
+            editables[trig->getSlug()] = trig;
         }
 
     }
@@ -618,24 +619,6 @@ void trigedit_string_cleanup(struct descriptor_data *d, int terminator) {
             break;
     }
 }
-
-#if 0 /* change to 1 if you get messages telling you you don't have strncasecmp() */
-int strncasecmp (const char *s1, const char *s2, int n)
-{
-    unsigned char c1, c2;
-    while(*s1 && *s2 && n--) {
-        c1 = ((*s1 >= 'A') && (*s1 <= 'Z')) ? (*s1++) + ('a' - 'A') : (*s1++);
-        c2 = ((*s2 >= 'A') && (*s2 <= 'Z')) ? (*s2++) + ('a' - 'A') : (*s2++);
-        if (c1 != c2)
-            return (c1 > c2) ? 1 : -1;
-    }
-    if (*s1 && !*s2)
-        return 1;
-    if (!*s1 && *s2)
-        return -1;
-    return 0;
-}
-#endif
 
 int format_script(struct descriptor_data *d) {
     char nsc[MAX_CMD_LENGTH], *t, line[READ_SIZE];

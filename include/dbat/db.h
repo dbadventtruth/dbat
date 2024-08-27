@@ -389,6 +389,8 @@ extern std::vector<obj_vnum> dbVnums;
 extern std::map<room_vnum, room_data> world;
 extern std::map<zone_vnum, struct zone_data> zone_table;
 
+extern std::unordered_map<std::string, Editable*> editables;
+
 extern struct descriptor_data *descriptor_list;
 extern std::map<int64_t, struct descriptor_data*> sessions;
 

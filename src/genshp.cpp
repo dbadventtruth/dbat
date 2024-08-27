@@ -273,6 +273,7 @@ int add_shop(struct shop_data *nshp) {
     z.shops.insert(S_NUM(nshp));
     auto &sh = shop_index[S_NUM(nshp)];
     copy_shop(&shop_index[rshop], nshp, false);
+    editables[sh.getSlug()] = &sh;
     return S_NUM(nshp);
 }
 

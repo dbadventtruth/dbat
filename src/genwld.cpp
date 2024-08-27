@@ -44,6 +44,7 @@ room_rnum add_room(struct room_data *room) {
 
     auto &r = world[room->vn];
     r = *room;
+    editables[r.getSlug()] = &r;
     basic_mud_log("GenOLC: add_room: Added room %d.", room->vn);
 
     /*
@@ -132,6 +133,7 @@ int delete_room(room_rnum rnum) {
         sh.in_room.erase(rnum);
     }
 
+    editables.erase(room->getSlug());
     world.erase(rnum);
     return true;
 }

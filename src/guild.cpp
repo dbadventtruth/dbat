@@ -23,6 +23,10 @@
 #include "dbat/constants.h"
 #include "dbat/genzon.h"
 
+std::string guild_data::getSlug() const {
+    return fmt::format("guild_{}", vnum);
+}
+
 /* Local variables */
 int spell_sort_info[SKILL_TABLE_SIZE + 1];
 guild_vnum top_guild = NOTHING;

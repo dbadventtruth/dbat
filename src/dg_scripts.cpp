@@ -1461,6 +1461,7 @@ void add_trigger(GameEntity *u, trig_data *t, int loc) {
     t->owner = u;
     t->id = trig_data::getNextID();
     trig_data::instances[t->id] = t;
+    editables[t->getSlug()] = t;
     t->activate();
 }
 
@@ -3020,4 +3021,11 @@ void deserializeVars(struct trig_var_data **vd, const nlohmann::json &j) {
 
 nlohmann::json index_data::serializeProto() {
     return proto->serializeProto();
+}
+
+std::string trig_data::getSlug() const {
+    if(id == NOTHING) {
+        return fmt::format("trig_proto_{}", vn);
+    }
+    return fmt::format("trig_{}", id);
 }

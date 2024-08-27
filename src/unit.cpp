@@ -26,8 +26,6 @@ nlohmann::json GameEntity::serialize() {
     if(vn != NOTHING) j["vn"] = vn;
     j["type"] = type;
 
-    if(!slug.empty()) j["slug"] = slug;
-
     if(!(type & ENT_PROTOTYPE)) {
         j["id"] = id;
         j["creationTime"] = creationTime;
@@ -296,7 +294,7 @@ std::vector<std::string> GameEntity::getListPrefixesFor(char_data *viewer) {
     std::vector<std::string> out;
 
     if(GET_ADMLEVEL(viewer) >= ADMLVL_IMMORT) {
-        out.emplace_back(fmt::format("@G[{}]@n", getUID()));
+        out.emplace_back(fmt::format("@G[{}]@n", getSlug()));
         if(vn != NOTHING) out.emplace_back(fmt::format("@G[VN:{}]@n", vn));
         if(!proto_script.empty()) out.emplace_back(fmt::format("@G[DG:{}]@n", fmt::join(proto_script, ",")));
     }
@@ -407,12 +405,16 @@ GameEntity* GameEntity::getMatchingParentLocation(const std::function<bool(GameE
 }
 
 obj_data* GameEntity::getMatchingParentStructure(int flag) {
-    auto isCorrect = [flag](GameEntity* ent) {
-        if(auto o = dynamic_cast<obj_data*>(ent); o) {
+    std::set<GameEntity*> seen;
+    auto loc = getLocation();
+    while(loc.entity) {
+        if(seen.count(loc.entity)) break;
+        seen.insert(loc.entity);
+        if(auto o = dynamic_cast<obj_data*>(loc.entity); o) {
             if(o->type_flag == ITEM_STRUCTURE && o->extra_flags.test(flag))
-            return true;
-        } else 
-            return false;
-    };
-    return dynamic_cast<obj_data*>(getMatchingParentLocation(isCorrect));
+                return o;
+        }
+        loc = loc.entity->getLocation();
+    }
+    return nullptr;
 }

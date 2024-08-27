@@ -164,6 +164,7 @@ bool deleteUserAccount(vnum id) {
     for(auto c : cha)
         deletePlayerCharacter(c);
 
+    editables.erase(acc.getSlug());
     accounts.erase(id);
 
     return true;

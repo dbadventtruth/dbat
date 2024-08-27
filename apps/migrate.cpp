@@ -656,10 +656,10 @@ static void parse_room(FILE *fl, room_vnum virtual_nr) {
     r.setID(GameEntity::nextID());
     room_data::instances[r.getID()] = &r;
     GameEntity::instances[r.getID()] = &r;
+    editables[r.getSlug()] = &r;
 
     r.zone = zone;
     r.vn = virtual_nr;
-    r.setSlug(fmt::format("room_{}", virtual_nr));
     r.name = fread_string(fl, buf2);
     r.look_description = fread_string(fl, buf2);
 
@@ -768,7 +768,6 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, mob_vnum nr) {
         return 0;
     }
 
-    ch->setSlug(fmt::format("mob_proto_{}", nr));
     ch->setType(ENT_CHARACTER | ENT_PROTOTYPE);
 
     ch->set(CharNum::Level, t[0]);
@@ -1239,7 +1238,6 @@ static char *parse_object(FILE *obj_f, obj_vnum nr) {
     auto &o = obj_proto[nr];
     auto &idx = obj_index[nr];
 
-    o.setSlug(fmt::format("obj_proto_{}", nr));
     o.setType(ENT_OBJECT | ENT_PROTOTYPE);
 
     idx.vn = nr;
@@ -3958,6 +3956,7 @@ void migrate_characters() {
             continue;
         }
         auto id = ch->getID();
+        ch->setType(ENT_CHARACTER);
         auto &p = players[id];
         p.id = id;
         p.character = ch;
@@ -3970,7 +3969,9 @@ void migrate_characters() {
         loc.entity = &world.at(ch->load_room);
         loc.type = LocationType::Room;
         ch->was_in_room = ch->load_room;
+        GameEntity::instances[id] = ch;
         char_data::instances[id] = ch;
+        
         ch->setLocation(loc);
     }
 

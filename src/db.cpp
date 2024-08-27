@@ -58,7 +58,7 @@ int64_t GameEntity::nextID() {
 std::shared_ptr<spdlog::logger> logger;
 
 struct config_data config_info; /* Game configuration list.    */
-
+std::unordered_map<std::string, Editable*> editables;
 std::map<room_vnum, room_data> world;    /* array of rooms		 */
 
 struct char_data *affect_list = nullptr; /* global linked list of chars with affects */
@@ -278,6 +278,8 @@ static void db_load_accounts(const std::filesystem::path& loc) {
     for(auto acc : load_from_file(loc, "accounts.json")) {
         auto vn = acc["vn"].get<int64_t>();
         accounts.emplace(vn, acc);
+        auto &a = accounts[vn];
+        editables[a.getSlug()] = &a;
     }
 
 }
@@ -315,8 +317,10 @@ static void db_load_entities_initial(const std::filesystem::path& loc) {
             // THIS SHOULD NOT HAPPEN YET!
         }
 
-        if(e)
+        if(e) {
             GameEntity::instances[id] = e;
+            editables[e->getSlug()] = e;
+        }
     }
 }
 
@@ -381,6 +385,7 @@ static void db_load_dgscripts_initial(const std::filesystem::path& loc) {
         auto t = new trig_data();
         t->deserializeInstance(j["data"]);
         trig_data::instances[id] = t;
+        editables[t->getSlug()] = t;
     }
 }
 
@@ -414,6 +419,8 @@ static void db_load_zones(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "zones.json")) {
         auto id = j["number"].get<int64_t>();
         zone_table.emplace(id, j);
+        auto &z = zone_table[id];
+        editables[z.getSlug()] = &z;
     }
 }
 
@@ -422,7 +429,8 @@ static void db_load_dgscript_prototypes(const std::filesystem::path& loc) {
         auto id = j["vn"].get<int64_t>();
         auto &t = trig_index[id];
         t.vn = id;
-        t.proto = new trig_data(j);;
+        t.proto = new trig_data(j);
+        editables[t.proto->getSlug()] = t.proto;
     }
 }
 
@@ -433,6 +441,7 @@ static void db_load_rooms(const std::filesystem::path& loc) {
         auto r = world.emplace(vn, j);
         room_data::instances[id] = &r.first->second;
         GameEntity::instances[r.first->second.getID()] = &r.first->second;
+        editables[r.first->second.getSlug()] = &r.first->second;
         r.first->second.zone = real_zone_by_thing(vn);
         r.first->second.activate();
     }
@@ -451,6 +460,8 @@ static void db_load_shops(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "shops.json")) {
         auto id = j["vnum"].get<int64_t>();
         shop_index.emplace(id, j);
+        auto &s = shop_index[id];
+        editables[s.getSlug()] = &s;
     }
 }
 
@@ -458,6 +469,8 @@ static void db_load_guilds(const std::filesystem::path& loc) {
     for(auto j : load_from_file(loc, "guilds.json")) {
         auto id = j["vnum"].get<int64_t>();
         guild_index.emplace(id, j);
+        auto &g = guild_index[id];
+        editables[g.getSlug()] = &g;
     }
 }
 
@@ -468,6 +481,7 @@ static void db_load_item_prototypes(const std::filesystem::path& loc) {
         p.first->second.zone = real_zone_by_thing(id);
         auto &i = obj_index[id];
         i.vn = id;
+        editables[p.first->second.getSlug()] = &p.first->second;
     }
 }
 
@@ -478,6 +492,7 @@ static void db_load_npc_prototypes(const std::filesystem::path& loc) {
         p.first->second.zone = real_zone_by_thing(id);
         auto &i = mob_index[id];
         i.vn = id;
+        editables[p.first->second.getSlug()] = &p.first->second;
     }
 }
 
@@ -1231,6 +1246,7 @@ struct char_data *create_char(bool activate) {
         ch->setID(GameEntity::nextID());
         char_data::instances[ch->getID()] = ch;
         GameEntity::instances[ch->getID()] = ch;
+        editables[ch->getSlug()] = ch;
         ch->setCreationTime(time(nullptr));
         ch->activate();
     }
@@ -1257,6 +1273,7 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
     mob->setID(GameEntity::nextID());
     char_data::instances[mob->getID()] = mob;
     GameEntity::instances[mob->getID()] = mob;
+    editables[mob->getSlug()] = mob;
     mob->setCreationTime(time(nullptr));
     mob->activate();
     if(race::hasTail(mob->race))
@@ -1820,6 +1837,7 @@ struct obj_data *create_obj(bool activate) {
         obj->setID(GameEntity::nextID());
         obj_data::instances[obj->getID()] = obj;
         GameEntity::instances[obj->getID()] = obj;
+        editables[obj->getSlug()] = obj;
         obj->setCreationTime(time(nullptr));
         obj->activate();
     }
@@ -1851,6 +1869,7 @@ struct obj_data *read_object(obj_vnum nr, int type, bool activate) /* and obj_rn
         obj->setID(GameEntity::nextID());
         obj_data::instances[obj->getID()] = obj;
         GameEntity::instances[obj->getID()] = obj;
+        editables[obj->getSlug()] = obj;
         obj->setCreationTime(time(nullptr));
         obj->activate();
     }
@@ -2370,6 +2389,8 @@ void free_followers(struct follow_type *k) {
 void free_char(struct char_data *ch) {
     int i;
     char_data::instances.erase(ch->getID());
+    GameEntity::instances.erase(ch->getID());
+    editables.erase(ch->getSlug());
 
     if(ch->vn == NOBODY) {
         if (GET_NAME(ch))
@@ -2426,6 +2447,9 @@ void free_char(struct char_data *ch) {
 
 /* release memory allocated for an obj struct */
 void free_obj(struct obj_data *obj) {
+    obj_data::instances.erase(obj->getID());
+    GameEntity::instances.erase(obj->getID());
+    editables.erase(obj->getSlug());
 
     if (GET_OBJ_RNUM(obj) == NOWHERE) {
         free_object_strings(obj);
