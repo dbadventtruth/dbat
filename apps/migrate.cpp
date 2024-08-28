@@ -3979,7 +3979,7 @@ void migrate_characters() {
         GameEntity::instances[id] = ch;
         char_data::instances[id] = ch;
         
-        ch->setLocation(loc);
+        //ch->setLocation(loc);
     }
 
     // migrate sense files...

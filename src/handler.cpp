@@ -926,7 +926,7 @@ void extract_char_final(struct char_data *ch) {
  *    get really confused otherwise.
  */
 void extract_char(struct char_data *ch) {
-    if(!ch->active) {
+    if(!ch->isActive()) {
         basic_mud_log("Attempt to extract an inactive character.");
         return;
     }

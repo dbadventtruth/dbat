@@ -211,7 +211,9 @@ int greet_mtrigger(char_data *actor, int dir) {
     if (!valid_dg_target(actor, DG_ALLOW_GODS))
         return true;
 
-    for(auto ch : IterRef(actor->getLocationPeople())) {
+    auto people = actor->getLocationPeople();
+
+    for(auto ch : IterRef(people)) {
         if (!SCRIPT_CHECK(ch, MTRIG_GREET | MTRIG_GREET_ALL) ||
             !AWAKE(ch) || FIGHTING(ch) || (ch == actor) ||
             AFF_FLAGGED(ch, AFF_CHARM))
