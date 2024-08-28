@@ -3619,7 +3619,7 @@ static void handle_vehicle(struct char_data *ch, struct obj_data *obj) {
         return;
     }
 
-    room_rnum vehicle_inside = real_room(GET_OBJ_VAL(obj, VAL_VEHICLE_ROOM));
+    room_rnum vehicle_inside = real_room(GET_OBJ_VAL(obj, VAL_STRUCTURE_ROOM));
     if (vehicle_inside == NOWHERE) {
         send_to_char(ch, "You cannot see inside that.\r\n");
     } else if (IS_DARK(vehicle_inside) && !CAN_SEE_IN_DARK(ch) && !PLR_FLAGGED(ch, PLR_AURALIGHT)) {

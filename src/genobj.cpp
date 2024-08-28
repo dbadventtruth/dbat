@@ -624,55 +624,6 @@ void obj_data::onAddedToLocation(const Location& newLoc) {
             extra_flags.set(ITEM_UNBREAKABLE);
         }
 
-        // This section is now only going to be called during migrations.
-        if(isMigrating) {
-            if (otype == ITEM_HATCH && ovn <= 19199) {
-                if ((ovn <= 18999 && ovn >= 18800) ||
-                    (ovn <= 19199 && ovn >= 19100)) {
-                    int hnum = GET_OBJ_VAL(this, 0);
-                    struct obj_data *house = read_object(hnum, VIRTUAL);
-                    obj_to_room(house, real_room(GET_OBJ_VAL(this, 6)));
-                    SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_CLOSED);
-                    SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_LOCKED);
-                }
-            }
-            struct obj_data* vehicle;
-            if (otype == ITEM_HATCH && GET_OBJ_VAL(this, 0) > 1 && ovn > 19199) {
-                if (!(vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(this, VAL_HATCH_DEST)))) {
-                    if (real_room(GET_OBJ_VAL(this, 3)) != NOWHERE) {
-                        vehicle = read_object(GET_OBJ_VAL(this, 0), VIRTUAL);
-                        if(!vehicle) {
-                            basic_mud_log("SYSERR: Vehicle %d not found for hatch %d", GET_OBJ_VAL(this, 0), ovn);
-                        }
-                        obj_to_room(vehicle, real_room(GET_OBJ_VAL(this, 3)));
-                        if (look_description) {
-                            if (strlen(look_description)) {
-                                char nick[MAX_INPUT_LENGTH], nick2[MAX_INPUT_LENGTH], nick3[MAX_INPUT_LENGTH];
-                                if (GET_OBJ_VNUM(vehicle) <= 46099 && GET_OBJ_VNUM(vehicle) >= 46000) {
-                                    sprintf(nick, "Saiyan Pod %s", look_description);
-                                    sprintf(nick2, "@wA @Ys@ya@Yi@yy@Ya@yn @Dp@Wo@Dd@w named @D(@C%s@D)@w",
-                                            look_description);
-                                } else if (GET_OBJ_VNUM(vehicle) >= 46100 && GET_OBJ_VNUM(vehicle) <= 46199) {
-                                    sprintf(nick, "EDI Xenofighter MK. II %s", look_description);
-                                    sprintf(nick2,
-                                            "@wAn @YE@yD@YI @CX@ce@Wn@Do@Cf@ci@Wg@Dh@Wt@ce@Cr @RMK. II @wnamed @D(@C%s@D)@w",
-                                            look_description);
-                                }
-                                sprintf(nick3, "%s is resting here@w", nick2);
-                                vehicle->name = strdup(nick);
-                                vehicle->short_description = strdup(nick2);
-                                vehicle->room_description = strdup(nick3);
-                            }
-                        }
-                        SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_CLOSED);
-                        SET_BIT(GET_OBJ_VAL(this, VAL_CONTAINER_FLAGS), CONT_LOCKED);
-                    } else {
-                        basic_mud_log("Hatch load: Hatch with no vehicle load room: #%d!", ovn);
-                    }
-                }
-            }
-        }
-
         if (EXIT(this, 5) && (getLocationTileType() == SECT_UNDERWATER || getLocationTileType() == SECT_WATER_NOSWIM)) {
             act("$p @Bsinks to deeper waters.@n", true, nullptr, this, nullptr, TO_ROOM);
             int numb = GET_ROOM_VNUM(EXIT(this, 5)->to_room);
@@ -751,7 +702,7 @@ std::optional<Location> obj_data::getEnterLocation() {
         }
     } else if(GET_OBJ_TYPE(this) == ITEM_STRUCTURE) {
         if(extra_flags.test(ITEM_AREA)) {
-            auto pdest = value[VAL_PORTAL_DEST];
+            auto pdest = value[VAL_STRUCTURE_ROOM];
             if(world.count(pdest)) {
                 Location toLoc;
                 toLoc.entity = &world.at(pdest);
@@ -762,7 +713,9 @@ std::optional<Location> obj_data::getEnterLocation() {
             Location toLoc;
             toLoc.entity = this;
             toLoc.type = LocationType::Grid;
-            if(gridEntrance) toLoc.point = gridEntrance.value();
+            toLoc.point.x = value[VAL_STRUCTURE_ROOM];
+            toLoc.point.y = value[VAL_STRUCTURE_Y];
+            toLoc.point.z = value[VAL_STRUCTURE_Z];
             return toLoc;
         }
     }

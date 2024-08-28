@@ -1489,6 +1489,7 @@ constexpr int ITEM_PLANT = 34;               /* This will grow!              */
 constexpr int ITEM_FISHPOLE = 35;               /* FOR FISHING                  */
 constexpr int ITEM_FISHBAIT = 36;               /* DITTO                        */
 
+
 constexpr int NUM_ITEM_TYPES = 37;
 
 /* Take/Wear flags: used by obj_data.wear_flags */
@@ -2099,14 +2100,16 @@ constexpr int VAL_FOUNTAIN_HEALTH = 4;
 constexpr int VAL_FOUNTAIN_MAXHEALTH = 5;
 constexpr int VAL_FOUNTAIN_UNUSED7 = 6;
 constexpr int VAL_FOUNTAIN_MATERIAL = 7;
-constexpr int VAL_VEHICLE_ROOM = 0;
-constexpr int VAL_VEHICLE_UNUSED2 = 1;
-constexpr int VAL_VEHICLE_UNUSED3 = 2;
-constexpr int VAL_VEHICLE_APPEAR = 3;
-constexpr int VAL_VEHICLE_HEALTH = 4;
-constexpr int VAL_VEHICLE_MAXHEALTH = 5;
-constexpr int VAL_VEHICLE_UNUSED7 = 6;
-constexpr int VAL_VEHICLE_MATERIAL = 7;
+constexpr int VAL_STRUCTURE_ROOM = 0;
+constexpr int VAL_STRUCTURE_FLAGS = 1;
+constexpr int VAL_STRUCTURE_DCSKILL = 2;
+constexpr int VAL_STRUCTURE_APPEAR = 3;
+constexpr int VAL_STRUCTURE_HEALTH = 4;
+constexpr int VAL_STRUCTURE_MAXHEALTH = 5;
+constexpr int VAL_STRUCTURE_UNUSED7 = 6;
+constexpr int VAL_STRUCTURE_MATERIAL = 7;
+constexpr int VAL_STRUCTURE_Y = 8;
+constexpr int VAL_STRUCTURE_Z = 9;
 constexpr int VAL_HATCH_DEST = 0;
 constexpr int VAL_HATCH_FLAGS = 1;
 constexpr int VAL_HATCH_DCSKILL = 2;

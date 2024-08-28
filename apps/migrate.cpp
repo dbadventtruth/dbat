@@ -3709,10 +3709,14 @@ void migrate_grid() {
         sdata.roomIDs = data.vnums;
         sdata.itemFlags = {ITEM_VEHICLE, ITEM_ENVIRONMENT};
         auto ship = assembleArea(sdata);
+        if(data.hatch_room) {
+            auto &r = world.at(data.hatch_room.value());
+            r.room_flags.set(ROOM_HATCH);
+            r.room_flags.set(ROOM_WINDOW);
+            ship->value[VAL_STRUCTURE_ROOM] = data.hatch_room.value();
+        }
 
-        room_vnum toRoom = data.location.value_or(16694);
-
-        obj_to_room(ship, toRoom);
+        obj_to_room(ship, data.location.value_or(16694));
         // todo: make sure hatch area has controls...
 
         return ship;
@@ -3765,7 +3769,8 @@ void migrate_grid() {
         house.name = fmt::format("Small Player House {}", count++);
         house.roomRanges.emplace_back(i, i+3);
         house.parent = small_player_houses;
-        assembleArea(house);
+        auto h = assembleArea(house);
+        h->value[VAL_STRUCTURE_ROOM] = i;
     }
 
     AreaDef mdhouses;
@@ -3778,7 +3783,8 @@ void migrate_grid() {
         house.name = fmt::format("Deluxe Player House {}", count++);
         house.roomRanges.emplace_back(i, i+4);
         house.parent = medium_player_houses;
-        assembleArea(house);
+        auto h = assembleArea(house);
+        h->value[VAL_STRUCTURE_ROOM] = i;
     }
 
     AreaDef lphouses;
@@ -3791,7 +3797,8 @@ void migrate_grid() {
         house.name = fmt::format("Excellent Player House {}", count++);
         house.roomRanges.emplace_back(i, i+4);
         house.parent = large_player_houses;
-        assembleArea(house);
+        auto h = assembleArea(house);
+        h->value[VAL_STRUCTURE_ROOM] = i;
     }
 
     AreaDef pdimen;

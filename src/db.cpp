@@ -376,15 +376,26 @@ static void db_load_entities_dgscripts(const std::filesystem::path& loc) {
 static void db_load_activate_entities() {
     // activate all things which ended up "in the world".
     for(auto &[id, ent] : GameEntity::instances) {
-        if(auto loc = ent->getLocation(); loc.entity) {
+        if(auto r = dynamic_cast<room_data*>(ent); r)
+            if(!r->isActive()) r->activate();
+        else if(auto loc = ent->getLocation(); loc.entity) {
             switch(loc.type) {
                 case LocationType::Room:
                 case LocationType::Grid:
                 case LocationType::Internal:
-                    ent->activate();
+                    if(auto c = dynamic_cast<char_data*>(ent); c) {
+                        if(IS_NPC(c)) {
+                            if(!c->isActive()) c->activate();
+                        } else {
+                            if(c->isActive()) c->deactivate();
+                        }
+                    } else if(auto o = dynamic_cast<obj_data*>(ent); o) {
+                        if(!o->isActive()) o->activate();
+                    }
                     break;
             }
         }
+        
     }
 }
 
@@ -452,7 +463,6 @@ static void db_load_rooms(const std::filesystem::path& loc) {
         GameEntity::instances[r.first->second.getID()] = &r.first->second;
         editables[r.first->second.getSlug()] = &r.first->second;
         r.first->second.zone = real_zone_by_thing(vn);
-        r.first->second.activate();
     }
 }
 
