@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "dbat/db/consts/types.h"
+#include "dbat/db/utils.h"
 #include "dbat/db/consts/positions.h"
 #include "dbat/db/consts/playerflags.h"
 #include "dbat/db/consts/mobflags.h"
@@ -2848,4 +2849,93 @@ bool MOON_TIMECHECK() {
             return time_info.hours < 4;
     }
     return false;
+}
+
+// Stats System
+void char_stats_init(struct char_data *ch) {
+  for(int i = 0; i < NUM_CHARACTER_STATS; i++) {
+    ch->stats[i] = stat_definitions[i].default_value;
+  }
+  char_der_invalidate(ch);
+}
+
+stat_t char_stats_get(const struct char_data *ch, uint8_t stat_id) {
+  if (stat_id < 0 || stat_id > NUM_CHARACTER_STATS) {
+    return 0; // or some error value
+  }
+  return ch->stats[stat_id];
+}
+
+stat_t char_stats_set(struct char_data *ch, uint8_t stat_id, stat_t value) {
+  if (stat_id < 0 || stat_id > NUM_CHARACTER_STATS) {
+    return 0; // or some error value
+  }
+  stat_t set_to = value;
+  if(stat_definitions[stat_id].flags & STATDEF_MIN) {
+    set_to = MAX(set_to, stat_definitions[stat_id].min_value);
+  }
+  if(stat_definitions[stat_id].flags & STATDEF_MAX) {
+    set_to = MIN(set_to, stat_definitions[stat_id].max_value);
+  }
+  ch->stats[stat_id] = set_to;
+  // just naively invalidate the entire cache for now.
+  // worry about optimizing this later.
+  char_der_invalidate(ch);
+  return set_to;
+}
+
+stat_t char_stats_modify(struct char_data *ch, uint8_t stat_id, stat_t delta) {
+  if (stat_id < 0 || stat_id > NUM_CHARACTER_STATS) {
+    return 0; // or some error value
+  }
+  stat_t new_value = ch->stats[stat_id] + delta;
+  return char_stats_set(ch, stat_id, new_value);
+}
+
+void char_der_invalidate(struct char_data *ch) {
+  for(int i = 0; i < NUM_DERIVED_STATS; i++) {
+    //ch->derived_stats[i].base = 0;
+    //ch->derived_stats[i].effective = 0;
+    //ch->derived_stats[i].applies = 0;
+    ch->derived_stats[i].calculated = false;
+  }
+}
+
+stat_t char_der_get(struct char_data *ch, uint8_t der_id) {
+  if (der_id < 0 || der_id > NUM_DERIVED_STATS) {
+    return 0; // or some error value
+  }
+  // if we have a cached value, let's use it by all means!
+  if(ch->derived_stats[der_id].calculated) {
+    return ch->derived_stats[der_id].effective;
+  }
+
+  // We don't have a cached value. We'll have to calculate it.
+
+  for(int i = 0; i < 5; i++) {
+    if(der_definitions[der_id].depends_on[i] == -1) break;
+    // Ensures that all dependencies are calculated before we calculate this stat.
+    // Beware of circular dependencies! We have no protection against those.
+    char_der_get(ch, der_definitions[der_id].depends_on[i]);
+  }
+
+  stat_t base_value = 0;
+  if(der_definitions[der_id].base_func) {
+    base_value = der_definitions[der_id].base_func(ch, der_id);
+  }
+
+  ch->derived_stats[der_id].base = base_value;
+
+  stat_t total_value = base_value;
+  if(der_definitions[der_id].effective_func) {
+    total_value = der_definitions[der_id].effective_func(ch, der_id);
+  }
+
+  // Add any apply modifiers from the legacy modifier system.
+  total_value += ch->derived_stats[der_id].applies;
+
+  ch->derived_stats[der_id].effective = total_value;
+  ch->derived_stats[der_id].calculated = true;
+
+  return total_value;
 }

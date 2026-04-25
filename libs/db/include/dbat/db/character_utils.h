@@ -11,6 +11,7 @@
 #include "consts/playerflags.h"
 #include "consts/adminflags.h"
 #include "consts/mobflags.h"
+#include "stats.h"
 
 extern struct player_special_data dummy_mob;
 
@@ -916,6 +917,15 @@ bool char_is_humanoid(const struct char_data *ch);
 bool char_is_weighted(const struct char_data *ch);
 bool char_is_spoiled(const struct char_data *ch);
 
+
+// Stats System
+void char_stats_init(struct char_data *ch);
+stat_t char_stats_get(const struct char_data *ch, uint8_t stat_id);
+stat_t char_stats_set(struct char_data *ch, uint8_t stat_id, stat_t val);
+stat_t char_stats_modify(struct char_data *ch, uint8_t stat_id, stat_t delta);
+
+void char_der_invalidate(struct char_data *ch);
+stat_t char_der_get(struct char_data *ch, uint8_t der_id);
 
 // Legacy Macros
 

@@ -23,6 +23,7 @@
 #include "consts/sizes.h"
 #include "index.h"
 #include "htree.h"
+#include "derived.h"
 
 #define PM_ARRAY_MAX 4
 
@@ -234,6 +235,9 @@ struct char_data
    char *long_descr;  /* for 'look'				*/
    char *description; /* Extra descriptions                   */
    char *title;       /* PC / NPC's title                     */
+
+   stat_t stats[NUM_CHARACTER_STATS]; /* Array of character stats		*/
+   der_data derived_stats[NUM_DERIVED_STATS]; /* Array of derived stats		*/
 
    int size;   /* Size class of char                   */
    int8_t sex; /* PC / NPC's sex                       */
