@@ -306,27 +306,27 @@ void affect_total(struct char_data *ch)
   /* Make certain values are between 0..100, not < 0 and not > 100! */
 
    if (GET_BONUS(ch, BONUS_WIMP) > 0) {
-    GET_STR(ch) = MAX(0, MIN(GET_STR(ch), 60));
+    GET_STR(ch) = MAX(0, MIN(GET_STR(ch), 70));
    } else {
     GET_STR(ch) = MAX(0, MIN(GET_STR(ch), 100));
    } if (GET_BONUS(ch, BONUS_DULL) > 0) {
-    GET_INT(ch) = MAX(0, MIN(GET_INT(ch), 60));
+    GET_INT(ch) = MAX(0, MIN(GET_INT(ch), 70));
    } else {
     GET_INT(ch) = MAX(0, MIN(GET_INT(ch), 100));
    } if (GET_BONUS(ch, BONUS_FOOLISH) > 0) {
-    GET_WIS(ch) = MAX(0, MIN(GET_WIS(ch), 60));
+    GET_WIS(ch) = MAX(0, MIN(GET_WIS(ch), 70));
    } else {
     GET_WIS(ch) = MAX(0, MIN(GET_WIS(ch), 100));
    } if (GET_BONUS(ch, BONUS_SLOW) > 0) {
-    GET_CHA(ch) = MAX(0, MIN(GET_CHA(ch), 60));
+    GET_CHA(ch) = MAX(0, MIN(GET_CHA(ch), 70));
    } else {
     GET_CHA(ch) = MAX(0, MIN(GET_CHA(ch), 100));
    } if (GET_BONUS(ch, BONUS_CLUMSY) > 0) {
-    GET_DEX(ch) = MAX(0, MIN(GET_DEX(ch), 60));
+    GET_DEX(ch) = MAX(0, MIN(GET_DEX(ch), 70));
    } else {
     GET_DEX(ch) = MAX(0, MIN(GET_DEX(ch), 100));
    } if (GET_BONUS(ch, BONUS_FRAIL) > 0) {
-    GET_CON(ch) = MAX(0, MIN(GET_CON(ch), 60));
+    GET_CON(ch) = MAX(0, MIN(GET_CON(ch), 70));
    } else {
     GET_CON(ch) = MAX(0, MIN(GET_CON(ch), 100));
    }
