@@ -90,14 +90,6 @@ struct player_special_data
    uint8_t page_length;
    int murder; /* Murder of PC's count                 */
 
-   // Attribute training
-   int trainstr;
-   int trainint;
-   int traincon;
-   int trainwis;
-   int trainagl;
-   int trainspd;
-
    // player characters can carry others.
    struct char_data *carrying;
    struct char_data *carried_by;

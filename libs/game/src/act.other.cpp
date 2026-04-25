@@ -1307,72 +1307,68 @@ ACMD(do_train)
   }
 
   int stat_id = 0;
-  int8_t *stat_val = nullptr;
+  int stat_val = 0;
   char *stat_name = nullptr;
   int bonus_trait = -1;
   int nega_trait = -1;
-  int *stat_train = nullptr;
+  int stat_train = -1;
   int needed = 0;
 
   if(!strcasecmp("str", arg)) {
-      stat_id = 1;
-      stat_val = &(ch->real_abils.str);
+      stat_id = STAT_STRENGTH;
       stat_name = "strength";
       bonus_trait = BONUS_BRAWNY;
       nega_trait = BONUS_WIMP;
-      stat_train = &(ch->player_specials->trainstr);
+      stat_train = STAT_STRENGTH_TRAIN;
       needed = strcap;
   } else if (!strcasecmp("spd", arg)) {
-      stat_id = 2;
-      stat_val = &(ch->real_abils.cha);
+      stat_id = STAT_SPEED;
       stat_name = "speed";
       bonus_trait = BONUS_QUICK;
       nega_trait = BONUS_SLOW;
-      stat_train = &(ch->player_specials->trainspd);
+      stat_train = STAT_SPEED_TRAIN;
       needed = spdcap;
   } else if (!strcasecmp("con", arg)) {
-      stat_id = 3;
-      stat_val = &(ch->real_abils.con);
+      stat_id = STAT_CONSTITUTION;
       stat_name = "constitution";
       bonus_trait = BONUS_STURDY;
       nega_trait = BONUS_FRAIL;
-      stat_train = &(ch->player_specials->traincon);
+      stat_train = STAT_CONSTITUTION_TRAIN;
       needed = concap;
   } else if (!strcasecmp("agl", arg)) {
-      stat_id = 4;
-      stat_val = &(ch->real_abils.dex);
+      stat_id = STAT_AGILITY;
       stat_name = "agility";
       bonus_trait = BONUS_AGILE;
       nega_trait = BONUS_CLUMSY;
-      stat_train = &(ch->player_specials->trainagl);
+      stat_train = STAT_AGILITY_TRAIN;
       needed = aglcap;
   } else if (!strcasecmp("int", arg)) {
-      stat_id = 5;
-      stat_val = &(ch->real_abils.intel);
+      stat_id = STAT_INTELLIGENCE;
       stat_name = "intelligence";
       bonus_trait = BONUS_SCHOLARLY;
       nega_trait = BONUS_DULL;
-      stat_train = &(ch->player_specials->trainint);
+      stat_train = STAT_INTELLIGENCE_TRAIN;
       needed = intcap;
   } else if (!strcasecmp("wis", arg)) {
-      stat_id = 6;
-      stat_val = &(ch->real_abils.wis);
+      stat_id = STAT_WISDOM;
       stat_name = "wisdom";
       bonus_trait = BONUS_SAGE;
       nega_trait = BONUS_FOOLISH;
-      stat_train = &(ch->player_specials->trainwis);
+      stat_train = STAT_WISDOM_TRAIN;
       needed = wiscap;
   } else {
       send_to_char(ch, "Syntax: train (str | spd | agl | wis | int | con)\r\n");
       return;
   }
 
-  if(*stat_val == 80) {
+  stat_val = char_stats_get(ch, stat_id);
+
+  if(stat_val == 80) {
       send_to_char(ch, "Your base %s is maxed!\r\n", stat_name);
       return;
   }
 
-  if(*stat_val >= 45 && GET_BONUS(ch, nega_trait) > 0) {
+  if(stat_val >= 45 && GET_BONUS(ch, nega_trait) > 0) {
       send_to_char(ch, "You're not able to withstand increasing your %s beyond 45.\r\n", stat_name);
       return;
   }
@@ -1385,7 +1381,7 @@ ACMD(do_train)
   else if (GET_LEVEL(ch) > 20)
       stat_cap = 40;
 
-  if(*stat_val >= stat_cap) {
+  if(stat_val >= stat_cap) {
       send_to_char(ch, "You have reached the stat cap for your level.\r\n");
       return;
   }
@@ -1550,32 +1546,32 @@ ACMD(do_train)
 
     switch (bonus) {
         case 1:
-            *stat_train += 5 + plus;
+            char_stats_modify(ch, stat_train, 5 + plus);
             send_to_char(ch, "You feel slight improvement. @D[@G+%d@D]@n\r\n", (plus + 5));
             WAIT_STATE(ch, PULSE_3SEC);
             break;
         case 2:
-            *stat_train += 10 + plus;
+            char_stats_modify(ch, stat_train, 10 + plus);
             send_to_char(ch, "You feel some improvement. @D[@G+%d@D]@n\r\n", (plus + 10));
             WAIT_STATE(ch, PULSE_3SEC);
             break;
         case 3:
-            *stat_train += 25 + plus;
+            char_stats_modify(ch, stat_train, 25 + plus);
             send_to_char(ch, "You feel good improvement. @D[@G+%d@D]@n\r\n", (plus + 25));
             WAIT_STATE(ch, PULSE_3SEC);
             break;
         case 4:
-            *stat_train += 50 + plus;
+            char_stats_modify(ch, stat_train, 50 + plus);
             send_to_char(ch, "You feel great improvement! @D[@G+%d@D]@n\r\n", (plus + 50));
             WAIT_STATE(ch, PULSE_5SEC);
             break;
         case 5:
-            *stat_train += 100 + plus;
+            char_stats_modify(ch, stat_train, 100 + plus);
             send_to_char(ch, "You feel awesome improvement! @D[@G+%d@D]@n\r\n", (plus + 100));
             WAIT_STATE(ch, PULSE_5SEC);
             break;
         default:
-            *stat_train += 1;
+            char_stats_modify(ch, stat_train, 1);
             send_to_char(ch, "You barely feel any improvement. @D[@G+1@D]@n\r\n");
             WAIT_STATE(ch, PULSE_3SEC);
             break;
@@ -1586,10 +1582,10 @@ ACMD(do_train)
         GET_PRACTICES(ch, GET_CLASS(ch)) -= 1;
     }
 
-    if (*stat_train >= needed) {
-        *stat_train -= needed;
+    if (char_stats_get(ch, stat_train) >= needed) {
+        char_stats_modify(ch, stat_train, -needed);
         send_to_char(ch, "You feel your %s improve!@n\r\n", stat_name);
-        *stat_val += 1;
+        char_stats_modify(ch, stat_id, 1);
         if (IS_PICCOLO(ch) && IS_NAMEK(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0) {
             GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * 0.25;
             send_to_char(ch, "You gained quite a bit of experience from that!\r\n");

@@ -334,12 +334,7 @@ int load_char(const char *name, struct char_data *ch)
     ch->mimic = 0;
     GET_SLOTS(ch) = 0;
     GET_TGROWTH(ch) = 0;
-    GET_TRAINSTR(ch) = PFDEF_EYE;
-    GET_TRAINSPD(ch) = PFDEF_EYE;
-    GET_TRAINWIS(ch) = PFDEF_EYE;
-    GET_TRAINAGL(ch) = PFDEF_EYE;
-    GET_TRAINCON(ch) = PFDEF_EYE;
-    GET_TRAININT(ch) = PFDEF_EYE;
+
     GET_RTIME(ch) = PFDEF_LPLAY;
     GET_DCOUNT(ch) = PFDEF_EYE;
     GET_GENOME(ch, 0) = PFDEF_EYE;
@@ -676,12 +671,12 @@ int load_char(const char *name, struct char_data *ch)
         else if (!strcmp(tag, "ThB2"))  GET_SAVE_BASE(ch, 1)    = atoi(line);
         else if (!strcmp(tag, "ThB3"))  GET_SAVE_BASE(ch, 2)    = atoi(line);
         else if (!strcmp(tag, "Trns"))  GET_TRAINS(ch)          = atoi(line);
-        else if (!strcmp(tag, "Trag"))  GET_TRAINAGL(ch)        = atoi(line);
-        else if (!strcmp(tag, "Trco"))  GET_TRAINCON(ch)        = atoi(line);
-        else if (!strcmp(tag, "Trin"))  GET_TRAININT(ch)        = atoi(line);
-        else if (!strcmp(tag, "Trsp"))  GET_TRAINSPD(ch)        = atoi(line);
-        else if (!strcmp(tag, "Trst"))  GET_TRAINSTR(ch)        = atoi(line);
-        else if (!strcmp(tag, "Trwi"))  GET_TRAINWIS(ch)        = atoi(line);
+        else if (!strcmp(tag, "Trag"))  char_stats_set(ch, STAT_AGILITY_TRAIN, atol(line));
+        else if (!strcmp(tag, "Trco"))  char_stats_set(ch, STAT_CONSTITUTION_TRAIN, atol(line));
+        else if (!strcmp(tag, "Trin"))  char_stats_set(ch, STAT_INTELLIGENCE_TRAIN, atol(line));
+        else if (!strcmp(tag, "Trsp"))  char_stats_set(ch, STAT_SPEED_TRAIN, atol(line));
+        else if (!strcmp(tag, "Trst"))  char_stats_set(ch, STAT_STRENGTH_TRAIN, atol(line));
+        else if (!strcmp(tag, "Trwi"))  char_stats_set(ch, STAT_WISDOM_TRAIN, atol(line));
         else if (!strcmp(tag, "Trp "))  GET_TRP(ch)             = atoi(line);
       break;
       case 'U':
@@ -1126,12 +1121,12 @@ void save_char(struct char_data * ch)
   if (GET_SUPP(ch)         != PFDEF_SKIN)       fprintf(fl, "Sups: %" I64T "\n", GET_SUPP(ch));
   if (GET_TRP(ch)          != PFDEF_SKIN)       fprintf(fl, "Trp : %d\n", GET_TRP(ch));
   if (GET_DCOUNT(ch)       != PFDEF_EYE)        fprintf(fl, "Deac: %d\n", GET_DCOUNT(ch));
-  if (GET_TRAINAGL(ch)     != PFDEF_EYE)        fprintf(fl, "Trag: %d\n", GET_TRAINAGL(ch));
-  if (GET_TRAINCON(ch)     != PFDEF_EYE)        fprintf(fl, "Trco: %d\n", GET_TRAINCON(ch));
-  if (GET_TRAININT(ch)     != PFDEF_EYE)        fprintf(fl, "Trin: %d\n", GET_TRAININT(ch));
-  if (GET_TRAINSPD(ch)     != PFDEF_EYE)        fprintf(fl, "Trsp: %d\n", GET_TRAINSPD(ch));
-  if (GET_TRAINSTR(ch)     != PFDEF_EYE)        fprintf(fl, "Trst: %d\n", GET_TRAINSTR(ch));
-  if (GET_TRAINWIS(ch)     != PFDEF_EYE)        fprintf(fl, "Trwi: %d\n", GET_TRAINWIS(ch));
+  if (GET_TRAINAGL(ch)     != PFDEF_EYE)        fprintf(fl, "Trag: %ld\n", GET_TRAINAGL(ch));
+  if (GET_TRAINCON(ch)     != PFDEF_EYE)        fprintf(fl, "Trco: %ld\n", GET_TRAINCON(ch));
+  if (GET_TRAININT(ch)     != PFDEF_EYE)        fprintf(fl, "Trin: %ld\n", GET_TRAININT(ch));
+  if (GET_TRAINSPD(ch)     != PFDEF_EYE)        fprintf(fl, "Trsp: %ld\n", GET_TRAINSPD(ch));
+  if (GET_TRAINSTR(ch)     != PFDEF_EYE)        fprintf(fl, "Trst: %ld\n", GET_TRAINSTR(ch));
+  if (GET_TRAINWIS(ch)     != PFDEF_EYE)        fprintf(fl, "Trwi: %ld\n", GET_TRAINWIS(ch));
   if (GET_PHASE(ch)        != PFDEF_EYE)        fprintf(fl, "Phse: %d\n", GET_PHASE(ch));
   if (GET_MIMIC(ch))        fprintf(fl, "Mimi: %d\n", GET_MIMIC(ch));
   if (GET_SLOTS(ch)        != PFDEF_EYE)        fprintf(fl, "Slot: %d\n", GET_SLOTS(ch));
