@@ -304,8 +304,8 @@ ACMD(do_rpp)
 	  return;
 	 }
 	 if (!strcasecmp(arg2, "str")) {
-       if (GET_BONUS(ch, BONUS_WIMP) > 0 && ch->real_abils.str >= 45) {
-        send_to_char(ch, "You can't because that stat maxes at 45 due to a trait negative.\r\n");
+       if (GET_BONUS(ch, BONUS_WIMP) > 0 && ch->real_abils.str >= 60) {
+        send_to_char(ch, "You can't because that stat maxes at 60 due to a trait negative.\r\n");
         return;
        } else if (GET_STR(ch) >= 100) {
         send_to_char(ch, "100 is the maximum for any stat.\r\n");
@@ -314,8 +314,8 @@ ACMD(do_rpp)
        send_to_char(ch, "You increase your strength by 2.\r\n");
        ch->real_abils.str += 2;
      } else if (!strcasecmp(arg2, "con")) {
-       if (GET_BONUS(ch, BONUS_FRAIL) > 0 && ch->real_abils.con >= 45) {
-        send_to_char(ch, "You can't because that stat maxes at 45 due to a trait negative.\r\n");
+       if (GET_BONUS(ch, BONUS_FRAIL) > 0 && ch->real_abils.con >= 60) {
+        send_to_char(ch, "You can't because that stat maxes at 60 due to a trait negative.\r\n");
         return;
        } else if (GET_CON(ch) >= 100) {
         send_to_char(ch, "100 is the maximum for any stat.\r\n");
@@ -324,8 +324,8 @@ ACMD(do_rpp)
        send_to_char(ch, "You increase your constitution by 2.\r\n");
        ch->real_abils.con += 2;
      } else if (!strcasecmp(arg2, "int")) {
-       if (GET_BONUS(ch, BONUS_DULL) > 0 && ch->real_abils.intel >= 45) {
-        send_to_char(ch, "You can't because that stat maxes at 45 due to a trait negative.\r\n");
+       if (GET_BONUS(ch, BONUS_DULL) > 0 && ch->real_abils.intel >= 60) {
+        send_to_char(ch, "You can't because that stat maxes at 60 due to a trait negative.\r\n");
         return;
        } else if (GET_INT(ch) >= 100) {
         send_to_char(ch, "100 is the maximum for any stat.\r\n");
@@ -334,8 +334,8 @@ ACMD(do_rpp)
        send_to_char(ch, "You increase your intelligence by 2.\r\n");
        ch->real_abils.intel += 2;
      } else if (!strcasecmp(arg2, "wis")) {
-       if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && ch->real_abils.wis >= 45) {
-        send_to_char(ch, "You can't because that stat maxes at 45 due to a trait negative.\r\n");
+       if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && ch->real_abils.wis >= 60) {
+        send_to_char(ch, "You can't because that stat maxes at 60 due to a trait negative.\r\n");
         return;
        } else if (GET_WIS(ch) >= 100) {
         send_to_char(ch, "100 is the maximum for any stat.\r\n");
@@ -344,8 +344,8 @@ ACMD(do_rpp)
        send_to_char(ch, "You increase your wisdom by 2.\r\n");
        ch->real_abils.wis += 2;
      } else if (!strcasecmp(arg2, "spd")) {
-       if (GET_BONUS(ch, BONUS_SLOW) > 0 && ch->real_abils.cha >= 45) {
-        send_to_char(ch, "You can't because that stat maxes at 45 due to a trait negative.\r\n");
+       if (GET_BONUS(ch, BONUS_SLOW) > 0 && ch->real_abils.cha >= 60) {
+        send_to_char(ch, "You can't because that stat maxes at 60 due to a trait negative.\r\n");
         return;
        } else if (GET_CHA(ch) >= 100) {
         send_to_char(ch, "100 is the maximum for any stat.\r\n");
@@ -354,8 +354,8 @@ ACMD(do_rpp)
        send_to_char(ch, "You increase your speed by 2.\r\n");
        ch->real_abils.cha += 2;
      } else if (!strcasecmp(arg2, "agl")) {
-       if (GET_BONUS(ch, BONUS_CLUMSY) > 0 && ch->real_abils.dex >= 45) {
-        send_to_char(ch, "You can't because that stat maxes at 45 due to a trait negative.\r\n");
+       if (GET_BONUS(ch, BONUS_CLUMSY) > 0 && ch->real_abils.dex >= 60) {
+        send_to_char(ch, "You can't because that stat maxes at 60 due to a trait negative.\r\n");
         return;
        } else if (GET_DEX(ch) >= 100) {
         send_to_char(ch, "100 is the maximum for any stat.\r\n");
@@ -5097,11 +5097,11 @@ ACMD(do_focus)
    if (AFF_FLAGGED(ch, AFF_MIGHT)) {
     send_to_char(ch, "You already have mighty muscles!\r\n");
     return;
-   } else if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) + 10 > 25) {
-    send_to_char(ch, "Your body is not able to withstand increasing its strength beyond 25.\r\n");
+   } else if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) + 10 > 60) {
+    send_to_char(ch, "Your body is not able to withstand increasing its strength beyond 60.\r\n");
     return;
-   } else if (GET_BONUS(ch, BONUS_FRAIL) > 0 && GET_STR(ch) + 2 > 25) {
-    send_to_char(ch, "Your body is not able to withstand increasing its strength beyond 25.\r\n");
+   } else if (GET_BONUS(ch, BONUS_FRAIL) > 0 && GET_STR(ch) + 2 > 60) {
+    send_to_char(ch, "Your body is not able to withstand increasing its strength beyond 60.\r\n");
     return;
    } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
     send_to_char(ch, "You do not have enough ki to infuse into your muscles.\r\n");
@@ -5141,11 +5141,11 @@ ACMD(do_focus)
     if (AFF_FLAGGED(vict, AFF_MIGHT)) {
      send_to_char(ch, "They already have mighty muscles!\r\n");
      return;
-    } else if (GET_BONUS(vict, BONUS_WIMP) > 0 && GET_STR(vict) + 10 > 25) {
-     send_to_char(ch, "Their body is not able to withstand increasing its strength beyond 25.\r\n");
+    } else if (GET_BONUS(vict, BONUS_WIMP) > 0 && GET_STR(vict) + 10 > 60) {
+     send_to_char(ch, "Their body is not able to withstand increasing its strength beyond 60.\r\n");
      return;
-    } else if (GET_BONUS(vict, BONUS_FRAIL) > 0 && GET_CON(vict) + 2 > 25) {
-     send_to_char(ch, "Their body is not able to withstand increasing its constitution beyond 25.\r\n");
+    } else if (GET_BONUS(vict, BONUS_FRAIL) > 0 && GET_CON(vict) + 2 > 60) {
+     send_to_char(ch, "Their body is not able to withstand increasing its constitution beyond 60.\r\n");
      return;
     } else if (IS_NPC(vict)) {
      send_to_char(ch, "Whatever would you waste your ki on them for?\r\n");
@@ -5227,8 +5227,8 @@ ACMD(do_focus)
     send_to_char(ch, "You already have superior wisdom!\r\n");
     return;
    }
-   else if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && GET_WIS(ch) + 10 > 25) {
-    send_to_char(ch, "You're not able to withstand increasing your wisdom beyond 25.\r\n");
+   else if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && GET_WIS(ch) + 10 > 60) {
+    send_to_char(ch, "You're not able to withstand increasing your wisdom beyond 60.\r\n");
     return;
    }
    else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -5288,8 +5288,8 @@ ACMD(do_focus)
      send_to_char(ch, "They already have superior wisdom!\r\n");
      return;
     }
-    else if (GET_BONUS(vict, BONUS_FOOLISH) > 0 && GET_WIS(vict) + 10 > 25) {
-     send_to_char(ch, "They're not able to withstand increasing their wisdom beyond 25.\r\n");
+    else if (GET_BONUS(vict, BONUS_FOOLISH) > 0 && GET_WIS(vict) + 10 > 60) {
+     send_to_char(ch, "They're not able to withstand increasing their wisdom beyond 60.\r\n");
      return;
     }
     else if (IS_NPC(vict)) {
@@ -5350,8 +5350,8 @@ ACMD(do_focus)
     send_to_char(ch, "You already have superior intelligence!\r\n");
     return;
    }
-   else if (GET_BONUS(ch, BONUS_DULL) > 0 && GET_INT(ch) + 10 > 25) {
-    send_to_char(ch, "You're not able to withstand increasing your intelligence beyond 25.\r\n");
+   else if (GET_BONUS(ch, BONUS_DULL) > 0 && GET_INT(ch) + 10 > 60) {
+    send_to_char(ch, "You're not able to withstand increasing your intelligence beyond 60.\r\n");
     return;
    }
    else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -5394,8 +5394,8 @@ ACMD(do_focus)
      send_to_char(ch, "They already have superior intelligence!\r\n");
      return;
     }
-    else if (GET_BONUS(vict, BONUS_DULL) > 0 && GET_INT(vict) + 10 > 25) {
-     send_to_char(ch, "They're not able to withstand increasing their intelligence beyond 25.\r\n");
+    else if (GET_BONUS(vict, BONUS_DULL) > 0 && GET_INT(vict) + 10 > 60) {
+     send_to_char(ch, "They're not able to withstand increasing their intelligence beyond 60.\r\n");
      return;
     }
     else if (IS_NPC(vict)) {
@@ -5488,8 +5488,8 @@ ACMD(do_focus)
      send_to_char(ch, "They already have superior agility!\r\n");
      return;
     }
-   else if (GET_BONUS(vict, BONUS_CLUMSY) > 0 && GET_DEX(vict) + 3 > 25) {
-    send_to_char(ch, "They're not able to withstand increasing their agility beyond 25.\r\n");
+   else if (GET_BONUS(vict, BONUS_CLUMSY) > 0 && GET_DEX(vict) + 3 > 60) {
+    send_to_char(ch, "They're not able to withstand increasing their agility beyond 60.\r\n");
     return;
    }
     else if (IS_NPC(vict)) {
