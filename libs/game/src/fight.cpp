@@ -2240,13 +2240,13 @@ void die(struct char_data *ch, struct char_data *killer)
     decCurKIPercent(ch, 1, 1);
     decCurSTPercent(ch, 1, 1);
     null_affect(ch, AFF_POISON);
-    if (GET_COND(ch, HUNGER) >= 0)
+    if (char_stats_get(ch, STAT_HUNGER) > -1)
     {
-      GET_COND(ch, HUNGER) = 48;
+      char_stats_set(ch, STAT_HUNGER, 48);
     }
-    if (GET_COND(ch, THIRST) >= 0)
+    if (char_stats_get(ch, STAT_THIRST) >= 0)
     {
-      GET_COND(ch, THIRST) = 48;
+      char_stats_set(ch, STAT_THIRST, 48);
     }
     if (FIGHTING(ch))
     {
@@ -2339,13 +2339,13 @@ void die(struct char_data *ch, struct char_data *killer)
         GET_DCOUNT(ch) += 1;
       }
     }
-    if (GET_COND(ch, HUNGER) >= 0)
+    if (char_stats_get(ch, STAT_HUNGER) >= 0)
     {
-      GET_COND(ch, HUNGER) = 48;
+      char_stats_set(ch, STAT_HUNGER, 48);
     }
-    if (GET_COND(ch, THIRST) >= 0)
+    if (char_stats_get(ch, STAT_THIRST) >= 0)
     {
-      GET_COND(ch, THIRST) = 48;
+      char_stats_set(ch, STAT_THIRST, 48);
     }
   }
 

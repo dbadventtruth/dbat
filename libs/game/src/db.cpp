@@ -4727,8 +4727,14 @@ void init_char(struct char_data *ch)
   for (i = 0; i < 3; i++)
     GET_SAVE_MOD(ch, i) = 0;
 
-  for (i = 0; i < 3; i++)
-    GET_COND(ch, i) = (GET_ADMLEVEL(ch) == ADMLVL_IMPL ? -1 : 24);
+
+  if(GET_ADMLEVEL(ch) >= ADMLVL_IMPL) {
+    char_stats_set(ch, STAT_HUNGER, -1);
+    char_stats_set(ch, STAT_THIRST, -1);
+  } else {
+    char_stats_set(ch, STAT_HUNGER, 48);
+    char_stats_set(ch, STAT_THIRST, 48);
+  }
 
   GET_LOADROOM(ch) = NOWHERE;
   SPEAKING(ch) = SKILL_LANG_COMMON;

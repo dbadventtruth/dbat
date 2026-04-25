@@ -1021,8 +1021,8 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
     }
     break;
   case SPELL_SENSU:
-    if (GET_COND(victim, HUNGER) > -1) {
-     GET_COND(victim, HUNGER) = 48;
+    if (char_stats_get(victim, STAT_HUNGER) > -1) {
+     char_stats_set(victim, STAT_HUNGER, 48);
     }
     restore(victim, true);
     break;

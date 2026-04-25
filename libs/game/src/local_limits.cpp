@@ -1315,7 +1315,7 @@ void gain_condition(struct char_data *ch, int condition, int value)
     return;
   }
 
-  if (GET_COND(ch, condition) < 0)
+  if (char_stats_get(ch, condition) < 0)
   { /* No change */
     return;
   }
@@ -1328,48 +1328,48 @@ void gain_condition(struct char_data *ch, int condition, int value)
   if (PLR_FLAGGED(ch, PLR_WRITING))
     return;
 
-  intoxicated = (GET_COND(ch, DRUNK) > 0);
+  intoxicated = (char_stats_get(ch, STAT_DRUNK) > 0);
   if (value > 0)
   {
-    if (GET_COND(ch, condition) >= 0)
+    if (char_stats_get(ch, condition) >= 0)
     {
-      if (GET_COND(ch, condition) + value > 48)
+      if (char_stats_get(ch, condition) + value > 48)
       {
-        int prior = GET_COND(ch, condition);
-        GET_COND(ch, condition) = 48;
-        if (condition != DRUNK && prior >= 48 && !IS_MAJIN(ch))
+        int prior = char_stats_get(ch, condition);
+        char_stats_set(ch, condition, 48);
+        if (condition != STAT_DRUNK && prior >= 48 && !IS_MAJIN(ch))
         {
           int ocond = condition;
-          if (condition == HUNGER)
-            ocond = THIRST;
-          else if (condition == THIRST)
-            ocond = HUNGER;
+          if (condition == STAT_HUNGER)
+            ocond = STAT_THIRST;
+          else if (condition == STAT_THIRST)
+            ocond = STAT_HUNGER;
         }
       }
       else
       {
-        GET_COND(ch, condition) += value;
+        char_stats_set(ch, condition, char_stats_get(ch, condition) + value);
       }
     }
   } 
   else
   {
-    if (GET_COND(ch, condition) >= 0)
+    if (char_stats_get(ch, condition) >= 0)
     {
-      if (GET_COND(ch, condition) + value < 0)
+      if (char_stats_get(ch, condition) + value < 0)
       {
-        GET_COND(ch, condition) = 0;
+        char_stats_set(ch, condition, 0);
       }
       else
       {
-        GET_COND(ch, condition) += value;
+        char_stats_set(ch, condition, char_stats_get(ch, condition) + value);
       }
     }
   }
   switch (condition)
   {
-  case HUNGER:
-    switch (GET_COND(ch, condition))
+  case STAT_HUNGER:
+    switch (char_stats_get(ch, condition))
     {
     case 0:
       //send_to_char(ch, "@RYou are feeling ravenous!@n\r\n");
@@ -1414,8 +1414,8 @@ void gain_condition(struct char_data *ch, int condition, int value)
       break;
     }
     break;
-  case THIRST:
-    switch (GET_COND(ch, condition))
+  case STAT_THIRST:
+    switch (char_stats_get(ch, condition))
     {
     case 0:
       //send_to_char(ch, "@RYou are dehydrated!@n\r\n");
@@ -1460,10 +1460,10 @@ void gain_condition(struct char_data *ch, int condition, int value)
       break;
     }
     break;
-  case DRUNK:
+  case STAT_DRUNK:
     if (intoxicated)
     {
-      if (GET_COND(ch, DRUNK) <= 0)
+      if (char_stats_get(ch, STAT_DRUNK) <= 0)
       {
         send_to_char(ch, "You are now sober.\r\n");
       }
@@ -1805,15 +1805,15 @@ static void point_update_characters(void)
     }
     if (rand_number(1, 2) == 2)
     {
-      gain_condition(i, HUNGER, -1);
+      gain_condition(i, STAT_HUNGER, -1);
     }
     if (rand_number(1, 2) == 2)
     {
-      gain_condition(i, THIRST, -1);
+      gain_condition(i, STAT_THIRST, -1);
     }
     if (rand_number(1, 2) == 2)
     {
-      gain_condition(i, DRUNK, -1);
+      gain_condition(i, STAT_DRUNK, -1);
     }
     if (IS_NPC(i))
     {

@@ -3406,7 +3406,7 @@ ACMD(do_drink)
   if (IS_NPC(ch)) {
    return;
   }
-  if (IS_ANDROID(ch) || GET_COND(ch, THIRST) < 0) {
+  if (IS_ANDROID(ch) || char_stats_get(ch, STAT_THIRST) < 0) {
     send_to_char(ch, "You need not drink!\r\n");
     return;
   }
@@ -3414,11 +3414,11 @@ ACMD(do_drink)
     send_to_char(ch, "You are inside a healing tank!\r\n");
     return;
   }
-  if (GET_COND(ch, HUNGER) <= 1 && GET_COND(ch, THIRST) >= 2 && !IS_NAMEK(ch) && GET_GENOME(ch, 0) != 3 && GET_GENOME(ch, 1) != 3) {
+  if (char_stats_get(ch, STAT_HUNGER) <= 1 && char_stats_get(ch, STAT_THIRST) >= 2 && !IS_NAMEK(ch) && !HAS_GENOME(ch, 3)) {
     send_to_char(ch, "You need to eat first!\r\n");
     return;
   }
-  wasthirsty = GET_COND(ch, THIRST);
+  wasthirsty = char_stats_get(ch, STAT_THIRST);
   if (!*arg && !IS_NPC(ch)) {
     char buf[MAX_STRING_LENGTH];
     switch (SECT(IN_ROOM(ch))) {
@@ -3428,14 +3428,14 @@ ACMD(do_drink)
         snprintf(buf, sizeof(buf), "$n takes a refreshing drink from the surrounding water.");
         act(buf, TRUE, ch, 0, 0, TO_ROOM);
         send_to_char(ch, "You take a refreshing drink from the surrounding water.\r\n");
-        gain_condition(ch, THIRST, 1);
+        gain_condition(ch, STAT_THIRST, 1);
         if (GET_SKILL(ch, SKILL_WELLSPRING) && (getCurKI(ch)) < GET_MAX_MANA(ch) && wasthirsty <= 30 && subcmd != SCMD_SIP) {
 
         incCurKI(ch, ((GET_MAX_MANA(ch) * 0.005) + (GET_WIS(ch) * rand_number(80, 100))) * GET_SKILL(ch, SKILL_WELLSPRING));
 
          send_to_char(ch, "You feel your ki return to full strength.\r\n");
         }
-        if (GET_COND(ch, THIRST) >= 48)
+        if (char_stats_get(ch, STAT_THIRST) >= 48)
           send_to_char(ch, "You don't feel thirsty anymore.\r\n");
         return;
       default:
@@ -3446,7 +3446,7 @@ ACMD(do_drink)
         snprintf(buf, sizeof(buf), "$n takes a refreshing drink from the surrounding water.");
         act(buf, TRUE, ch, 0, 0, TO_ROOM);
         send_to_char(ch, "You take a refreshing drink from the surrounding water.\r\n");
-        gain_condition(ch, THIRST, 1);
+        gain_condition(ch, STAT_THIRST, 1);
         if (GET_SKILL(ch, SKILL_WELLSPRING) && !isFullKI(ch) && wasthirsty <= 30 && subcmd != SCMD_SIP) {
          if(incCurKI(ch, ((GET_MAX_MANA(ch) * 0.005) + (GET_WIS(ch) * rand_number(80, 100))) * GET_SKILL(ch, SKILL_WELLSPRING)) == getMaxKI(ch)) {
              send_to_char(ch, "You feel your ki return to full strength.\r\n");
@@ -3454,7 +3454,7 @@ ACMD(do_drink)
              send_to_char(ch, "You feel your ki has rejuvenated.\r\n");
          }
         }
-        if (GET_COND(ch, THIRST) >= 48)
+        if (char_stats_get(ch, STAT_THIRST) >= 48)
           send_to_char(ch, "You don't feel thirsty anymore.\r\n");
        }
       return;;
@@ -3475,7 +3475,7 @@ ACMD(do_drink)
      obj_from_char(temp);
      extract_obj(temp);
       restoreKI(ch);
-     GET_COND(ch, THIRST) += 8;
+     char_stats_modify(ch, STAT_THIRST, 8);
      return;
     } else if (GET_OBJ_VNUM(temp) == 86 && on_ground == 1) {
      send_to_char(ch, "You need to pick that up first.\r\n");
@@ -3503,7 +3503,7 @@ ACMD(do_drink)
     extract_obj(temp);
     return;
   }
-  if ((GET_COND(ch, DRUNK) > 10) && (GET_COND(ch, THIRST) > 0)) {
+  if ((char_stats_get(ch, STAT_DRUNK) > 10) && (char_stats_get(ch, STAT_THIRST) > 0)) {
     /* The pig is drunk */
     send_to_char(ch, "You can't seem to get close enough to your mouth.\r\n");
     act("$n tries to drink but misses $s mouth!", TRUE, ch, 0, 0, TO_ROOM);
@@ -3556,9 +3556,9 @@ ACMD(do_drink)
   weight_change_object(temp, -weight);	/* Subtract amount */
   }
 
-  gain_condition(ch, DRUNK,  drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][DRUNK] * amount);
-  gain_condition(ch, HUNGER, drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][HUNGER] * amount);
-  gain_condition(ch, THIRST, drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][THIRST] * amount);
+  gain_condition(ch, STAT_DRUNK,  drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][DRUNK] * amount);
+  gain_condition(ch, STAT_HUNGER, drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][HUNGER] * amount);
+  gain_condition(ch, STAT_THIRST, drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][THIRST] * amount);
   if (GET_FOODR(ch) == 0 && subcmd != SCMD_SIP) {
       incCurST(ch, (getMaxST(ch) / 100) * amount);
    GET_FOODR(ch) = 2;
@@ -3574,10 +3574,10 @@ ACMD(do_drink)
     }
    }
 
-  if (GET_COND(ch, DRUNK) > 10)
+  if (char_stats_get(ch, STAT_DRUNK) > 10)
     send_to_char(ch, "You feel drunk.\r\n");
 
-  if (GET_COND(ch, THIRST) >= 48)
+  if (char_stats_get(ch, STAT_THIRST) >= 48)
     send_to_char(ch, "You don't feel thirsty anymore.\r\n");
 
   if (GET_OBJ_VAL(temp, VAL_DRINKCON_POISON) && (!IS_MUTANT(ch) || (GET_GENOME(ch, 0) != 7 && GET_GENOME(ch, 1) != 7))) {	/* The crap was poisoned 
@@ -3617,7 +3617,7 @@ ACMD(do_eat)
   if (IS_NPC(ch)) /* Cannot use GET_COND() on mobs. */
     return;
 
-  if (IS_ANDROID(ch) || GET_COND(ch, HUNGER) < 0)
+  if (IS_ANDROID(ch) || char_stats_get(ch, STAT_HUNGER) < 0)
   {
     send_to_char(ch, "You need not eat!\r\n");
     return;
@@ -3642,7 +3642,7 @@ ACMD(do_eat)
     send_to_char(ch, "You don't seem to have %s %s.\r\n", AN(arg), arg);
     return;
   }
-  if (GET_COND(ch, THIRST) <= 1 && GET_COND(ch, HUNGER) >= 2)
+  if (char_stats_get(ch, STAT_THIRST) <= 1 && char_stats_get(ch, STAT_HUNGER) >= 2)
   {
     send_to_char(ch, "You need to drink first!\r\n");
     return;
@@ -3700,7 +3700,7 @@ ACMD(do_eat)
       return;
   }
 
-  if (GET_COND(ch, HUNGER) >= 48) {
+  if (char_stats_get(ch, STAT_HUNGER) >= 48) {
     if(IS_MAJIN(ch)) {
       send_to_char(ch, "You are full, but there's always room for candy!\r\n");
     } else {
@@ -3728,13 +3728,13 @@ ACMD(do_eat)
   }
 
   // available hunger
-  int foob = 48 - GET_COND(ch, HUNGER);
+  int foob = 48 - char_stats_get(ch, STAT_HUNGER);
   // amount that can be eaten - tasting only consumes 1 point, eating consumes as much as possible
   // VAL_FOOD_FOODVAL is the amount of nutrition remaining, while value 1 is the max possible it once had.
   amount = MIN(foob, (subcmd == SCMD_EAT ? GET_OBJ_VAL(food, VAL_FOOD_FOODVAL) : 1));
   double percent_eaten = (double)amount / (double)GET_OBJ_VAL(food, 1);
 
-  gain_condition(ch, HUNGER, amount);
+  gain_condition(ch, STAT_HUNGER, amount);
   if (GET_FOODR(ch) == 0 && subcmd != SCMD_TASTE)
   {
     incCurSTPercent(ch, 0.01 * (double)amount);
@@ -3772,7 +3772,7 @@ ACMD(do_eat)
       }
     }
 
-    if (GET_COND(ch, HUNGER) >= 48) {
+    if (char_stats_get(ch, STAT_HUNGER) >= 48) {
       if(IS_MAJIN(ch)) {
         send_to_char(ch, "You are full, but there's always room for candy!\r\n");
       } else {

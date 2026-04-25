@@ -484,8 +484,8 @@ int enter_player_game (struct descriptor_data *d)
      GET_TRP(d->character) = GET_RP(d->character);
     }
 
-    if (IS_NAMEK(d->character) && GET_COND(d->character, HUNGER) >= 0) {
-     GET_COND(d->character, HUNGER) = -1;
+    if (IS_NAMEK(d->character)) {
+     char_stats_set(d->character, STAT_HUNGER, -1);
     }
 
     if (PLR_FLAGGED(d->character, PLR_HEALT)) {

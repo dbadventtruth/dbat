@@ -1840,10 +1840,8 @@ static void do_stat_character(struct char_data *ch, struct char_data *k)
     }
   send_to_char(ch, "Carried: weight: %d, Total Items (includes bagged items): %d, EQ: %d\r\n", IS_CARRYING_W(k), total, i2);
 
-  
-
   if (!IS_NPC(k))
-    send_to_char(ch, "Hunger: %d, Thirst: %d, Drunk: %d\r\n", GET_COND(k, HUNGER), GET_COND(k, THIRST), GET_COND(k, DRUNK));
+    send_to_char(ch, "Hunger: %ld, Thirst: %ld, Drunk: %ld\r\n", char_stats_get(k, STAT_HUNGER), char_stats_get(k, STAT_THIRST), char_stats_get(k, STAT_DRUNK));
 
   column = send_to_char(ch, "Master is: %s, Followers are:", k->master ? GET_NAME(k->master) : "<none>");
   if (!k->followers)
@@ -4088,12 +4086,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
   case 30:
   case 31:
     if (!strcasecmp(val_arg, "off")) {
-      GET_COND(vict, (mode - 29)) = -1; /* warning: magic number here */
+      char_stats_set(vict, (mode + 3), -1); /* warning: magic number here */
       send_to_char(ch, "%s's %s now off.\r\n", GET_NAME(vict), set_fields[mode].cmd);
     } else if (is_number(val_arg)) {
       value = atoi(val_arg);
       RANGE(0, 48);
-      GET_COND(vict, (mode - 29)) = value; /* and here too */
+      char_stats_set(vict, (mode + 3), value); /* and here too */
       send_to_char(ch, "%s's %s set to %" I64T ".\r\n", GET_NAME(vict), set_fields[mode].cmd, value);
     } else {
       send_to_char(ch, "Must be 'off' or a value from 0 to 48.\r\n");

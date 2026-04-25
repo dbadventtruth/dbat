@@ -677,9 +677,9 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "drunk")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-            GET_COND(c, DRUNK) = MAX(-1, MIN(addition, 24));
+            char_stats_set(c, STAT_DRUNK, addition);
             }
-            snprintf(str, slen, "%d", GET_COND(c, DRUNK));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_DRUNK));
           }
           break;
         case 'e':
@@ -772,9 +772,9 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "hunger")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_COND(c, HUNGER) = MAX(-1, MIN(addition, 24));
+              char_stats_set(c, STAT_HUNGER, addition);
             }
-            snprintf(str, slen, "%d", GET_COND(c, HUNGER));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_HUNGER));
           }
           break;
         case 'i':
@@ -1059,9 +1059,9 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "thirst")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_COND(c, THIRST) = MAX(-1, MIN(addition, 24));
+              char_stats_set(c, STAT_THIRST, addition);
             }
-            snprintf(str, slen, "%d", GET_COND(c, THIRST));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_THIRST));
           }
           else if (!strcasecmp(field, "tnl")) {
             snprintf(str, slen, "%d", level_exp(c, GET_LEVEL(c) + 1));

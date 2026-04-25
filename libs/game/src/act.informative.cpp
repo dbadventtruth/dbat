@@ -6027,66 +6027,67 @@ ACMD(do_status)
             send_to_char(ch, "            @D[@cTail        @D: @rMissing.         @D]@n\r\n");
         }
         send_to_char(ch, "\r\n");
-
+        
+        stat_t hunger = char_stats_get(ch, STAT_HUNGER), thirst = char_stats_get(ch, STAT_THIRST);
         send_to_char(ch, "         @D-----------------@YHunger@D/@yThirst@D-----------------@n\r\n");
-        if (GET_COND(ch, HUNGER) >= 48) {
+        if (hunger >= 48) {
             send_to_char(ch, "         You are full.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 40) {
+        else if (hunger >= 40) {
             send_to_char(ch, "         You are nearly full.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 30) {
+        else if (hunger >= 30) {
             send_to_char(ch, "         You are not hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 21) {
+        else if (hunger >= 21) {
             send_to_char(ch, "         You wouldn't mind a snack.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 15) {
+        else if (hunger >= 15) {
             send_to_char(ch, "         You are slightly hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 10) {
+        else if (hunger >= 10) {
             send_to_char(ch, "         You are partially hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 5) {
+        else if (hunger >= 5) {
             send_to_char(ch, "         You are really hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 2) {
+        else if (hunger >= 2) {
             send_to_char(ch, "         You are extremely hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 0) {
+        else if (hunger >= 0) {
             send_to_char(ch, "         You are starving!\r\n");
         }
-        else if (GET_COND(ch, HUNGER) < 0) {
+        else if (hunger < 0) {
             send_to_char(ch, "         You need not eat.\r\n");
         }
-        if (GET_COND(ch, THIRST) >= 48) {
+        if (thirst >= 48) {
             send_to_char(ch, "         You are not thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 40) {
+        else if (thirst >= 40) {
             send_to_char(ch, "         You are nearly quenched.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 30) {
+        else if (thirst >= 30) {
             send_to_char(ch, "         You are not thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 21) {
+        else if (thirst >= 21) {
             send_to_char(ch, "         You wouldn't mind a drink.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 15) {
+        else if (thirst >= 15) {
             send_to_char(ch, "         You are slightly thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 10) {
+        else if (thirst >= 10) {
             send_to_char(ch, "         You are partially thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 5) {
+        else if (thirst >= 5) {
             send_to_char(ch, "         You are really thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 2) {
+        else if (thirst >= 2) {
             send_to_char(ch, "         You are extremely thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 0) {
+        else if (thirst >= 0) {
             send_to_char(ch, "         You are dehydrated!\r\n");
         }
-        else if (GET_COND(ch, THIRST) < 0) {
+        else if (thirst < 0) {
             send_to_char(ch, "         You need not drink.\r\n");
         }
         send_to_char(ch, "         @D--------------------@D[@GInfo@D]---------------------@n\r\n");
@@ -6447,13 +6448,14 @@ ACMD(do_status)
         if (AFF_FLAGGED(ch, AFF_HYDROZAP)) {
             send_to_char(ch, "You are effected by Kanso Suru.\r\n");
         }
-        if (GET_COND(ch, DRUNK) > 15)
+        stat_t drunk = char_stats_get(ch, STAT_DRUNK);
+        if (drunk > 15)
             send_to_char(ch, "You are extremely drunk.\r\n");
-        else if (GET_COND(ch, DRUNK) > 10)
+        else if (drunk > 10)
             send_to_char(ch, "You are pretty drunk.\r\n");
-        else if (GET_COND(ch, DRUNK) > 4)
+        else if (drunk > 4)
             send_to_char(ch, "You are drunk.\r\n");
-        else if (GET_COND(ch, DRUNK) > 0)
+        else if (drunk > 0)
             send_to_char(ch, "You have an alcoholic buzz.\r\n");
 
         if (ch->affected) {

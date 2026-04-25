@@ -379,9 +379,6 @@ int load_char(const char *name, struct char_data *ch)
     GET_FREEZE_LEV(ch) = PFDEF_FREEZELEV;
     GET_WIMP_LEV(ch) = PFDEF_WIMPLEV;
     GET_POWERATTACK(ch) = PFDEF_POWERATT;
-    GET_COND(ch, HUNGER) = PFDEF_HUNGER;
-    GET_COND(ch, THIRST) = PFDEF_THIRST;
-    GET_COND(ch, DRUNK) = PFDEF_DRUNK;
     GET_BAD_PWS(ch) = PFDEF_BADPWS;
     GET_RACE_PRACTICES(ch) = PFDEF_PRACTICES;
 
@@ -502,7 +499,7 @@ int load_char(const char *name, struct char_data *ch)
         else if (!strcmp(tag, "Deac"))  GET_DCOUNT(ch)    = atoi(line);
         else if (!strcmp(tag, "Desc"))  ch->description  = fread_string(fl, buf2);
         else if (!strcmp(tag, "Dex "))  ch->real_abils.dex      = atoi(line);
-        else if (!strcmp(tag, "Drnk"))  GET_COND(ch, DRUNK)     = atoi(line);
+        else if (!strcmp(tag, "Drnk"))  char_stats_set(ch, STAT_DRUNK, atoi(line));
         else if (!strcmp(tag, "Damg"))  GET_DAMAGE_MOD(ch)          = atoi(line);
         else if (!strcmp(tag, "Droo"))  GET_DROOM(ch)          = atoi(line);
       break;
@@ -543,7 +540,7 @@ int load_char(const char *name, struct char_data *ch)
         else if (!strcmp(tag, "Hrc "))  GET_HAIRC(ch)           = atoi(line);
         else if (!strcmp(tag, "Hrl "))  GET_HAIRL(ch)           = atoi(line);
         else if (!strcmp(tag, "Hrs "))  GET_HAIRS(ch)           = atoi(line);
-        else if (!strcmp(tag, "Hung"))  GET_COND(ch, HUNGER)      = atoi(line);
+        else if (!strcmp(tag, "Hung"))  char_stats_set(ch, STAT_HUNGER, atoi(line));
       break;
 
       case 'I':
@@ -661,7 +658,7 @@ int load_char(const char *name, struct char_data *ch)
           sscanf(line, "%d %d", &num2, &num3);
           GET_TRANSCOST(ch, num2) = num3;
         }
-        else if (!strcmp(tag, "Thir"))  GET_COND(ch, THIRST)    = atoi(line);
+        else if (!strcmp(tag, "Thir"))  char_stats_set(ch, STAT_THIRST, atoi(line));
         else if (!strcmp(tag, "Thr1"))  GET_SAVE_MOD(ch, 0)     = atoi(line);
         else if (!strcmp(tag, "Thr2"))  GET_SAVE_MOD(ch, 1)     = atoi(line);
         else if (!strcmp(tag, "Thr3"))  GET_SAVE_MOD(ch, 2)     = atoi(line);
@@ -723,16 +720,13 @@ int load_char(const char *name, struct char_data *ch)
   /* initialization for imms */
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
     for (i = 0; i < SKILL_TABLE_SIZE; i++)
-      SET_SKILL(ch, i, 100);
-    GET_COND(ch, HUNGER) = -1;
-    GET_COND(ch, THIRST) = -1;
-    GET_COND(ch, DRUNK) = -1;
+        SET_SKILL(ch, i, 100);
   }
 
-  if (IS_ANDROID(ch)) {
-    GET_COND(ch, HUNGER) = -1;
-    GET_COND(ch, THIRST) = -1;
-    GET_COND(ch, DRUNK) = -1;
+  if (IS_ANDROID(ch) || (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT)) {
+    char_stats_set(ch, STAT_HUNGER, -1);
+    char_stats_set(ch, STAT_THIRST, -1);
+    char_stats_set(ch, STAT_DRUNK, -1);
   }
   fclose(fl);
   return(id);
@@ -1025,12 +1019,12 @@ void save_char(struct char_data * ch)
    if (GET_TRANSCOST(ch, i) != FALSE)
     fprintf(fl, "Tcos: %d %d\n", i, GET_TRANSCOST(ch, i));
 
-  if (GET_COND(ch, HUNGER)   != PFDEF_HUNGER && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
-    fprintf(fl, "Hung: %d\n", GET_COND(ch, HUNGER));
-  if (GET_COND(ch, THIRST) != PFDEF_THIRST && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
-    fprintf(fl, "Thir: %d\n", GET_COND(ch, THIRST));
-  if (GET_COND(ch, DRUNK)  != PFDEF_DRUNK  && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
-    fprintf(fl, "Drnk: %d\n", GET_COND(ch, DRUNK));
+  if (char_stats_get(ch, STAT_HUNGER)   != PFDEF_HUNGER && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
+    fprintf(fl, "Hung: %ld\n", char_stats_get(ch, STAT_HUNGER));
+  if (char_stats_get(ch, STAT_THIRST) != PFDEF_THIRST && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
+    fprintf(fl, "Thir: %ld\n", char_stats_get(ch, STAT_THIRST));
+  if (char_stats_get(ch, STAT_DRUNK)  != PFDEF_DRUNK  && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
+    fprintf(fl, "Drnk: %ld\n", char_stats_get(ch, STAT_DRUNK));
 
   /*
   if (GET_HIT(ch)	   != PFDEF_HIT  || GET_MAX_HIT(ch)  != PFDEF_MAXHIT)

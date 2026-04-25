@@ -2986,14 +2986,14 @@ ACMD(do_kanso)
      decCurKI(ch, cost);
 
   /* Handle the thirst aspect */
-   if (GET_COND(vict, THIRST) - dam >= 0)
-    GET_COND(vict, THIRST) -= dam;
+   if (char_stats_get(vict, STAT_THIRST) - dam >= 0)
+    char_stats_set(vict, STAT_THIRST, char_stats_get(vict, STAT_THIRST) - dam);
    else
-    GET_COND(vict, THIRST) = 0;
-   if (GET_COND(ch, THIRST) + dam <= 48)
-    GET_COND(ch, THIRST) += dam;
+    char_stats_set(vict, STAT_THIRST, 0);
+   if (char_stats_get(ch, STAT_THIRST) + dam <= 48)
+    char_stats_set(ch, STAT_THIRST, char_stats_get(ch, STAT_THIRST) + dam);
    else
-    GET_COND(ch, THIRST) = 48;
+    char_stats_set(ch, STAT_THIRST, 48);
 
   /* Heal the user */
   incCurHealth(ch, (getEffMaxPL(ch) * .01) * dam);

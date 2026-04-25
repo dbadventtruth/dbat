@@ -4055,8 +4055,8 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    dmg += (dmg * 0.01) * 20;
   }
 
-  if (!IS_NPC(vict) && GET_COND(vict, DRUNK) > 4) {
-   dmg -= (dmg * 0.001) * GET_COND(vict, DRUNK);
+  if (!IS_NPC(vict) && char_stats_get(vict, STAT_DRUNK) > 4) {
+   dmg -= (dmg * 0.001) * char_stats_get(vict, STAT_DRUNK);
   }
 
   if (AFF_FLAGGED(vict, AFF_EARMOR)) {

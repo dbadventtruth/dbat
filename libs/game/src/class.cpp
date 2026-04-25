@@ -235,21 +235,21 @@ void do_start(struct char_data *ch)
   GET_EXP(ch) = 1;
  
   if (IS_ANDROID(ch)) {
-   GET_COND(ch, HUNGER) = -1;
-   GET_COND(ch, THIRST) = -1;
-   GET_COND(ch, DRUNK) = -1;
+   char_stats_set(ch, STAT_HUNGER, -1);
+   char_stats_set(ch, STAT_THIRST, -1);
+   char_stats_set(ch, STAT_DRUNK, -1);
   } else if (IS_BIO(ch) && HAS_GENOME(ch, 3)) {
-   GET_COND(ch, HUNGER) = -1;
-   GET_COND(ch, DRUNK) = 0;
-   GET_COND(ch, THIRST) = 48;
+   char_stats_set(ch, STAT_HUNGER, -1);
+   char_stats_set(ch, STAT_DRUNK, 0);
+   char_stats_set(ch, STAT_THIRST, 48);
   }else if (IS_NAMEK(ch)) {
-   GET_COND(ch, HUNGER) = -1;
-   GET_COND(ch, DRUNK) = 0;
-   GET_COND(ch, THIRST) = 48;
+   char_stats_set(ch, STAT_HUNGER, -1);
+   char_stats_set(ch, STAT_DRUNK, 0);
+   char_stats_set(ch, STAT_THIRST, 48);
   } else {
-   GET_COND(ch, THIRST) = 48;
-   GET_COND(ch, HUNGER) = 48;
-   GET_COND(ch, DRUNK) = 0;
+   char_stats_set(ch, STAT_THIRST, 48);
+   char_stats_set(ch, STAT_HUNGER, 48);
+   char_stats_set(ch, STAT_DRUNK, 0);
   }
 
   SET_BIT_AR(PRF_FLAGS(ch), PRF_AUTOEXIT);
@@ -1136,8 +1136,6 @@ void advance_level(struct char_data *ch, int whichclass)
   }
 
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
-    for (i = 0; i < 3; i++)
-      GET_COND(ch, i) = (char) -1;
     SET_BIT_AR(PRF_FLAGS(ch), PRF_HOLYLIGHT);
   }
 

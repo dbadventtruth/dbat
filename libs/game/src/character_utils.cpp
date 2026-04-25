@@ -3871,8 +3871,8 @@ void admin_set(struct char_data *ch, int value)
       SET_BIT_AR(PRF_FLAGS(ch), PRF_AUTOEXIT);
     }
     if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
-      for (i = 0; i < 3; i++)
-        GET_COND(ch, i) = (char) -1;
+      char_stats_set(ch, STAT_HUNGER, -1);
+      char_stats_set(ch, STAT_THIRST, -1);
       SET_BIT_AR(PRF_FLAGS(ch), PRF_HOLYLIGHT);
     }
     return;
@@ -4446,8 +4446,8 @@ int chance_to_hit(struct char_data *ch)
  if (IS_NPC(ch))
   return (num);
 
- if (GET_COND(ch, DRUNK) > 4) {
-  num += GET_COND(ch, DRUNK);
+ if (char_stats_get(ch, STAT_DRUNK) > 4) {
+  num += char_stats_get(ch, STAT_DRUNK);
  }
 
  return (num);
