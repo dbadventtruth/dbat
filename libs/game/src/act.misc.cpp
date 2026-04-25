@@ -2084,7 +2084,7 @@ ACMD(do_runic)
    act("@BYou dip your brush into the ink and infuse your ki skillfully into it. You pull the brush out and paint the @D'@CGebo@D'@B rune on your skin! The rune flashes out of existence immediately!@n", TRUE, ch, 0, 0, TO_CHAR);
    act("@b$n@B dips $s brush into a bottle of ink and at the same time the ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B rune on $s skin. The rune flashes out of existence immediately!@n", TRUE, ch, 0, 0, TO_ROOM);
    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-   GET_PRACTICES(vict, GET_CLASS(vict)) += 125;
+   char_stats_modify(vict, STAT_PRACTICES, 125);
    send_to_char(vict, "@GYou feel like you've just gained a lot of knowledge. Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
    GET_OBJ_VAL(bottle, 6) -= inkcost;
    if (GET_OBJ_VAL(bottle, 6) <= 0) {
@@ -2098,7 +2098,7 @@ ACMD(do_runic)
    act("@b$n@B dips $s brush into a bottle of ink and at the same time the ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B rune on @RYOUR@B skin. The rune flashes out of existence immediately!@n", TRUE, ch, 0, vict, TO_VICT);
    act("@b$n@B dips $s brush into a bottle of ink and at the same time the ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B rune on @b$N's@B skin. The rune flashes out of existence immediately!@n", TRUE, ch, 0, vict, TO_NOTVICT);
    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-   GET_PRACTICES(vict, GET_CLASS(vict)) += 125;
+   char_stats_modify(vict, STAT_PRACTICES, 125);
    send_to_char(vict, "@GYou feel like you've just gained a lot of knowledge. Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
    GET_OBJ_VAL(bottle, 6) -= inkcost;
    if (GET_OBJ_VAL(bottle, 6) <= 0) {
@@ -2155,7 +2155,7 @@ ACMD(do_scry)
 
  int cost = 2000;
 
- if (GET_PRACTICES(ch, GET_CLASS(ch)) < cost) {
+ if (char_stats_get(ch, STAT_PRACTICES) < cost) {
   send_to_char(ch, "You do not have enough PS to Oracle Scry!\r\n");
   return;
  } else {
@@ -2172,7 +2172,7 @@ ACMD(do_scry)
   send_to_char(vict, "Your Powerlevel, Ki, and Stamina have improved drastically! On top of that your Intelligence and Wisdom have improved permanantly!\r\n");
   vict->real_abils.intel += 2;
   vict->real_abils.wis += 2;
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 2000;
+  char_stats_modify(ch, STAT_PRACTICES, -2000);
   if (GET_LEVEL(ch) < 100) {
    send_to_char(ch, "@D[@mPractice Sessions@D:@R -2000@D]@n\r\n");
    if (level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0) {

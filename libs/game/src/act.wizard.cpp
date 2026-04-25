@@ -2717,7 +2717,7 @@ ACMD(do_handout)
     if (IS_NPC(j->character))
      continue;
     else {
-     GET_PRACTICES(j->character, GET_CLASS(j->character)) += 10;
+     char_stats_modify(j->character, STAT_PRACTICES, 10);
     }
   }
   
@@ -4074,12 +4074,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
   case 27:
   case 28:
     if (GET_CLASS_LEVEL(vict)) {
-      GET_PRACTICES(vict, GET_CLASS(vict)) = RANGE(0, 10000);
+      char_stats_modify(vict, STAT_PRACTICES, RANGE(0, 10000));
      mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set PS for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set PS for %s.", GET_NAME(ch), GET_NAME(vict));
     }
     else {
-      GET_RACE_PRACTICES(vict) = RANGE(0, 10000);
+      char_stats_modify(vict, STAT_PRACTICES, RANGE(0, 10000));
       mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set PS for %s.", GET_NAME(ch), GET_NAME(vict));
      log_imm_action("SET: %s has set PS for %s.", GET_NAME(ch), GET_NAME(vict));
     }

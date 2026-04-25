@@ -1975,11 +1975,11 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
       if (IS_HALFBREED(ch)) {
        psreward -= psreward * 0.4;
       }
-      if (IS_NPC(ch) && MOB_FLAGGED(ch, MOB_HUSK) && GET_PRACTICES(killer, GET_CLASS(killer)) > 50 && IS_BIO(ch)) {
+      if (IS_NPC(ch) && MOB_FLAGGED(ch, MOB_HUSK) && char_stats_get(killer, STAT_PRACTICES) > 50 && IS_BIO(ch)) {
        psreward = 0;
        send_to_char(killer, "@D[@G+0 @BPS @cCapped at 50 for Absorb@D]@n\r\n");
       } else {
-       GET_PRACTICES(killer, GET_CLASS(killer)) += psreward;
+       char_stats_modify(killer, STAT_PRACTICES, psreward);
        send_to_char(killer, "@D[@G+%d @BPS@D]@n\r\n", psreward);
       }
      }
@@ -2442,7 +2442,7 @@ static void perform_group_gain(struct char_data *ch, int base, struct char_data 
   }
   if (group_bonus(ch, 2) == 2) {
    send_to_char(ch, "You receive a bonus from your group's leader! @D[@G+2 PS!@D]@n\r\n");
-   GET_PRACTICES(ch, GET_CLASS(ch)) += 2;
+   char_stats_modify(ch, STAT_PRACTICES, 2);
   } else if (group_bonus(ch, 2) == 3) {
    send_to_char(ch, "You receive a bonus from your group's leader! @D[@G+5%s Exp!@D]@n\r\n", "%");
    share += share * 0.05;

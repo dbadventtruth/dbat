@@ -1187,7 +1187,6 @@ stat_t char_der_get(struct char_data *ch, uint8_t der_id);
 
 #define GET_COND(ch, i)		CHECK_PLAYER_SPECIAL((ch), ((ch)->player_specials->conditions[(i)]))
 #define GET_LOADROOM(ch)	CHECK_PLAYER_SPECIAL((ch), ((ch)->player_specials->load_room))
-#define GET_PRACTICES(ch,cl)	char_stats_get(ch, STAT_PRACTICES)
 #define GET_RACE_PRACTICES(ch)	CHECK_PLAYER_SPECIAL((ch), ((ch)->player_specials->skill_points))
 #define GET_TRAINS(ch)		CHECK_PLAYER_SPECIAL((ch), ((ch)->player_specials->ability_trains))
 #define GET_TRAINSTR(ch)  char_stats_get(ch, STAT_STRENGTH_TRAIN)

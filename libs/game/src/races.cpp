@@ -879,13 +879,13 @@ namespace dbat::race {
 
         if (ps_cost) {
             if (GET_TRANSCOST(ch, tier) == FALSE) {
-                if (GET_PRACTICES(ch, GET_CLASS(ch)) < 50) {
+                if (char_stats_get(ch, STAT_PRACTICES) < 50) {
                     send_to_char(ch,
                                  "You need %i practice points in order to obtain a transformation for the first time.\r\n",
                                  ps_cost);
                     return false;
                 } else {
-                    GET_PRACTICES(ch, GET_CLASS(ch)) -= 50;
+                    char_stats_modify(ch, STAT_PRACTICES, -50);
                     GET_TRANSCOST(ch, tier) = TRUE;
                     send_to_char(ch, "You pay %i PS to permanently unlock this transformation!\r\n", ps_cost);
                 }

@@ -384,8 +384,7 @@ int load_char(const char *name, struct char_data *ch)
     GET_COND(ch, DRUNK) = PFDEF_DRUNK;
     GET_BAD_PWS(ch) = PFDEF_BADPWS;
     GET_RACE_PRACTICES(ch) = PFDEF_PRACTICES;
-    for (i = 0; i < NUM_CLASSES; i++)
-      GET_PRACTICES(ch, i) = PFDEF_PRACTICES;
+
     GET_GOLD(ch) = PFDEF_GOLD;
     GET_BACKSTAB_COOL(ch) = 0;
     GET_COOLDOWN(ch) = 0;
@@ -561,7 +560,7 @@ int load_char(const char *name, struct char_data *ch)
 
       case 'L':
              if (!strcmp(tag, "Last"))  ch->time.logon          = atol(line);
-        else if (!strcmp(tag, "Lern"))  GET_PRACTICES(ch, GET_CLASS(ch)) = atoi(line);
+        else if (!strcmp(tag, "Lern"))  char_stats_modify(ch, STAT_PRACTICES, atoi(line));
         else if (!strcmp(tag, "Levl"))  GET_CLASS_LEVEL(ch)     = atoi(line);
        /* else if (!strcmp(tag, "LevD"))  read_level_data(ch, fl);*/
         else if (!strcmp(tag, "LF  "))  load_BASE(ch, line, LOAD_LIFE);
@@ -645,7 +644,7 @@ int load_char(const char *name, struct char_data *ch)
         else if (!strcmp(tag, "SkRc"))  GET_RACE_PRACTICES(ch)	= atoi(line);
         else if (!strcmp(tag, "SkCl")) {
           sscanf(line, "%d %d", &num2, &num3);
-          GET_PRACTICES(ch, num2) = num3;
+          char_stats_modify(ch, STAT_PRACTICES, num3);
         }
         else if (!strcmp(tag, "Slot"))  ch->skill_slots         = atoi(line);
         else if (!strcmp(tag, "Spek"))  SPEAKING(ch)		= atoi(line);
@@ -1019,15 +1018,12 @@ void save_char(struct char_data * ch)
   if (GET_LOADROOM(ch)	   != PFDEF_LOADROOM)	fprintf(fl, "Room: %d\n", GET_LOADROOM(ch));
 
   if (GET_BAD_PWS(ch)	   != PFDEF_BADPWS)	fprintf(fl, "Badp: %d\n", GET_BAD_PWS(ch));
+  if(char_stats_get(ch, STAT_PRACTICES)) fprintf(fl, "Lern: %ld\n", char_stats_get(ch, STAT_PRACTICES));
 
   if (GET_RACE_PRACTICES(ch)!= PFDEF_PRACTICES)	fprintf(fl, "SkRc: %d\n", GET_RACE_PRACTICES(ch));
   for (i = 0; i < 6; i++)
    if (GET_TRANSCOST(ch, i) != FALSE)
     fprintf(fl, "Tcos: %d %d\n", i, GET_TRANSCOST(ch, i));
-
-  for (i = 0; i < NUM_CLASSES; i++)
-    if (GET_PRACTICES(ch, i)!= PFDEF_PRACTICES)
-      fprintf(fl, "SkCl: %d %d\n", i, GET_PRACTICES(ch, i));
 
   if (GET_COND(ch, HUNGER)   != PFDEF_HUNGER && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
     fprintf(fl, "Hung: %d\n", GET_COND(ch, HUNGER));

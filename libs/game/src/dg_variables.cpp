@@ -939,9 +939,9 @@ in the vault (vnum: 453) now and then. you can just use
             }
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_PRACTICES(c, GET_CLASS(c)) = MAX(0, GET_PRACTICES(c, GET_CLASS(c)) + addition);
+              char_stats_modify(c, STAT_PRACTICES, addition);
             }
-            snprintf(str, slen, "%d", GET_PRACTICES(c, GET_CLASS(c)));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_PRACTICES));
           }
           else if (!strcasecmp(field, "plr")) {
              if (subfield && *subfield) { 

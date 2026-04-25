@@ -148,10 +148,10 @@ void resurrect(char_data *ch, int mode) {
         assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, dur, str, con, intel, agl, wis, spd);
         if (losschance >= 100) {
             int psloss = rand_number(100, 300);
-            GET_PRACTICES(ch, GET_CLASS(ch)) -= psloss;
-            send_to_char(ch, "@R...and a loss of @r%d@R PS!@n", psloss);
-            if (GET_PRACTICES(ch, GET_CLASS(ch)) < 0) {
-                GET_PRACTICES(ch, GET_CLASS(ch)) = 0;
+            char_stats_modify(ch, STAT_PRACTICES, -psloss);
+            send_to_char(ch, "@R...and a loss of @r%ld@R PS!@n", psloss);
+            if (char_stats_get(ch, STAT_PRACTICES) < 0) {
+                char_stats_modify(ch, STAT_PRACTICES, 0);
             }
         }
     }

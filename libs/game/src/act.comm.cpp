@@ -315,7 +315,7 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "knowledge")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s now has more knowledge!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           GET_PRACTICES(wch, GET_CLASS(wch)) += rand_number(2000, 5000);
+           char_stats_modify(wch, STAT_PRACTICES, rand_number(2000, 5000));
            granted = TRUE;
            SELFISHMETER += 1;
 		   mudlog(NRM, ADMLVL_GOD, TRUE, "Shenron: %s has made a knowledge wish on %s.", GET_NAME(ch), GET_NAME(wch));;

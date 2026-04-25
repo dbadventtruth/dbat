@@ -4053,14 +4053,14 @@ void nanny(struct descriptor_data *d, char *arg)
        }
       } else if (!strcasecmp(arg, "forget")) {
        if (!IS_BIO(d->character) && !IS_MUTANT(d->character)) {
-        GET_PRACTICES(d->character, GET_CLASS(d->character)) += 200;
+        char_stats_modify(d->character, STAT_PRACTICES, 200);
         SET_BIT_AR(PLR_FLAGS(d->character), PLR_FORGET);
         display_bonus_menu(d->character, 0);
         write_to_output(d, "@CThis menu (and the Negatives menu) are for selecting various traits about your character.\n");
         write_to_output(d, "@wChoose: ");
         STATE(d) = CON_BONUS;
        } else if (IS_MUTANT(d->character)) {
-        GET_PRACTICES(d->character, GET_CLASS(d->character)) += 200;
+        char_stats_modify(d->character, STAT_PRACTICES, 200);
         SET_BIT_AR(PLR_FLAGS(d->character), PLR_FORGET);
         write_to_output(d, "\n@RSelect a mutation. A second will be chosen automatically..\n");
         write_to_output(d, "@D--------------------------------------------------------@n\n");
@@ -4079,7 +4079,7 @@ void nanny(struct descriptor_data *d, char *arg)
         d->character->genome[1] = 0;
         STATE(d) = CON_GENOME;
        } else {
-        GET_PRACTICES(d->character, GET_CLASS(d->character)) += 200;
+        char_stats_modify(d->character, STAT_PRACTICES, 200);
         SET_BIT_AR(PLR_FLAGS(d->character), PLR_FORGET);
         write_to_output(d, "\n@RSelect two genomes to be your primary DNA strains.\n");
         write_to_output(d, "@D--------------------------------------------------------@n\n");
@@ -4286,7 +4286,7 @@ void nanny(struct descriptor_data *d, char *arg)
            write_to_output(d, "\r\n@wTo check the bonuses/negatives you have in game use the status command");
            if (GET_CCPOINTS(d->character) > 0) {
             write_to_output(d, "\r\n@GYour left over points were spent on Practice Sessions@w");
-            GET_PRACTICES(d->character, GET_CLASS(d->character)) += (100 * GET_CCPOINTS(d->character));
+            char_stats_modify(d->character, STAT_PRACTICES, (100 * GET_CCPOINTS(d->character)));
            }
            write_to_output(d, "\r\n*** PRESS RETURN: ");
            STATE(d) = CON_QROLLSTATS;
@@ -4340,7 +4340,7 @@ void nanny(struct descriptor_data *d, char *arg)
            write_to_output(d, "\r\n@wTo check the bonuses/negatives you have in game use the status command");
            if (GET_CCPOINTS(d->character) > 0) {
             write_to_output(d, "\r\n@GYour left over points were spent on Practice Sessions@w");
-            GET_PRACTICES(d->character, GET_CLASS(d->character)) += (100 * GET_CCPOINTS(d->character));
+            char_stats_modify(d->character, STAT_PRACTICES, (100 * GET_CCPOINTS(d->character)));
            }
            write_to_output(d, "\r\n*** PRESS RETURN: ");
            STATE(d) = CON_QROLLSTATS;

@@ -3633,10 +3633,10 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
     }
     if (!IS_NPC(vict)) {
      if (PRF_FLAGGED(vict, PRF_INSTRUCT)) {
-      if (GET_PRACTICES(vict, GET_CLASS(vict)) > 10) {
+      if (char_stats_get(vict, STAT_PRACTICES) > 10) {
        send_to_char(vict, "You instruct them in proper fighting techniques and strategies.\r\n");
        act("You take $N's instruction to heart and gain more experience.\r\n", FALSE, ch, 0, vict, TO_CHAR);
-       GET_PRACTICES(vict, GET_CLASS(vict)) -= 10;
+       char_stats_modify(vict, STAT_PRACTICES, -10);
        bonus = 2;
       }
      }
@@ -3660,8 +3660,8 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
     }
    }
    gain = gear_exp(ch, gaincalc);
-   if (GET_PRACTICES(ch, GET_CLASS(ch)) >= pscost) {
-    GET_PRACTICES(ch, GET_CLASS(ch)) -= pscost;
+   if (char_stats_get(ch, STAT_PRACTICES) >= pscost) {
+    char_stats_modify(ch, STAT_PRACTICES, -pscost);
     gain = gain * bonus;
     gain_exp(ch, gain);
     send_to_char(ch, "@D[@Y+ @G%s @mExp@D]@n ", add_commas(gain));
@@ -3775,8 +3775,8 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
      gain *= 1.25;
     }
    }
-   if (GET_PRACTICES(vict, GET_CLASS(vict)) >= pscost) {
-    GET_PRACTICES(vict, GET_CLASS(vict)) -= pscost;
+   if (char_stats_get(vict, STAT_PRACTICES) >= pscost) {
+    char_stats_modify(vict, STAT_PRACTICES, -pscost);
     send_to_char(vict, "@D[@Y+ @G%s @mExp@D]@n ", add_commas(gain));
     gain = gear_exp(vict, gain);
     gain_exp(vict, gain);

@@ -1447,7 +1447,7 @@ char *make_prompt(struct descriptor_data *d)
           len += count;
       }
       if (PRF_FLAGGED(d->character, PRF_DISPRAC) && len < sizeof(prompt)) {
-        count = snprintf(prompt + len, sizeof(prompt) - len, "@D[@mPS@y: @W%s@D]@n", add_commas(GET_PRACTICES(d->character, GET_CLASS(d->character))));
+        count = snprintf(prompt + len, sizeof(prompt) - len, "@D[@mPS@y: @W%s@D]@n", add_commas(char_stats_get(d->character, STAT_PRACTICES)));
         if (count >= 0)
           len += count;
       }

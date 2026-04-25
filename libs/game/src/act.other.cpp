@@ -377,7 +377,7 @@ ACMD(do_rpp)
 	 send_to_char(ch, "You do not have enough RPP for that selection.\r\n");
 	 return;
 	} else {
-     GET_PRACTICES(ch, GET_CLASS(ch)) += 750;
+     char_stats_modify(ch, STAT_PRACTICES, 750);
      send_to_char(ch, "Your practices have been increased by 750\r\n");
     } /* Can pay for it */
    } /* End Simple Zenni Reward */
@@ -752,11 +752,11 @@ ACMD(do_willpower)
   return;
  }
  else {
-  if (GET_PRACTICES(ch, GET_CLASS(ch)) < 100 && GET_LEVEL(ch) < 100) {
+  if (char_stats_get(ch, STAT_PRACTICES) < 100 && GET_LEVEL(ch) < 100) {
    send_to_char(ch, "You do not have enough PS to focus your attempt to break free.\r\n");
    fail = TRUE;
   }
-  if (GET_PRACTICES(ch, GET_CLASS(ch)) < 200 && GET_LEVEL(ch) >= 100) {
+  if (char_stats_get(ch, STAT_PRACTICES) < 200 && GET_LEVEL(ch) >= 100) {
    send_to_char(ch, "You do not have enough PS to focus your attempt to break free.\r\n");
    fail = TRUE;
   }
@@ -769,9 +769,9 @@ ACMD(do_willpower)
   }
   else {
    GET_EXP(ch) = 0;
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+   char_stats_modify(ch, STAT_PRACTICES, -100);
    if (GET_LEVEL(ch) >= 100) {
-      GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+      char_stats_modify(ch, STAT_PRACTICES, -100);
    }
    if (rand_number(10, 100) - GET_INT(ch) > 60) {
           reveal_hiding(ch, 0);
@@ -781,9 +781,9 @@ ACMD(do_willpower)
    }
    else {
    GET_EXP(ch) = 0;
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+   char_stats_modify(ch, STAT_PRACTICES, -100);
    if (GET_LEVEL(ch) >= 100) {
-      GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+      char_stats_modify(ch, STAT_PRACTICES, -100);
    }
           reveal_hiding(ch, 0);
     act("@WYou focus all your knowledge and will on breaking free. Dark purple energy swirls around your body and the M on your forehead burns brightly. After a few moments the ground splits beneath you and while letting out a piercing scream the M disappears from your forehead! You are free while still keeping the boost you had recieved from the majinization!@n", TRUE, ch, 0, 0, TO_CHAR);
@@ -1257,7 +1257,7 @@ ACMD(do_train)
  int sensei = -1;
 
    if(GET_ROOM_VNUM(IN_ROOM(ch)) == sensei_location_id(ch->chclass)) {
-       if(!(GET_GOLD(ch) >= 8 && GET_PRACTICES(ch, GET_CLASS(ch)) >= 1)) {
+       if(!(GET_GOLD(ch) >= 8 && char_stats_get(ch, STAT_PRACTICES) >= 1)) {
            send_to_char(ch, "It costs 8 Zenni and 1 PS to train with your sensei.\r\n");
            return;
        }
@@ -1579,7 +1579,7 @@ ACMD(do_train)
 
     if(sensei > -1) {
         GET_GOLD(ch) -= 8;
-        GET_PRACTICES(ch, GET_CLASS(ch)) -= 1;
+        char_stats_modify(ch, STAT_PRACTICES, -1);
     }
 
     if (char_stats_get(ch, stat_train) >= needed) {
@@ -2000,7 +2000,7 @@ ACMD(do_future)
   return;
  }
 
- if (GET_PRACTICES(ch, GET_CLASS(ch)) < 100) {
+ if (char_stats_get(ch, STAT_PRACTICES) < 100) {
   send_to_char(ch, "You do not have enough PS to activate or pass on this ability.\r\n");
   return;
  }
@@ -2015,7 +2015,7 @@ ACMD(do_future)
    return;
   }
      decCurKI(ch, getMaxKI(ch) / 40);
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+  char_stats_modify(ch, STAT_PRACTICES, -100);
         reveal_hiding(ch, 0);
   act("@CYou focus your energy into your fingers before stabbing your claws into $N and bestowing the power of Future Sight upon $M. Shortly after $E passes out.@n", TRUE, ch, 0, vict, TO_CHAR);
   act("@C$n focuses $s energy into $s fingers before stabbing $s claws into YOUR neck and bestowing the power of Future Sight upon you! Soon after you pass out!@n", TRUE, ch, 0, vict, TO_VICT);
@@ -2036,7 +2036,7 @@ ACMD(do_future)
    return;
   }
      decCurKI(ch, getMaxKI(ch) / 40);
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+  char_stats_modify(ch, STAT_PRACTICES, -100);
         reveal_hiding(ch, 0);
   act("@CYou focus your energy into your mind and awaken your latent Future Sight powers!@n", TRUE, ch, 0, vict, TO_CHAR);
   act("@C$n focuses $s energy while closing $s eyes for a moment.@n", TRUE, ch, 0, vict, TO_VICT);
@@ -3826,7 +3826,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
    send_to_char(ch, "You need to be at full powerlevel to create %s\r\n", arg);
    return;
   }
-  else if (GET_PRACTICES(ch, GET_CLASS(ch)) < 10) {
+  else if (char_stats_get(ch, STAT_PRACTICES) < 10) {
    send_to_char(ch, "You do not have enough PS to create %s, you need at least 10.\r\n", arg);
    return;
   }
@@ -3840,7 +3840,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
    act("$n holds out $s hand and creates $p out of thin air!", TRUE, ch, obj, 0, TO_ROOM);
       decCurKI(ch, cost);
    decCurHealthPercent(ch, 1, 1);
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 10;   
+   char_stats_modify(ch, STAT_PRACTICES, -10);   
    return;
   }
  }
@@ -3864,7 +3864,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
    send_to_char(ch, "You do not have enough stamina to create %s, you need to be at full.\r\n", arg);
    return;
   }
-  else if (GET_PRACTICES(ch, GET_CLASS(ch)) < 50) {
+  else if (char_stats_get(ch, STAT_PRACTICES) < 50) {
    send_to_char(ch, "You do not have enough PS to create %s, you need at least 50.\r\n", arg);
    return;
   }
@@ -3878,7 +3878,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
       decCurKI(ch, cost);
       decCurHealth(ch, cost2);
       decCurSTPercent(ch, 1, 1);
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 50;
+   char_stats_modify(ch, STAT_PRACTICES, -50);
    return;
   }
  }
@@ -5246,9 +5246,9 @@ ACMD(do_focus)
     reveal_hiding(ch, 0);
     act("You focus ki into your mind, awakening it to cosmic wisdom!", TRUE, ch, 0, 0, TO_CHAR);
     act("$n focuses ki into $s mind, awakening it to cosmic wisdom!", TRUE, ch, 0, 0, TO_ROOM);
-    if (IS_JINTO(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && GET_PRACTICES(ch, GET_CLASS(ch)) >= 15 && rand_number(1, 4) >= 3) {
+    if (IS_JINTO(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && char_stats_get(ch, STAT_PRACTICES) >= 15 && rand_number(1, 4) >= 3) {
      int64_t gain = 0;
-     GET_PRACTICES(ch, GET_CLASS(ch)) -= 15;
+     char_stats_modify(ch, STAT_PRACTICES, -15);
      if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 100) {
       gain = level_exp(ch, GET_LEVEL(ch) + 1) * 0.15;
       GET_EXP(ch) += gain;
@@ -5313,9 +5313,9 @@ ACMD(do_focus)
      act("You focus ki into $N's mind, awakening it to cosmic wisdom!", TRUE, ch, 0, vict, TO_CHAR);
      act("$n focuses ki into your mind, awakening it to cosmic wisdom!", TRUE, ch, 0, vict, TO_VICT);
      act("$n focuses ki into $N's mind, awakening it to cosmic wisdom!", TRUE, ch, 0, vict, TO_NOTVICT);
-    if (IS_JINTO(ch) && level_exp(vict, GET_LEVEL(vict) + 1) - GET_EXP(vict) > 0 && GET_PRACTICES(ch, GET_CLASS(ch)) >= 15 && rand_number(1, 4) >= 3) {
+    if (IS_JINTO(ch) && level_exp(vict, GET_LEVEL(vict) + 1) - GET_EXP(vict) > 0 && char_stats_get(ch, STAT_PRACTICES) >= 15 && rand_number(1, 4) >= 3) {
      int64_t gain = 0;
-     GET_PRACTICES(ch, GET_CLASS(ch)) -= 15;
+     char_stats_modify(ch, STAT_PRACTICES, -15);
      if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 100) {
       gain = level_exp(vict, GET_LEVEL(vict) + 1) * 0.15;
       GET_EXP(vict) += gain;
@@ -8069,7 +8069,7 @@ ACMD(do_meditate)
   if (IS_SAIYAN(ch)) {
    cost = 7000;
   }
-  if (GET_PRACTICES(ch, GET_CLASS(ch)) < cost) {
+  if (char_stats_get(ch, STAT_PRACTICES) < cost) {
    send_to_char(ch, "You do not have enough practice sessions to expand your mind and ability to remember skills.\r\n");
    send_to_char(ch, "%s needed.\r\n", add_commas(cost));
   } else if (GET_SLOTS(ch) >= 60 && GET_BONUS(ch, BONUS_GMEMORY) == 0) {
@@ -8079,7 +8079,7 @@ ACMD(do_meditate)
   } else {
    send_to_char(ch, "During your meditation you manage to expand your mind and get the feeling you could learn some new skills.\r\n");
    GET_SLOTS(ch) += 1;
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= cost;
+   char_stats_modify(ch, STAT_PRACTICES, -cost);
    return;
   }
   return;

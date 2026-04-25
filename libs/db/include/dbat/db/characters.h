@@ -80,8 +80,6 @@ struct player_special_data
    uint8_t bad_pws;                   /* number of bad password attemps	*/
    int8_t conditions[NUM_CONDITIONS]; /* Drunk, full, thirsty			*/
 
-   // Only the character's own class in this array is used, to store PS/Practices.
-   int class_skill_points[NUM_CLASSES];   /* Skill points earned from a class	*/
    struct txt_block *comm_hist[NUM_HIST]; /* Player's communcations history     */
    int olc_zone;                          /* Zone where OLC is permitted		*/
    int speaking;                          /* Language currently speaking		*/
