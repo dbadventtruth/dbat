@@ -1127,7 +1127,7 @@ ACMD(do_move)
   if (char_stats_get(ch, STAT_DRUNK) > 4 && (rand_number(1, 9) + char_stats_get(ch, STAT_DRUNK)) >= rand_number(14, 20)) {
    send_to_char(ch, "You wobble around and then fall on your ass.\r\n");
    act("@C$n@W wobbles around before falling on $s ass@n.", TRUE, ch, 0, 0, TO_ROOM);
-   GET_POS(ch) = POS_SITTING;
+   char_stats_set(ch, STAT_POSITION, POS_SITTING);
    return;
   }
 
@@ -2411,7 +2411,7 @@ ACMD(do_fly)
     SITS(ch) = NULL;
    }
    if (GET_POS(ch) < POS_STANDING) {
-    GET_POS(ch) = POS_STANDING;
+    char_stats_set(ch, STAT_POSITION, POS_STANDING);
    }
    SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
    GET_ALT(ch) = 1;
@@ -2432,7 +2432,7 @@ ACMD(do_fly)
     SITS(ch) = NULL;
    }
    if (GET_POS(ch) < POS_STANDING) {
-    GET_POS(ch) = POS_STANDING;
+    char_stats_set(ch, STAT_POSITION, POS_STANDING);
    }
    SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
    GET_ALT(ch) = 2;
@@ -2786,7 +2786,7 @@ ACMD(do_stand)
      SITS(ch) = NULL;
     }
     /* May be sitting for some reason and may still be fighting. */
-    GET_POS(ch) = FIGHTING(ch) ? POS_FIGHTING : POS_STANDING;
+    char_stats_set(ch, STAT_POSITION, FIGHTING(ch) ? POS_FIGHTING : POS_STANDING);
     break;
   case POS_RESTING:
     send_to_char(ch, "You stop resting, and stand up.\r\n");
@@ -2802,7 +2802,7 @@ ACMD(do_stand)
      SITTING(chair) = NULL;
      SITS(ch) = NULL;
     }
-    GET_POS(ch) = POS_STANDING;
+    char_stats_set(ch, STAT_POSITION, POS_STANDING);
     break;
   case POS_SLEEPING:
     send_to_char(ch, "You have to wake up first!\r\n");
@@ -2811,7 +2811,7 @@ ACMD(do_stand)
     send_to_char(ch, "You stop floating around, and put your feet on the ground.\r\n");
     act("$n stops floating around, and puts $s feet on the ground.",
 	TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_STANDING;
+    char_stats_set(ch, STAT_POSITION, POS_STANDING);
     break;
   }
 }
@@ -2852,7 +2852,7 @@ ACMD(do_sit)
           reveal_hiding(ch, 0);
     send_to_char(ch, "You sit down.\r\n");
     act("$n sits down.", FALSE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
     break;
   case POS_SITTING:
     send_to_char(ch, "You're sitting already.\r\n");
@@ -2860,7 +2860,7 @@ ACMD(do_sit)
   case POS_RESTING:
     send_to_char(ch, "You stop resting, and sit up.\r\n");
     act("$n stops resting.", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
     break;
   case POS_SLEEPING:
     send_to_char(ch, "You have to wake up first.\r\n");
@@ -2871,7 +2871,7 @@ ACMD(do_sit)
   default:
     send_to_char(ch, "You stop floating around, and sit down.\r\n");
     act("$n stops floating around, and sits down.", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
     break;
   }
  }
@@ -2905,7 +2905,7 @@ ACMD(do_sit)
           reveal_hiding(ch, 0);
     act("You sit down on $p.", FALSE, ch, chair, 0, TO_CHAR);
     act("$n sits down on $p.", FALSE, ch, chair, 0, TO_ROOM);
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
     SITS(ch) = chair;
     SITTING(chair) = ch;
     break;
@@ -2924,7 +2924,7 @@ ACMD(do_sit)
   default:
     send_to_char(ch, "You stop floating around, and sit down.\r\n");
     act("$n stops floating around, and sits down.", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
     break;
   }
  }
@@ -2954,7 +2954,7 @@ ACMD(do_rest)
     send_to_char(ch, "You have a barrier around you and can't rest.\r\n");
     return;
    } else {
-    GET_BARRIER(ch) = 0;
+    char_stats_set(ch, STAT_BARRIER, 0);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SANCTUARY);
    }
   }
@@ -2996,12 +2996,12 @@ ACMD(do_rest)
           reveal_hiding(ch, 0);
     send_to_char(ch, "You lay down and rest your tired bones.\r\n");
     act("$n lays down and rests.", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_RESTING;
+    char_stats_set(ch, STAT_POSITION, POS_RESTING);
     break;
   case POS_SITTING:
     send_to_char(ch, "You rest your tired bones.\r\n");
     act("$n rests.", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_RESTING;
+    char_stats_set(ch, STAT_POSITION, POS_RESTING);
     break;
   case POS_RESTING:
     send_to_char(ch, "You are already resting.\r\n");
@@ -3015,7 +3015,7 @@ ACMD(do_rest)
   default:
     send_to_char(ch, "You stop floating around, and stop to rest your tired bones.\r\n");
     act("$n stops floating around, and rests.", FALSE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_RESTING;
+    char_stats_set(ch, STAT_POSITION, POS_RESTING);
     break;
   }
  }
@@ -3051,7 +3051,7 @@ ACMD(do_rest)
     act("$n lays down and rests on $p.", TRUE, ch, chair, 0, TO_ROOM);
     SITS(ch) = chair;
     SITTING(chair) = ch;
-    GET_POS(ch) = POS_RESTING;
+    char_stats_set(ch, STAT_POSITION, POS_RESTING);
     break;
   case POS_SITTING:
     send_to_char(ch, "You should get up first.\r\n");
@@ -3068,7 +3068,7 @@ ACMD(do_rest)
   default:
     send_to_char(ch, "You stop floating around, and stop to rest your tired bones.\r\n");
     act("$n stops floating around, and rests.", FALSE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_RESTING;
+    char_stats_set(ch, STAT_POSITION, POS_RESTING);
     break;
   }
  }
@@ -3119,7 +3119,7 @@ ACMD(do_sleep)
     send_to_char(ch, "You have a barrier around you and can't sleep.\r\n");
     return;
    } else {
-    GET_BARRIER(ch) = 0;
+    char_stats_set(ch, STAT_BARRIER, 0);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SANCTUARY);
    }
   }
@@ -3161,7 +3161,7 @@ ACMD(do_sleep)
           reveal_hiding(ch, 0);
     send_to_char(ch, "You go to sleep.\r\n");
     act("$n lies down and falls asleep.", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SLEEPING;
+    char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
     /* Fury Mode Loss for halfbreeds */
 
     if (PLR_FLAGGED(ch, PLR_FURY)) {
@@ -3186,7 +3186,7 @@ ACMD(do_sleep)
     send_to_char(ch, "You stop floating around, and lie down to sleep.\r\n");
     act("$n stops floating around, and lie down to sleep.",
         TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SLEEPING;
+    char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
     break;
   }
  }
@@ -3239,7 +3239,7 @@ ACMD(do_sleep)
     }
     SITS(ch) = chair;
     SITTING(chair) = ch;
-    GET_POS(ch) = POS_SLEEPING;
+    char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
     break;
   case POS_SLEEPING:
     send_to_char(ch, "You are already sound asleep.\r\n");
@@ -3251,7 +3251,7 @@ ACMD(do_sleep)
     send_to_char(ch, "You stop floating around, and lie down to sleep.\r\n");
     act("$n stops floating around, and lie down to sleep.",
         TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SLEEPING;
+    char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
     break;
   }
  }
@@ -3295,7 +3295,7 @@ ACMD(do_wake)
     else {
       act("You wake $M up.", FALSE, ch, 0, vict, TO_CHAR);
       act("You are awakened by $n.", FALSE, ch, 0, vict, TO_VICT | TO_SLEEP);
-      GET_POS(vict) = POS_SITTING;
+      char_stats_set(vict, STAT_POSITION, POS_SITTING);
       if (DRAGGED(vict)) {
        act("@WYou stop dragging @C$N@W!@n", TRUE, DRAGGED(vict), 0, vict, TO_CHAR);
        act("@C$n@W stops dragging @c$N@W!@n", TRUE, DRAGGED(vict), 0, vict, TO_ROOM);
@@ -3334,7 +3334,7 @@ ACMD(do_wake)
       carry_drop(CARRIED_BY(ch), 1);
      }
     }
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
   }
 }
 

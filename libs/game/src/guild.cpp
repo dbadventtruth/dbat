@@ -111,23 +111,23 @@ void handle_ingest_learn(struct char_data *ch, struct char_data *vict)
 
 			if (GET_SKILL_BASE(ch, i) + 10 < 100)
 			{
-				GET_SKILL_BASE(ch, i) += 10;
+				char_skills_modify(ch, i, 10);
 			}
 			else if (GET_SKILL_BASE(ch, i) > 0 && GET_SKILL_BASE(ch, i) < 100)
 			{
-				GET_SKILL_BASE(ch, i) += 1;
+				char_skills_modify(ch, i, 1);
 			}
 			else
 			{
-				GET_SKILL_BASE(ch, i) = 100;
+				char_skills_set(ch, i, 100);
 			}
 			
 		}
 		if (((i >= 481 && i <= 489) || i == 517 || i == 535) && ((GET_SKILL_BASE(ch, i) <= 0) && GET_SKILL_BASE(vict, i) > 0))
 		{
-			SET_SKILL(ch, i, GET_SKILL_BASE(ch, i) + rand_number(10, 25));
+			char_skills_modify(ch, i, rand_number(10, 25));
 			send_to_char(ch, "@YYou learned @y%s@Y from ingesting your target!@n\r\n", spell_info[i].name);
-			GET_SLOTS(ch) += 1;
+			char_stats_modify(ch, STAT_SKILL_SLOTS, 1);
 			GET_INGESTLEARNED(ch) = 1;
 
 		}
@@ -1081,37 +1081,36 @@ void handle_train(struct char_data *keeper, int guild_nr, struct char_data *ch, 
     send_to_char(ch, "You have no ability training sessions.\r\n");
   else if (!strncasecmp("strength", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.str += 1;
+    char_stats_modify(ch, STAT_STRENGTH, 1);
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("constitution", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.con += 1;
+    char_stats_modify(ch, STAT_CONSTITUTION, 1);
     /* Give them retroactive hit points for constitution */
-    if (! (ch->real_abils.con % 2))
+    if (! (char_stats_get(ch, STAT_CONSTITUTION) % 2))
       //GET_MAX_HIT(ch) += GET_LEVEL(ch);
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("agility", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.dex += 1;
+    char_stats_modify(ch, STAT_AGILITY, 1);
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("intelligence", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.intel += 1;
+    char_stats_modify(ch, STAT_INTELLIGENCE, 1);
     /* Give extra skill practice, but only for this level */
-    if (! (ch->real_abils.intel % 2))
+    if (! (char_stats_get(ch, STAT_INTELLIGENCE) % 2))
       char_stats_modify(ch, STAT_PRACTICES, 1);
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("wisdom", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.wis += 1;
+    char_stats_modify(ch, STAT_WISDOM, 1);
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("speed", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.cha += 1;
+    char_stats_modify(ch, STAT_SPEED, 1);
     GET_TRAINS(ch) -= 1;
   } else
     send_to_char(ch, "Stats: strength constitution agility intelligence wisdom speed\r\n");
-  affect_total(ch);
   return;
 }
 
@@ -1147,7 +1146,7 @@ int rpp_to_level(struct char_data *ch) {
     switch (GET_LEVEL(ch)) {
         case 2:
             // charge the RPP races to level for the first time.
-            return get_race(ch->race)->getRPPCost();
+            return get_race(GET_RACE(ch))->getRPPCost();
         case 91:
         case 92:
         case 93:
@@ -1245,8 +1244,8 @@ void handle_study(struct char_data *keeper, int guild_nr, struct char_data *ch, 
  if (fail == TRUE)
   return;
 
- GET_EXP(ch) -= expcost;
- GET_GOLD(ch) -= goldcost;
+ char_stats_modify(ch, STAT_EXPERIENCE, -expcost);
+ char_stats_modify(ch, STAT_MONEY, -goldcost);
  char_stats_modify(ch, STAT_PRACTICES, 25);
  
  act("@c$N@W spends time lecturing you on various subjects.@n", TRUE, ch, 0, keeper, TO_CHAR);
@@ -1439,7 +1438,6 @@ void handle_learn(struct char_data *keeper, int guild_nr, struct char_data *ch, 
       send_to_char(ch, "You have already focused that skill as high as possible.\r\n");
       return;
     }
-    SET_SKILL_BONUS(ch, subval, GET_SKILL_BONUS(ch, subval) + 5);
     SET_FEAT(ch, feat_num, HAS_FEAT(ch, feat_num) + 1);
     break;
   case FEAT_SPELL_MASTERY:
@@ -1454,14 +1452,10 @@ void handle_learn(struct char_data *keeper, int guild_nr, struct char_data *ch, 
   case FEAT_AGILE:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_BALANCE, GET_SKILL_BONUS(ch, SKILL_BALANCE) + 2);
-    SET_SKILL_BONUS(ch, SKILL_ESCAPE_ARTIST, GET_SKILL_BONUS(ch, SKILL_ESCAPE_ARTIST) + 2);
     break;
   case FEAT_ALERTNESS:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_LISTEN, GET_SKILL_BONUS(ch, SKILL_LISTEN) + 2);
-    SET_SKILL_BONUS(ch, SKILL_SPOT, GET_SKILL_BONUS(ch, SKILL_SPOT) + 2);
     break;
   case FEAT_ANIMAL_AFFINITY:
     subval = HAS_FEAT(ch, feat_num) + 1;
@@ -1474,24 +1468,18 @@ void handle_learn(struct char_data *keeper, int guild_nr, struct char_data *ch, 
   case FEAT_DECEITFUL:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_DISGUISE, GET_SKILL_BONUS(ch, SKILL_DISGUISE) + 2);
-    SET_SKILL_BONUS(ch, SKILL_FORGERY, GET_SKILL_BONUS(ch, SKILL_FORGERY) + 2);
     break;
   case FEAT_DEFT_HANDS:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_SLEIGHT_OF_HAND, GET_SKILL_BONUS(ch, SKILL_SLEIGHT_OF_HAND) + 2);
     break;
   case FEAT_DILIGENT:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_APPRAISE, GET_SKILL_BONUS(ch, SKILL_APPRAISE) + 2);
     break;
   case FEAT_INVESTIGATOR:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_EAVESDROP, GET_SKILL_BONUS(ch, SKILL_EAVESDROP) + 2);
-    SET_SKILL_BONUS(ch, SKILL_SEARCH, GET_SKILL_BONUS(ch, SKILL_SEARCH) + 2);
     break;
   case FEAT_MAGICAL_APTITUDE:
     subval = HAS_FEAT(ch, feat_num) + 1;
@@ -1504,7 +1492,6 @@ void handle_learn(struct char_data *keeper, int guild_nr, struct char_data *ch, 
   case FEAT_NIMBLE_FINGERS:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_OPEN_LOCK, GET_SKILL_BONUS(ch, SKILL_OPEN_LOCK) + 2);
     break;
   case FEAT_PERSUASIVE:
     subval = HAS_FEAT(ch, feat_num) + 1;
@@ -1513,14 +1500,10 @@ void handle_learn(struct char_data *keeper, int guild_nr, struct char_data *ch, 
   case FEAT_SELF_SUFFICIENT:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_HEAL, GET_SKILL_BONUS(ch, SKILL_HEAL) + 2);
-    SET_SKILL_BONUS(ch, SKILL_SURVIVAL, GET_SKILL_BONUS(ch, SKILL_SURVIVAL) + 2);
     break;
   case FEAT_STEALTHY:
     subval = HAS_FEAT(ch, feat_num) + 1;
     SET_FEAT(ch, feat_num, subval);
-    SET_SKILL_BONUS(ch, SKILL_HIDE, GET_SKILL_BONUS(ch, SKILL_HIDE) + 2);
-    SET_SKILL_BONUS(ch, SKILL_MOVE_SILENTLY, GET_SKILL_BONUS(ch, SKILL_MOVE_SILENTLY) + 2);
     break;
   default:
     SET_FEAT(ch, feat_num, TRUE);

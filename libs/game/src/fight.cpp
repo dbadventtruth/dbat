@@ -236,7 +236,7 @@ static void mob_attack(struct char_data *ch, char *buf)
  }
 
  if (axion_dice(-10) > 90 && getCurHealthPercent(ch) <= .5 && !MOB_FLAGGED(ch, MOB_POWERUP) && GET_MOB_VNUM(ch) != 25 &&
- !(IS_ANDROID(ch) || IS_ANIMAL(ch) || ch->chclass == CLASS_NPC_COMMONER))  {
+ !(IS_ANDROID(ch) || IS_ANIMAL(ch) || char_stats_get(ch, STAT_SENSEI) == CLASS_NPC_COMMONER))  {
   do_powerup(ch, nullptr, 0, 0);
   return;
  }
@@ -789,7 +789,7 @@ void fight_stack()
       ch = tch;
       
       if (GET_POS(ch) == POS_FIGHTING) {
-       GET_POS(ch) = POS_STANDING;
+       char_stats_set(ch, STAT_POSITION, POS_STANDING);
       }
       if (PLR_FLAGGED(ch, PLR_SPIRAL)) {
        handle_spiral(ch, NULL, GET_SKILL(ch, SKILL_SPIRAL), FALSE);
@@ -904,7 +904,7 @@ void fight_stack()
         act("@C$n@W chokes YOU@W, and you pass out!@n", TRUE, ch, 0, GRAPPLING(ch), TO_VICT);
         act("@C$n@W chokes @c$N@W, and $E passes out!@n", TRUE, ch, 0, GRAPPLING(ch), TO_NOTVICT);
         SET_BIT_AR(AFF_FLAGS(GRAPPLING(ch)), AFF_KNOCKED);
-        GET_POS(GRAPPLING(ch)) = POS_SLEEPING;
+        char_stats_set(GRAPPLING(ch), STAT_POSITION, POS_SLEEPING);
         GRAPTYPE(GRAPPLING(ch)) = -1;
         GRAPPLED(GRAPPLING(ch)) = NULL;
         GRAPPLING(ch) = NULL;
@@ -932,7 +932,7 @@ void fight_stack()
       }
 
       if(!IS_NPC(ch) && IS_TRANSFORMED(ch) && !IS_ICER(ch) && IS_NONPTRANS(ch)) {
-          int tier = get_race(ch->race)->getCurrentTransTier(ch);
+          int tier = get_race(GET_RACE(ch))->getCurrentTransTier(ch);
 
           if (getCurST(ch) < GET_MAX_MOVE(ch) / 60) {
               if(!(tier == 1 && PLR_FLAGGED(ch, PLR_FPSSJ))) {
@@ -1008,7 +1008,7 @@ void fight_stack()
          cureStatusKnockedOut(ch, true);
          if (IS_NPC(ch) && rand_number(1, 20) >= 12) {
          act("@W$n@W stands up.@n", FALSE, ch, 0, 0, TO_ROOM);
-          GET_POS(ch) = POS_STANDING;
+          char_stats_set(ch, STAT_POSITION, POS_STANDING);
 	 }
       }
 
@@ -1225,7 +1225,7 @@ void fight_stack()
         }
         REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
             incCurKI(ch, GET_CHARGE(ch));
-          GET_CHARGE(ch) = 0;
+          char_stats_set(ch, STAT_CHARGE, 0);
           GET_CHARGETO(ch) = 0;
        }
       if (PLR_FLAGGED(ch, PLR_CHARGE) && GET_BONUS(ch, BONUS_UNFOCUSED) > 0 && rand_number(1, 80) >= 70) {
@@ -1246,7 +1246,7 @@ void fight_stack()
         }
         REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
           incCurKI(ch, GET_CHARGE(ch));
-          GET_CHARGE(ch) = 0;
+          char_stats_set(ch, STAT_CHARGE, 0);
           GET_CHARGETO(ch) = 0;
       }
       if(GET_CHARGE(ch) >= getMaxKI(ch) / 2) {
@@ -1270,13 +1270,13 @@ void fight_stack()
           act("$n@w's aura shrinks some.@n", TRUE, ch, 0, 0, TO_ROOM);
           break;
         }
-	  loss = GET_CHARGE(ch) / 20;
-          GET_CHARGE(ch) -= loss;
+	  loss = char_stats_get(ch, STAT_CHARGE) / 20;
+          char_stats_modify(ch, STAT_CHARGE, -loss);
        }
        else if (GET_CHARGE(ch) < GET_MAX_MANA(ch) / 100 && GET_CHARGE(ch) != 0) {
         send_to_char(ch, "Your charged energy is completely gone as your aura fades.\r\n");
         act("$n@w's aura fades away dimmly.@n", TRUE, ch, 0, 0, TO_ROOM);
-        GET_CHARGE(ch) = 0;
+        char_stats_set(ch, STAT_CHARGE, 0);
        }
       }
       if (PLR_FLAGGED(ch, PLR_CHARGE)) {
@@ -1341,7 +1341,7 @@ void fight_stack()
        else if (((GET_MAX_MANA(ch) * 0.01) * perc) >= (getCurKI(ch))) {
           send_to_char(ch, "You have charged the last that you can.\r\n");
           act("$n@w's aura @Yflashes@w spectacularly, rushing upwards in torrents!@n", TRUE, ch, 0, 0, TO_ROOM);
-          GET_CHARGE(ch) += (getCurKI(ch));
+          char_stats_modify(ch, STAT_CHARGE, (getCurKI(ch)));
           decCurKIPercent(ch, 1);
           GET_CHARGETO(ch) = 0;
           REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
@@ -1354,14 +1354,14 @@ void fight_stack()
         REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
        } else if (GET_CHARGE(ch) + (((GET_MAX_MANA(ch) * 0.01) * perc) + 1) >= GET_CHARGETO(ch)) {
          decCurKI(ch, GET_CHARGETO(ch) - GET_CHARGE(ch));
-         GET_CHARGE(ch) = GET_CHARGETO(ch);
+         char_stats_set(ch, STAT_CHARGE, GET_CHARGETO(ch));
          send_to_char(ch, "You stop charging as you reach the maximum that you wished to charge.\r\n");
          act("$n@w's aura flares up brightly and then burns steadily.@n", TRUE, ch, 0, 0, TO_ROOM);
          GET_CHARGETO(ch) = 0;
          REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
        } else {
            decCurKI(ch, ((GET_MAX_MANA(ch) * 0.01) * perc) + 1);
-         GET_CHARGE(ch) += ((GET_MAX_MANA(ch) * 0.01) * perc) + 1;
+         char_stats_modify(ch, STAT_CHARGE, ((GET_MAX_MANA(ch) * 0.01) * perc) + 1);
          switch (rand_number(1, 3)) {
           case 1:
            act("$n@w's aura ripples magnificantly while growing brighter!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -1379,8 +1379,7 @@ void fight_stack()
            break;
          }
         if (GET_CHARGE(ch) >= GET_CHARGETO(ch)) {
-          GET_CHARGE(ch) = GET_CHARGETO(ch);
-          GET_CHARGE(ch) += GET_LEVEL(ch);
+          char_stats_set(ch, STAT_CHARGE, GET_CHARGETO(ch) + GET_LEVEL(ch));
           send_to_char(ch, "You have finished charging!\r\n");
           act("$n@w's aura burns brightly and then evens out.@n", TRUE, ch, 0, 0, TO_ROOM);
           REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
@@ -1421,15 +1420,15 @@ void update_pos(struct char_data *victim)
   else if (GET_POS(victim) == POS_SITTING && FIGHTING(victim))
     return;
   else if (GET_HIT(victim) > 0)
-    GET_POS(victim) = POS_STANDING;
+    char_stats_set(victim, STAT_POSITION, POS_STANDING);
   else if (GET_HIT(victim) <= -11)
-    GET_POS(victim) = POS_DEAD;
+    char_stats_set(victim, STAT_POSITION, POS_DEAD);
   else if (GET_HIT(victim) <= -6)
-    GET_POS(victim) = POS_MORTALLYW;
+    char_stats_set(victim, STAT_POSITION, POS_MORTALLYW);
   else if (GET_HIT(victim) <= -3)
-    GET_POS(victim) = POS_INCAP;
+    char_stats_set(victim, STAT_POSITION, POS_INCAP);
   else
-    GET_POS(victim) = POS_STUNNED;
+    char_stats_set(victim, STAT_POSITION, POS_STUNNED);
 }
 
 
@@ -1460,10 +1459,10 @@ void set_fighting(struct char_data *ch, struct char_data *vict)
   FIGHTING(ch) = vict;
 
   if (GET_POS(ch) == POS_SITTING) {
-   GET_POS(ch) = POS_SITTING;
+   char_stats_set(ch, STAT_POSITION, POS_SITTING);
   }
   else if (GET_POS(ch) == POS_SLEEPING) {
-   GET_POS(ch) = POS_SLEEPING;
+   char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
   }
 
   if (!CONFIG_PK_ALLOWED)
@@ -1581,7 +1580,7 @@ static void make_pcorpse(struct char_data *ch)
       money = create_money(GET_GOLD(ch));
       obj_to_obj(money, corpse);
     }
-    GET_GOLD(ch) = 0;
+    char_stats_set(ch, STAT_MONEY, 0);
   }
 
   obj_to_room(corpse, IN_ROOM(ch));
@@ -1815,12 +1814,10 @@ static void make_corpse(struct char_data *ch, struct char_data *tch)
       money = create_money(GET_GOLD(ch));
       obj_to_obj(money, corpse);
     }
-    GET_GOLD(ch) = 0;
+    char_stats_set(ch, STAT_MONEY, 0);
   }
  if (!MOB_FLAGGED(ch, MOB_HUSK)) {
   ch->carrying = NULL;
-  IS_CARRYING_N(ch) = 0;
-  IS_CARRYING_W(ch) = 0;
  }
   obj_to_room(corpse, IN_ROOM(ch));
   
@@ -1955,7 +1952,7 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
 
   /* To make ordinary commands work in scripts.  welcor*/  
   if (GET_POS(ch) != POS_SITTING && GET_POS(ch) != POS_SLEEPING && GET_POS(ch) != POS_RESTING) 
-   GET_POS(ch) = POS_STANDING; 
+   char_stats_set(ch, STAT_POSITION, POS_STANDING); 
   
   if (killer && !IS_NPC(killer)) {
   if (!IS_NPC(killer) && !IS_NPC(ch)) {
@@ -1990,23 +1987,23 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
       send_to_char(killer, "@D[@G+0 @mUpgrade Point @r-WEAK-@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 10) {
-      GET_UP(killer) += 3;
+      char_stats_modify(killer, STAT_UPGRADES, 3);
       send_to_char(killer, "@D[@G+3 @mUpgrade Point@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 8) {
-      GET_UP(killer) += 6;
+      char_stats_modify(killer, STAT_UPGRADES, 6);
       send_to_char(killer, "@D[@G+6 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 4) {
-      GET_UP(killer) += 12;
+      char_stats_modify(killer, STAT_UPGRADES, 12);
       send_to_char(killer, "@D[@G+12 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 2) {
-      GET_UP(killer) += 16;
+      char_stats_modify(killer, STAT_UPGRADES, 16);
       send_to_char(killer, "@D[@G+16 @mUpgrade Points@D]@n\r\n");
     }
      else {
-       GET_UP(killer) += 28;
+       char_stats_modify(killer, STAT_UPGRADES, 28);
       send_to_char(killer, "@D[@G+28 @mUpgrade Points@D]@n\r\n");
      }
     }
@@ -2015,23 +2012,23 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
       send_to_char(killer, "@D[@G+0 @mUpgrade Point @r-WEAK-@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 10) {
-      GET_UP(killer) += 5;
+      char_stats_modify(killer, STAT_UPGRADES, 5);
       send_to_char(killer, "@D[@G+5 @mUpgrade Point@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 6) {
-      GET_UP(killer) += 12;
+      char_stats_modify(killer, STAT_UPGRADES, 12);
       send_to_char(killer, "@D[@G+12 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 4) {
-      GET_UP(killer) += 18;
+      char_stats_modify(killer, STAT_UPGRADES, 18);
       send_to_char(killer, "@D[@G+18 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 2) {
-      GET_UP(killer) += 28;
+      char_stats_modify(killer, STAT_UPGRADES, 28);
       send_to_char(killer, "@D[@G+28 @mUpgrade Points@D]@n\r\n");
     }
      else {
-       GET_UP(killer) += 36;
+       char_stats_modify(killer, STAT_UPGRADES, 36);
       send_to_char(killer, "@D[@G+36 @mUpgrade Points@D]@n\r\n");
      }
     }
@@ -2169,7 +2166,7 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
             break;
         case Newbie:
             restore(ch, false);
-            teleport_to(ch, sensei_start_room(ch->chclass));
+            teleport_to(ch, sensei_start_room(GET_CLASS(ch)));
             send_to_char(ch, "\r\n@RYou should beware, when you reach level 9, you will actually die. So you\r\n"
                              "should learn to be more careful. Since when you die past that point and\r\n"
                              "actually reach the afterlife you need to realise that being revived will\r\n"
@@ -2181,7 +2178,7 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
     if(!IS_NPC(ch)) {
         if (IS_ANDROID(ch) && !PLR_FLAGGED(ch, PLR_ABSORB) && android_lose && GET_UP(ch) > 5) {
             int loss = GET_UP(ch) / 5;
-            GET_UP(ch) -= loss;
+            char_stats_modify(ch, STAT_UPGRADES, -loss);
             send_to_char(ch, "@rYou lose @R%s@r upgrade points!@n\r\n", add_commas(loss));
         }
         Crash_delete_crashfile(ch);
@@ -2252,8 +2249,8 @@ void die(struct char_data *ch, struct char_data *killer)
     {
       stop_fighting(ch);
     }
-    GET_POS(ch) = POS_SITTING;
-    teleport_to(ch, sensei_start_room(ch->chclass));
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
+    teleport_to(ch, sensei_start_room(GET_CLASS(ch)));
     return;
   }
 
@@ -2464,7 +2461,7 @@ static void perform_group_gain(struct char_data *ch, int base, struct char_data 
            incCurHealthPercent(ch, .02);
            send_to_char(ch, "You receive a bonus from your group's leader! @D[@G5%s PL Repaired@D]@n\r\n", "%");
        } else if (PLR_FLAGGED(leader, PLR_SENSEM) && !PLR_FLAGGED(ch, PLR_ABSORB)) {
-           GET_UP(ch) += 5;
+           char_stats_modify(ch, STAT_UPGRADES, 5);
            send_to_char(ch, "You receive a bonus from your group's leader! @D[@G+5 @mUpgrade Points@D]@n\r\n");
        }
    } else {

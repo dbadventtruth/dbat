@@ -205,6 +205,8 @@ int know_skill(struct char_data *ch, int skill);
 size_t send_to_char(struct char_data *ch, const char *messg, ...) __attribute__((format(printf, 2, 3)));
 void admin_set(struct char_data *ch, int value);
 char *sense_location(struct char_data *ch);
+bool is_affected(struct char_data *ch, int aff_flag);
+void remove_affect(struct char_data *ch, int aff_flag);
 void null_affect(struct char_data *ch, int aff_flag);
 int planet_check(struct char_data *ch, struct char_data *vict);
 /* Player autoexit levels: used as an index to exitlevels           */

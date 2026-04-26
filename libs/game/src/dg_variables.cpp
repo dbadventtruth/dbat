@@ -587,18 +587,18 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "align")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-             GET_ALIGNMENT(c) = MAX(-1000, MIN(addition, 1000));
+             char_stats_set(c, STAT_ALIGNMENT, addition);
             }
-        	snprintf(str, slen, "%d", GET_ALIGNMENT(c));
+        	snprintf(str, slen, "%ld", char_stats_get(c, STAT_ALIGNMENT));
           }
           break;
         case 'b':
           if (!strcasecmp(field, "bank")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_BANK_GOLD(c) += addition;
+              char_stats_modify(c, STAT_MONEY_BANK, addition);
             }
-            snprintf(str, slen, "%d", GET_GOLD(c));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_MONEY_BANK));
           }
           break;
         case 'c':
@@ -630,22 +630,16 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "con")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              int max = 100;
-              GET_CON(c) += addition;
-              if (GET_CON(c) > max) GET_CON(c) = max;
-              if (GET_CON(c) < 3) GET_CON(c) = 3;
+              char_stats_modify(c, STAT_CONSTITUTION, addition);
             }
-            snprintf(str, slen, "%d", GET_CON(c));
+            snprintf(str, slen, "%ld", GET_CON(c));
           }
           else if (!strcasecmp(field, "cha")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              int max = 100;
-              GET_CHA(c) += addition;
-              if (GET_CHA(c) > max) GET_CHA(c) = max;
-              if (GET_CHA(c) < 3) GET_CHA(c) = 3;
+              char_stats_modify(c, STAT_SPEED, addition);
             }
-            snprintf(str, slen, "%d", GET_CHA(c));
+            snprintf(str, slen, "%ld", GET_CHA(c));
           }
           break;
         case 'd':
@@ -661,12 +655,9 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "dex")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              int max = 100;
-              GET_DEX(c) += addition;
-              if (GET_DEX(c) > max) GET_DEX(c) = max;
-              if (GET_DEX(c) < 3) GET_DEX(c) = 3;
+              char_stats_modify(c, STAT_AGILITY, addition);
             }
-            snprintf(str, slen, "%d", GET_DEX(c));
+            snprintf(str, slen, "%ld", GET_DEX(c));
           }
           else if (!strcasecmp(field, "drag")) {
             if (!IS_NPC(c) && DRAGGING(c))
@@ -735,9 +726,9 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "gold")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_GOLD(c) += addition;
+              char_stats_modify(c, STAT_MONEY, addition);
             }
-            snprintf(str, slen, "%d", GET_GOLD(c));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_MONEY));
           }
           break;
         case 'h':
@@ -837,10 +828,7 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "int")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              int max = 100;
-              GET_INT(c) += addition;
-              if (GET_INT(c) > max) GET_INT(c) = max;
-              if (GET_INT(c) < 3) GET_INT(c) = 3;
+              char_stats_modify(c, STAT_INTELLIGENCE, addition);
             }
             snprintf(str, slen, "%d", GET_INT(c));
           }
@@ -924,7 +912,7 @@ in the vault (vnum: 453) now and then. you can just use
               for (i = POS_SLEEPING; i <= POS_STANDING; i++) {
                 /* allows : Sleeping, Resting, Sitting, Fighting, Standing */
                 if (!strncasecmp(subfield, position_types[i], strlen(subfield))) {
-                  GET_POS(c) = i;
+                  char_stats_set(c, STAT_POSITION, i);
                   break;
                 }
               }
@@ -996,10 +984,7 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "str")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              int max = 100;
-              GET_STR(c) += addition;
-              if (GET_STR(c) > max) GET_STR(c) = max;
-              if (GET_STR(c) < 3) GET_STR(c) = 3;
+              char_stats_modify(c, STAT_STRENGTH, addition);
             }
             snprintf(str, slen, "%d", GET_STR(c));
           }
@@ -1008,10 +993,10 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int ns;
               if ((ns = search_block(subfield, size_names, FALSE)) > -1) {
-                (c)->size = ns;
+                char_stats_set(c, STAT_SIZE, ns);
               }
             }
-          sprinttype(get_size(c), size_names, str, slen);
+          sprinttype(char_stats_get(c, STAT_SIZE), size_names, str, slen);
           }
 
           else if (!strcasecmp(field, "skill"))
@@ -1102,10 +1087,7 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "wis")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              int max = 100;
-              GET_WIS(c) += addition;
-              if (GET_WIS(c) > max) GET_WIS(c) = max;
-              if (GET_WIS(c) < 3) GET_WIS(c) = 3;
+              char_stats_modify(c, STAT_WISDOM, addition);
             }
             snprintf(str, slen, "%d", GET_WIS(c));
           }
@@ -1114,9 +1096,9 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "zenni")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_GOLD(c) += addition;
+              char_stats_modify(c, STAT_MONEY, addition);
             }
-            snprintf(str, slen, "%d", GET_GOLD(c));
+            snprintf(str, slen, "%ld", char_stats_get(c, STAT_MONEY));
           }
         break;
       } /* switch *field */

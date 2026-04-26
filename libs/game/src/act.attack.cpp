@@ -2973,12 +2973,11 @@ ACMD(do_selfd)
  } else if (GRAPPLING(ch) != NULL) {
   tch = GRAPPLING(ch);
   dmg += GET_CHARGE(ch);
-  GET_CHARGE(ch) = 0;
+  char_stats_set(ch, STAT_CHARGE, 0);
   dmg += (getBasePL(ch)) * 0.6;
   dmg += (getBaseST(ch));
   decCurHealthPercent(ch, 1, 1);
-  GET_SUPP(ch) = 0;
-  GET_SUPPRESS(ch) = 0;
+  char_stats_set(ch, STAT_SUPPRESS, 0);
   act("@RYou EXPLODE! The explosion concentrates on @r$N@R, engulfing $M in a sphere of deadly energy!@n", TRUE, ch, 0, tch, TO_CHAR);
   act("@R$n EXPLODES! The explosion concentrates on YOU, engulfing your body in a sphere of deadly energy!@n", TRUE, ch, 0, tch, TO_VICT);
   act("@R$n EXPLODES! The explosion concentrates on @r$N@R, engulfing $M in a sphere of deadly energy!@n", TRUE, ch, 0, tch, TO_NOTVICT);
@@ -3004,13 +3003,12 @@ ACMD(do_selfd)
   return;
  } else {
   dmg += GET_CHARGE(ch);
-  GET_CHARGE(ch) = 0;
+  char_stats_set(ch, STAT_CHARGE, 0);
   dmg += (getBasePL(ch)) * 0.6;
   dmg += (getBaseST(ch));
   dmg *= 1.5;
   decCurHealthPercent(ch, 1, 1);
-  GET_SUPP(ch) = 0;
-  GET_SUPPRESS(ch) = 0;
+  char_stats_set(ch, STAT_SUPPRESS, 0);
   act("@RYou EXPLODE! The explosion expands outward burning up all surroundings for a large distance. The explosion takes on the shape of a large energy dome with you at its center!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@R$n EXPLODES! The explosion expands outward burning up all surroundings for a large distance. The explosion takes on the shape of a large energy dome with $n at its center!@n", TRUE, ch, 0, 0, TO_ROOM);
   for (tch = world[IN_ROOM(ch)].people; tch; tch = next_v) {
@@ -3162,14 +3160,14 @@ ACMD(do_razor)
    dmg = damtype(ch, 47, skill, attperc);
    if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
     if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-     GET_BARRIER(ch) += dmg * 0.1;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.1);
     } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-     GET_BARRIER(ch) += dmg * 0.05;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.05);
     } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-     GET_BARRIER(ch) += dmg * 0.02;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.02);
     }
     if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-     GET_BARRIER(ch) = GET_MAX_MANA(ch);
+     char_stats_set(ch, STAT_BARRIER, GET_MAX_MANA(ch));
     }
    }
    int hitspot = 1;
@@ -3449,14 +3447,14 @@ ACMD(do_spike)
    dmg = damtype(ch, 43, skill, attperc);
    if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
     if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-     GET_BARRIER(ch) += dmg * 0.1;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.1);
     } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-     GET_BARRIER(ch) += dmg * 0.05;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.05);
     } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-     GET_BARRIER(ch) += dmg * 0.02;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.02);
     }
     if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-     GET_BARRIER(ch) = GET_MAX_MANA(ch);
+     char_stats_set(ch, STAT_BARRIER, GET_MAX_MANA(ch));
     }
    }
    int hitspot = 1;
@@ -3679,14 +3677,14 @@ ACMD(do_koteiru)
    dmg = damtype(ch, 48, skill, attperc);
    if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
     if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-     GET_BARRIER(ch) += dmg * 0.1;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.1);
     } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-     GET_BARRIER(ch) += dmg * 0.05;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.05);
     } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-     GET_BARRIER(ch) += dmg * 0.02;
+     char_stats_modify(ch, STAT_BARRIER, dmg * 0.02);
     }
     if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-     GET_BARRIER(ch) = GET_MAX_MANA(ch);
+     char_stats_set(ch, STAT_BARRIER, GET_MAX_MANA(ch));
     }
    }
    int hitspot = 1;
@@ -4146,26 +4144,23 @@ ACMD(do_breaker)
    int64_t theft = 0;
    if (GET_LEVEL(ch) - 30 > GET_LEVEL(vict)) {
     theft = 1;
-    GET_EXP(vict) -= theft;
    } else if (GET_LEVEL(ch) - 20 > GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 1000;
-    GET_EXP(vict) -= theft;
    } else if (GET_LEVEL(ch) - 10 > GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 100;
-    GET_EXP(vict) -= theft;
    } else if (GET_LEVEL(ch) >= GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 50;
-    GET_EXP(vict) -= theft;
    } else if (GET_LEVEL(ch) + 10 >= GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 500;
-    GET_EXP(vict) -= theft;
    } else if (GET_LEVEL(ch) + 20 >= GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 1000;
-    GET_EXP(vict) -= theft;
    } else {
     theft = GET_EXP(vict) / 2000;
-    GET_EXP(vict) -= theft;
    }
+   if(theft > 0) {
+    char_stats_modify(vict, STAT_EXPERIENCE, -theft);
+   }
+
    int hitspot = 1;
    hitspot = roll_hitloc(ch, vict, skill);
    switch(hitspot) {
@@ -4217,7 +4212,7 @@ ACMD(do_breaker)
 
      if (level_exp(ch, GET_LEVEL(ch) + 1) - (GET_EXP(ch)) > 0 || GET_LEVEL(ch) >= 100) {
        send_to_char(ch, "The returning Eldritch energy blesses you with some experience. @D[@G%s@D]@n\r\n", add_commas(theft));
-       GET_EXP(ch) += theft * 2;
+       char_stats_modify(ch, STAT_EXPERIENCE, theft * 2);
      }
      
      pcost(ch, attperc, 0);

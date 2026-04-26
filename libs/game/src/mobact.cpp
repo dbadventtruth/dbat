@@ -320,7 +320,7 @@ void mobile_activity(void)
       next_v = vict->next_in_room;
       if (vict == ch)
        continue;
-      if (IS_NPC(vict) && race_is_people(vict->race) && FIGHTING(vict) && done == FALSE) {
+      if (IS_NPC(vict) && race_is_people(GET_RACE(vict)) && FIGHTING(vict) && done == FALSE) {
        if (!is_sparring(vict) && !is_sparring(ch) && GET_HIT(vict) < GET_HIT(ch) * 0.6 && axion_dice(0) >= 90) {
         act("@c$n@C rushes to @c$N's@C aid!@n", TRUE, ch, 0, vict, TO_ROOM);
         char buf[MAX_INPUT_LENGTH];
@@ -356,7 +356,7 @@ void mobile_activity(void)
       next_v = vict->next_in_room;
       if (vict == ch)
        continue;
-      if (IS_NPC(vict) && race_is_people(vict->race) && FIGHTING(vict) && done == FALSE) {
+      if (IS_NPC(vict) && race_is_people(GET_RACE(vict)) && FIGHTING(vict) && done == FALSE) {
        if (!is_sparring(vict) && !is_sparring(ch) && GET_HIT(vict) < GET_HIT(ch) * 0.6 && axion_dice(0) >= 70) {
         act("@c$n@C rushes to @c$N's@C aid!@n", TRUE, ch, 0, vict, TO_ROOM);
         char buf[MAX_INPUT_LENGTH];
@@ -399,7 +399,7 @@ void mobile_activity(void)
       for (sobj = ch->carrying; sobj; sobj = next_obj) {
           next_obj = sobj->next_content;
           if (sobj != NULL && !shop_producing(sobj, shopnr)) {
-           GET_GOLD(ch) += GET_OBJ_COST(sobj);
+           char_stats_modify(ch, STAT_MONEY, GET_OBJ_COST(sobj));
            extract_obj(sobj);
           }
       }

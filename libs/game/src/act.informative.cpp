@@ -425,27 +425,23 @@ ACMD(do_kyodaika)
   return;
  }
 
- if (ch->real_abils.str + 5 > 25 && GET_BONUS(ch, BONUS_WIMP) > 0 && GET_GENOME(ch, 0) == 0) {
+ if (char_stats_get(ch, STAT_STRENGTH) + 5 > 25 && GET_BONUS(ch, BONUS_WIMP)) {
   send_to_char(ch, "You can't handle having your strength increased beyond 25.\r\n");
   return;
  }
 
- if (GET_GENOME(ch, 0) == 0) {
+ if (!is_affected(ch, AFF_KYODAIKA)) {
   act("@GYou growl as your body grows to ten times its normal size!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@g$n@G growls as $s body grows to ten times its normal size!@n", TRUE, ch, 0, 0, TO_ROOM);
   send_to_char(ch, "@cStrength@D: @C+5\r\n@cSpeed@D: @c-2@n\r\n");
-  ch->real_abils.str += 5;
-  ch->real_abils.cha -= 2;
-  GET_GENOME(ch, 0) = 11;
+  assign_affect(ch, AFF_KYODAIKA, 0, -1, 5, 0, 0, 0, 0, -2);
   save_char(ch);
   return;
  } else {
   act("@GYou growl as your body shrinks to its normal size!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@g$n@G growls as $s body shrinks to its normal size!@n", TRUE, ch, 0, 0, TO_ROOM);
   send_to_char(ch, "@cStrength@D: @C-5\r\n@cSpeed@D: @c+2@n\r\n");
-  ch->real_abils.str -= 5;
-  ch->real_abils.cha += 2;
-  GET_GENOME(ch, 0) = 0;
+  remove_affect(ch, AFF_KYODAIKA);
   save_char(ch);
   return;
  }
@@ -5678,8 +5674,8 @@ ACMD(do_score)
  send_to_char(ch, "  @cO@D-----------------------------@D[ @cStatistics @D]-----------------------------@cO@n\n");
  send_to_char(ch, "      @D<@wCharacter Level@D: @w%-3d@D> <@wRPP@D: @w%-3d@D> <@wRPP Bank@D: @w%-3d@D>@n\n", GET_LEVEL(ch), GET_RP(ch), GET_RBANK(ch));
  send_to_char(ch, "      @D<@wSpeed Index@D: @w%-15s@D> <@wArmor Index@D: @w%-15s@D>@n\n", add_commas(GET_SPEEDI(ch)), add_commas(GET_ARMOR(ch)));
- send_to_char(ch, "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d (%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n", ch->real_abils.str, GET_STR(ch), ch->real_abils.dex, GET_DEX(ch), ch->real_abils.cha, GET_CHA(ch));
- send_to_char(ch, "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d (%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n", ch->real_abils.con, GET_CON(ch), ch->real_abils.intel, GET_INT(ch), ch->real_abils.wis, GET_WIS(ch));
+ send_to_char(ch, "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d (%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n", char_stats_get(ch, STAT_STRENGTH), GET_STR(ch), char_stats_get(ch, STAT_AGILITY), GET_DEX(ch), char_stats_get(ch, STAT_SPEED), GET_CHA(ch));
+ send_to_char(ch, "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d (%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n", char_stats_get(ch, STAT_CONSTITUTION), GET_CON(ch), char_stats_get(ch, STAT_INTELLIGENCE), GET_INT(ch), char_stats_get(ch, STAT_WISDOM), GET_WIS(ch));
  }
  if (view == full || view == other) {
  send_to_char(ch, "  @cO@D-----------------------------@D[   @cOther    @D]-----------------------------@cO@n\n");

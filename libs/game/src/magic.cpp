@@ -32,26 +32,30 @@ void affect_update(void)
   struct affected_type *af, *next;
   struct char_data *i;
 
-  for (i = affect_list; i; i = i->next_affect) {
-    for (af = i->affected; af; af = next) {
+  for (i = affect_list; i; i = i->next_affect)
+  {
+    for (af = i->affected; af; af = next)
+    {
       next = af->next;
       if (af->duration >= 1)
-	af->duration--;
-      else if (af->duration == 0) {
-	if (af->type > 0)
-	  if (!af->next || (af->next->type != af->type) || (af->next->duration > 0)) {
-	    if (spell_info[af->type].wear_off_msg)
-	      send_to_char(i, "%s\r\n", spell_info[af->type].wear_off_msg);
-            if (GET_SPEEDBOOST(i) > 0 && af->type == SPELL_HAYASA) {
-             GET_SPEEDBOOST(i) = 0;
+        af->duration--;
+      else if (af->duration == 0)
+      {
+        if (af->type > 0)
+          if (!af->next || (af->next->type != af->type) || (af->next->duration > 0))
+          {
+            if (spell_info[af->type].wear_off_msg)
+              send_to_char(i, "%s\r\n", spell_info[af->type].wear_off_msg);
+            if (GET_SPEEDBOOST(i) > 0 && af->type == SPELL_HAYASA)
+            {
+              GET_SPEEDBOOST(i) = 0;
             }
           }
-	affect_remove(i, af);
+        affect_remove(i, af);
       }
     }
   }
 }
-
 
 /*
  *  mag_materials:
@@ -498,7 +502,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (GET_POS(victim) > POS_SLEEPING) {
       send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
       act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
-      GET_POS(victim) = POS_SLEEPING;
+      char_stats_set(victim, STAT_POSITION, POS_SLEEPING);
     }
     break;
 
@@ -514,7 +518,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (GET_POS(victim) > POS_SLEEPING) {
       send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
       act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
-      GET_POS(victim) = POS_SLEEPING;
+      char_stats_set(victim, STAT_POSITION, POS_SLEEPING);
     }
     break;
 
@@ -972,8 +976,6 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spel
       mag_affects(level, ch, mob, spellnum);
     if (affvs)
       mag_affectsv(level, ch, mob, spellnum);
-    IS_CARRYING_W(mob) = 0;
-    IS_CARRYING_N(mob) = 0;
     SET_BIT_AR(AFF_FLAGS(mob), AFF_CHARM);
     act(mag_summon_msgs[msg], FALSE, ch, 0, mob, TO_ROOM);
     load_mtrigger(mob);

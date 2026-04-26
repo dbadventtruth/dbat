@@ -88,6 +88,8 @@ struct stat_definition {
 #define STAT_KILL_COUNT 47
 #define STAT_PLAYER_KILL_COUNT 48
 
-#define NUM_CHARACTER_STATS 49
+#define STAT_EXPERIENCE 49
+
+#define NUM_CHARACTER_STATS 50
 
 extern const struct stat_definition stat_definitions[NUM_CHARACTER_STATS];

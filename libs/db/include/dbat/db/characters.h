@@ -92,8 +92,6 @@ struct player_special_data
    struct char_data *carrying;
    struct char_data *carried_by;
 
-   int racial_pref;
-
    // ALL STUFF BELOW THIS IN player_special_data IS UNUSED.
    int gauntlet;          /* Highest Gauntlet Position */
    int skill_points;      /* Skill points earned from race HD	*/
@@ -209,6 +207,14 @@ struct levelup_data
    struct level_learn_entry *feats;  /* Head of linked list		*/
 };
 
+struct skill_data {
+   stat_t base;
+   stat_t bonus;
+   stat_t total;
+   stat_t perf;
+   bool cached;
+};
+
 struct char_data
 {
    int32_t id;                   /* used by DG triggers			*/
@@ -228,12 +234,7 @@ struct char_data
 
    stat_t stats[NUM_CHARACTER_STATS]; /* Array of character stats		*/
    der_data derived_stats[NUM_DERIVED_STATS]; /* Array of derived stats		*/
-
-   int size;   /* Size class of char                   */
-   int8_t sex; /* PC / NPC's sex                       */
-   int race;
-
-   int chclass; /* Last class taken                     */
+   struct modifier_data* modifiers; /* List of active modifiers on the character */
 
    // admin stuff
    int admlevel;                       /* PC / NPC's admin level               */
@@ -241,25 +242,12 @@ struct char_data
    
    room_vnum hometown;                 /* PC Hometown / NPC spawn room         */
    struct time_data time;              /* PC's AGE in days			*/
-   uint8_t weight;                     /* PC / NPC's weight                    */
-   uint8_t height;                     /* PC / NPC's height                    */
-
-   int alignment; /* +-1000 for alignment good vs. evil	*/
 
    // appearance fields
-   int8_t hairl;   /* PC hair length                       */
-   int8_t hairs;   /* PC hair style                        */
-   int8_t hairc;   /* PC hair color                        */
-   int8_t skin;    /* PC skin color                        */
-   int8_t eye;     /* PC eye color                         */
-   int8_t distfea; /* PC's Distinguishing Feature          */
-   int aura;
    char *feature;
    char *rdisplay;
    char *voice; /* PC's snet voice */
 
-   struct abil_data real_abils; /* Abilities without modifiers   */
-   struct abil_data aff_abils;  /* Abils with spells/stones/etc  */
    struct player_special_data *player_specials;
    /* PC specials				*/
    struct mob_special_data mob_specials;
@@ -271,8 +259,6 @@ struct char_data
    // inventory and equipment
    struct obj_data *equipment[NUM_WEARS];
    struct obj_data *carrying;
-   int carry_weight; // carried weight
-   int8_t carry_items; // number of carried items
 
    struct descriptor_data *desc; /* NULL for mobiles			*/
    char *loguser; /* What user was I last saved as?      */
@@ -294,8 +280,6 @@ struct char_data
    int32_t master_id;
 
    struct char_data *fighting; /* Opponent				*/
-
-   int8_t position; /* Standing, fighting, sleeping, etc.	*/
 
    int timer;          /* Timer for update			*/
 
@@ -321,16 +305,9 @@ struct char_data
    struct char_data *grappled;
 
    // Skill info
-   int skill_slots;
    int forgeting;
    int forgetcount;
-   int8_t skills[SKILL_TABLE_SIZE + 1];
-   /* array of skills/spells/arts/etc	*/
-   int8_t skillmods[SKILL_TABLE_SIZE + 1];
-   /* array of skill mods			*/
-   int8_t skillperfs[SKILL_TABLE_SIZE + 1];
-   /* array of skill mods                  */
-
+   skill_data skills[SKILL_TABLE_SIZE];
 
    bitvector_t act[PM_ARRAY_MAX]; /* act flag for NPC's; player flag for PC's */
 
@@ -344,25 +321,10 @@ struct char_data
    int combatexpertise; /* Setting for Combat expertise level   */
 
    // Money stuff
-   int gold;       /* Money carried			*/
-   int bank_gold;  /* Gold the char has in a bank account	*/
    time_t lastint; // last interest time
 
    // advancement stuff
    int level;  /* PC / NPC's level                     */
-   int64_t exp; /* The experience of the player		*/
-   int upgrade; // android upgrade points
-
-   // Base stats
-   int64_t basepl;
-   int64_t baseki;
-   int64_t basest;
-
-   // used for temporaryt storage of bonuses
-   int64_t max_mana; /* Max mana for PC/NPC			*/
-   int64_t max_hit; /* Max hit for PC/NPC			*/
-   int64_t max_move; /* Max move for PC/NPC			*/
-   int64_t max_ki; /* Max ki for PC/NPC			*/
 
    // resource meters, ranges from 0 to 1.0
    double health;
@@ -370,15 +332,8 @@ struct char_data
    double stamina;
    double life;
 
-   // how much you're suppressed.
-   int64_t suppression;
-
    // charge systemm
-   int64_t charge;
    int64_t chargeto;
-
-   // current barrier strength
-   int64_t barrier;
 
    int boosts;
 

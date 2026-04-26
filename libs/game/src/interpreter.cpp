@@ -338,7 +338,7 @@ int perform_dupe_check(struct descriptor_data *d)
       int base_interest = GET_BANK_INTEREST(d->character);
       if (base_interest) {
         int total_interest = base_interest * days;
-       GET_BANK_GOLD(d->character) += total_interest;
+       char_stats_modify(d->character, STAT_MONEY_BANK, total_interest);
        send_to_char(d->character, "Interest happened while you were away, %d times.\r\n"
                                   "@cBank Interest@D: @Y%s@n\r\n", days, add_commas(total_interest));
       }
@@ -2614,15 +2614,15 @@ void nanny(struct descriptor_data *d, char *arg)
     switch (*arg) {
     case 'm':
     case 'M':
-      d->character->sex = SEX_MALE;
+      char_stats_set(d->character, STAT_SEX, SEX_MALE);
       break;
     case 'f':
     case 'F':
-      d->character->sex = SEX_FEMALE;
+      char_stats_set(d->character, STAT_SEX, SEX_FEMALE);
       break;
     case 'n':
     case 'N':
-      d->character->sex = SEX_NEUTRAL;
+      char_stats_set(d->character, STAT_SEX, SEX_NEUTRAL);
       break;
     default:
       write_to_output(d, "That is not a sex..\r\n"
@@ -2713,7 +2713,7 @@ void nanny(struct descriptor_data *d, char *arg)
                         if(chosen_race->getRPPCost()) {
                             write_to_output(d, "\r\n%i RPP will be paid upon your first level up.\r\n", chosen_race->getRPPCost());
                         }
-                        d->character->race = chosen_race->getID();
+                        char_stats_set(d->character, STAT_RACE, chosen_race->getID());
                         break;
                     case CON_RACE_HELP:
                         show_help(d, chosen_race->getName().c_str());
@@ -2736,7 +2736,7 @@ void nanny(struct descriptor_data *d, char *arg)
      write_to_output(d, "@w\r\nMake a selection:@n\r\n");
      STATE(d) = CON_RACIAL;
     } else if (IS_NAMEK(d->character)) {
-     GET_SEX(d->character) = SEX_NEUTRAL;
+      char_stats_set(d->character, STAT_SEX, SEX_NEUTRAL);
      STATE(d) = CON_QSEX;
     } else {
      write_to_output(d, "\r\n@wWhat is your sex @W(@BM@W/@MF@W/@GN@W)@w?@n");
@@ -2747,17 +2747,17 @@ void nanny(struct descriptor_data *d, char *arg)
   case CON_RACIAL:
     switch (*arg) {
       case '1':
-      d->character->player_specials->racial_pref = 1;
+      char_stats_set(d->character, STAT_RACE_SUBTYPE, 1);
       break;
       case '2':
-      d->character->player_specials->racial_pref = 2;
+      char_stats_set(d->character, STAT_RACE_SUBTYPE, 2);
       break;
       case '3':
       if (IS_HALFBREED(d->character)) {
        write_to_output(d, "That is not an acceptable option.\r\n");
        return;
       } else {
-       d->character->player_specials->racial_pref = 3;
+       char_stats_set(d->character, STAT_RACE_SUBTYPE, 3);
       }
       break;
       default:
@@ -2772,27 +2772,27 @@ void nanny(struct descriptor_data *d, char *arg)
     if (IS_HUMAN(d->character) || IS_SAIYAN(d->character) || IS_KONATSU(d->character) || IS_MUTANT(d->character) || IS_ANDROID(d->character) || IS_KAI(d->character) || IS_HALFBREED(d->character) || IS_TRUFFLE(d->character) || (IS_HOSHIJIN(d->character) && IS_FEMALE(d->character))) {
     switch (*arg) {
       case '1':
-      d->character->hairl = HAIRL_BALD;
-      d->character->hairc = HAIRC_NONE;
-      d->character->hairs = HAIRS_NONE;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_BALD);
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_NONE);
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_NONE);
       break;
       case '2':
-      d->character->hairl = HAIRL_SHORT;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_SHORT);
       break;
       case '3':
-      d->character->hairl = HAIRL_MEDIUM;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_MEDIUM);
       break;
       case '4':
-      d->character->hairl = HAIRL_LONG;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_LONG);
       break;
       case '5':
-      d->character->hairl = HAIRL_RLONG;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_RLONG);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
       return;
      }
-     if (d->character->hairl == HAIRL_BALD) {
+     if (char_stats_get(d->character, STAT_HAIR_LENGTH) == HAIRL_BALD) {
      write_to_output(d, "@YSkin color SELECTION menu:\r\n");
      write_to_output(d, "@D---------------------------------------@n\r\n");
      write_to_output(d, "@B1@W)@C White  @B2@W)@C Black  @B3@W)@C Green\r\n");
@@ -2818,26 +2818,26 @@ void nanny(struct descriptor_data *d, char *arg)
     if (IS_DEMON(d->character) || IS_ICER(d->character)) {
     switch (*arg) {
       case '1':
-      d->character->hairl = HAIRL_BALD;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_BALD);
       break;
       case '2':
-      d->character->hairl = HAIRL_SHORT;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_SHORT);
       break;
       case '3':
-      d->character->hairl = HAIRL_MEDIUM;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_MEDIUM);
       break;
       case '4':
-      d->character->hairl = HAIRL_LONG;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_LONG);
       break;
       case '5':
-      d->character->hairl = HAIRL_RLONG;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_RLONG);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
       return;
       }
-      d->character->hairc = HAIRC_NONE;
-      d->character->hairs = HAIRS_NONE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_NONE);
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_NONE);
      write_to_output(d, "@YSkin color SELECTION menu:\r\n");
      write_to_output(d, "@D---------------------------------------@n\r\n");
      write_to_output(d, "@B1@W)@C White  @B2@W)@C Black  @B3@W)@C Green\r\n");
@@ -2850,19 +2850,19 @@ void nanny(struct descriptor_data *d, char *arg)
     if (IS_MAJIN(d->character) || IS_NAMEK(d->character) || IS_ARLIAN(d->character)) {
       switch (*arg) {
       case '1':
-      d->character->hairl = HAIRL_BALD;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_BALD);
       break;
       case '2':
-      d->character->hairl = HAIRL_SHORT;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_SHORT);
       break;
       case '3':
-      d->character->hairl = HAIRL_MEDIUM;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_MEDIUM);
       break;
       case '4':
-      d->character->hairl = HAIRL_LONG;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_LONG);
       break;
       case '5':
-      d->character->hairl = HAIRL_RLONG;
+      char_stats_set(d->character, STAT_HAIR_LENGTH, HAIRL_RLONG);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -2879,8 +2879,8 @@ void nanny(struct descriptor_data *d, char *arg)
       write_to_output(d, "@w\r\nMake a selection:@n\r\n");
       STATE(d) = CON_HAIRC;
      } else {
-       d->character->hairc = HAIRC_NONE;
-       d->character->hairs = HAIRS_NONE;
+       char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_NONE);
+       char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_NONE);
        write_to_output(d, "@YSkin color SELECTION menu:\r\n");
        write_to_output(d, "@D---------------------------------------@n\r\n");
        write_to_output(d, "@B1@W)@C White  @B2@W)@C Black  @B3@W)@C Green\r\n");
@@ -2892,8 +2892,8 @@ void nanny(struct descriptor_data *d, char *arg)
       }
      }
      else {
-     d->character->hairc = HAIRC_NONE;
-     d->character->hairs = HAIRS_NONE;
+     char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_NONE);
+     char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_NONE);
      STATE(d) = CON_SKIN;
      }
     }
@@ -2902,62 +2902,62 @@ void nanny(struct descriptor_data *d, char *arg)
    case CON_HAIRC:     /* query hair color */
     switch (*arg) {
       case '1':
-      d->character->hairc = HAIRC_BLACK;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_BLACK);
       break;
       case '2':
-      d->character->hairc = HAIRC_BROWN;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_BROWN);
       break;
       case '3':
-      d->character->hairc = HAIRC_BLONDE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_BLONDE);
       break;
       case '4':
-      d->character->hairc = HAIRC_GREY;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_GREY);
       break;
       case '5':
-      d->character->hairc = HAIRC_RED;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_RED);
       break;
       case '6':
-      d->character->hairc = HAIRC_ORANGE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_ORANGE);
       break;
       case '7':
-      d->character->hairc = HAIRC_GREEN;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_GREEN);
       break;
       case '8':
-      d->character->hairc = HAIRC_BLUE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_BLUE);
       break;
       case '9':
-      d->character->hairc = HAIRC_PINK;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_PINK);
       break;
       case 'A':
-      d->character->hairc = HAIRC_PURPLE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_PURPLE);
       break;
       case 'a':
-      d->character->hairc = HAIRC_PURPLE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_PURPLE);
       break;
       case 'B':
-      d->character->hairc = HAIRC_SILVER;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_SILVER);
       break;
       case 'b':
-      d->character->hairc = HAIRC_SILVER;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_SILVER);
       break;
       case 'C':
-      d->character->hairc = HAIRC_CRIMSON;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_CRIMSON);
       break;
       case 'c':
-      d->character->hairc = HAIRC_CRIMSON;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_CRIMSON);
       break;
       case 'D':
-      d->character->hairc = HAIRC_WHITE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_WHITE);
       break;
       case 'd':
-      d->character->hairc = HAIRC_WHITE;
+      char_stats_set(d->character, STAT_HAIR_COLOR, HAIRC_WHITE);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
       return;
      }
      if (IS_ARLIAN(d->character)) {
-      d->character->hairs = HAIRS_NONE;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_NONE);
       write_to_output(d, "@YSkin color SELECTION menu:\r\n");
       write_to_output(d, "@D---------------------------------------@n\r\n");
       write_to_output(d, "@B1@W)@C White  @B2@W)@C Black  @B3@W)@C Green\r\n");
@@ -2981,43 +2981,43 @@ void nanny(struct descriptor_data *d, char *arg)
     case CON_HAIRS:
     switch (*arg) {
       case '1':
-      d->character->hairs = HAIRS_PLAIN;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_PLAIN);
       break;
       case '2':
-      d->character->hairs = HAIRS_MOHAWK;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_MOHAWK);
       break;
       case '3':
-      d->character->hairs = HAIRS_SPIKY;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_SPIKY);
       break;
       case '4':
-      d->character->hairs = HAIRS_CURLY;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_CURLY);
       break;
       case '5':
-      d->character->hairs = HAIRS_UNEVEN;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_UNEVEN);
       break;
       case '6':
-      d->character->hairs = HAIRS_PONYTAIL;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_PONYTAIL);
       break;
       case '7':
-      d->character->hairs = HAIRS_AFRO;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_AFRO);
       break;
       case '8':
-      d->character->hairs = HAIRS_FADE;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_FADE);
       break;
       case '9':
-      d->character->hairs = HAIRS_CREW;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_CREW);
       break;
       case 'A':
-      d->character->hairs = HAIRS_FEATHERED;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_FEATHERED);
       break;
       case 'a':
-      d->character->hairs = HAIRS_FEATHERED;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_FEATHERED);
       break;
       case 'B':
-      d->character->hairs = HAIRS_DRED;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_DRED);
       break;
       case 'b':
-      d->character->hairs = HAIRS_DRED;
+      char_stats_set(d->character, STAT_HAIR_STYLE, HAIRS_DRED);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3036,49 +3036,49 @@ void nanny(struct descriptor_data *d, char *arg)
     case CON_SKIN:
     switch (*arg) {
       case '1':
-      d->character->skin = SKIN_WHITE;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_WHITE);
       break;
       case '2':
-      d->character->skin = SKIN_BLACK;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_BLACK);
       break;
       case '3':
-      d->character->skin = SKIN_GREEN;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_GREEN);
       break;
       case '4':
-      d->character->skin = SKIN_ORANGE;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_ORANGE);
       break;
       case '5':
-      d->character->skin = SKIN_YELLOW;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_YELLOW);
       break;
       case '6':
-      d->character->skin = SKIN_RED;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_RED);
       break;
       case '7':
-      d->character->skin = SKIN_GREY;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_GREY);
       break;
       case '8':
-      d->character->skin = SKIN_BLUE;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_BLUE);
       break;
       case '9':
-      d->character->skin = SKIN_AQUA;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_AQUA);
       break;
       case 'A':
-      d->character->skin = SKIN_PINK;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_PINK);
       break;
       case 'a':
-      d->character->skin = SKIN_PINK;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_PINK);
       break;
       case 'B':
-      d->character->skin = SKIN_PURPLE;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_PURPLE);
       break;
       case 'b':
-      d->character->skin = SKIN_PURPLE;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_PURPLE);
       break;
       case 'C':
-      d->character->skin = SKIN_TAN;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_TAN);
       break;
       case 'c':
-      d->character->skin = SKIN_TAN;
+      char_stats_set(d->character, STAT_SKIN_COLOR, SKIN_TAN);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3098,49 +3098,49 @@ void nanny(struct descriptor_data *d, char *arg)
 
     switch (*arg) {
       case '1':
-      d->character->eye = EYE_BLUE;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_BLUE);
       break;
       case '2':
-      d->character->eye = EYE_BLACK;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_BLACK);
       break;
       case '3':
-      d->character->eye = EYE_GREEN;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_GREEN);
       break;
       case '4':
-      d->character->eye = EYE_BROWN;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_BROWN);
       break;
       case '5':
-      d->character->eye = EYE_RED;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_RED);
       break;
       case '6':
-      d->character->eye = EYE_AQUA;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_AQUA);
       break;
       case '7':
-      d->character->eye = EYE_PINK;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_PINK);
       break;
       case '8':
-      d->character->eye = EYE_PURPLE;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_PURPLE);
       break;
       case '9':
-      d->character->eye = EYE_CRIMSON;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_CRIMSON);
       break;
       case 'A':
-      d->character->eye = EYE_GOLD;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_GOLD);
       break;
       case 'a':
-      d->character->eye = EYE_GOLD;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_GOLD);
       break;
       case 'B':
-      d->character->eye = EYE_AMBER;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_AMBER);
       break;
       case 'b':
-      d->character->eye = EYE_AMBER;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_AMBER);
       break;
       case 'C':
-      d->character->eye = EYE_EMERALD;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_EMERALD);
       break;
       case 'c':
-      d->character->eye = EYE_EMERALD;
+      char_stats_set(d->character, STAT_EYE_COLOR, EYE_EMERALD);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3176,19 +3176,19 @@ void nanny(struct descriptor_data *d, char *arg)
     case CON_DISTFEA:
     switch (*arg) {
       case '1':
-       d->character->distfea = 0;
+       char_stats_set(d->character, STAT_DISTINGUISHING_FEATURE, 0);
       break;
       case '2':
-       d->character->distfea = 1;
+       char_stats_set(d->character, STAT_DISTINGUISHING_FEATURE, 1);
       break;
       case '3':
-       d->character->distfea = 2;
+       char_stats_set(d->character, STAT_DISTINGUISHING_FEATURE, 2);
       break;
       case '4':
-       d->character->distfea = 3;
+       char_stats_set(d->character, STAT_DISTINGUISHING_FEATURE, 3);
       break;
       case '5':
-       d->character->distfea = 4;
+       char_stats_set(d->character, STAT_DISTINGUISHING_FEATURE, 4);
       break;
       default:
        write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3223,68 +3223,68 @@ void nanny(struct descriptor_data *d, char *arg)
      switch (*arg) {
       case '1':
        if (!IS_TRUFFLE(d->character) && !IS_ICER(d->character)) {
-        d->character->height = rand_number(100, 120); 
-        d->character->weight = rand_number(25, 30);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(100, 120));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(25, 30));
        } else if (IS_ICER(d->character)) {
-        d->character->height = rand_number(100, 120);
-        d->character->weight = rand_number(25, 30);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(100, 120));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(25, 30));
        } else {
-        d->character->height = rand_number(20, 35);
-        d->character->weight = rand_number(5, 8);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(20, 35));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(5, 8));
        }
       break;
       case '2':
        if (!IS_TRUFFLE(d->character) && !IS_ICER(d->character)) {
-        d->character->height = rand_number(120, 140);
-        d->character->weight = rand_number(30, 35);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(120, 140));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(30, 35));
        } else if (IS_ICER(d->character)) {
-        d->character->height = rand_number(120, 140);
-        d->character->weight = rand_number(30, 35);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(120, 140));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(30, 35));
        } else {
-        d->character->height = rand_number(35, 40);
-        d->character->weight = rand_number(8, 10);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(35, 40));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(8, 10));
        }
       break;
       case '3':
        if (!IS_TRUFFLE(d->character) && !IS_ICER(d->character)) {
-        d->character->height = rand_number(140, 160);
-        d->character->weight = rand_number(35, 45);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(140, 160));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(35, 45));
        } else if (IS_ICER(d->character)) {
-        d->character->height = rand_number(140, 160);
-        d->character->weight = rand_number(35, 45);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(140, 160));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(35, 45));
        } else {
-        d->character->height = rand_number(40, 50);
-        d->character->weight = rand_number(10, 12);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(40, 50));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(10, 12));
        }
       break;
       case '4':
        if (!IS_TRUFFLE(d->character) && !IS_ICER(d->character)) {
-        d->character->height = rand_number(160, 180);
-        d->character->weight = rand_number(45, 60);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(160, 180));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(45, 60));
        } else if (IS_ICER(d->character)) {
          write_to_output(d, "That is not an acceptable option.\r\n");
          return;
        } else {
-        d->character->height = rand_number(50, 60);
-        d->character->weight = rand_number(12, 15);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(50, 60));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(12, 15));
        }
       break;
       case '5':
        if (!IS_TRUFFLE(d->character) && !IS_ICER(d->character)) {
-        d->character->height = rand_number(180, 200);
-        d->character->weight = rand_number(60, 80);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(180, 200));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(60, 80));
        } else if (IS_ICER(d->character)) {
          write_to_output(d, "That is not an acceptable option.\r\n");
          return;
        } else {
-        d->character->height = rand_number(60, 70);
-        d->character->weight = rand_number(15, 18);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(60, 70));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(15, 18));
        }
       break;
       case '6':
        if (!IS_TRUFFLE(d->character) && !IS_ICER(d->character)) {
-        d->character->height = rand_number(200, 220);
-        d->character->weight = rand_number(80, 100);
+        char_stats_set(d->character, STAT_HEIGHT, rand_number(200, 220));
+        char_stats_set(d->character, STAT_WEIGHT, rand_number(80, 100));
        } else {
          write_to_output(d, "That is not an acceptable option.\r\n");
          return;
@@ -3309,31 +3309,31 @@ void nanny(struct descriptor_data *d, char *arg)
      case CON_AURA:
       switch (*arg) {
        case '1':
-         d->character->aura = 0;
+         char_stats_set(d->character, STAT_AURA_COLOR, 0);
         break;
        case '2':
-         d->character->aura = 1;
+         char_stats_set(d->character, STAT_AURA_COLOR, 1);
         break;
        case '3':
-         d->character->aura = 2;
+         char_stats_set(d->character, STAT_AURA_COLOR, 2);
         break;
        case '4':
-         d->character->aura = 3;
+         char_stats_set(d->character, STAT_AURA_COLOR, 3);
         break;
        case '5':
-         d->character->aura = 4;
+         char_stats_set(d->character, STAT_AURA_COLOR, 4);
         break;
        case '6':
-         d->character->aura = 5;
+         char_stats_set(d->character, STAT_AURA_COLOR, 5);
         break;
        case '7':
-         d->character->aura = 6;
+         char_stats_set(d->character, STAT_AURA_COLOR, 6);
         break;
        case '8':
-         d->character->aura = 7;
+         char_stats_set(d->character, STAT_AURA_COLOR, 7);
         break;
        case '9':
-         d->character->aura = 8;
+         char_stats_set(d->character, STAT_AURA_COLOR, 8);
         break;
        default:
         write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3346,164 +3346,164 @@ void nanny(struct descriptor_data *d, char *arg)
      break;
 
     case CON_Q1:
-      d->character->max_hit = rand_number(30, 50);
-      d->character->max_move = rand_number(30, 50);
-      d->character->max_mana = rand_number(30, 50);
+      char_stats_set(d->character, STAT_POWERLEVEL, rand_number(30, 50));
+      char_stats_set(d->character, STAT_STAMINA, rand_number(30, 50));
+      char_stats_set(d->character, STAT_KI, rand_number(30, 50));
      if (IS_SAIYAN(d->character)) {
-      d->character->real_abils.str = rand_number(12, 18);
-      d->character->real_abils.con = rand_number(12, 18);
-      d->character->real_abils.wis = rand_number(8, 16);
-      d->character->real_abils.intel = rand_number(8, 14);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 16);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(12, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(12, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 16));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 14));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 16));
      }
      else if (IS_HALFBREED(d->character)) {
-      d->character->real_abils.str = rand_number(10, 18);
-      d->character->real_abils.con = rand_number(10, 18);
-      d->character->real_abils.wis = rand_number(8, 18);
-      d->character->real_abils.intel = rand_number(8, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(10, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(10, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_HUMAN(d->character)) {
-      d->character->real_abils.str = rand_number(8, 18);
-      d->character->real_abils.con = rand_number(8, 18);
-      d->character->real_abils.wis = rand_number(10, 18);
-      d->character->real_abils.intel = rand_number(12, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(8, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(10, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(12, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_HOSHIJIN(d->character)) {
-      d->character->real_abils.str = rand_number(10, 18);
-      d->character->real_abils.con = rand_number(9, 18);
-      d->character->real_abils.wis = rand_number(9, 18);
-      d->character->real_abils.intel = rand_number(9, 18);
-      d->character->real_abils.cha = rand_number(10, 18);
-      d->character->real_abils.dex = rand_number(9, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(10, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(9, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(9, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(9, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(10, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(9, 18));
      }
      else if (IS_NAMEK(d->character)) {
-      d->character->real_abils.str = rand_number(9, 18);
-      d->character->real_abils.con = rand_number(9, 18);
-      d->character->real_abils.wis = rand_number(12, 18);
-      d->character->real_abils.intel = rand_number(8, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(9, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(9, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(12, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_ARLIAN(d->character)) {
-      d->character->real_abils.str = rand_number(15, 20);
-      d->character->real_abils.con = rand_number(15, 20);
-      d->character->real_abils.wis = rand_number(8, 16);
-      d->character->real_abils.intel = rand_number(8, 16);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(15, 20));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(15, 20));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 16));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 16));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_ANDROID(d->character)) {
-      d->character->real_abils.str = rand_number(12, 18);
-      d->character->real_abils.con = rand_number(8, 18);
-      d->character->real_abils.wis = rand_number(8, 16);
-      d->character->real_abils.intel = rand_number(8, 16);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(12, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 16));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 16));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_BIO(d->character)) {
-      d->character->real_abils.str = rand_number(14, 18);
-      d->character->real_abils.con = rand_number(8, 18);
-      d->character->real_abils.wis = rand_number(8, 18);
-      d->character->real_abils.intel = rand_number(8, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 14);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(14, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 14));
      }
      else if (IS_MAJIN(d->character)) {
-      d->character->real_abils.str = rand_number(11, 18);
-      d->character->real_abils.con = rand_number(14, 18);
-      d->character->real_abils.wis = rand_number(8, 14);
-      d->character->real_abils.intel = rand_number(8, 14);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 17);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(11, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(14, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 14));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 14));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 17));
      }
      else if (IS_TRUFFLE(d->character)) {
-      d->character->real_abils.str = rand_number(8, 14);
-      d->character->real_abils.con = rand_number(8, 14);
-      d->character->real_abils.wis = rand_number(8, 18);
-      d->character->real_abils.intel = rand_number(14, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(8, 14));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 14));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(14, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_KAI(d->character)) {
-      d->character->real_abils.str = rand_number(9, 18);
-      d->character->real_abils.con = rand_number(8, 18);
-      d->character->real_abils.wis = rand_number(14, 18);
-      d->character->real_abils.intel = rand_number(10, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(9, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(14, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(10, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_ICER(d->character)) {
-      d->character->real_abils.str = rand_number(10, 18);
-      d->character->real_abils.con = rand_number(12, 18);
-      d->character->real_abils.wis = rand_number(8, 18);
-      d->character->real_abils.intel = rand_number(8, 18);
-      d->character->real_abils.cha = rand_number(8, 15);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(10, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(12, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(8, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(8, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 15));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_MUTANT(d->character)) {
-      d->character->real_abils.str = rand_number(9, 18);
-      d->character->real_abils.con = rand_number(9, 18);
-      d->character->real_abils.wis = rand_number(9, 18);
-      d->character->real_abils.intel = rand_number(9, 18);
-      d->character->real_abils.cha = rand_number(9, 18);
-      d->character->real_abils.dex = rand_number(9, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(9, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(9, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(9, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(9, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(9, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(9, 18));
      }
      else if (IS_KANASSAN(d->character)) {
-      d->character->real_abils.str = rand_number(8, 16);
-      d->character->real_abils.con = rand_number(8, 16);
-      d->character->real_abils.wis = rand_number(12, 18);
-      d->character->real_abils.intel = rand_number(12, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(8, 16));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 16));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(12, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(12, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_DEMON(d->character)) {
-      d->character->real_abils.str = rand_number(11, 18);
-      d->character->real_abils.con = rand_number(8, 18);
-      d->character->real_abils.wis = rand_number(10, 18);
-      d->character->real_abils.intel = rand_number(10, 18);
-      d->character->real_abils.cha = rand_number(8, 18);
-      d->character->real_abils.dex = rand_number(8, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(11, 18));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(8, 18));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(10, 18));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(10, 18));
+      char_stats_set(d->character, STAT_SPEED, rand_number(8, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(8, 18));
      }
      else if (IS_KONATSU(d->character)) {
-      d->character->real_abils.str = rand_number(10, 14);
-      d->character->real_abils.con = rand_number(10, 14);
-      d->character->real_abils.wis = rand_number(10, 16);
-      d->character->real_abils.intel = rand_number(10, 14);
-      d->character->real_abils.cha = rand_number(12, 18);
-      d->character->real_abils.dex = rand_number(14, 18);
+      char_stats_set(d->character, STAT_STRENGTH, rand_number(10, 14));
+      char_stats_set(d->character, STAT_CONSTITUTION, rand_number(10, 14));
+      char_stats_set(d->character, STAT_WISDOM, rand_number(10, 16));
+      char_stats_set(d->character, STAT_INTELLIGENCE, rand_number(10, 14));
+      char_stats_set(d->character, STAT_SPEED, rand_number(12, 18));
+      char_stats_set(d->character, STAT_AGILITY, rand_number(14, 18));
      }     
 
     switch (*arg) {
       case '1':
-      d->character->max_hit += roll_stats(d->character, 5, 25);
-      d->character->max_move += roll_stats(d->character, 8, 50);
-      d->character->max_mana += roll_stats(d->character, 6, 50);
+      char_stats_modify(d->character, STAT_POWERLEVEL, roll_stats(d->character, 5, 25));
+      char_stats_modify(d->character, STAT_STAMINA, roll_stats(d->character, 8, 50));
+      char_stats_modify(d->character, STAT_KI, roll_stats(d->character, 6, 50));
       break;
       case '2':
-      d->character->max_hit += roll_stats(d->character, 5, 55);
-      d->character->max_move += roll_stats(d->character, 8, 40);
-      d->character->max_mana += roll_stats(d->character, 6, 40);
+      char_stats_modify(d->character, STAT_POWERLEVEL, roll_stats(d->character, 5, 55));
+      char_stats_modify(d->character, STAT_STAMINA, roll_stats(d->character, 8, 40));
+      char_stats_modify(d->character, STAT_KI, roll_stats(d->character, 6, 40));
       break;
       case '3':
-      d->character->max_hit += roll_stats(d->character, 5, 125);
-      d->character->max_move += roll_stats(d->character, 8, 50);
-      d->character->max_mana += roll_stats(d->character, 6, 40);
+      char_stats_modify(d->character, STAT_POWERLEVEL, roll_stats(d->character, 5, 125));
+      char_stats_modify(d->character, STAT_STAMINA, roll_stats(d->character, 8, 50));
+      char_stats_modify(d->character, STAT_KI, roll_stats(d->character, 6, 40));
       break;
       case '4':
-      d->character->max_hit += roll_stats(d->character, 5, 65);
-      d->character->max_move += roll_stats(d->character, 8, 65);
-      d->character->max_mana += roll_stats(d->character, 6, 65);
+      char_stats_modify(d->character, STAT_POWERLEVEL, roll_stats(d->character, 5, 65));
+      char_stats_modify(d->character, STAT_STAMINA, roll_stats(d->character, 8, 65));
+      char_stats_modify(d->character, STAT_KI, roll_stats(d->character, 6, 65));
       SET_BIT_AR(PLR_FLAGS(d->character), PLR_SKILLP);
       break;
       case '5':
-      d->character->max_hit += roll_stats(d->character, 5, 75);
-      d->character->max_move += roll_stats(d->character, 8, 100);
-      d->character->max_mana += roll_stats(d->character, 6, 75);
+      char_stats_modify(d->character, STAT_POWERLEVEL, roll_stats(d->character, 5, 75));
+      char_stats_modify(d->character, STAT_STAMINA, roll_stats(d->character, 8, 100));
+      char_stats_modify(d->character, STAT_KI, roll_stats(d->character, 6, 75));
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3525,19 +3525,19 @@ void nanny(struct descriptor_data *d, char *arg)
      case CON_Q2:
     switch (*arg) {
       case '1':
-      d->character->alignment += -200;
+      char_stats_modify(d->character, STAT_ALIGNMENT, -200);
       break;
       case '2':
-      d->character->alignment += 100;
+      char_stats_modify(d->character, STAT_ALIGNMENT, 100);
       break;
       case '3':
-      d->character->alignment += 10;
+      char_stats_modify(d->character, STAT_ALIGNMENT, 50);
       break;
       case '4':
-       d->character->alignment += 0;
+       char_stats_modify(d->character, STAT_ALIGNMENT, 0);
       break;
       case '5':
-      d->character->alignment += -400;
+      char_stats_modify(d->character, STAT_ALIGNMENT, -400);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3557,28 +3557,28 @@ void nanny(struct descriptor_data *d, char *arg)
      case CON_Q3:
     switch (*arg) {
       case '1':
-      d->character->alignment += -100;
-      d->character->max_hit += 100;
-      d->character->max_move += 80;
-      d->character->max_mana += 10;
+      char_stats_modify(d->character, STAT_ALIGNMENT, -100);
+      char_stats_modify(d->character, STAT_POWERLEVEL, 100);
+      char_stats_modify(d->character, STAT_STAMINA, 80);
+      char_stats_modify(d->character, STAT_KI, 10);
       break;
       case '2':
-      d->character->alignment += 10;
-      d->character->max_hit += 25;
-      d->character->max_move += 25;
-      d->character->max_mana += 25;
+      char_stats_modify(d->character, STAT_ALIGNMENT, 10);
+      char_stats_modify(d->character, STAT_POWERLEVEL, 25);
+      char_stats_modify(d->character, STAT_STAMINA, 25);
+      char_stats_modify(d->character, STAT_KI, 25);
       break;
       case '3':
-      d->character->alignment += 50;
-      d->character->max_hit += 20;
-      d->character->max_move += 20;
-      d->character->max_mana += 20;
+      char_stats_modify(d->character, STAT_ALIGNMENT, 50);
+      char_stats_modify(d->character, STAT_POWERLEVEL, 20);
+      char_stats_modify(d->character, STAT_STAMINA, 20);
+      char_stats_modify(d->character, STAT_KI, 20);
       break;
       case '4':
-      d->character->alignment += -200;
-      d->character->max_hit += 100;
-      d->character->max_move += 100;
-      d->character->max_mana += 100;
+      char_stats_modify(d->character, STAT_ALIGNMENT, -200);
+      char_stats_modify(d->character, STAT_POWERLEVEL, 100);
+      char_stats_modify(d->character, STAT_STAMINA, 100);
+      char_stats_modify(d->character, STAT_KI, 100);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3599,28 +3599,28 @@ void nanny(struct descriptor_data *d, char *arg)
      case CON_Q4:
     switch (*arg) {
       case '1':
-      d->character->gold += 1000;
-      d->character->max_hit -= rand_number(10, 30);
-      d->character->max_move -= rand_number(10, 30);
-      d->character->max_mana -= rand_number(10, 30);
+      char_stats_modify(d->character, STAT_MONEY, 1000);
+      char_stats_modify(d->character, STAT_POWERLEVEL, -rand_number(10, 30));
+      char_stats_modify(d->character, STAT_STAMINA, -rand_number(10, 30));
+      char_stats_modify(d->character, STAT_KI, -rand_number(10, 30));
       break;
       case '2':
-      d->character->gold = 0;
-      d->character->max_hit += rand_number(50, 165);
-      d->character->max_move += rand_number(50, 165);
-      d->character->max_mana += rand_number(50, 165);
+      //d->character->gold = 0;
+      char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(50, 165));
+      char_stats_modify(d->character, STAT_STAMINA, rand_number(50, 165));
+      char_stats_modify(d->character, STAT_KI, rand_number(50, 165));
       break;
       case '3':
-      d->character->gold = 2500;
-      d->character->max_hit -= rand_number(15, 25);
-      d->character->max_move -= rand_number(15, 25);
-      d->character->max_mana -= rand_number(15, 25);
+      char_stats_modify(d->character, STAT_MONEY, 2500);
+      char_stats_modify(d->character, STAT_POWERLEVEL, -rand_number(15, 25));
+      char_stats_modify(d->character, STAT_STAMINA, -rand_number(15, 25));
+      char_stats_modify(d->character, STAT_KI, -rand_number(15, 25));
       break;
       case '4':
-      d->character->gold = 150;
-      d->character->max_hit += rand_number(25, 80);
-      d->character->max_move += rand_number(25, 80);
-      d->character->max_mana += rand_number(25, 80);
+      char_stats_modify(d->character, STAT_MONEY, 150);
+      char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(25, 80));
+      char_stats_modify(d->character, STAT_STAMINA, rand_number(25, 80));
+      char_stats_modify(d->character, STAT_KI, rand_number(25, 80));
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3641,16 +3641,16 @@ void nanny(struct descriptor_data *d, char *arg)
    case CON_Q5:
     switch (*arg) {
       case '1':
-      d->character->max_hit += rand_number(0, 40);
+      char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(0, 40));
       break;
       case '2':
-      d->character->max_hit += rand_number(-30, 80);
+      char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(-30, 80));
       break;
       case '3':
-      d->character->max_hit += rand_number(-25, 60);
+      char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(-25, 60));
       break;
       case '4':
-      d->character->max_hit += rand_number(0, 50);
+      char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(0, 50));
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3669,29 +3669,27 @@ void nanny(struct descriptor_data *d, char *arg)
          STATE(d) = CON_Q6;
       break;
 
-
-     
   case CON_Q6:
     switch (*arg) {
       case '1':
-         d->character->max_hit += rand_number(0, 15);
-         d->character->max_move += rand_number(0, 15);
+         char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(0, 15));
+         char_stats_modify(d->character, STAT_STAMINA, rand_number(0, 15));
          d->character->choice = 1;
         break;
       case '2':
-         d->character->max_hit += rand_number(0, 30);
+         char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(0, 30));
          d->character->choice = 2;
         break;
       case '3':
-         d->character->max_hit += rand_number(0, 30);
+         char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(0, 30));
          d->character->choice = 3;
         break;
       case '4':
-         d->character->max_hit += rand_number(0, 30);
+         char_stats_modify(d->character, STAT_POWERLEVEL, rand_number(0, 30));
          d->character->choice = 4;
         break;
       case '5':
-         d->character->max_mana += rand_number(0, 50);
+         char_stats_modify(d->character, STAT_KI, rand_number(0, 50));
          d->character->choice = 5;
         break;
       default:
@@ -3713,18 +3711,18 @@ void nanny(struct descriptor_data *d, char *arg)
     case CON_Q7:
     switch (*arg) {
       case '1':
-         d->character->alignment += -10;
-         d->character->real_abils.str += 1;
+        char_stats_modify(d->character, STAT_ALIGNMENT, -10);
+         char_stats_modify(d->character, STAT_STRENGTH, 1);
         break;
       case '2':
-         d->character->alignment += +10;
-         d->character->real_abils.cha += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, 10);
+         char_stats_modify(d->character, STAT_SPEED, 1);
         break;
       case '3':
-         d->character->real_abils.wis += 1;
+         char_stats_modify(d->character, STAT_WISDOM, 1);
         break;
       case '4':
-         d->character->real_abils.intel += 1;
+         char_stats_modify(d->character, STAT_INTELLIGENCE, 1);
         break;
       default:
         write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3745,20 +3743,20 @@ void nanny(struct descriptor_data *d, char *arg)
     case CON_Q8:
     switch (*arg) {
       case '1':
-         d->character->alignment += +10;
-         d->character->real_abils.cha += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, 10);
+         char_stats_modify(d->character, STAT_SPEED, 1);
         break;
       case '2':
-        d->character->alignment += +20;
-         d->character->real_abils.wis += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, 20);
+         char_stats_modify(d->character, STAT_WISDOM, 1);
         break;
       case '3':
-         d->character->alignment += -10;
-         d->character->real_abils.str += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, -10);
+         char_stats_modify(d->character, STAT_STRENGTH, 1);
         break;
       case '4':
-         d->character->alignment += -20;
-         d->character->real_abils.dex += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, -20);
+         char_stats_modify(d->character, STAT_AGILITY, 1);
         break;
       default:
         write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3779,19 +3777,19 @@ void nanny(struct descriptor_data *d, char *arg)
     case CON_Q9:
     switch (*arg) {
       case '1':
-         d->character->real_abils.str += 1;
+         char_stats_modify(d->character, STAT_STRENGTH, 1);
         break;
       case '2':
-         d->character->alignment += -30;
-         d->character->real_abils.wis += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, -30);
+         char_stats_modify(d->character, STAT_WISDOM, 1);
         break;
       case '3':
-         d->character->alignment += -10;
-         d->character->real_abils.cha += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, -10);
+         char_stats_modify(d->character, STAT_SPEED, 1);
         break;
       case '4':
-         d->character->alignment += -5;
-         d->character->real_abils.intel += 1;
+         char_stats_modify(d->character, STAT_ALIGNMENT, -5);
+         char_stats_modify(d->character, STAT_INTELLIGENCE, 1);
         break;
       default:
         write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3939,39 +3937,39 @@ void nanny(struct descriptor_data *d, char *arg)
         moveon = TRUE;
         break;
       case '1':
-        GET_ALIGNMENT(d->character) = 1000;
+        char_stats_set(d->character, STAT_ALIGNMENT, 1000);
         penalty = TRUE;
         break;
       case '2':
-        GET_ALIGNMENT(d->character) = 799;
+        char_stats_set(d->character, STAT_ALIGNMENT, 799);
         penalty = TRUE;
         break;
       case '3':
-        GET_ALIGNMENT(d->character) = 599;
+        char_stats_set(d->character, STAT_ALIGNMENT, 599);
         penalty = TRUE;
         break;
       case '4':
-        GET_ALIGNMENT(d->character) = 299;
+        char_stats_set(d->character, STAT_ALIGNMENT, 299);
         penalty = TRUE;
         break;
       case '5':
-        GET_ALIGNMENT(d->character) = 0;
+        char_stats_set(d->character, STAT_ALIGNMENT, 0);
         penalty = TRUE;
         break;
       case '6':
-        GET_ALIGNMENT(d->character) = -299;
+        char_stats_set(d->character, STAT_ALIGNMENT, -299);
         penalty = TRUE;
         break;
       case '7':
-        GET_ALIGNMENT(d->character) = -599;
+        char_stats_set(d->character, STAT_ALIGNMENT, -599);
         penalty = TRUE;
         break;
       case '8':
-        GET_ALIGNMENT(d->character) = -799;
+        char_stats_set(d->character, STAT_ALIGNMENT, -799);
         penalty = TRUE;
         break;
       case '9':
-        GET_ALIGNMENT(d->character) = -1000;
+        char_stats_set(d->character, STAT_ALIGNMENT, -1000);
         penalty = TRUE;
         break;
       default:
@@ -3987,17 +3985,17 @@ void nanny(struct descriptor_data *d, char *arg)
 
         switch (roll) {
          case 1:
-          d->character->real_abils.str -= 1;
+          char_stats_modify(d->character, STAT_STRENGTH, -1);
          case 2:
-          d->character->real_abils.con -= 1;
+          char_stats_modify(d->character, STAT_CONSTITUTION, -1);
          case 3:
-          d->character->real_abils.wis -= 1;
+          char_stats_modify(d->character, STAT_WISDOM, -1);
          case 4:
-          d->character->real_abils.intel -= 1;
+          char_stats_modify(d->character, STAT_INTELLIGENCE, -1);
          case 5:
-          d->character->real_abils.cha -= 1;
+          char_stats_modify(d->character, STAT_SPEED, -1);
          case 6:
-          d->character->real_abils.dex -= 1;
+          char_stats_modify(d->character, STAT_AGILITY, -1);
          break;
         }
       write_to_output(d, "@CWould you like to keep skills gained from your sensei/race combo (skills, not abilities)\r\nor would you prefer to keep those skill slots empty? If you choose\r\nto forget then you get 200 PS in exchange.@n\r\n");
@@ -4140,7 +4138,7 @@ void nanny(struct descriptor_data *d, char *arg)
          }
         }
         if (num == 3) {
-         d->character->real_abils.dex += 10;
+         char_stats_modify(d->character, STAT_AGILITY, 10);
         }
         write_to_output(d, "@CRolling second mutation... Your second mutation is @D[@Y%s@D]@n\r\n", display_genome[num]); 
         d->character->genome[1] = num;
@@ -4163,7 +4161,7 @@ void nanny(struct descriptor_data *d, char *arg)
          write_to_output(d, "@CYou have chosen the mutation @D[@Y%s@D]@n\r\n", display_genome[choice]);
          d->character->genome[0] = choice;
          if (choice == 3) {
-          d->character->real_abils.dex += 10;
+          char_stats_modify(d->character, STAT_AGILITY, 10);
          } else if (choice == 9) {
           SET_SKILL(d->character, SKILL_TELEPATHY, 50);
          }     
@@ -4279,10 +4277,10 @@ void nanny(struct descriptor_data *d, char *arg)
          } else if (!strcasecmp(arg, "x") || !strcasecmp(arg, "X")) {
           GET_NEGCOUNT(d->character) = 0;
 
-           d->character->basepl = MAX(90L, d->character->basepl);
-           d->character->baseki = MAX(90L, d->character->baseki);
-           d->character->basest = MAX(90L, d->character->basest);
-           d->character->lifeforce = d->character->basest + d->character->baseki;
+           char_stats_set(d->character, STAT_POWERLEVEL, MAX(90L, char_stats_get(d->character, STAT_POWERLEVEL)));
+           char_stats_set(d->character, STAT_KI, MAX(90L, char_stats_get(d->character, STAT_KI)));
+           char_stats_set(d->character, STAT_STAMINA, MAX(90L, char_stats_get(d->character, STAT_STAMINA)));
+
            write_to_output(d, "\r\n@wTo check the bonuses/negatives you have in game use the status command");
            if (GET_CCPOINTS(d->character) > 0) {
             write_to_output(d, "\r\n@GYour left over points were spent on Practice Sessions@w");
@@ -4324,19 +4322,6 @@ void nanny(struct descriptor_data *d, char *arg)
            STATE(d) = CON_BONUS;
          } else if (!strcasecmp(arg, "x") || !strcasecmp(arg, "X")) {
           GET_NEGCOUNT(d->character) = 0;
-          if (d->character->max_hit <= 0) {
-           d->character->max_hit = 90;
-          }
-          if (d->character->max_mana <= 0) {
-           d->character->max_mana = 90;
-          }
-          if (d->character->max_move <= 0) {
-           d->character->max_move = 90;
-          }
-           d->character->basepl = d->character->max_hit;
-           d->character->baseki = d->character->max_mana;
-           d->character->basest = d->character->max_move;
-           d->character->lifeforce = d->character->max_move + d->character->max_mana;
            write_to_output(d, "\r\n@wTo check the bonuses/negatives you have in game use the status command");
            if (GET_CCPOINTS(d->character) > 0) {
             write_to_output(d, "\r\n@GYour left over points were spent on Practice Sessions@w");
@@ -4399,7 +4384,7 @@ void nanny(struct descriptor_data *d, char *arg)
                       chosen_sensei = nullptr;
                       return;
                   case CON_QCLASS:
-                      d->character->chclass = chosen_sensei->getID();
+                      char_stats_set(d->character, STAT_SENSEI, chosen_sensei->getID());
                       break;
               }
       }
@@ -4705,7 +4690,7 @@ void nanny(struct descriptor_data *d, char *arg)
          inc = 7500;
         }
         inc *= mult;
-        GET_BANK_GOLD(d->character) += inc;
+        char_stats_modify(d->character, STAT_MONEY_BANK, inc);
         send_to_char(d->character, "Interest happened while you were away, %d times.\r\n"
                                    "@cBank Interest@D: @Y%s@n\r\n", mult, add_commas(inc));
        }
@@ -4824,7 +4809,7 @@ void nanny(struct descriptor_data *d, char *arg)
       if (GET_LEVEL(d->character) <= 40 && CHEAP_RACE(d->character)) {
        write_to_output(d, "@D[@gSince your race doesn't cost RPP to level before 40 you are refunded 0 RPP.@D]@n\r\n");
       }
-      int refund = get_race(d->character->race)->getRPPRefund();
+      int refund = get_race(GET_RACE(d->character))->getRPPRefund();
       if(refund && GET_LEVEL(d->character) > 1) {
           write_to_output(d, "@D[@g%d RPP refunded to your account for your %s character.@D]@n\r\n", refund, TRUE_RACE(d->character));
           d->rpp += refund;

@@ -289,41 +289,23 @@ static void generate_multiform(struct char_data *ch, int count)
         char_data *clone = nullptr;
         clone = read_mobile(r_num, REAL);
 
+        // Copy stats over...
+        for(int stat = 0; stat < NUM_CHARACTER_STATS; stat++) {
+            char_stats_set(clone, stat, char_stats_get(ch, stat));
+        }
+
         clone->name = strdup(clone_name);
         clone->short_descr = strdup(clone_sdesc);
         clone->long_descr = strdup(clone_ldesc);
         if(ch->description)
             clone->description = strdup(ch->description);
-        clone->race = ch->race;
-        clone->chclass = ch->chclass;
-
-        // Not sure if these are actually used...
-        clone->alignment = ch->alignment;
-        clone->alignment_ethic = ch->alignment_ethic;
 
         // Make the physical appearance match!
-        clone->sex = ch->sex;
-        clone->hairl = ch->hairl;
-        clone->hairs = ch->hairs;
-        clone->hairc = ch->hairc;
-        clone->skin = ch->skin;
-        clone->eye = ch->eye;
-        clone->distfea = ch->distfea;
-        clone->aura = ch->aura;
-
-        clone->weight = ch->weight;
-        clone->height = ch->height;
-        clone->size = ch->size;
         clone->level = ch->level;
         clone->time = ch->time;
 
         clone->tail_growth = ch->tail_growth;
         ch->transclass = ch->transclass;
-
-        // Copying these values, but it shouldn't matter because clones no longer work this way.
-        clone->basepl = ch->basepl;
-        clone->baseki = ch->baseki;
-        clone->basest = ch->basest;
 
         // Bioandroid Genome copy...
         clone->genome[0] = ch->genome[0];
@@ -485,45 +467,34 @@ static void resolve_song(struct char_data *ch)
          act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
          act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
          act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+         decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
          if (!IS_NPC(vict)) {
          WAIT_STATE(vict, PULSE_2SEC);
-         decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
          } else {
-          vict->real_abils.cha -= 2;
-             decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-          if (vict->real_abils.cha < 3) {
-           vict->real_abils.cha = 3;
-          }
+          assign_affect(vict, AFF_SHADOW_STITCH, 0, -1, 0, 0, 0, 0, 0, -2);
          }
         }
        } else if (skill > diceroll + 10) {
         act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+        decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
         if (!IS_NPC(vict)) {
         WAIT_STATE(vict, PULSE_2SEC);
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
+            
          } else {
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-          vict->real_abils.cha -= 2;
-          if (vict->real_abils.cha < 3) {
-           vict->real_abils.cha = 3;
-          }
+          assign_affect(vict, AFF_SHADOW_STITCH, 0, -1, 0, 0, 0, 0, 0, -2);
         }
        }
       } else if (skill > diceroll + 10) {
         act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+        decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
         if (!IS_NPC(vict)) {
         WAIT_STATE(vict, PULSE_2SEC);
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
          } else {
-          vict->real_abils.cha -= 2;
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-          if (vict->real_abils.cha < 3) {
-           vict->real_abils.cha = 3;
-          }
+          assign_affect(vict, AFF_SHADOW_STITCH, 0, -1, 0, 0, 0, 0, 0, -2);
          }
       }
       if ((getCurKI(ch)) <= 0) {
@@ -664,9 +635,9 @@ static void resolve_song(struct char_data *ch)
            act("@CYour triumphant and soaring music has powered a barrier around yourself@C!@n", TRUE, ch, 0, vict, TO_CHAR);
           }
           act("@c$n's@C triumphant and soaring music has powered a barrier around @c$N@C!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-          GET_BARRIER(vict) += ((GET_MAX_MANA(ch) * 0.005) * (skill * 0.25)) + skill;
-          if (GET_BARRIER(vict) >= GET_MAX_MANA(vict) * 0.75) {
-           GET_BARRIER(vict) = GET_MAX_MANA(vict) * 0.75;
+          char_stats_modify(vict, STAT_BARRIER, ((GET_MAX_MANA(ch) * 0.005) * (skill * 0.25)) + skill);
+          if (char_stats_get(vict, STAT_BARRIER) >= GET_MAX_MANA(vict) * 0.75) {
+           char_stats_set(vict, STAT_BARRIER, GET_MAX_MANA(vict) * 0.75);
           }
           if (!AFF_FLAGGED(vict, AFF_SANCTUARY)) {
            SET_BIT_AR(AFF_FLAGS(vict), AFF_SANCTUARY);
@@ -903,11 +874,7 @@ ACMD(do_preference)
  if (!strcasecmp(arg, "throw")) {
   send_to_char(ch, "You will now favor throwing weapons as fighting specialization. You're sure to nail it.\r\n");
   GET_PREFERENCE(ch) = PREFERENCE_THROWING;
-  if (GET_SKILL_BASE(ch, SKILL_THROW) <= 90) {
-   GET_SKILL_BASE(ch, SKILL_THROW) += 10;
-  } else if (GET_SKILL_BASE(ch, SKILL_THROW) < 100) {
-   GET_SKILL_BASE(ch, SKILL_THROW) = 100;
-  }
+  char_skills_modify(ch, SKILL_THROW, 10);
   return;
  } else if (!strcasecmp(arg, "hand")) {
   send_to_char(ch, "You will now favor your body as your fighting specialization. Your body is ready.\r\n");
@@ -2170,13 +2137,13 @@ ACMD(do_scry)
   gainBaseST(vict, (getBaseST(vict) * .01) * boost);
 
   send_to_char(vict, "Your Powerlevel, Ki, and Stamina have improved drastically! On top of that your Intelligence and Wisdom have improved permanantly!\r\n");
-  vict->real_abils.intel += 2;
-  vict->real_abils.wis += 2;
+  char_stats_modify(vict, STAT_INTELLIGENCE, 2);
+  char_stats_modify(vict, STAT_WISDOM, 2);
   char_stats_modify(ch, STAT_PRACTICES, -2000);
   if (GET_LEVEL(ch) < 100) {
    send_to_char(ch, "@D[@mPractice Sessions@D:@R -2000@D]@n\r\n");
    if (level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0) {
-    GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch);
+    char_stats_modify(ch, STAT_EXPERIENCE, level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch));
     send_to_char(ch, "The remaining experience needed for your next level up has been gained!@n\r\n");
    } else {
     send_to_char(ch, "Due to already having enough experience to level up you gain no expereince.\r\n");
@@ -3000,11 +2967,9 @@ ACMD(do_kanso)
 
   WAIT_STATE(ch, PULSE_2SEC); /* 2 second lag for the technique */
   
-  if (!AFF_FLAGGED(vict, AFF_HYDROZAP)) { /* Drop their AGL/CON if not already lowered */
+  if (!is_affected(vict, AFF_HYDROZAP)) { /* Drop their AGL/CON if not already lowered */
    send_to_char(vict, "@RYou feel less agile and your muscles ache!@n\r\n");
-   SET_BIT_AR(AFF_FLAGS(vict), AFF_HYDROZAP);
-   vict->real_abils.dex -= 4;
-   vict->real_abils.con -= 4;
+   assign_affect(vict, AFF_HYDROZAP, 0, -1, 0, -4, 0, -4, 0, 0);
    save_char(vict);
   }
     

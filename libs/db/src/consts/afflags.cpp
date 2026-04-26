@@ -80,5 +80,9 @@ const char *affected_bits[NUM_AFF_FLAGS+1] =
   "SHELLED",
   "IMMUNITY",
   "SPIRITCONTROL",
+  "KYODAIKA",
+  "STARPHASE",
+  "SPECIAL POSE",
+  "SHADOW STITCH",
   "\n"
 };

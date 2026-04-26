@@ -205,7 +205,6 @@ void medit_setup_new(struct descriptor_data *d)
   GET_SDESC(mob) = strdup("the unfinished mob");
   GET_LDESC(mob) = strdup("An unfinished mob stands here.\r\n");
   GET_DDESC(mob) = strdup("It looks unfinished.\r\n");
-  mob->race = RACE_HUMAN;
   SCRIPT(mob) = NULL;
   mob->proto_script = OLC_SCRIPT(d) = NULL;
 
@@ -252,16 +251,19 @@ void init_mobile(struct char_data *mob)
   //GET_HIT(mob) = 0;
   //GET_MAX_MANA(mob) = 0;
   GET_NDD(mob) = 0;
-  GET_SEX(mob) = SEX_MALE;
+  char_stats_set(mob, STAT_SEX, SEX_MALE);
   GET_HITDICE(mob) = 0;
-  mob->chclass = CLASS_NPC_COMMONER;
+  char_stats_set(mob, STAT_SENSEI, CLASS_NPC_COMMONER);
 
-  GET_WEIGHT(mob) = rand_number(100, 200);
-  GET_HEIGHT(mob) = rand_number(100, 200);
+  int physics[] = {STAT_WEIGHT, STAT_HEIGHT};
+  for(int i = 0; i < sizeof(physics)/sizeof(physics[0]); i++) {
+      char_stats_set(mob, physics[i], rand_number(100, 200));
+  }
 
-  mob->real_abils.str = mob->real_abils.intel = mob->real_abils.wis = rand_number(8, 16);
-  mob->real_abils.dex = mob->real_abils.con = mob->real_abils.cha = rand_number(8, 16);
-  mob->aff_abils = mob->real_abils;
+  int stats[] = {STAT_STRENGTH, STAT_INTELLIGENCE, STAT_WISDOM, STAT_AGILITY, STAT_CONSTITUTION, STAT_SPEED};
+  for(int i = 0; i < sizeof(stats)/sizeof(stats[0]); i++) {
+      char_stats_set(mob, stats[i], rand_number(8, 16));
+  }
 
   SET_BIT_AR(MOB_FLAGS(mob), MOB_ISNPC);
   mob->player_specials = &dummy_mob;
@@ -836,7 +838,7 @@ void medit_parse(struct descriptor_data *d, char *arg)
  */
 
   case MEDIT_SEX:
-    GET_SEX(OLC_MOB(d)) = LIMIT(i, 0, NUM_GENDERS - 1);
+    char_stats_set(OLC_MOB(d), STAT_SEX, i);
     break;
 
   case MEDIT_ACCURACY:
@@ -896,18 +898,18 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_EXP:
-    GET_EXP(OLC_MOB(d)) = LIMIT(i, 0, MAX_MOB_EXP);
+    char_stats_set(OLC_MOB(d), STAT_EXPERIENCE, LIMIT(i, 0, MAX_MOB_EXP));
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
     break;
 
   case MEDIT_GOLD:
-    GET_GOLD(OLC_MOB(d)) = LIMIT(i, 0, MAX_MOB_GOLD);
+    char_stats_set(OLC_MOB(d), STAT_MONEY, LIMIT(i, 0, MAX_MOB_GOLD));
     break;
 
   case MEDIT_POS:
-    GET_POS(OLC_MOB(d)) = LIMIT(i, 0, NUM_POSITIONS - 1);
+    char_stats_set(OLC_MOB(d), STAT_POSITION, i);
     break;
 
   case MEDIT_DEFAULT_POS:
@@ -924,12 +926,12 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_ALIGNMENT:
-    GET_ALIGNMENT(OLC_MOB(d)) = LIMIT(i, -1000, 1000);
+    char_stats_set(OLC_MOB(d), STAT_ALIGNMENT, i);
     break;
 
   case MEDIT_CLASS:
-    if(!OLC_MOB(d)->chclass) {
-        OLC_MOB(d)->chclass = CLASS_NPC_COMMONER;
+    if(!char_stats_get(OLC_MOB(d), STAT_SENSEI)) {
+        char_stats_set(OLC_MOB(d), STAT_SENSEI, CLASS_NPC_COMMONER);
     };
     /* Change size HP dice based on class choice. */
     //GET_MANA(OLC_MOB(d)) = class_hit_die_size[GET_CLASS(OLC_MOB(d))];
@@ -965,13 +967,13 @@ void medit_parse(struct descriptor_data *d, char *arg)
           write_to_output(d, "That's not a race!");
           break;
       }
-      OLC_MOB(d)->race = chosen_race->getID();
+      char_stats_set(OLC_MOB(d), STAT_RACE, chosen_race->getID());
     /*  Change racial size based on race choice. */
-    OLC_MOB(d)->size = race_get_size(OLC_MOB(d)->race);
+    char_stats_set(OLC_MOB(d), STAT_SIZE, race_get_size(GET_RACE(OLC_MOB(d))));
     break;
 
   case MEDIT_SIZE:
-    OLC_MOB(d)->size = LIMIT(i, -1, NUM_SIZES - 1);
+    char_stats_set(OLC_MOB(d), STAT_SIZE, i);
     break;
 
 /*-------------------------------------------------------------------*/

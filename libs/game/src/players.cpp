@@ -238,7 +238,7 @@ void load_follower_from_file(FILE *fl, struct char_data *ch)
   } else {
     add_follower(newch, ch);
     newch->master_id = GET_IDNUM(ch);
-    GET_POS(newch) = POS_STANDING;
+    char_stats_set(newch, STAT_POSITION, POS_STANDING);
   }
 }
 
@@ -272,37 +272,23 @@ int load_char(const char *name, struct char_data *ch)
 
     /* character initializations */
     /* initializations necessary to keep some things straight */
+    char_stats_init(ch);
+
     ch->affected = NULL;
     ch->affectedv = NULL;
-    for (i = 0; i < SKILL_TABLE_SIZE; i++) {
-      SET_SKILL(ch, i, 0);
-      SET_SKILL_BONUS(ch, i, 0);
-      SET_SKILL_PERF(ch, i, 0);
-    }
-    GET_SEX(ch) = PFDEF_SEX;
-    ch->size = PFDEF_SIZE;
-    ch->chclass = CLASS_ROSHI;
-    for (i = 0; i < NUM_CLASSES; i++) {
-      GET_CLASS_NONEPIC(ch, i) = 0;
-      GET_CLASS_EPIC(ch, i) = 0;
-    }
+
     GET_LOG_USER(ch) = strdup("NOUSER");
-    ch->race = PFDEF_RACE;
     GET_ADMLEVEL(ch) = PFDEF_LEVEL;
     GET_CLASS_LEVEL(ch) = PFDEF_LEVEL;
     GET_HITDICE(ch) = PFDEF_LEVEL;
 	GET_RBANK(ch) = PFDEF_SKIN;
     GET_RP(ch) = PFDEF_SKIN;
     GET_TRP(ch) = PFDEF_SKIN;
-    GET_SUPPRESS(ch) = PFDEF_SKIN;
     GET_SUPP(ch) = PFDEF_SKIN;
     GET_FURY(ch) = PFDEF_HAIRL;
     GET_CLAN(ch) = strdup("None.");
     GET_LEVEL_ADJ(ch) = PFDEF_LEVEL;
     GET_HOME(ch) = PFDEF_HOMETOWN;
-    GET_HEIGHT(ch) = PFDEF_HEIGHT;
-    GET_WEIGHT(ch) = PFDEF_WEIGHT;
-    ch->basepl = PFDEF_BASEPL;
     ch->health = 1.0;
     GET_RELAXCOUNT(ch) = PFDEF_EYE;
     GET_BLESSLVL(ch) = PFDEF_HEIGHT;
@@ -310,19 +296,11 @@ int load_char(const char *name, struct char_data *ch)
     // GET_LIFEFORCE(ch) = PFDEF_BASEPL;
     GET_LIFEPERC(ch) = PFDEF_WEIGHT;
     GET_STUPIDKISS(ch) = 0;
-    GET_POS(ch) = POS_STANDING;
+    char_stats_set(ch, STAT_POSITION, POS_STANDING);
     GET_MAJINIZED(ch) = PFDEF_BASEPL;
     GET_GAUNTLET(ch)   = PFDEF_GAUNTLET;
-    ch->baseki = PFDEF_BASEKI;
     ch->energy = 1.0;
-    ch->basest = PFDEF_BASEST;
     ch->stamina = 1.0;
-    GET_HAIRL(ch) = PFDEF_HAIRL;
-    GET_HAIRC(ch) = PFDEF_HAIRC;
-    GET_SKIN(ch) = PFDEF_SKIN;
-    GET_EYE(ch) = PFDEF_EYE;
-    GET_HAIRS(ch) = PFDEF_HAIRS;
-    GET_DISTFEA(ch) = PFDEF_DISTFEA;
     GET_RADAR1(ch) = PFDEF_RADAR1;
     GET_SHIP(ch) = PFDEF_SHIP;
     GET_LPLAY(ch) = PFDEF_LPLAY;
@@ -332,7 +310,6 @@ int load_char(const char *name, struct char_data *ch)
     GET_DTIME(ch) = PFDEF_LPLAY;
     GET_PHASE(ch) = PFDEF_EYE;
     ch->mimic = 0;
-    GET_SLOTS(ch) = 0;
     GET_TGROWTH(ch) = 0;
 
     GET_RTIME(ch) = PFDEF_LPLAY;
@@ -340,7 +317,6 @@ int load_char(const char *name, struct char_data *ch)
     GET_GENOME(ch, 0) = PFDEF_EYE;
     GET_PREFERENCE(ch) = PFDEF_EYE;
     GET_GENOME(ch, 1) = PFDEF_EYE;
-    GET_AURA(ch) = PFDEF_SKIN;
     for (i = 0; i < 52; i++) {
      GET_BONUS(ch, i) = PFDEF_BOARD;
     }
@@ -360,7 +336,6 @@ int load_char(const char *name, struct char_data *ch)
     GET_RADAR3(ch) = PFDEF_RADAR3;
     GET_DROOM(ch) = PFDEF_DROOM;
     GET_CRANK(ch) = PFDEF_CRANK;
-    GET_ALIGNMENT(ch) = PFDEF_ALIGNMENT;
     GET_ETHIC_ALIGNMENT(ch) = PFDEF_ETHIC_ALIGNMENT;
     for (i = 0; i < AF_ARRAY_MAX; i++)
       AFF_FLAGS(ch)[i] = PFDEF_AFFFLAGS;
@@ -382,19 +357,14 @@ int load_char(const char *name, struct char_data *ch)
     GET_BAD_PWS(ch) = PFDEF_BADPWS;
     GET_RACE_PRACTICES(ch) = PFDEF_PRACTICES;
 
-    GET_GOLD(ch) = PFDEF_GOLD;
     GET_BACKSTAB_COOL(ch) = 0;
     GET_COOLDOWN(ch) = 0;
-	GET_SDCOOLDOWN(ch) = 0;
-    GET_BANK_GOLD(ch) = PFDEF_BANK;
+	  GET_SDCOOLDOWN(ch) = 0;
     GET_ABSORBS(ch) = PFDEF_BANK;
     GET_INGESTLEARNED(ch) = PFDEF_BANK;
-    RACIAL_PREF(ch) = PFDEF_BANK;
-    GET_UP(ch) = PFDEF_BANK;
     GET_FORGETING(ch) = PFDEF_BANK;
     GET_FORGET_COUNT(ch) = PFDEF_BANK;
     GET_KAIOKEN(ch) = PFDEF_BANK;
-    GET_EXP(ch) = PFDEF_EXP;
     GET_TRANSCLASS(ch) = PFDEF_EXP;
     for (i = 0; i < 6; i++)
      GET_TRANSCOST(ch, i) = FALSE;
@@ -403,20 +373,7 @@ int load_char(const char *name, struct char_data *ch)
     GET_POLE_BONUS(ch) = PFDEF_ACCURACY;
     GET_DAMAGE_MOD(ch) = PFDEF_DAMAGE;
     GET_ARMOR(ch) = PFDEF_AC;
-    ch->real_abils.str = PFDEF_STR;
-    ch->real_abils.dex = PFDEF_DEX;
-    ch->real_abils.intel = PFDEF_INT;
-    ch->real_abils.wis = PFDEF_WIS;
-    ch->real_abils.con = PFDEF_CON;
-    ch->real_abils.cha = PFDEF_CHA;
-    //GET_HIT(ch) = PFDEF_HIT;
-    //ch->max_hit = PFDEF_MAXHIT;
-    //GET_MANA(ch) = PFDEF_MANA;
-    //ch->max_mana = PFDEF_MAXMANA;
-    //GET_MOVE(ch) = PFDEF_MOVE;
-    //ch->max_move = PFDEF_MAXMOVE;
-    GET_KI(ch) = PFDEF_KI;
-    GET_MAX_KI(ch) = PFDEF_MAXKI;
+
     SPEAKING(ch) = PFDEF_SPEAKING;
     GET_OLC_ZONE(ch) = PFDEF_OLC;
     GET_HOST(ch) = NULL;
@@ -459,13 +416,13 @@ int load_char(const char *name, struct char_data *ch)
           ADM_FLAGS(ch)[1] = asciiflag_conv(f2);
           ADM_FLAGS(ch)[2] = asciiflag_conv(f3);
           ADM_FLAGS(ch)[3] = asciiflag_conv(f4);
-        } else if (!strcmp(tag, "Alin"))  GET_ALIGNMENT(ch)       = atoi(line);
-          else if (!strcmp(tag, "Aura"))  GET_AURA(ch)            = atoi(line);
+        } else if (!strcmp(tag, "Alin"))  char_stats_set(ch, STAT_ALIGNMENT, atoi(line));
+          else if (!strcmp(tag, "Aura"))  char_stats_set(ch, STAT_AURA_COLOR, atoi(line));
       break;
 
       case 'B':
              if (!strcmp(tag, "Badp"))  GET_BAD_PWS(ch)         = atoi(line);
-        else if (!strcmp(tag, "Bank"))  GET_BANK_GOLD(ch)       = atoi(line);
+        else if (!strcmp(tag, "Bank"))  char_stats_set(ch, STAT_MONEY_BANK, atoi(line));
         else if (!strcmp(tag, "Bki "))  load_BASE(ch, line, LOAD_MANA);
         else if (!strcmp(tag, "Blss"))  GET_BLESSLVL(ch)        = atoi(line);
         else if (!strcmp(tag, "Boam"))  GET_BOARD(ch, 0)        = atoi(line);
@@ -481,15 +438,15 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'C':
-             if (!strcmp(tag, "Cha "))  ch->real_abils.cha      = atoi(line);
+             if (!strcmp(tag, "Cha "))  char_stats_set(ch, STAT_SPEED, atoi(line));
         else if (!strcmp(tag, "Clan"))  GET_CLAN(ch)            = strdup(line);
         else if (!strcmp(tag, "Clar"))  GET_CRANK(ch)           = atoi(line);
-	else if (!strcmp(tag, "Clas"))  ch->chclass = atoi(line);
+	else if (!strcmp(tag, "Clas"))  char_stats_set(ch, STAT_SENSEI, atoi(line));
         else if (!strcmp(tag, "Colr"))  {
           sscanf(line, "%d %s", &num, buf2);
           ch->player_specials->color_choices[num] = strdup(buf2);
         }
-        else if (!strcmp(tag, "Con "))  ch->real_abils.con      = atoi(line);
+        else if (!strcmp(tag, "Con "))  char_stats_set(ch, STAT_CONSTITUTION, atoi(line));
         else if (!strcmp(tag, "Cool"))  GET_COOLDOWN(ch)        = atoi(line);
         else if (!strcmp(tag, "Crtd"))  ch->time.created        = atol(line);
       break;
@@ -498,18 +455,18 @@ int load_char(const char *name, struct char_data *ch)
              if (!strcmp(tag, "Deat"))  GET_DTIME(ch)     = atoi(line);
         else if (!strcmp(tag, "Deac"))  GET_DCOUNT(ch)    = atoi(line);
         else if (!strcmp(tag, "Desc"))  ch->description  = fread_string(fl, buf2);
-        else if (!strcmp(tag, "Dex "))  ch->real_abils.dex      = atoi(line);
+        else if (!strcmp(tag, "Dex "))  char_stats_set(ch, STAT_AGILITY, atoi(line));
         else if (!strcmp(tag, "Drnk"))  char_stats_set(ch, STAT_DRUNK, atoi(line));
         else if (!strcmp(tag, "Damg"))  GET_DAMAGE_MOD(ch)          = atoi(line);
         else if (!strcmp(tag, "Droo"))  GET_DROOM(ch)          = atoi(line);
       break;
 
       case 'E':
-             if (!strcmp(tag, "Exp "))  GET_EXP(ch)             = atoi(line);
+             if (!strcmp(tag, "Exp "))  char_stats_set(ch, STAT_EXPERIENCE, atoi(line));
         else if (!strcmp(tag, "Eali"))  GET_ETHIC_ALIGNMENT(ch) = atoi(line);
         else if (!strcmp(tag, "Ecls"))  { sscanf(line, "%d=%d", &num, &num2);
                                           GET_CLASS_EPIC(ch, num) = num2; }
-        else if (!strcmp(tag, "Eye "))  GET_EYE(ch)             = atoi(line);
+        else if (!strcmp(tag, "Eye "))  char_stats_set(ch, STAT_EYE_COLOR, atoi(line));
       break;
 
       case 'F':
@@ -521,7 +478,7 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'G':
-             if (!strcmp(tag, "Gold"))  GET_GOLD(ch)            = atoi(line);
+             if (!strcmp(tag, "Gold"))  char_stats_set(ch, STAT_MONEY, atoi(line));
         else if (!strcmp(tag, "Gaun"))  GET_GAUNTLET(ch)        = atoi(line);
         else if (!strcmp(tag, "Geno"))  GET_GENOME(ch, 0)        = atoi(line);
         else if (!strcmp(tag, "Gen1"))  GET_GENOME(ch, 1)        = atoi(line);
@@ -530,23 +487,23 @@ int load_char(const char *name, struct char_data *ch)
       case 'H':
              if (!strcmp(tag, "Hit "))  load_HMVS(ch, line, LOAD_HIT);
         else if (!strcmp(tag, "HitD"))  GET_HITDICE(ch)         = atoi(line);
-        else if (!strcmp(tag, "Hite"))  GET_HEIGHT(ch)          = atoi(line);
+        else if (!strcmp(tag, "Hite"))  char_stats_set(ch, STAT_HEIGHT, atol(line));
         else if (!strcmp(tag, "Home"))  GET_HOME(ch)            = atoi(line);
         else if (!strcmp(tag, "Host")) {
           if (GET_HOST(ch))
             free(GET_HOST(ch));
           GET_HOST(ch) = strdup(line);
         }
-        else if (!strcmp(tag, "Hrc "))  GET_HAIRC(ch)           = atoi(line);
-        else if (!strcmp(tag, "Hrl "))  GET_HAIRL(ch)           = atoi(line);
-        else if (!strcmp(tag, "Hrs "))  GET_HAIRS(ch)           = atoi(line);
+        else if (!strcmp(tag, "Hrc "))  char_stats_set(ch, STAT_HAIR_COLOR, atoi(line));
+        else if (!strcmp(tag, "Hrl "))  char_stats_set(ch, STAT_HAIR_LENGTH, atoi(line));
+        else if (!strcmp(tag, "Hrs "))  char_stats_set(ch, STAT_HAIR_STYLE, atoi(line));
         else if (!strcmp(tag, "Hung"))  char_stats_set(ch, STAT_HUNGER, atoi(line));
       break;
 
       case 'I':
              if (!strcmp(tag, "Id  "))  GET_IDNUM(ch)           = atol(line);
         else if (!strcmp(tag, "INGl"))  GET_INGESTLEARNED(ch) = atoi(line);
-        else if (!strcmp(tag, "Int "))  ch->real_abils.intel    = atoi(line);
+        else if (!strcmp(tag, "Int "))  char_stats_set(ch, STAT_INTELLIGENCE, atoi(line));
         else if (!strcmp(tag, "Invs"))  GET_INVIS_LEV(ch)       = atoi(line);
       break;
 
@@ -594,7 +551,7 @@ int load_char(const char *name, struct char_data *ch)
 
       case 'P':
             if (!strcmp(tag, "Page"))  GET_PAGE_LENGTH(ch) = atoi(line);
-       else if (!strcmp(tag, "Phas"))  GET_DISTFEA(ch)            = atoi(line);
+       else if (!strcmp(tag, "Phas"))  char_stats_set(ch, STAT_DISTINGUISHING_FEATURE, atoi(line));
        else if (!strcmp(tag, "Phse"))  GET_PHASE(ch)            = atoi(line);
        else if (!strcmp(tag, "Plyd"))  ch->time.played          = atol(line);
 #ifdef ASCII_SAVE_POOFS
@@ -602,7 +559,7 @@ int load_char(const char *name, struct char_data *ch)
        else if (!strcmp(tag, "PfOt"))  POOFOUT(ch)              = strdup(line);
 #endif
        else if (!strcmp(tag, "Pole"))  GET_POLE_BONUS(ch)       = atoi(line);
-       else if (!strcmp(tag, "Posi"))  GET_POS(ch)              = atoi(line);
+       else if (!strcmp(tag, "Posi"))  char_stats_set(ch, STAT_POSITION, atoi(line));
        else if (!strcmp(tag, "PwrA"))  GET_POWERATTACK(ch)      = atoi(line);
        else if (!strcmp(tag, "Pref")) {
          sscanf(line, "%s %s %s %s", f1, f2, f3, f4);
@@ -615,8 +572,8 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'R':
-             if (!strcmp(tag, "Race"))  ch->race = atoi(line);
-        else if (!strcmp(tag, "Raci"))  RACIAL_PREF(ch)         = atoi(line);
+             if (!strcmp(tag, "Race"))  char_stats_set(ch, STAT_RACE, atoi(line));
+        else if (!strcmp(tag, "Raci"))  char_stats_set(ch, STAT_RACE_SUBTYPE, atoi(line));
 	else if (!strcmp(tag, "RBan"))  GET_RBANK(ch)           = atoi(line);
 	else if (!strcmp(tag, "rDis"))  GET_RDISPLAY(ch)        = strdup(line);
         else if (!strcmp(tag, "Rela"))  GET_RELAXCOUNT(ch)      = atoi(line);
@@ -630,24 +587,24 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'S':
-             if (!strcmp(tag, "Sex "))  GET_SEX(ch)             = atoi(line);
+             if (!strcmp(tag, "Sex "))  char_stats_set(ch, STAT_SEX, atoi(line));
         else if (!strcmp(tag, "Ship"))  GET_SHIP(ch)            = atoi(line);
 		else if (!strcmp(tag, "Scoo"))  GET_SDCOOLDOWN(ch)      = atoi(line);
         else if (!strcmp(tag, "Shpr"))  GET_SHIPROOM(ch)        = atoi(line);
         else if (!strcmp(tag, "Skil"))  load_skills(fl, ch, FALSE);
-        else if (!strcmp(tag, "Skn "))  GET_SKIN(ch)            = atoi(line);
-        else if (!strcmp(tag, "Size"))  ch->size		= atoi(line);
+        else if (!strcmp(tag, "Skn "))  char_stats_set(ch, STAT_SKIN_COLOR, atoi(line));
+        else if (!strcmp(tag, "Size"))  char_stats_set(ch, STAT_SIZE, atoi(line));
         else if (!strcmp(tag, "SklB"))  load_skills(fl, ch, TRUE);
         else if (!strcmp(tag, "SkRc"))  GET_RACE_PRACTICES(ch)	= atoi(line);
         else if (!strcmp(tag, "SkCl")) {
           sscanf(line, "%d %d", &num2, &num3);
           char_stats_modify(ch, STAT_PRACTICES, num3);
         }
-        else if (!strcmp(tag, "Slot"))  ch->skill_slots         = atoi(line);
+        else if (!strcmp(tag, "Slot"))  char_stats_set(ch, STAT_SKILL_SLOTS, atoi(line));
         else if (!strcmp(tag, "Spek"))  SPEAKING(ch)		= atoi(line);
-        else if (!strcmp(tag, "Str "))  ch->real_abils.str	= atoi(line);
+        else if (!strcmp(tag, "Str "))  char_stats_set(ch, STAT_STRENGTH, atoi(line));
         else if (!strcmp(tag, "Stuk"))  ch->stupidkiss          = atoi(line);
-        else if (!strcmp(tag, "Supp"))  GET_SUPPRESS(ch)        = atoi(line);
+        else if (!strcmp(tag, "Supp"))  char_stats_set(ch, STAT_SUPPRESS, atoi(line));
         else if (!strcmp(tag, "Sups"))  GET_SUPP(ch)        = atoi(line);
       break;
 
@@ -676,7 +633,7 @@ int load_char(const char *name, struct char_data *ch)
         else if (!strcmp(tag, "Trp "))  GET_TRP(ch)             = atoi(line);
       break;
       case 'U':
-             if (!strcmp(tag, "Upgr"))  GET_UP(ch)              = atoi(line);
+             if (!strcmp(tag, "Upgr"))  char_stats_set(ch, STAT_UPGRADES, atoi(line));
         else if (!strcmp(tag, "User")) {
          if (GET_LOG_USER(ch)) {
           free(GET_LOG_USER(ch));
@@ -689,9 +646,9 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'W':
-             if (!strcmp(tag, "Wate"))  GET_WEIGHT(ch)          = atoi(line);
+             if (!strcmp(tag, "Wate"))  char_stats_set(ch, STAT_WEIGHT, atoi(line));
         else if (!strcmp(tag, "Wimp"))  GET_WIMP_LEV(ch)        = atoi(line);
-        else if (!strcmp(tag, "Wis "))  ch->real_abils.wis      = atoi(line);
+        else if (!strcmp(tag, "Wis "))  char_stats_set(ch, STAT_WISDOM, atoi(line));
       break;
 
       default:
@@ -714,8 +671,6 @@ int load_char(const char *name, struct char_data *ch)
     log("No max age for user %s, using standard max age determination", GET_NAME(ch));
     ch->time.maxage = ch->time.birth + max_age(ch);
   }
-
-  affect_total(ch);
 
   /* initialization for imms */
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
@@ -930,8 +885,6 @@ void save_char(struct char_data * ch)
   if ((i >= MAX_AFFECT) && aff && aff->next)
     log("SYSERR: WARNING: OUT OF STORE ROOM FOR AFFECTED TYPES!!!");
 
-  ch->aff_abils = ch->real_abils;
-
   /* end char_to_store code */
 
   if (GET_NAME(ch))				fprintf(fl, "Name: %s\n", GET_NAME(ch));
@@ -950,10 +903,10 @@ void save_char(struct char_data * ch)
   if (POOFOUT(ch))				fprintf(fl, "PfOt: %s\n", POOFOUT(ch));
 #endif
   if (GET_SEX(ch)	   != PFDEF_SEX)	fprintf(fl, "Sex : %d\n", GET_SEX(ch)); 
-  if (ch->size		   != PFDEF_SIZE)	fprintf(fl, "Size: %d\n", ch->size); 
-  if (GET_CLASS(ch)	   != PFDEF_CLASS)	fprintf(fl, "Clas: %d\n", GET_CLASS(ch)); 
-  if (GET_RACE(ch)	   != PFDEF_RACE)	fprintf(fl, "Race: %d\n", GET_RACE(ch));
-  if (RACIAL_PREF(ch)      != PFDEF_BANK)       fprintf(fl, "Raci: %d\n", RACIAL_PREF(ch));
+  if (char_stats_get(ch, STAT_SIZE) != PFDEF_SIZE)	fprintf(fl, "Size: %ld\n", char_stats_get(ch, STAT_SIZE)); 
+  if (GET_CLASS(ch)	   != PFDEF_CLASS)	fprintf(fl, "Clas: %ld\n", GET_CLASS(ch)); 
+  if (GET_RACE(ch)	   != PFDEF_RACE)	fprintf(fl, "Race: %ld\n", GET_RACE(ch));
+  if (char_stats_get(ch, STAT_RACE_SUBTYPE) != PFDEF_BANK)       fprintf(fl, "Raci: %ld\n", char_stats_get(ch, STAT_RACE_SUBTYPE));
   if (GET_ADMLEVEL(ch)	   != PFDEF_LEVEL)	fprintf(fl, "AdmL: %d\n", GET_ADMLEVEL(ch));
   if (GET_CLASS_LEVEL(ch)  != PFDEF_LEVEL)	fprintf(fl, "Levl: %d\n", GET_CLASS_LEVEL(ch));
   if (GET_HITDICE(ch)      != PFDEF_LEVEL)	fprintf(fl, "HitD: %d\n", GET_HITDICE(ch));
@@ -1069,18 +1022,18 @@ void save_char(struct char_data * ch)
   if (GET_GAUNTLET(ch)     != PFDEF_GAUNTLET)   fprintf(fl, "Gaun: %d\n", GET_GAUNTLET(ch));
   if (GET_GENOME(ch, 0)    != PFDEF_EYE)        fprintf(fl, "Geno: %d\n", GET_GENOME(ch, 0));
   if (GET_GENOME(ch, 1)    != PFDEF_EYE)        fprintf(fl, "Gen1: %d\n", GET_GENOME(ch, 1));
-  if (GET_POS(ch)          != POS_STANDING)     fprintf(fl, "Posi: %d\n", GET_POS(ch));
+  if (GET_POS(ch)          != POS_STANDING)     fprintf(fl, "Posi: %ld\n", GET_POS(ch));
   //if ((getCurLF(ch))    != PFDEF_BASEPL)     fprintf(fl, "LF  : %" I64T "\n", (getCurLF(ch)));
   if (GET_LIFEPERC(ch)     != PFDEF_WEIGHT)     fprintf(fl, "LFPC: %d\n", GET_LIFEPERC(ch));
   if (getBasePL(ch)      != PFDEF_BASEPL)     fprintf(fl, "Bpl : %" I64T "\n", getBasePL(ch));
   if (getBaseKI(ch)      != PFDEF_BASEKI)     fprintf(fl, "Bki : %" I64T "\n", getBaseKI(ch));
   if (getBaseST(ch)      != PFDEF_BASEST)     fprintf(fl, "Bst : %" I64T "\n", getBaseST(ch));
   if (GET_DROOM(ch)        != PFDEF_DROOM)      fprintf(fl, "Droo: %d\n", GET_DROOM(ch)); 
-  if (GET_HAIRL(ch)        != PFDEF_HAIRL)      fprintf(fl, "Hrl : %d\n", GET_HAIRL(ch));
-  if (GET_HAIRS(ch)        != PFDEF_HAIRS)      fprintf(fl, "Hrs : %d\n", GET_HAIRS(ch));
-  if (GET_HAIRC(ch)        != PFDEF_HAIRC)      fprintf(fl, "Hrc : %d\n", GET_HAIRC(ch));
-  if (GET_SKIN(ch)         != PFDEF_SKIN)       fprintf(fl, "Skn : %d\n", GET_SKIN(ch));
-  if (GET_EYE(ch)          != PFDEF_EYE)        fprintf(fl, "Eye : %d\n", GET_EYE(ch));
+  if (GET_HAIRL(ch)        != PFDEF_HAIRL)      fprintf(fl, "Hrl : %ld\n", GET_HAIRL(ch));
+  if (GET_HAIRS(ch)        != PFDEF_HAIRS)      fprintf(fl, "Hrs : %ld\n", GET_HAIRS(ch));
+  if (GET_HAIRC(ch)        != PFDEF_HAIRC)      fprintf(fl, "Hrc : %ld\n", GET_HAIRC(ch));
+  if (GET_SKIN(ch)         != PFDEF_SKIN)       fprintf(fl, "Skn : %ld\n", GET_SKIN(ch));
+  if (GET_EYE(ch)          != PFDEF_EYE)        fprintf(fl, "Eye : %ld\n", GET_EYE(ch));
   if (GET_DISTFEA(ch)      != PFDEF_DISTFEA)      fprintf(fl, "Phas: %d\n", GET_DISTFEA(ch));
   if (GET_FURY(ch)         != PFDEF_HAIRL)      fprintf(fl, "Fury: %d\n", GET_FURY(ch));
   if (GET_RADAR1(ch)       != PFDEF_RADAR1)     fprintf(fl, "Rad1: %d\n", GET_RADAR1(ch));
@@ -1119,7 +1072,7 @@ void save_char(struct char_data * ch)
   if (GET_TRAINWIS(ch)     != PFDEF_EYE)        fprintf(fl, "Trwi: %ld\n", GET_TRAINWIS(ch));
   if (GET_PHASE(ch)        != PFDEF_EYE)        fprintf(fl, "Phse: %d\n", GET_PHASE(ch));
   if (GET_MIMIC(ch))        fprintf(fl, "Mimi: %d\n", GET_MIMIC(ch));
-  if (GET_SLOTS(ch)        != PFDEF_EYE)        fprintf(fl, "Slot: %d\n", GET_SLOTS(ch));
+  if (GET_SLOTS(ch)        != PFDEF_EYE)        fprintf(fl, "Slot: %ld\n", GET_SLOTS(ch));
   if (GET_TGROWTH(ch)      != PFDEF_EYE)        fprintf(fl, "Tgro: %d\n", GET_TGROWTH(ch));
   if (GET_STUPIDKISS(ch)   != PFDEF_EYE)        fprintf(fl, "Stuk: %d\n", GET_STUPIDKISS(ch));
   if (GET_RDISPLAY(ch)     != PFDEF_EYE)        fprintf(fl, "rDis: %s\n", GET_RDISPLAY(ch));
@@ -1347,7 +1300,7 @@ void load_skills(FILE *fl, struct char_data *ch, bool mods)
     sscanf(line, "%d %d %d", &num, &num2, &num3);
     if (num != 0) {
       if (mods) {
-        SET_SKILL_BONUS(ch, num, num2);
+
       }
       else {
         SET_SKILL(ch, num, num2);
@@ -1389,28 +1342,6 @@ void load_HMVS(struct char_data *ch, const char *line, int mode)
   int64_t num = 0, num2 = 0;
 
   sscanf(line, "%" I64T "/%" I64T "", &num, &num2);
-
-  switch (mode) {
-  case LOAD_HIT:
-    //GET_HIT(ch) = num;
-    ch->max_hit = num2;
-    break;
-
-  case LOAD_MANA:
-    //GET_MANA(ch) = num;
-    ch->max_mana = num2;
-    break;
-
-  case LOAD_MOVE:
-    //GET_MOVE(ch) = num;
-    ch->max_move = num2;
-    break;
-
-  case LOAD_KI:
-    //GET_KI(ch) = num;
-    ch->max_ki = num2;
-    break;
-  }
 }
 
 void load_BASE(struct char_data *ch, const char *line, int mode)
@@ -1421,15 +1352,15 @@ void load_BASE(struct char_data *ch, const char *line, int mode)
 
   switch (mode) {
   case LOAD_HIT:
-    ch->basepl = num;
+    char_stats_set(ch, STAT_POWERLEVEL, num);
     break;
 
   case LOAD_MANA:
-      ch->baseki = num;
+    char_stats_set(ch, STAT_KI, num);
     break;
 
   case LOAD_MOVE:
-      ch->basest = num;
+    char_stats_set(ch, STAT_STAMINA, num);
     break;
   
   case LOAD_LIFE:

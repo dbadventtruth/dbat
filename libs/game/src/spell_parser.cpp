@@ -757,7 +757,7 @@ ACMD(do_cast)
     send_to_char(ch, "Your armor interferes with your casting, and you fail!\r\n");
   } else {
     if (ki > 0)
-      GET_KI(ch) = MAX(0, MIN(GET_MAX_KI(ch), GET_KI(ch) - ki));
+      ;
     if (cast_spell(ch, tch, tobj, spellnum, t) && GET_ADMLEVEL(ch) < ADMLVL_IMMORT) {
       if (IS_SET(SINFO.routines, MAG_ACTION_FULL | MAG_ACTION_PARTIAL))
         SET_BIT_AR(AFF_FLAGS(ch), AFF_NEXTPARTIAL);

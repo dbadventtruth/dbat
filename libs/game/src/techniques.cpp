@@ -127,10 +127,10 @@ bool tech_handle_android_absorb(char_data *ch, char_data *vict) {
         }
         if (GET_CHARGE(vict) + amot > GET_MAX_MANA(vict)) {
             incCurKI(vict, getMaxKI(vict) - GET_CHARGE(vict));
-            GET_CHARGE(vict) = GET_MAX_MANA(vict);
+            char_stats_set(vict, STAT_CHARGE, GET_MAX_MANA(vict));
         }
         else {
-            GET_CHARGE(vict) += amot;
+            char_stats_modify(vict, STAT_CHARGE, amot);
         }
         return true;
     }
@@ -144,7 +144,7 @@ void tech_handle_crashdown(char_data *ch, char_data *vict) {
         act("@w$N@w is knocked out of the air!@n", TRUE, ch, 0, vict, TO_NOTVICT);
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FLYING);
         GET_ALT(vict) = 0;
-        GET_POS(vict) = POS_SITTING;
+        char_stats_set(vict, STAT_POSITION, POS_SITTING);
     }
     else {
         handle_knockdown(vict);

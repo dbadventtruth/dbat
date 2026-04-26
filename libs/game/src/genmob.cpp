@@ -366,7 +366,7 @@ int write_mobile_espec(mob_vnum mvnum, struct char_data *mob, FILE *fd)
   struct affected_type *aff;
   int i;
 
-  if (get_size(mob) != race_get_size(mob->race))
+  if (get_size(mob) != race_get_size(GET_RACE(mob)))
     fprintf(fd, "Size: %d\n", get_size(mob));
   if (GET_ATTACK(mob) != 0)
     fprintf(fd, "BareHandAttack: %d\n", GET_ATTACK(mob));
@@ -459,7 +459,7 @@ int write_mobile_record(mob_vnum mvnum, struct char_data *mob, FILE *fd)
                 GET_HIT(mob), (getCurKI(mob)), (getCurST(mob)), GET_NDD(mob), GET_SDD(mob),
 		GET_DAMAGE_MOD(mob)
   );
-  fprintf(fd, 	"%d 0 %d %d\n"
+  fprintf(fd, 	"%d 0 %ld %ld\n"
 		"%d %d %d\n",
 		GET_GOLD(mob), GET_RACE(mob), GET_CLASS(mob),
 		GET_POS(mob), GET_DEFAULT_POS(mob), GET_SEX(mob)

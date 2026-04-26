@@ -502,10 +502,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict)
 
  if (GET_CHARGE(ch) >= GET_MAX_MANA(ch) * maxki) {
   totki += GET_MAX_MANA(ch) * maxki;
-  GET_CHARGE(ch) -= GET_MAX_MANA(ch) * maxki;
+  char_stats_modify(ch, STAT_CHARGE, -(GET_MAX_MANA(ch) * maxki));
  } else {
   totki += GET_CHARGE(ch);
-  GET_CHARGE(ch) = 0;
+  char_stats_set(ch, STAT_CHARGE, 0);
  }
 
  for (f = ch->followers; f; f = f->next) {
@@ -517,10 +517,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict)
    }
    if (GET_CHARGE(f->follower) >= GET_MAX_MANA(f->follower) * maxki) {
     totki += GET_MAX_MANA(f->follower) * maxki;
-    GET_CHARGE(f->follower) -= GET_MAX_MANA(f->follower) * maxki;
+    char_stats_modify(f->follower, STAT_CHARGE, -(GET_MAX_MANA(f->follower) * maxki));
    } else {
     totki += GET_CHARGE(f->follower);
-    GET_CHARGE(f->follower) = 0;
+    char_stats_set(f->follower, STAT_CHARGE, 0);
    }
    totalmem += 1;
    attavg += GET_SKILL(f->follower, attack_skills[GET_COMBINE(f->follower)]);
@@ -690,7 +690,7 @@ void handle_knockdown(struct char_data *ch)
  } else {
   act("@mYou are knocked off your feet!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@W$n@m is knocked off $s feet!@n", TRUE, ch, 0, 0, TO_ROOM);
-  GET_POS(ch) = POS_SITTING;
+  char_stats_set(ch, STAT_POSITION, POS_SITTING);
  }
 
 }
@@ -1069,14 +1069,14 @@ int64_t advanced_energy(struct char_data *ch, int64_t dmg)
    add = dmg * rate;
    if (GET_CHARGE(ch) + add > GET_MAX_MANA(ch)) {
     if (GET_CHARGE(ch) < GET_MAX_MANA(ch)) {
-     GET_CHARGE(ch) = GET_MAX_MANA(ch);
+     char_stats_set(ch, STAT_CHARGE, GET_MAX_MANA(ch));
      act("@MYou leech some of the energy away!@n", TRUE, ch, 0, 0, TO_CHAR);
      act("@m$n@M leeches some of the energy away!@n", TRUE, ch, 0, 0, TO_ROOM);
     } else {
      send_to_char(ch, "@MYou can't leech because there is too much charged energy for you to handle!@n\r\n");
     }
    } else {
-     GET_CHARGE(ch) += add;
+     char_stats_modify(ch, STAT_CHARGE, add);
      act("@MYou leech some of the energy away!@n", TRUE, ch, 0, 0, TO_CHAR);
      act("@m$n@M leeches some of the energy away!@n", TRUE, ch, 0, 0, TO_ROOM);
    }
@@ -1785,7 +1785,7 @@ void huge_update()
          } else if (count >= 10) {
           loss = 0.25;
          }
-         GET_EXP(vict) -= GET_EXP(vict) * loss;
+         char_stats_modify(vict, STAT_EXPERIENCE, -GET_EXP(vict) * loss);
         }
        }
        act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
@@ -1960,7 +1960,7 @@ void huge_update()
          } else if (count >= 10) {
           loss = 0.25;
          }
-         GET_EXP(vict) -= GET_EXP(vict) * loss;
+         char_stats_modify(vict, STAT_EXPERIENCE, -GET_EXP(vict) * loss);
         }
        }
        act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
@@ -3129,10 +3129,9 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent)
     }
     if (GET_PREFERENCE(ch) == PREFERENCE_WEAPON && GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.05) {
      dam += GET_MAX_MANA(ch) * 0.05;
-     GET_CHARGE(ch) -= GET_MAX_MANA(ch) * 0.05;
+     char_stats_modify(ch, STAT_CHARGE, -(GET_MAX_MANA(ch) * 0.05));
     } else if (GET_PREFERENCE(ch) == PREFERENCE_WEAPON && GET_CHARGE(ch) > 0) {
      dam += GET_CHARGE(ch);
-     GET_CHARGE(ch) -= 0;
     }
     if (group_bonus(ch, 2) == 8) {
      dam += dam * 0.02;
@@ -3961,12 +3960,12 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
     sprintf(barr, "@CYour barrier absorbs the damage! @D[@B%s@D]@n", add_commas(dmg));
     act(barr, TRUE, ch, 0, vict, TO_VICT);
     act("@c$N's@C barrier absorbs the damage!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    GET_BARRIER(vict) -= dmg;
+    char_stats_modify(vict, STAT_BARRIER, -dmg);
     dmg = 0;
    }
    else if (GET_BARRIER(vict) - dmg <= 0) {
     dmg -= GET_BARRIER(vict);
-    GET_BARRIER(vict) = 0;
+    char_stats_set(vict, STAT_BARRIER, 0);
     act("@c$N's@C barrier bursts!@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@CYour barrier bursts!@n", TRUE, ch, 0, vict, TO_VICT);
     act("@c$N's@C barrier bursts!@n", TRUE, ch, 0, vict, TO_NOTVICT);
@@ -4185,7 +4184,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
       cureStatusKnockedOut(vict, true);
       if (IS_NPC(vict) && rand_number(1, 20) >= 12) {
           act("@W$n@W stands up.@n", FALSE, vict, 0, 0, TO_ROOM);
-          GET_POS(vict) = POS_STANDING;
+          char_stats_set(vict, STAT_POSITION, POS_STANDING);
       }
   }
   if (IS_NPC(ch)) {
@@ -4229,9 +4228,9 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    hurt_limb(ch, vict, chance, limb, dmg);
   }
    if (IS_NPC(vict) && dmg > getMaxHealth(vict) * .7 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
-   GET_EXP(vict) /= 2;
+   char_stats_modify(vict, STAT_EXPERIENCE, GET_EXP(vict) / 2);
   } else if (IS_NPC(vict) && dmg > getCurHealth(vict) && isFullHealth(vict) * .5 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
-   GET_EXP(vict) /= 2;
+   char_stats_modify(vict, STAT_EXPERIENCE, GET_EXP(vict) / 2);
   }
  
 
@@ -4249,9 +4248,8 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
      act("@C$n@w stops sparring with you as you fall unconscious.@n", TRUE, ch, 0, vict, TO_VICT);
      act("@c$N@w falls down unconscious, and @C$n@w stops sparring with $M.@n", TRUE, ch, 0, vict, TO_NOTVICT);
      setCurHealth(vict, 1);
-     if (GET_SUPP(vict) > 0) {
-      GET_SUPP(vict) = 0;
-      GET_SUPPRESS(vict) = 0;
+     if (char_stats_get(vict, STAT_SUPPRESS) > 0) {
+      char_stats_set(vict, STAT_SUPPRESS, 0);
      }
      if (FIGHTING(vict)) {
       stop_fighting(vict);
@@ -4259,7 +4257,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
      if (FIGHTING(ch)) {
       stop_fighting(ch);
      }
-     GET_POS(vict) = POS_SLEEPING;
+     char_stats_set(vict, STAT_POSITION, POS_SLEEPING);
      if (!IS_NPC(ch)) {
       SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
      }
@@ -4297,7 +4295,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    if (FIGHTING(ch)) {
     stop_fighting(ch);
    }
-   GET_POS(vict) = POS_SLEEPING;
+   char_stats_set(vict, STAT_POSITION, POS_SLEEPING);
    if (!IS_NPC(ch)) {
     SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
    }
@@ -4310,19 +4308,6 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    act("@w$n@w stops sparring!@n", TRUE, ch, 0, vict, TO_ROOM);
    REMOVE_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
   }
-  if (GET_SUPP(vict) > 0 && GET_SUPPRESS(vict) > 0) {
-    if (GET_SUPP(vict) > dmg) {
-     GET_SUPP(vict) -= dmg;
-     suppresso = TRUE;
-    }
-    else if (GET_SUPP(vict) <= dmg) {
-     send_to_char(vict, "@GYou no longer have any reserve powerlevel suppressed.@n\r\n");
-     dmg -= GET_SUPP(vict);
-     GET_SUPP(vict) = 0;
-     GET_SUPPRESS(vict) = 0;
-    }
-   }
-
 
   if (PLR_FLAGGED(vict, PLR_IMMORTAL) && !is_sparring(ch) && getCurHealth(vict) - dmg <= 0) {
    if (IN_ARENA(vict)) {
@@ -4356,9 +4341,9 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    if (FIGHTING(ch)) {
     stop_fighting(ch);
    }
-   GET_POS(vict) = POS_SITTING;
+   char_stats_set(vict, STAT_POSITION, POS_SITTING);
    char_from_room(vict);
-   char_to_room(vict, real_room(sensei_start_room(vict->chclass)));
+   char_to_room(vict, real_room(sensei_start_room(GET_CLASS(vict))));
    }
    return;
   }
@@ -4434,19 +4419,13 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
       gain_exp(ch, gain);
      }
     }
-    if (AFF_FLAGGED(vict, AFF_ECHAINS)) {
-     if (IS_NPC(ch) && type == 0) {
-      ch->real_abils.cha -= 2;
-      if (ch->real_abils.cha < 5)
-       ch->real_abils.cha = 5;
-      else {
-       act("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_CHAR);
+    if (AFF_FLAGGED(vict, AFF_ECHAINS) && type == 0) {
+      act("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_CHAR);
        act("@CEthereal chains burn into existence! They quickly latch onto @c$n's@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_ROOM);
-      }
-     } else if (type == 0) {
+     if (IS_NPC(ch)) {
+       assign_affect(ch, AFF_ECHAINS, 0, -1, 0, 0, 0, 0, 0, -2);
+     } else {
        WAIT_STATE(ch, PULSE_3SEC);
-       act("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_CHAR);
-       act("@CEthereal chains burn into existence! They quickly latch onto @c$n's@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_ROOM);
      }
     }
    } else if (dmg <= 1) {

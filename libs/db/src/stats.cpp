@@ -3,9 +3,9 @@
 
 // ORDER: name, flags, default, min, max
 const struct stat_definition stat_definitions[NUM_CHARACTER_STATS] = {
-    {"race", 0, 0, 0, 0},
+    {"race", STATDEF_MIN | STATDEF_MAX, 0, 0, 23},
     {"racial_pref", 0, 0, 0, 0},
-    {"sensei", 0, 0, 0, 0},
+    {"sensei", STATDEF_MIN | STATDEF_MAX, 0, 0, 30},
     {"size", STATDEF_MIN | STATDEF_MAX, SIZE_MEDIUM, SIZE_TINY, SIZE_GARGANTUAN},
     {"level", STATDEF_MIN | STATDEF_MAX, 1, 1, 110},
     {"height", 0, 0, 0, 0},
@@ -64,5 +64,7 @@ const struct stat_definition stat_definitions[NUM_CHARACTER_STATS] = {
 
     {"death_count", STATDEF_MIN, 0, 0, 0},
     {"kill_count", STATDEF_MIN, 0, 0, 0},
-    {"player_kill_count", STATDEF_MIN, 0, 0, 0}
+    {"player_kill_count", STATDEF_MIN, 0, 0, 0},
+
+    {"experience", STATDEF_MIN, 0, 0, 0},
 };

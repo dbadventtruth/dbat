@@ -828,10 +828,7 @@ ACMD(do_psyblast)
    }
  
      if (GET_CHARGE(vict) > 0 && rand_number(1, 3) == 2) {
-      GET_CHARGE(vict) -= dmg / 5;
-      if (GET_CHARGE(vict) < 0) {
-       GET_CHARGE(vict) = 0;
-      }
+      char_stats_modify(vict, STAT_CHARGE, -dmg / 5);
       send_to_char(vict, "@RYou lose some of your charged ki!@n\r\n");
      }
 
@@ -1821,7 +1818,7 @@ ACMD(do_geno)
   obj = read_object(83, VIRTUAL);
   obj_to_room(obj, IN_ROOM(vict));
 
-  GET_CHARGE(ch) += GET_MAX_HIT(ch) / 10;
+  char_stats_modify(ch, STAT_CHARGE, GET_MAX_HIT(ch) / 10);
   TARGET(obj) = vict;
   KICHARGE(obj) = damtype(ch, 41, prob, attperc);
   KITYPE(obj) = SKILL_GENOCIDE;
@@ -1911,7 +1908,7 @@ ACMD(do_genki)
     continue;
    }
    if (AFF_FLAGGED(friend_char, AFF_GROUP) && (friend_char->master == ch || ch->master == friend_char || friend_char->master == ch->master)) {
-    GET_CHARGE(ch) += (getCurKI(ch)) / 10;
+    char_stats_modify(ch, STAT_CHARGE, (getCurKI(ch)) / 10);
     decCurKI(ch, getCurKI(ch) / 20);
    }
   }
@@ -3881,10 +3878,10 @@ ACMD(do_hellflash)
   }
   else {
    dmg = damtype(ch, 32, skill, attperc);
-   if (GET_BARRIER(vict) > 0) {
-    GET_BARRIER(vict) -= dmg;
-    if (GET_BARRIER(vict) <= 0) {
-     GET_BARRIER(vict) = 1;
+   if (char_stats_get(vict, STAT_BARRIER) > 0) {
+    char_stats_modify(vict, STAT_BARRIER, -dmg);
+    if (char_stats_get(vict, STAT_BARRIER) <= 0) {
+     char_stats_set(vict, STAT_BARRIER, 1);
     }
    }
    int hitspot = 1;
@@ -8491,7 +8488,7 @@ ACMD(do_attack)
     send_to_char(ch, "You do not have enough zenni. You need %d zenni per shot for that level of gun.\r\n", guncost);
     return;
    } else {
-    GET_GOLD(ch) -= guncost;
+    char_stats_modify(ch, STAT_MONEY, -guncost);
    }
  } else if (wielded == 2 && gun == TRUE) {
    if (wlvl == 5) {
@@ -8507,7 +8504,7 @@ ACMD(do_attack)
     send_to_char(ch, "You do not have enough zenni. You need %d zenni per shot for that level of gun.\r\n", guncost);
     return;
    } else {
-    GET_GOLD(ch) -= guncost;
+    char_stats_modify(ch, STAT_MONEY, -guncost);
    }
  }
 
@@ -9305,7 +9302,7 @@ ACMD(do_shogekiha)
     act("@CYour skillful shogekiha disipated some of @c$N's@C charged ki!@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@C$n@C's skillful shogekiha disipated some of YOUR charged ki!@n", TRUE, ch, 0, vict, TO_VICT);
     act("@C$n@C's skillful shogekiha disipated some of @c$N's@C charged ki!", TRUE, ch, 0, vict, TO_NOTVICT);
-    GET_CHARGE(vict) -= GET_CHARGE(vict) * 0.25;
+    char_stats_modify(vict, STAT_CHARGE, -char_stats_get(vict, STAT_CHARGE) * 0.25);
    }
      pcost(ch, attperc, 0);
      
@@ -9330,7 +9327,7 @@ ACMD(do_shogekiha)
     act("@WYou leap at $p@W with your arms spread out to your sides. As you are about to make contact with $p@W you scream and weaken the attack with your ki before taking the rest of the attack in the chest!@n", TRUE, ch, obj, 0, TO_CHAR);
     act("@C$n@W leaps out at $p@W with $s arms spead out to $s sides. As $e is about to make contact with $p@W $e screams and weakens the attack with $s ki before taking the rest of the attack in the chest!@n", TRUE, ch, obj, 0, TO_ROOM);
     KICHARGE(obj) -= GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_stats_set(ch, STAT_CHARGE, 0);
     dmg = KICHARGE(obj);
     hurt(0, 0, USER(obj), ch, NULL, dmg, 0);
     extract_obj(obj);
@@ -9749,7 +9746,7 @@ ACMD(do_attack2)
    send_to_char(ch, "You do not have enough zenni. You need 1 zenni per shot.\r\n");
    return;
   } else {
-   GET_GOLD(ch) -= 1;
+   char_stats_modify(ch, STAT_MONEY, -1);
   }
  }
 
@@ -11471,7 +11468,7 @@ ACMD(do_slam)
         setStatusKnockedOut(vict);
        }
        else if ((GET_POS(vict) == POS_STANDING || GET_POS(vict) == POS_FIGHTING) && !AFF_FLAGGED(vict, AFF_KNOCKED)) {
-        GET_POS(vict) = POS_SITTING;
+        char_stats_set(vict, STAT_POSITION, POS_SITTING);
        }
        if (ROOM_DAMAGE(IN_ROOM(vict)) <= 95 && !ROOM_FLAGGED(IN_ROOM(vict), ROOM_SPACE)) {
          act("@W$N@W slams into the ground forming a large crater with $S body!@n", TRUE, ch, 0, vict, TO_CHAR);
@@ -13257,7 +13254,7 @@ ACMD(do_charge)
      break;
    }
    incCurKI(ch, GET_CHARGE(ch));
-   GET_CHARGE(ch) = 0;
+   char_stats_set(ch, STAT_CHARGE, 0);
    GET_CHARGETO(ch) = 0;
    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
    return;
@@ -13279,7 +13276,7 @@ ACMD(do_charge)
      break;
    }
    incCurKI(ch, GET_CHARGE(ch));
-   GET_CHARGE(ch) = 0;
+   char_stats_set(ch, STAT_CHARGE, 0);
    GET_CHARGETO(ch) = 0;
    return;
   }
@@ -13342,7 +13339,7 @@ ACMD(do_charge)
       char bloom[MAX_INPUT_LENGTH];
       sprintf(bloom, "@wA %s aura flashes up brightly around $n@w!@n", aura_types[GET_AURA(ch)]);
       act(bloom, TRUE, ch, 0, 0, TO_ROOM);
-      GET_CHARGE(ch) = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - diff;
+      char_stats_set(ch, STAT_CHARGE, (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - diff);
       decCurKI(ch, (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - diff + spiritcost);
      }     
     } else {
@@ -13352,7 +13349,7 @@ ACMD(do_charge)
      sprintf(bloom, "@wA %s aura flashes up brightly around $n@w!@n", aura_types[GET_AURA(ch)]);
      act(bloom, TRUE, ch, 0, 0, TO_ROOM);
      GET_CHARGETO(ch) = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1);
-     GET_CHARGE(ch) += 1;    
+     char_stats_modify(ch, STAT_CHARGE, 1);
      SET_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
     }
   }

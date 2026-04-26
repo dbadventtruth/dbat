@@ -106,11 +106,11 @@ static void barrier_shed(struct char_data *ch)
     recharge = loss * 0.5;
   }
 
-  GET_BARRIER(ch) -= loss;
+  char_stats_modify(ch, STAT_BARRIER, -loss);
 
   if (GET_BARRIER(ch) <= 0)
   {
-    GET_BARRIER(ch) = 0;
+    char_stats_set(ch, STAT_BARRIER, 0);
     act("@cYour barrier disappears.@n", TRUE, ch, 0, 0, TO_CHAR);
     act("@c$n@c's barrier disappears.@n", TRUE, ch, 0, 0, TO_ROOM);
   }
@@ -151,10 +151,8 @@ static void healthy_check(struct char_data *ch)
   }
   if (AFF_FLAGGED(ch, AFF_WITHER) && roll >= chance)
   {
-    ch->real_abils.str += 3;
-    ch->real_abils.cha += 3;
+    remove_affect(ch, AFF_WITHER);
     save_char(ch);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_WITHER);
     change = TRUE;
   }
   if (AFF_FLAGGED(ch, AFF_CURSE) && roll >= chance)
@@ -184,16 +182,14 @@ static void healthy_check(struct char_data *ch)
   }
   if (AFF_FLAGGED(ch, AFF_HYDROZAP) && roll >= chance)
   {
-    ch->real_abils.dex += 4;
-    ch->real_abils.con += 4;
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_HYDROZAP);
+    remove_affect(ch, AFF_HYDROZAP);
     save_char(ch);
     change = TRUE;
   }
   if (AFF_FLAGGED(ch, AFF_KNOCKED) && roll >= chance)
   {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    GET_POS(ch) = POS_SITTING;
+    char_stats_set(ch, STAT_POSITION, POS_SITTING);
     change = TRUE;
   }
   if (change == TRUE)
@@ -408,19 +404,15 @@ static int64_t mana_gain(struct char_data *ch)
   {
     gain *= 20;
   }
-  if (PLR_FLAGGED(ch, PLR_POSE) && axion_dice(0) > GET_SKILL(ch, SKILL_POSE))
+  if (is_affected(ch, AFF_SPECIAL_POSE) && axion_dice(0) > GET_SKILL(ch, SKILL_POSE))
   {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_POSE);
+    remove_affect(ch, AFF_SPECIAL_POSE);
     send_to_char(ch, "You feel slightly less confident now.\r\n");
-    ch->real_abils.str -= 8;
-    ch->real_abils.dex -= 8;
     save_char(ch);
   }
   if (AFF_FLAGGED(ch, AFF_HYDROZAP) && rand_number(1, 4) >= 4)
   {
-    ch->real_abils.dex += 4;
-    ch->real_abils.con += 4;
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_HYDROZAP);
+    remove_affect(ch, AFF_HYDROZAP);
     save_char(ch);
   }
 
@@ -869,7 +861,7 @@ static void update_flags(struct char_data *ch)
     {
       send_to_char(ch, "You FINALLY wake up.\r\n");
       act("$n wakes up.", TRUE, ch, 0, 0, TO_ROOM);
-      GET_POS(ch) = POS_SITTING;
+      char_stats_set(ch, STAT_POSITION, POS_SITTING);
     }
   }
 
@@ -942,23 +934,23 @@ static void update_flags(struct char_data *ch)
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 2) == 2)
     {
-      ch->real_abils.intel -= 1;
-      ch->real_abils.wis -= 1;
+      char_stats_modify(ch, STAT_INTELLIGENCE, -1);
+      char_stats_modify(ch, STAT_WISDOM, -1);
       send_to_char(ch, "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (ch->real_abils.wis < 4)
-        ch->real_abils.wis = 4;
-      if (ch->real_abils.intel < 4)
-        ch->real_abils.intel = 4;
+      if (char_stats_get(ch, STAT_WISDOM) < 4)
+        char_stats_set(ch, STAT_WISDOM, 4);
+      if (char_stats_get(ch, STAT_INTELLIGENCE) < 4)
+        char_stats_set(ch, STAT_INTELLIGENCE, 4);
     }
     else if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 20) == 1)
     {
-      ch->real_abils.intel -= 1;
-      ch->real_abils.wis -= 1;
+      char_stats_modify(ch, STAT_INTELLIGENCE, -1);
+      char_stats_modify(ch, STAT_WISDOM, -1);
       send_to_char(ch, "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (ch->real_abils.wis < 4)
-        ch->real_abils.wis = 4;
-      if (ch->real_abils.intel < 4)
-        ch->real_abils.intel = 4;
+      if (char_stats_get(ch, STAT_WISDOM) < 4)
+        char_stats_set(ch, STAT_WISDOM, 4);
+      if (char_stats_get(ch, STAT_INTELLIGENCE) < 4)
+        char_stats_set(ch, STAT_INTELLIGENCE, 4);
     }
   }
   if (AFF_FLAGGED(ch, AFF_SHOCKED) && rand_number(1, 4) == 4)
@@ -990,10 +982,8 @@ static void update_flags(struct char_data *ch)
   {
     send_to_char(ch, "@wYour body returns to normal and you beat the withering that plagued you.\r\n");
     act("$n@W's looks more fit now.", TRUE, ch, 0, 0, TO_ROOM);
-    ch->real_abils.str += 3;
-    ch->real_abils.cha += 3;
+    remove_affect(ch, AFF_WITHER);
     save_char(ch);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_WITHER);
   }
   if (wearing_stardust(ch) == 1)
   {
@@ -1014,7 +1004,7 @@ static int ki_gain(struct char_data *ch)
   }
   else
   {
-    gain = GET_MAX_KI(ch) / 12;
+    gain = getMaxKI(ch) / 12;
 
     /* Class calculations */
 
@@ -1080,7 +1070,7 @@ void gain_level(struct char_data *ch, int whichclass)
     mudlog(BRF, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s advanced level to level %d.",
            GET_NAME(ch), GET_LEVEL(ch));
     send_to_char(ch, "You rise a level!\r\n");
-    GET_EXP(ch) -= level_exp(ch, GET_LEVEL(ch));
+    char_stats_modify(ch, STAT_EXPERIENCE, -level_exp(ch, GET_LEVEL(ch)));
     /*set_title(ch, NULL);*/
     write_aliases(ch);
     save_char(ch);
@@ -1146,7 +1136,7 @@ void gain_exp(struct char_data *ch, int64_t gain)
 
   if (IS_NPC(ch))
   {
-    GET_EXP(ch) += gain;
+    char_stats_modify(ch, STAT_EXPERIENCE, gain);
     return;
   }
 
@@ -1194,7 +1184,7 @@ void gain_exp(struct char_data *ch, int64_t gain)
       }
       else
       {
-        GET_EXP(ch) += gain;
+        char_stats_modify(ch, STAT_EXPERIENCE, gain);
       }
     }
     if (GET_LEVEL(ch) < 100 && GET_EXP(ch) >= level_exp(ch, GET_LEVEL(ch) + 1))
@@ -1262,9 +1252,7 @@ void gain_exp(struct char_data *ch, int64_t gain)
   else if (gain < 0)
   {
     gain = MAX(-CONFIG_MAX_EXP_LOSS, gain); /* Cap max exp lost per death */
-    GET_EXP(ch) += gain;
-    if (GET_EXP(ch) < 0)
-      GET_EXP(ch) = 0;
+    char_stats_modify(ch, STAT_EXPERIENCE, gain);
   }
 }
 
@@ -1275,9 +1263,7 @@ void gain_exp_regardless(struct char_data *ch, int gain)
 
   gain = (gain * CONFIG_EXP_MULTIPLIER);
 
-  GET_EXP(ch) += gain;
-  if (GET_EXP(ch) < 0)
-    GET_EXP(ch) = 0;
+  char_stats_modify(ch, STAT_EXPERIENCE, gain);
 
   if (!IS_NPC(ch))
   {
@@ -1519,7 +1505,7 @@ static void check_idling(struct char_data *ch)
         if (GET_LEVEL(ch) == 1)
         {
           GET_LOADROOM(ch) = GET_ROOM_VNUM(real_room(100));
-          GET_EXP(ch) = 0;
+          char_stats_set(ch, STAT_EXPERIENCE, 0);
         }
         else
         {
@@ -1733,26 +1719,10 @@ static void heal_limb(struct char_data *ch)
     {
       if (axion_dice(-10) > GET_CON(ch))
       {
-        ch->real_abils.str -= 1;
-        ch->real_abils.dex -= 1;
-        ch->real_abils.cha -= 1;
+        char_stats_modify(ch, STAT_STRENGTH, -1);
+        char_stats_modify(ch, STAT_AGILITY, -1);
+        char_stats_modify(ch, STAT_SPEED, -1);
         send_to_char(ch, "@RYou lose 1 Strength, Agility, and Speed!\r\n");
-        if (ch->real_abils.str < 4)
-        {
-          ch->real_abils.str = 4;
-        }
-        if (ch->real_abils.con < 4)
-        {
-          ch->real_abils.con = 4;
-        }
-        if (ch->real_abils.dex < 4)
-        {
-          ch->real_abils.dex = 4;
-        }
-        if (ch->real_abils.cha < 4)
-        {
-          ch->real_abils.cha = 4;
-        }
         save_char(ch);
       }
     }
@@ -2099,7 +2069,7 @@ static void point_update_characters(void)
     }
     if ((getCurKI(i)) >= GET_MAX_MANA(i) * 0.5 && GET_CHARGE(i) < GET_MAX_MANA(i) * 0.1 && GET_PREFERENCE(i) == PREFERENCE_KI && !PLR_FLAGGED(i, PLR_AURALIGHT))
     {
-      GET_CHARGE(i) = GET_MAX_MANA(i) * 0.1;
+      char_stats_set(i, STAT_CHARGE, GET_MAX_MANA(i) * 0.1);
     }
     if (!IS_NPC(i))
     {
@@ -2314,13 +2284,13 @@ static void point_update_objects(void)
           {
             GET_OBJ_WEIGHT(j) -= melt;
             send_to_char(j->carried_by, "%s @wmelts a little.\r\n", j->short_description);
-            IS_CARRYING_W(j->carried_by) -= melt;
+            char_der_invalidate(j->carried_by);
           }
           else
           {
             send_to_char(j->carried_by, "%s @wmelts completely away.\r\n", j->short_description);
             int remainder = melt - GET_OBJ_WEIGHT(j);
-            IS_CARRYING_W(j->carried_by) -= (melt - remainder);
+            char_der_invalidate(j->carried_by);
             extract_obj(j);
             continue;
           }
@@ -2331,10 +2301,12 @@ static void point_update_objects(void)
           {
             GET_OBJ_WEIGHT(j) -= 5 + (GET_OBJ_WEIGHT(j) * 0.02);
             send_to_room(IN_ROOM(j), "%s @wmelts a little.\r\n", j->short_description);
+            char_der_invalidate(j->carried_by);
           }
           else
           {
             send_to_room(IN_ROOM(j), "%s @wmelts completely away.\r\n", j->short_description);
+            char_der_invalidate(j->carried_by);
             extract_obj(j);
             continue;
           }

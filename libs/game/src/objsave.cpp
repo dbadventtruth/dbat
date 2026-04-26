@@ -918,7 +918,7 @@ static void Crash_cryosave(struct char_data *ch, int cost)
   Crash_extract_norent_eq(ch);
   Crash_extract_norents(ch->carrying);
 
-  GET_GOLD(ch) = MAX(0, GET_GOLD(ch) - cost);
+  char_stats_set(ch, STAT_MONEY, MAX(0, GET_GOLD(ch) - cost));
 
   fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_CRYO, (int)time(0), 0, GET_GOLD(ch),
           GET_BANK_GOLD(ch), 0);

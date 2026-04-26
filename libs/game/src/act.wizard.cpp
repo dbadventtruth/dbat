@@ -2652,9 +2652,9 @@ ACMD(do_advance)
   else if ((newlevel = atoi(level)) <= 0) {
    if (!strcasecmp("demote", level)) {
    victim->level = 1;
-   victim->basepl = 150;
-   victim->baseki = 150;
-   victim->basest = 150;
+   char_stats_set(victim, STAT_POWERLEVEL, 150);
+   char_stats_set(victim, STAT_KI, 150);
+   char_stats_set(victim, STAT_STAMINA, 150);
    send_to_char(ch, "They have now been demoted!\r\n");
    send_to_char(victim, "You were demoted to level 1!\r\n");
    return;
@@ -3935,17 +3935,17 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     send_to_char(ch, "Nosummon %s for %s.\r\n", ONOFF(!on), GET_NAME(vict));
     break;
   case 4:
-    vict->max_hit = value;
+    //vict->max_hit = value;
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set maxpl for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set maxpl for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
   case 5:
-    vict->max_mana = value;
+    //vict->max_mana = value;
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set maxki for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set maxki for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
   case 6:
-    vict->max_move = value;
+    //vict->max_move = value;
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set maxsta for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set maxsta for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
@@ -3956,7 +3956,6 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
   case 8:
     vict->mana = value;
-    affect_total(vict);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set ki for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set ki for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
@@ -3966,78 +3965,65 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     log_imm_action("SET: %s has set st for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
   case 10:
-    GET_ALIGNMENT(vict) = RANGE(-1000, 1000);
+    char_stats_set(vict, STAT_ALIGNMENT, RANGE(-1000, 1000));
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set align for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set align for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 11:
     RANGE(0, 100);
-    vict->real_abils.str = value;
+    char_stats_set(vict, STAT_STRENGTH, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set str for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set str for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 12:
     send_to_char(ch, "Setting str_add does nothing now.\r\n");
-    /* vict->real_abils.str_add = RANGE(0, 100);
-    if (value > 0)
-      vict->real_abils.str = 18;
-    affect_total(vict);
-       break; */
   case 13:
     RANGE(0, 100);
-    vict->real_abils.intel = value;
+    char_stats_set(vict, STAT_INTELLIGENCE, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set intel for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set intel for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 14:
     RANGE(0, 100);
-    vict->real_abils.wis = value;
+    char_stats_set(vict, STAT_WISDOM, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set wis for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set wis for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 15:
     RANGE(0, 100);
-    vict->real_abils.dex = value;
-    mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set dex for %s.", GET_NAME(ch), GET_NAME(vict));
-    log_imm_action("SET: %s has set dex for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_stats_set(vict, STAT_AGILITY, value);
+    mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set agi for %s.", GET_NAME(ch), GET_NAME(vict));
+    log_imm_action("SET: %s has set agi for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
   case 16:
     RANGE(0, 100);
-    vict->real_abils.con = value;
+    char_stats_set(vict, STAT_CONSTITUTION, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set con for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set con for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 17:
     RANGE(0, 100);
-    vict->real_abils.cha = value;
+    char_stats_set(vict, STAT_SPEED, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set speed for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set speed for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 18:
     vict->armor = RANGE(-100, 500);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set armor index for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set armor index for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
     break;
   case 19:
-    GET_GOLD(vict) = RANGE(0, 100000000);
+    char_stats_set(vict, STAT_MONEY, RANGE(0, 100000000));
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set zenni for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set zenni for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
   case 20:
-    GET_BANK_GOLD(vict) = RANGE(0, 100000000);
+    char_stats_set(vict, STAT_MONEY_BANK, RANGE(0, 100000000));
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set bank for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set bank for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
   case 21:
-    vict->exp = RANGE(0, 50000000);
+    char_stats_set(vict, STAT_EXPERIENCE, RANGE(0, 50000000));
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set exp for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set exp for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
@@ -4046,7 +4032,6 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
   case 23:
     vict->damage_mod = RANGE(-20, 20);
-    affect_total(vict);
     break;
   case 24:
     if (GET_ADMLEVEL(ch) < ADMLVL_IMPL && ch != vict) {
@@ -4136,7 +4121,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       return (0);
     }
     value = GET_CLASS_RANKS(vict, GET_CLASS(vict));
-    vict->chclass = chosen_sensei->getID();
+    char_stats_set(vict, STAT_SENSEI, chosen_sensei->getID());
     break;
   case 40:
     SET_OR_REMOVE(PLR_FLAGS(vict), PLR_NOWIZLIST);
@@ -4189,7 +4174,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       send_to_char(ch, "Must be 'male', 'female', or 'neutral'.\r\n");
       return (0);
     }
-    GET_SEX(vict) = i;
+    char_stats_set(vict, STAT_SEX, i);
     break;
   case 48:	/* set age */
     if (value < 2 || value > 20000) {	/* Arbitrary limits. */
@@ -4205,13 +4190,11 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
 
   case 49:	/* Blame/Thank Rick Glover. :) */
-    GET_HEIGHT(vict) = value;
-    affect_total(vict);
+    char_stats_set(vict, STAT_HEIGHT, value);
     break;
 
   case 50:
-    GET_WEIGHT(vict) = value;
-    affect_total(vict);
+    char_stats_set(vict, STAT_WEIGHT, value);
     break;
 
   case 51:
@@ -4238,7 +4221,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
           send_to_char(ch, "That is not a valid race for them.\r\n");
           return (0);
       }
-      vict->race = chosen_race->getID();
+    char_stats_set(vict, STAT_RACE, chosen_race->getID());
     racial_body_parts(vict);
     break;
 
@@ -4252,17 +4235,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
 
   case 55:
     GET_ETHIC_ALIGNMENT(vict) = RANGE(-1000, 1000);
-    affect_total(vict);
     break;
 
   case 56:
-    vict->max_ki = RANGE(1, 5000);
-    affect_total(vict);
     break;
 
   case 57:
-    vict->ki = RANGE(0, vict->max_ki);
-    affect_total(vict);
     break;
 
   case 58:
@@ -4284,7 +4262,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       send_to_char(ch, "You can't set it to that.\r\n");
     return (0);
    }
-    GET_HAIRL(vict) = value;
+    char_stats_set(vict, STAT_HAIR_LENGTH, value);
     return (1);
    break; 
 
@@ -4293,7 +4271,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       send_to_char(ch, "You can't set it to that.\r\n");
     return (0);
    }
-    GET_HAIRS(vict) = value;
+    char_stats_set(vict, STAT_HAIR_STYLE, value);
     return (1);
    break;
 
@@ -4302,7 +4280,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       send_to_char(ch, "You can't set it to that.\r\n");
     return (0);
    }
-    GET_HAIRC(vict) = value;
+    char_stats_set(vict, STAT_HAIR_COLOR, value);
     return (1);
    break;
 
@@ -4311,7 +4289,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       send_to_char(ch, "You can't set it to that.\r\n");
     return (0);
    }
-    GET_SKIN(vict) = value;
+    char_stats_set(vict, STAT_SKIN_COLOR, value);
     return (1);
    break;
 
@@ -4320,24 +4298,24 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
       send_to_char(ch, "You can't set it to that.\r\n");
     return (0);
    }
-    GET_EYE(vict) = value;
+    char_stats_set(vict, STAT_EYE_COLOR, value);
     return (1);
    break;
 
   case 64:
-    vict->basepl = value;
+    char_stats_set(vict, STAT_POWERLEVEL, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set basepl for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set basepl for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
 
   case 65:
-      vict->baseki = value;
+      char_stats_set(vict, STAT_KI, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set baseki for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set baseki for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
 
   case 66:
-      vict->basest = value;
+      char_stats_set(vict, STAT_STAMINA, value);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set basest for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set basest for %s.", GET_NAME(ch), GET_NAME(vict));
     break;
@@ -4353,13 +4331,13 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
    break;
 
   case 69:
-   GET_UP(vict) += RANGE(1, 1000);
+   char_stats_set(vict, STAT_UPGRADES, RANGE(1, 1000));
    mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set upgrade points for %s.", GET_NAME(ch), GET_NAME(vict));
    log_imm_action("SET: %s has set upgrade points for %s.", GET_NAME(ch), GET_NAME(vict));
    break;
 
   case 70:
-   GET_AURA(vict) = RANGE(0, 8);
+   char_stats_set(vict, STAT_AURA_COLOR, RANGE(0, 8));
    mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set aura for %s.", GET_NAME(ch), GET_NAME(vict));
    log_imm_action("SET: %s has set aura for %s.", GET_NAME(ch), GET_NAME(vict));
    break;
@@ -4388,11 +4366,11 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
    }
    break;
   case 77:
-   RACIAL_PREF(vict) = RANGE(1, 3);
+   char_stats_set(vict, STAT_RACE_SUBTYPE, RANGE(1, 3));
    break;
   
   case 78:
-   GET_SLOTS(vict) = RANGE(1, 1000);
+   char_stats_set(vict, STAT_SKILL_SLOTS, RANGE(1, 1000));
    mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "SET: %s has set skill slots for %s.", GET_NAME(ch), GET_NAME(vict));
    log_imm_action("SET: %s has set skill slots for %s.", GET_NAME(ch), GET_NAME(vict));
    break;
@@ -4630,10 +4608,10 @@ ACMD(do_peace)
       if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch)) 
         continue;
       stop_fighting(vict);  
-      GET_POS(vict) = POS_SITTING; 
+      char_stats_set(vict, STAT_POSITION, POS_SITTING); 
     }
     stop_fighting(ch);
-    GET_POS(ch) = POS_STANDING;  
+    char_stats_set(ch, STAT_POSITION, POS_STANDING);  
 }
 
 ACMD(do_wizupdate)

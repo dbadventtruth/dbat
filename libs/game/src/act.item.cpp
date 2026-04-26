@@ -1178,11 +1178,11 @@ void check_auction(void)
 			 send_to_char(ch_buying, "You couldn't hold all the zenni, so some of it was deposited for you.\r\n");
 			 int diff = 0;
 			 diff = (GET_GOLD(ch_selling) + curbid) - GOLD_CARRY(ch_selling);
-			 GET_GOLD(ch_selling) = GOLD_CARRY(ch_selling);
-			 GET_BANK_GOLD(ch_selling) += diff;
+			 char_stats_set(ch_selling, STAT_MONEY, GOLD_CARRY(ch_selling));
+			 char_stats_modify(ch_selling, STAT_MONEY_BANK, diff);
                         }
 			else if (GET_GOLD(ch_selling) + curbid <= GOLD_CARRY(ch_selling)) {
-			 GET_GOLD(ch_selling) += curbid;
+			 char_stats_modify(ch_selling, STAT_MONEY, curbid);
 			}
 			/* Reset auctioning values */
 			obj_selling = NULL;
@@ -1993,7 +1993,7 @@ void stop_auction(int type, struct char_data * ch)
 	
 	
 	if (!(ch_buying == NULL))
-		GET_GOLD(ch_buying) += curbid;
+		char_stats_modify(ch_buying, STAT_MONEY, curbid);
 		
 	obj_selling = NULL;
 	ch_selling	= NULL;
@@ -2027,7 +2027,7 @@ static void auc_stat(struct char_data *ch, struct obj_data *obj)
 		/* auctioneer tells the character the auction details */
 		sprintf(buf, auctioneer[AUC_STAT], curbid);
 		act(buf, TRUE, ch_selling, obj, ch, TO_VICT | TO_SLEEP);
-		GET_GOLD(ch) -= 500;	
+		char_stats_modify(ch, STAT_MONEY, -500);
 
 		/*call_magic(ch, NULL, obj_selling, SPELL_IDENTIFY, 30, CAST_SPELL);*/
 	}
@@ -2481,12 +2481,12 @@ static void get_check_money(struct char_data *ch, struct obj_data *obj)
     diff = (GET_GOLD(ch) + value) - GOLD_CARRY(ch);
     obj = create_money(diff);
     obj_to_room(obj, IN_ROOM(ch));
-    GET_GOLD(ch) = GOLD_CARRY(ch);
+    char_stats_set(ch, STAT_MONEY, GOLD_CARRY(ch));
     return;
   }
 
 
-  GET_GOLD(ch) += value;
+  char_stats_modify(ch, STAT_MONEY, value);
     extract_obj(obj);
 
   if (value == 1) {
@@ -2830,7 +2830,7 @@ static void perform_drop_gold(struct char_data *ch, int amount,
 
       send_to_char(ch, "You drop some zenni which disappears in a puff of smoke!\r\n");
     }
-    GET_GOLD(ch) -= amount;
+    char_stats_modify(ch, STAT_MONEY, -amount);
   }
 }
 
@@ -3214,8 +3214,8 @@ static void perform_give_gold(struct char_data *ch, struct char_data *vict,
   act(buf, TRUE, ch, 0, vict, TO_NOTVICT);
 
   if (IS_NPC(ch) || !ADM_FLAGGED(ch, ADM_MONEY))
-    GET_GOLD(ch) -= amount;
-  GET_GOLD(vict) += amount;
+    char_stats_modify(ch, STAT_MONEY, -amount);
+  char_stats_modify(vict, STAT_MONEY, amount);
 
   bribe_mtrigger(vict, ch, amount);
 }
@@ -3755,7 +3755,7 @@ ACMD(do_eat)
       send_to_char(ch, "That was exceptionally delicious! @D[@mPS@D: @C+%d@D] [@gEXP@D: @G+%s@D]@n\r\n", psbonus, add_commas(expbonus));
       if (!GET_OBJ_VAL(food, VAL_FOOD_POISON) && GET_HIT(ch) < (getEffMaxPL(ch)) && subcmd != SCMD_TASTE)
       {
-        if (GET_WEIGHT(food) < 6)
+        if (food->weight < 6)
         {
           incCurHealthPercent(ch, .05);
         }
@@ -4555,30 +4555,30 @@ ACMD(do_sac)
   switch (rand_number(0, 5)) { 
     case 0: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nYou receive one zenni for your humility.\r\n", GET_OBJ_SHORT(j));
-      GET_GOLD(ch) += 1; 
+      char_stats_modify(ch, STAT_MONEY, 1); 
     break; 
     case 1: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nThe Gods ignore your sacrifice.\r\n", GET_OBJ_SHORT(j));
     break; 
     case 2: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nZizazat gives you %d experience points.\r\n", GET_OBJ_SHORT(j), (2*GET_OBJ_COST(j)));
-      GET_EXP(ch) += (2*GET_OBJ_COST(j)); 
+      char_stats_modify(ch, STAT_EXPERIENCE, (2*GET_OBJ_COST(j))); 
     break; 
     case 3: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nYou receive %d experience points.\r\n", GET_OBJ_SHORT(j), GET_OBJ_COST(j));
-      GET_EXP(ch) += GET_OBJ_COST(j); 
+      char_stats_modify(ch, STAT_EXPERIENCE, GET_OBJ_COST(j)); 
     break; 
     case 4: 
       send_to_char(ch, "Your sacrifice to the Gods is rewarded with %d zenni.\r\n", GET_OBJ_COST(j)); 
-      GET_GOLD(ch) += GET_OBJ_COST(j); 
+      char_stats_modify(ch, STAT_MONEY, GET_OBJ_COST(j)); 
     break; 
     case 5: 
       send_to_char(ch, "Your sacrifice to the Gods is rewarded with %d zenni\r\n", (2*GET_OBJ_COST(j))); 
-      GET_GOLD(ch) += (2*GET_OBJ_COST(j)); 
+      char_stats_modify(ch, STAT_MONEY, (2*GET_OBJ_COST(j))); 
     break; 
   default: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nYou receive one zenni for your humility.\r\n", GET_OBJ_SHORT(j));
-      GET_GOLD(ch) += 1; 
+      char_stats_modify(ch, STAT_MONEY, 1); 
     break; 
   } 
   } else {

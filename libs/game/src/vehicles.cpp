@@ -710,7 +710,7 @@ ACMD(do_drive)
       else if (PLR_FLAGGED(ch, PLR_PILOTING)) {
        act("@w$n stands up and stops piloting the ship.", TRUE, ch, 0, 0, TO_ROOM);
        send_to_char(ch, "@wYou stand up from the pilot's seat.\r\n");
-       GET_POS(ch) = POS_STANDING;
+       char_stats_set(ch, STAT_POSITION, POS_STANDING);
        REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_PILOTING);
        return;
      }
@@ -753,7 +753,7 @@ ACMD(do_drive)
   if (confirmed == TRUE) {
       SET_BIT_AR(PLR_FLAGS(ch), PLR_PILOTING);
       act("@w$n sits down and begins piloting the ship.", TRUE, ch, 0, 0, TO_ROOM);
-      GET_POS(ch) = POS_SITTING;
+      char_stats_set(ch, STAT_POSITION, POS_SITTING);
       send_to_char(ch, "@wYou take a seat in the pilot's chair.\r\n");
       return;
   } else if (!PLR_FLAGGED(ch, PLR_PILOTING)) {

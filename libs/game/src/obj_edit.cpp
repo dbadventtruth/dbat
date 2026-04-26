@@ -217,7 +217,7 @@ void pobj_edit_parse(struct descriptor_data *d, char *arg)
 
      d->obj_editflag = EDIT_NONE;
      d->obj_editval = EDIT_NONE;
-     d->character->gold -= 5000;
+     char_stats_modify(d->character, STAT_MONEY_BANK, -5000);
      SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_RESTRING);
      write_to_output(d, "Purchase complete.");
      send_to_imm("Restring Eq: %s has bought: %s, which was %s.", GET_NAME(d->character), obj->short_description, d->obj_was);

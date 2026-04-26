@@ -32,7 +32,7 @@
 const char* juggleRaceName(char_data *ch, bool capitalized) {
     static char buf[256];
 
-    int apparent = ch->race;
+    int apparent = GET_RACE(ch);
 
     switch(apparent) {
         case RACE_HOSHIJIN:
@@ -102,7 +102,7 @@ void resurrect(char_data *ch, int mode) {
         char_to_room(ch, real_room(GET_DROOM(ch)));
     }
     else {
-        char_to_room(ch, real_room(sensei_start_room(ch->chclass)));
+        char_to_room(ch, real_room(sensei_start_room(GET_CLASS(ch))));
     }
     look_at_room(IN_ROOM(ch), ch, 0);
 
@@ -130,19 +130,19 @@ void resurrect(char_data *ch, int mode) {
         int losschance = axion_dice(0);
         send_to_char(ch, "@RThe the strain of this type of revival has caused you to be in a weakened state for 100 hours (Game time)! Strength, constitution, wisdom, intelligence, speed, and agility have been reduced by 8 points for the duration.@n\r\n");
         int str = -8, intel = -8, wis = -8, spd = -8, con = -8, agl = -8;
-        if (ch->real_abils.intel <= 16) {
+        if (char_stats_get(ch, STAT_INTELLIGENCE) <= 16) {
             intel = -4;
         }
-        if (ch->real_abils.cha <= 16) {
+        if (char_stats_get(ch, STAT_SPEED) <= 16) {
             spd = -4;
         }
-        if (ch->real_abils.dex <= 16) {
+        if (char_stats_get(ch, STAT_AGILITY) <= 16) {
             agl = -4;
         }
-        if (ch->real_abils.wis <= 16) {
+        if (char_stats_get(ch, STAT_WISDOM) <= 16) {
             wis = -4;
         }
-        if (ch->real_abils.con <= 16) {
+        if (char_stats_get(ch, STAT_CONSTITUTION) <= 16) {
             con = -4;
         }
         assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, dur, str, con, intel, agl, wis, spd);
@@ -150,9 +150,6 @@ void resurrect(char_data *ch, int mode) {
             int psloss = rand_number(100, 300);
             char_stats_modify(ch, STAT_PRACTICES, -psloss);
             send_to_char(ch, "@R...and a loss of @r%ld@R PS!@n", psloss);
-            if (char_stats_get(ch, STAT_PRACTICES) < 0) {
-                char_stats_modify(ch, STAT_PRACTICES, 0);
-            }
         }
     }
     GET_DTIME(ch) = 0;
@@ -226,7 +223,7 @@ static std::map<int, uint16_t> grav_threshold = {
 bool can_tolerate_gravity(char_data *ch, int grav) {
     if(IS_NPC(ch)) return true;
     int tolerance = 0;
-    tolerance = MAX(tolerance, sensei_grav_tolerance(ch->chclass));
+    tolerance = MAX(tolerance, sensei_grav_tolerance(GET_CLASS(ch)));
     if(tolerance >= grav)
         return true;
     return getMaxPL(ch) >= grav_threshold[grav];
@@ -243,7 +240,7 @@ int calcTier(char_data *ch) {
 
 int64_t calc_soft_cap(char_data *ch) {
     int tier = calcTier(ch);
-    auto softmap = get_race(ch->race)->getSoftMap(ch);
+    auto softmap = get_race(GET_RACE(ch))->getSoftMap(ch);
     return ch->level * softmap[tier];
 }
 
@@ -262,7 +259,7 @@ bool is_soft_cap(char_data *ch, int64_t type, long double mult) {
 
     int64_t against = 0;
 
-    switch(get_race(ch->race)->getSoftType(ch)) {
+    switch(get_race(GET_RACE(ch))->getSoftType(ch)) {
         case dbat::race::Fixed:
             switch(type) {
                 case 0:
@@ -409,14 +406,14 @@ int64_t harmCurHealth(char_data *ch, int64_t amt) {
 }
 
 int64_t getMaxPLTrans(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
+    auto form = get_race(GET_RACE(ch))->getCurForm(ch);
     int64_t total = 0;
     if(form.flag) {
         total = (form.bonus + getEffBasePL(ch)) * form.mult;
     } else {
         total = getEffBasePL(ch) * form.mult;
     }
-    total += ch->max_hit;
+    //total += ch->max_hit;
     return total;
 }
 
@@ -433,8 +430,8 @@ int64_t getMaxPL(char_data *ch) {
 
 int64_t getCurPL(char_data *ch) {
     double health = clampHealth(ch->health);
-    if(ch->suppression > 0){
-        return (int64_t)(getEffMaxPL(ch) * MIN(health, (double)ch->suppression/100));
+    if(char_stats_get(ch, STAT_SUPPRESS) > 0){
+        return (int64_t)(getEffMaxPL(ch) * MIN(health, (double)char_stats_get(ch, STAT_SUPPRESS)/100));
     } else {
         return (int64_t)(getEffMaxPL(ch) * health);
     }
@@ -450,7 +447,7 @@ int64_t getEffBasePL(char_data *ch) {
 }
 
 int64_t getBasePL(char_data *ch) {
-    return ch->basepl;
+    return char_stats_get(ch, STAT_POWERLEVEL);
 }
 
 double getCurPLPercent(char_data *ch) {
@@ -474,14 +471,14 @@ int64_t getCurKI(char_data *ch) {
 }
 
 int64_t getMaxKI(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
+    auto form = get_race(GET_RACE(ch))->getCurForm(ch);
     int64_t total = 0;
     if(form.flag) {
         total = (form.bonus + getEffBaseKI(ch)) * form.mult;
     } else {
         total = getEffBaseKI(ch);
     }
-    total += ch->max_ki;
+    //total += ch->max_ki;
     return total;
 }
 
@@ -495,7 +492,7 @@ int64_t getEffBaseKI(char_data *ch) {
 }
 
 int64_t getBaseKI(char_data *ch) {
-    return ch->baseki;
+    return char_stats_get(ch, STAT_KI);
 }
 
 double getCurKIPercent(char_data *ch) {
@@ -576,14 +573,14 @@ int64_t getCurST(char_data *ch) {
 }
 
 int64_t getMaxST(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
+    auto form = get_race(GET_RACE(ch))->getCurForm(ch);
     int64_t total = 0;
     if(form.flag) {
         total = (form.bonus + getEffBaseST(ch)) * form.mult;
     } else {
         total = getEffBaseST(ch);
     }
-    total += ch->max_move;
+    //total += ch->max_move;
     return total;
 }
 
@@ -597,7 +594,7 @@ int64_t getEffBaseST(char_data *ch) {
 }
 
 int64_t getBaseST(char_data *ch) {
-    return ch->basest;
+    return char_stats_get(ch, STAT_STAMINA);
 }
 
 double getCurSTPercent(char_data *ch) {
@@ -766,7 +763,7 @@ void setStatusKnockedOut(char_data *ch) {
         REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
         GET_ALT(ch) = 0;
     }
-    GET_POS(ch) = POS_SLEEPING;
+    char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
 }
 
 void cureStatusKnockedOut(char_data *ch, bool announce) {
@@ -785,7 +782,7 @@ void cureStatusKnockedOut(char_data *ch, bool announce) {
         }
 
         REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-        GET_POS(ch) = POS_SITTING;
+        char_stats_set(ch, STAT_POSITION, POS_SITTING);
     }
 }
 
@@ -827,18 +824,15 @@ void restoreLimbs(char_data *ch, bool announce) {
 }
 
 int64_t gainBasePL(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basepl += amt;
-    return ch->basepl;
+    return char_stats_modify(ch, STAT_POWERLEVEL, amt);
 }
 
 int64_t gainBaseST(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basest += amt;
-    return ch->basest;
+    return char_stats_modify(ch, STAT_STAMINA, amt);
 }
 
 int64_t gainBaseKI(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->baseki += amt;
-    return ch->baseki;
+    return char_stats_modify(ch, STAT_KI, amt);
 }
 
 void gainBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
@@ -848,18 +842,15 @@ void gainBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
 }
 
 int64_t loseBasePL(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basepl = MAX(1L, ch->basepl-amt);
-    return ch->basepl;
+    return char_stats_modify(ch, STAT_POWERLEVEL, -amt);
 }
 
 int64_t loseBaseST(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basest = MAX(1L, ch->basest-amt);
-    return ch->basest;
+    return char_stats_modify(ch, STAT_STAMINA, -amt);
 }
 
 int64_t loseBaseKI(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->baseki = MAX(1L, ch->baseki-amt);
-    return ch->baseki;
+    return char_stats_modify(ch, STAT_KI, -amt);
 }
 
 void loseBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
@@ -869,27 +860,27 @@ void loseBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
 }
 
 int64_t gainBasePLPercent(char_data *ch, double amt, bool trans_mult) {
-    return gainBasePL(ch, ch->basepl * amt, trans_mult);
+    return gainBasePL(ch, char_stats_get(ch, STAT_POWERLEVEL) * amt, trans_mult);
 }
 
 int64_t gainBaseKIPercent(char_data *ch, double amt, bool trans_mult) {
-    return gainBaseKI(ch, ch->baseki * amt, trans_mult);
+    return gainBaseKI(ch, char_stats_get(ch, STAT_KI) * amt, trans_mult);
 }
 
 int64_t gainBaseSTPercent(char_data *ch, double amt, bool trans_mult) {
-    return gainBaseST(ch, ch->basest * amt, trans_mult);
+    return gainBaseST(ch, char_stats_get(ch, STAT_STAMINA) * amt, trans_mult);
 }
 
 int64_t loseBasePLPercent(char_data *ch, double amt, bool trans_mult) {
-    return loseBasePL(ch, ch->basepl * amt, trans_mult);
+    return loseBasePL(ch, char_stats_get(ch, STAT_POWERLEVEL) * amt, trans_mult);
 }
 
 int64_t loseBaseKIPercent(char_data *ch, double amt, bool trans_mult) {
-    return loseBaseKI(ch, ch->baseki * amt, trans_mult);
+    return loseBaseKI(ch, char_stats_get(ch, STAT_KI) * amt, trans_mult);
 }
 
 int64_t loseBaseSTPercent(char_data *ch, double amt, bool trans_mult) {
-    return loseBaseST(ch, ch->basest * amt, trans_mult);
+    return loseBaseST(ch, char_stats_get(ch, STAT_STAMINA) * amt, trans_mult);
 }
 
 void gainBaseAllPercent(char_data *ch, double amt, bool trans_mult) {
@@ -905,26 +896,19 @@ void loseBaseAllPercent(char_data *ch, double amt, bool trans_mult) {
 }
 
 int64_t getMaxCarryWeight(char_data *ch) {
-    return MAX(1L, (getMaxPL(ch) / 200) + (GET_STR(ch) * 50));
+    return char_der_get(ch, DER_CARRY_CAPACITY);
 }
 
 int64_t getCurGearWeight(char_data *ch) {
-    int64_t total_weight = 0;
-
-    for (int i = 0; i < NUM_WEARS; i++) {
-        if (GET_EQ(ch, i)) {
-            total_weight += GET_OBJ_WEIGHT(GET_EQ(ch, i));
-        }
-    }
-    return total_weight;
+    return char_der_get(ch, DER_WEIGHT_EQUIPPED);
 }
 
 int64_t getCurCarriedWeight(char_data *ch) {
-    return getCurGearWeight(ch) + ch->carry_weight;
+    return char_der_get(ch, DER_WEIGHT_CARRIED);
 }
 
 int64_t getAvailableCarryWeight(char_data *ch) {
-    return getMaxCarryWeight(ch) - getCurCarriedWeight(ch);
+    return char_der_get(ch, DER_CARRY_CAPACITY) - char_der_get(ch, DER_WEIGHT_CARRIED);
 }
 
 // speednar is in utils.cpp
@@ -1396,6 +1380,18 @@ int know_skill(struct char_data *ch, int skill)
  return (know);
 }
 
+bool is_affected(struct char_data *ch, int aff_flag)
+{
+
+  struct affected_type *af;
+
+  for (af = ch->affected; af; af = af->next) {
+    if (af->location == APPLY_NONE && af->bitvector == aff_flag)
+      return (TRUE);
+  }
+
+  return (FALSE);
+}
 
 void null_affect(struct char_data *ch, int aff_flag)
 {
@@ -1409,13 +1405,22 @@ void null_affect(struct char_data *ch, int aff_flag)
   }
 }
 
+void remove_affect(struct char_data *ch, int aff_flag)
+{
+
+  struct affected_type *af, *next_af;
+
+  for (af = ch->affected; af; af = next_af) {
+    next_af = af->next;
+    if (af->bitvector == aff_flag)
+      affect_remove(ch, af);
+  }
+}
+
 void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur, int str, int con, int intel, int agl, int wis, int spd)
 {
   struct affected_type af[6];
   int num = 0;
-
-  if (dur <= 0)
-   dur = 1;
 
   if (str == 0 && con == 0 && wis == 0 && intel == 0 && agl == 0 && spd == 0) {
    af[num].type = skill;
@@ -3655,7 +3660,7 @@ void improve_skill(struct char_data *ch, int skill, int num)
        SET_SKILL(ch, skill, GET_SKILL_BASE(ch, skill) + 5);
       }
       if (GET_LEVEL(ch) < 100) {
-       GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) / 20;
+       char_stats_modify(ch, STAT_EXPERIENCE, level_exp(ch, GET_LEVEL(ch) + 1) / 20);
       } else {
        gain_exp(ch, 5000000);
       }
@@ -3915,14 +3920,14 @@ int roll_stats(struct char_data *ch, int type, int bonus)
   int powerlevel = 0, ki = 1, stamina = 2;
 
   if (type == powerlevel) {
-   base_num = ch->real_abils.str * 3;
-   max_num = ch->real_abils.str * 5;
+   base_num = char_stats_get(ch, STAT_STRENGTH) * 3;
+   max_num = char_stats_get(ch, STAT_STRENGTH) * 5;
   } else if (type == ki) {
-   base_num = ch->real_abils.intel * 3;
-   max_num = ch->real_abils.intel * 5;
+   base_num = char_stats_get(ch, STAT_INTELLIGENCE) * 3;
+   max_num = char_stats_get(ch, STAT_INTELLIGENCE) * 5;
   } else if (type == stamina) {
-   base_num = ch->real_abils.con * 3;
-   max_num = ch->real_abils.con * 5;
+   base_num = char_stats_get(ch, STAT_CONSTITUTION) * 3;
+   max_num = char_stats_get(ch, STAT_CONSTITUTION) * 5;
   }
 
  pool = rand_number(base_num, max_num) + bonus;
@@ -3979,56 +3984,59 @@ const char *get_i_name(struct char_data *ch, struct char_data *vict) {
 
 int can_grav(struct char_data *ch)
 {
+    int grav = ROOM_GRAVITY(IN_ROOM(ch));
+    stat_t maxpl = GET_MAX_HIT(ch);
+
    /* Gravity Related */
-   if (ROOM_GRAVITY(IN_ROOM(ch)) == 10 && GET_MAX_HIT(ch) < 5000 && !IS_BARDOCK(ch) && !IS_NPC(ch)) {
+   if (grav == 10 && maxpl < 5000 && !IS_BARDOCK(ch) && !IS_NPC(ch)) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 20 && GET_MAX_HIT(ch) < 20000) {
+   else if (grav == 20 && maxpl < 20000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }   
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 30 && GET_MAX_HIT(ch) < 50000) {
+   else if (grav == 30 && maxpl < 50000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 40 && GET_MAX_HIT(ch) < 100000) {
+   else if (grav == 40 && maxpl < 100000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 50 && GET_MAX_HIT(ch) < 200000) {
+   else if (grav == 50 && maxpl < 200000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 100 && GET_MAX_HIT(ch) < 400000) {
+   else if (grav == 100 && maxpl < 400000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 200 && GET_MAX_HIT(ch) < 1000000) {
+   else if (grav == 200 && maxpl < 1000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 300 && GET_MAX_HIT(ch) < 5000000) {
+   else if (grav == 300 && maxpl < 5000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 400 && GET_MAX_HIT(ch) < 8000000) {
+   else if (grav == 400 && maxpl < 8000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 500 && GET_MAX_HIT(ch) < 15000000) {
+   else if (grav == 500 && maxpl < 15000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 1000 && GET_MAX_HIT(ch) < 25000000) {
+   else if (grav == 1000 && maxpl < 25000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 5000 && GET_MAX_HIT(ch) < 100000000) {
+   else if (grav == 5000 && maxpl < 100000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
-   else if (ROOM_GRAVITY(IN_ROOM(ch)) == 10000 && GET_MAX_HIT(ch) < 200000000) {
+   else if (grav == 10000 && maxpl < 200000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
    }
@@ -4275,13 +4283,10 @@ void pcost(struct char_data *ch, double ki, int64_t st)
    }
   }
   if (GET_CHARGE(ch) <= (GET_MAX_MANA(ch) * ki)) {
-   GET_CHARGE(ch) = 0;
+   char_stats_set(ch, STAT_CHARGE, 0);
   }
   if (GET_CHARGE(ch) > (GET_MAX_MANA(ch) * ki)) {
-   GET_CHARGE(ch) -= (GET_MAX_MANA(ch) * ki);
-  }
-  if (GET_CHARGE(ch) < 0) {
-   GET_CHARGE(ch) = 0;
+   char_stats_modify(ch, STAT_CHARGE, -(GET_MAX_MANA(ch) * ki));
   }
   if (GET_KAIOKEN(ch) > 0) {
    st += (st / 20) * GET_KAIOKEN(ch);
@@ -4307,9 +4312,7 @@ void pcost(struct char_data *ch, double ki, int64_t st)
    }
    if (GET_PREFERENCE(ch) == PREFERENCE_H2H && GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.1) {
     st -= st * 0.5;
-    GET_CHARGE(ch) -= st;
-    if (GET_CHARGE(ch) < 0)
-     GET_CHARGE(ch) = 0;
+    char_stats_modify(ch, STAT_CHARGE, -st);
    }
   if (IS_NONPTRANS(ch)) {
    if (PLR_FLAGGED(ch, PLR_TRANS1)) {
@@ -4493,7 +4496,7 @@ bool race_has_tail(int r_id) {
 
 void char_lose_tail(char_data *ch) {
     if(!char_has_tail(ch)) return;
-    switch(ch->race) {
+    switch(GET_RACE(ch)) {
         case RACE_ICER:
         case RACE_BIO:
             REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);
@@ -4514,9 +4517,9 @@ void char_lose_tail(char_data *ch) {
 
 
 bool char_has_tail(char_data *ch) {
-    if(!race_has_tail(ch->race))
+    if(!race_has_tail(GET_RACE(ch)))
         return false;
-    switch(ch->race) {
+    switch(GET_RACE(ch)) {
         case RACE_ICER:
         case RACE_BIO:
             return PLR_FLAGGED(ch, PLR_TAIL);
@@ -4530,7 +4533,7 @@ bool char_has_tail(char_data *ch) {
 
 void char_gain_tail(char_data *ch, bool announce) {
     if(char_has_tail(ch)) return;
-    switch(ch->race) {
+    switch(GET_RACE(ch)) {
         case RACE_ICER:
         case RACE_BIO:
             SET_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);

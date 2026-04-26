@@ -20,7 +20,7 @@
 
 static void another_hour(int mode);
 static void weather_change(void);
-static void phase_powerup(struct char_data *ch, int type, int phase);
+static void phase_powerup(struct char_data *ch, int phase);
 static void grow_plants(void);
 
 
@@ -270,7 +270,7 @@ void oozaru_revert(char_data *ch) {
 
     act("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n", TRUE, ch, 0, 0, TO_CHAR);
     act("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SLEEPING;
+    char_stats_set(ch, STAT_POSITION, POS_SLEEPING);
 
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_OOZARU);
 }
@@ -307,23 +307,21 @@ void star_phase(struct char_data *ch, int type)
 	     if (GET_PHASE(ch) > 0) {
 		  act("@WYour eyes and the glyphs on your skin slowly start to lose their glow. You feel the power received from the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W drain away from your body. It has apparently entered the @rDeath Phase@W of its cycle...@n", TRUE, ch, 0, 0, TO_CHAR);
 		  act("@c$n@W's eyes and the glyphs on $s skin slowly start to lose their glow. You notice that $e seems weaker now for some reason.@n", TRUE, ch, 0, 0, TO_ROOM);
-		  phase_powerup(ch, 0, GET_PHASE(ch));
+		  phase_powerup(ch, 0);
          	 }
 	   break; // Drop Powerup
 	  case 1:
 	     if (GET_PHASE(ch) != 1) {
 		  act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @CBirth Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an electric @bb@Bl@Cue@W!@n", TRUE, ch, 0, 0, TO_CHAR);
 		  act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow an electric @bb@Bl@Cue@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-		  phase_powerup(ch, 0, GET_PHASE(ch));
-		  phase_powerup(ch, 1, 1);
+		  phase_powerup(ch, 1);
 		 }
 	   break; // Powerup Phase 1
 	  case 2:
 	     if (GET_PHASE(ch) != 2) {
 		  act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @GLife Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an fiery @Rr@re@Rd@W!@n", TRUE, ch, 0, 0, TO_CHAR);
 		  act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow a fiery @rR@Re@rd@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-		  phase_powerup(ch, 0, GET_PHASE(ch));
-		  phase_powerup(ch, 1, 2);
+		  phase_powerup(ch, 2);
 		 }
 	   break; // Powerup Phase 2
 	  default:
@@ -341,23 +339,21 @@ void star_phase(struct char_data *ch, int type)
 	    if (GET_PHASE(ch) > 0) {
 		 act("@WYour eyes and the glyphs on your skin slowly start to lose their glow. You feel the power received from the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W drain away from your body. It has apparently entered the @rDeath Phase@W of its cycle...@n", TRUE, ch, 0, 0, TO_CHAR);
 		 act("@c$n@W's eyes and the glyphs on $s skin slowly start to lose their glow. You notice that $e seems weaker now for some reason.@n", TRUE, ch, 0, 0, TO_ROOM);
-		 phase_powerup(ch, 0, GET_PHASE(ch));
+		 phase_powerup(ch, 0);
 		}
 	   break; // Drop Powerup
 	  case 1:
 	    if (GET_PHASE(ch) != 1) {
 		 act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @CBirth Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an electric @bb@Bl@Cue@W!@n", TRUE, ch, 0, 0, TO_CHAR);
 		 act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow an electric @bb@Bl@Cue@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-                 phase_powerup(ch, 0, GET_PHASE(ch));		 
-		 phase_powerup(ch, 1, 1);
+		 phase_powerup(ch, 1);
 		}
 	   break; // Powerup Phase 1
 	  case 2:
 	    if (GET_PHASE(ch) != 2) {
 		 act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @GLife Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an fiery @Rr@re@Rd@W!@n", TRUE, ch, 0, 0, TO_CHAR);
 		 act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow a fiery @rR@Re@rd@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-         	 phase_powerup(ch, 0, GET_PHASE(ch));		 
-		 phase_powerup(ch, 1, 2);
+		 phase_powerup(ch, 2);
 		}
 	   break; // Powerup Phase 2
 	  default:
@@ -375,7 +371,7 @@ void star_phase(struct char_data *ch, int type)
 }
 
 /* This handles powering up a Hoshijin or powering them down */
-static void phase_powerup(struct char_data *ch, int type, int phase) {
+static void phase_powerup(struct char_data *ch, int phase) {
     if (!ch) {
         return;
     }
@@ -383,7 +379,11 @@ static void phase_powerup(struct char_data *ch, int type, int phase) {
         return;
     }
 
+    // clear existing bonus...
+    remove_affect(ch, AFF_STARPHASE);
+
     int bonus = 0;
+    
 
     switch (phase) {
         case 0:
@@ -399,25 +399,9 @@ static void phase_powerup(struct char_data *ch, int type, int phase) {
             return;
     }
 
-    if (type == 0) { // Drop their stats
-
-        if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) < 25) {
-            ch->real_abils.str -= bonus;
-        }
-        if (GET_BONUS(ch, BONUS_SLOW) > 0 && GET_CHA(ch) < 25) {
-            ch->real_abils.cha -= bonus;
-        }
-        GET_PHASE(ch) = 0;
-    } else { // Raise their stats
-
-        if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) + bonus <= 25) {
-            ch->real_abils.str += bonus;
-        }
-        if (GET_BONUS(ch, BONUS_SLOW) > 0 && GET_CHA(ch) + bonus <= 25) {
-            ch->real_abils.cha += bonus;
-        }
-
-        GET_PHASE(ch) = phase;
+    if(bonus > 0) {
+      assign_affect(ch, AFF_STARPHASE, 0, -1, bonus, 0, 0, 0, 0, bonus);
     }
+    GET_PHASE(ch) = phase;
     save_char(ch);
 }

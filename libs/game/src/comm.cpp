@@ -829,7 +829,7 @@ char *make_prompt(struct descriptor_data *d)
         if (count >= 0)
           len += count;
       }
-      if (GET_KI(ch) << 2 < GET_MAX_KI(ch) && len < sizeof(prompt)) {
+      if (getCurKI(ch) << 2 < GET_MAX_MANA(ch) && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "KI: %" I64T " ", GET_KI(ch));
         if (count >= 0)
           len += count;
@@ -1049,7 +1049,7 @@ char *make_prompt(struct descriptor_data *d)
           len += count;
       }
       if (GET_CHARGE(d->character) < GET_MAX_MANA(d->character) * .01 && GET_CHARGE(d->character) > 0) {
-       GET_CHARGE(d->character) = 0;
+       char_stats_set(d->character, STAT_CHARGE, 0);
       }
     if (GET_CHARGE(d->character) > 0) {
      int64_t charge = GET_CHARGE(d->character);

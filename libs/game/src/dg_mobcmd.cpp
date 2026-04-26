@@ -1043,10 +1043,8 @@ ACMD(do_mtransform)
     tmpmob.master = ch->master;
 
     GET_WAS_IN(&tmpmob) = GET_WAS_IN(ch);
-    GET_GOLD(&tmpmob) = GET_GOLD(ch);
-    GET_POS(&tmpmob) = GET_POS(ch);
-    IS_CARRYING_W(&tmpmob) = IS_CARRYING_W(ch);
-    IS_CARRYING_N(&tmpmob) = IS_CARRYING_N(ch);
+    char_stats_set(&tmpmob, STAT_MONEY, char_stats_get(ch, STAT_MONEY));
+    char_stats_set(&tmpmob, STAT_POSITION, char_stats_get(ch, STAT_POSITION));
     FIGHTING(&tmpmob) = FIGHTING(ch);
     memcpy(ch, &tmpmob, sizeof(*ch));
 
