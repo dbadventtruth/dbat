@@ -2443,7 +2443,7 @@ ACMD(do_pose)
   return;
  }
 
- if (PLR_FLAGGED(ch, PLR_POSE)) {
+ if (is_affected(ch, AFF_SPECIAL_POSE)) {
   send_to_char(ch, "You are already feeling good and confident from a previous pose.\r\n");
   return;
  }
@@ -2493,12 +2493,10 @@ ACMD(do_pose)
    act("@C$n@W drops down to one knee while angling $s arms up to either side and slanting $s hands down like wings!@n", TRUE, ch, 0, 0, TO_ROOM);  
    break;
   }
-  send_to_char(ch, "@WYou feel your confidence increase! @G+3 Str @Wand@G +3 Agl!@n\r\n");
-  ch->real_abils.str += 8;
-  ch->real_abils.dex += 8;
+  send_to_char(ch, "@WYou feel your confidence increase! @G+8 Str @Wand@G +8 Agl!@n\r\n");
+  assign_affect(ch, AFF_SPECIAL_POSE, SKILL_POSE, -1, 8, 0, 0, 8, 0, 0);
   save_char(ch);
   int64_t before = (getMaxLF(ch));
-  SET_BIT_AR(PLR_FLAGS(ch), PLR_POSE);
   incCurLF(ch, (getMaxLF(ch)) - before);
      decCurST(ch, getMaxST(ch) / 40);
   improve_skill(ch, SKILL_POSE, 0);
@@ -5191,7 +5189,7 @@ ACMD(do_focus)
     if (!can_kill(ch, vict, NULL, 2)) {
      return;
     }
-    if (AFF_FLAGGED(vict, AFF_WITHER)) {
+    if (is_affected(vict, AFF_WITHER)) {
      send_to_char(ch, "They already have been withered!\r\n");
      return;
     } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -5205,10 +5203,8 @@ ACMD(do_focus)
      act("$n focuses ki into $N's body, but fails in withering it!", TRUE, ch, 0, vict, TO_NOTVICT);
      return;
     } else {
-     SET_BIT_AR(AFF_FLAGS(vict), AFF_WITHER);
-        decCurKI(ch, getMaxKI(ch) / 20);
-     vict->real_abils.str -= 3;
-     vict->real_abils.cha -= 3;
+    decCurKI(ch, getMaxKI(ch) / 20);
+     assign_affect(vict, AFF_WITHER, SKILL_WITHER, -1, -3, 0, 0, 0, 0, -3);
      save_char(vict);
      reveal_hiding(ch, 0);
      act("You focus ki into $N's body, and succeed in withering it!", TRUE, ch, 0, vict, TO_CHAR);
@@ -6894,10 +6890,10 @@ ACMD(do_heal)
         act("$n@w's burns are now healed.@n", TRUE, vict, 0, 0, TO_ROOM);
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
     }
-    if (AFF_FLAGGED(vict, AFF_HYDROZAP)) {
+    if (is_affected(vict, AFF_HYDROZAP)) {
         send_to_char(vict, "You no longer feel a great thirst.\r\n");
         act("$n@w no longer looks as if they could drink an ocean.@n", TRUE, vict, 0, 0, TO_ROOM);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_HYDROZAP);
+        remove_affect(vict, AFF_HYDROZAP);
     }
    GET_LIMBCOND(vict, 1) = 100;
    GET_LIMBCOND(vict, 2) = 100;

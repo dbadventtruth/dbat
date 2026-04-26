@@ -425,32 +425,24 @@ ACMD(do_kyodaika)
   return;
  }
 
- if (ch->real_abils.str + 5 > 25 && GET_BONUS(ch, BONUS_WIMP) > 0 && GET_GENOME(ch, 0) == 0) {
-  send_to_char(ch, "You can't handle having your strength increased beyond 25.\r\n");
-  return;
- }
-
- if (GET_GENOME(ch, 0) == 0) {
+ if (!is_affected(ch, AFF_KYODAIKA)) {
   act("@GYou growl as your body grows to ten times its normal size!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@g$n@G growls as $s body grows to ten times its normal size!@n", TRUE, ch, 0, 0, TO_ROOM);
   send_to_char(ch, "@cStrength@D: @C+5\r\n@cSpeed@D: @c-2@n\r\n");
-  ch->real_abils.str += 5;
-  ch->real_abils.cha -= 2;
-  GET_GENOME(ch, 0) = 11;
+  assign_affect(ch, AFF_KYODAIKA, 0, -1, 5, 0, 0, 0, 0, -2);
   save_char(ch);
   return;
  } else {
   act("@GYou growl as your body shrinks to its normal size!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@g$n@G growls as $s body shrinks to its normal size!@n", TRUE, ch, 0, 0, TO_ROOM);
   send_to_char(ch, "@cStrength@D: @C-5\r\n@cSpeed@D: @c+2@n\r\n");
-  ch->real_abils.str -= 5;
-  ch->real_abils.cha += 2;
-  GET_GENOME(ch, 0) = 0;
+  remove_affect(ch, AFF_KYODAIKA);
   save_char(ch);
   return;
  }
 
 }
+
 
 ACMD(do_table)
 {
@@ -6441,10 +6433,10 @@ ACMD(do_status)
         if (PLR_FLAGGED(ch, PLR_NOGROW)) {
             send_to_char(ch, "Your tail is no longer regrowing!\r\n");
         }
-        if (PLR_FLAGGED(ch, PLR_POSE)) {
+        if (is_affected(ch, AFF_SPECIAL_POSE)) {
             send_to_char(ch, "You are feeling confident from your pose earlier.\r\n");
         }
-        if (AFF_FLAGGED(ch, AFF_HYDROZAP)) {
+        if (is_affected(ch, AFF_HYDROZAP)) {
             send_to_char(ch, "You are effected by Kanso Suru.\r\n");
         }
         if (GET_COND(ch, DRUNK) > 15)

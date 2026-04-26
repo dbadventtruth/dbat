@@ -59,7 +59,7 @@
 #define PLR_PR          55  /* Has had their potential released */
 #define PLR_HEALT       56  /* Is inside a healing tank         */
 #define PLR_FURY        57  /* Is in fury mode                  */
-#define PLR_POSE        58  /* Ginyu Pose Effect                */
+#define PLR_POSE        58  /* Ginyu Pose Effect - NO LONGER USED */
 #define PLR_OOZARU      59
 #define PLR_ABSORBED    60
 #define PLR_MULTP       61

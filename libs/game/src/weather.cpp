@@ -20,7 +20,7 @@
 
 static void another_hour(int mode);
 static void weather_change(void);
-static void phase_powerup(struct char_data *ch, int type, int phase);
+static void phase_powerup(struct char_data *ch, int phase);
 static void grow_plants(void);
 
 
@@ -284,104 +284,65 @@ void oozaru_drop()
     }
 }
 
-/* This controls the powering up of Hoshi-jin from their Eldritch Star */
-void star_phase(struct char_data *ch, int type)
-{
- struct descriptor_data *d;
 
- if (ch == NULL) {
-  for (d = descriptor_list; d; d = d->next) {
-   if (!IS_PLAYING(d)) {
-    continue;
-   }
-   if (IS_NPC(d->character)) {
-    continue;
-   }
-   if (GET_LEVEL(d->character) < 2) {
-    continue;
-   }
-   if (IS_HOSHIJIN(d->character)) {
-     ch = d->character;
-     switch (type) {
+static void check_hoshi_phase(struct char_data *ch, int type) {
+  if(IS_NPC(ch)) return;
+  if(GET_LEVEL(ch) < 2) return;
+  if(!IS_HOSHIJIN(ch)) return;
+    switch (type) {
 	  case 0:
 	     if (GET_PHASE(ch) > 0) {
 		  act("@WYour eyes and the glyphs on your skin slowly start to lose their glow. You feel the power received from the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W drain away from your body. It has apparently entered the @rDeath Phase@W of its cycle...@n", TRUE, ch, 0, 0, TO_CHAR);
 		  act("@c$n@W's eyes and the glyphs on $s skin slowly start to lose their glow. You notice that $e seems weaker now for some reason.@n", TRUE, ch, 0, 0, TO_ROOM);
-		  phase_powerup(ch, 0, GET_PHASE(ch));
+		  phase_powerup(ch, 0);
          	 }
 	   break; // Drop Powerup
 	  case 1:
 	     if (GET_PHASE(ch) != 1) {
 		  act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @CBirth Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an electric @bb@Bl@Cue@W!@n", TRUE, ch, 0, 0, TO_CHAR);
 		  act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow an electric @bb@Bl@Cue@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-		  phase_powerup(ch, 0, GET_PHASE(ch));
-		  phase_powerup(ch, 1, 1);
+		  phase_powerup(ch, 1);
 		 }
 	   break; // Powerup Phase 1
 	  case 2:
 	     if (GET_PHASE(ch) != 2) {
 		  act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @GLife Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an fiery @Rr@re@Rd@W!@n", TRUE, ch, 0, 0, TO_CHAR);
 		  act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow a fiery @rR@Re@rd@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-		  phase_powerup(ch, 0, GET_PHASE(ch));
-		  phase_powerup(ch, 1, 2);
+		  phase_powerup(ch, 2);
 		 }
 	   break; // Powerup Phase 2
 	  default:
 	    send_to_imm("Strange Error in star_phase by: %s", GET_NAME(ch));
 	   break; // Error
 	 }
-	 
-   } // End of is HOSHIJIN
-  } // End of descriptor_list for
-  return;
- } else if (ch != NULL && !IS_NPC(ch) && GET_LEVEL(ch) > 1) {
-   if (IS_HOSHIJIN(ch)) {
-     switch (type) {
-	  case 0:
-	    if (GET_PHASE(ch) > 0) {
-		 act("@WYour eyes and the glyphs on your skin slowly start to lose their glow. You feel the power received from the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W drain away from your body. It has apparently entered the @rDeath Phase@W of its cycle...@n", TRUE, ch, 0, 0, TO_CHAR);
-		 act("@c$n@W's eyes and the glyphs on $s skin slowly start to lose their glow. You notice that $e seems weaker now for some reason.@n", TRUE, ch, 0, 0, TO_ROOM);
-		 phase_powerup(ch, 0, GET_PHASE(ch));
-		}
-	   break; // Drop Powerup
-	  case 1:
-	    if (GET_PHASE(ch) != 1) {
-		 act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @CBirth Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an electric @bb@Bl@Cue@W!@n", TRUE, ch, 0, 0, TO_CHAR);
-		 act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow an electric @bb@Bl@Cue@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-                 phase_powerup(ch, 0, GET_PHASE(ch));		 
-		 phase_powerup(ch, 1, 1);
-		}
-	   break; // Powerup Phase 1
-	  case 2:
-	    if (GET_PHASE(ch) != 2) {
-		 act("@WYou suddenly feel a @RSURGE@W of power through your body. You feel the @GE@gl@Dd@wri@Dt@gc@Gh @YS@yta@Yr@W come into its @GLife Phase@W and its power is flowing into your body! Finally your eyes and the glyphs on your skin begin to glow an fiery @Rr@re@Rd@W!@n", TRUE, ch, 0, 0, TO_CHAR);
-		 act("@c$n@W suddenly seems to grow stronger for some reason. You notice $s eyes begin to glow a fiery @rR@Re@rd@W. Suddenly glyphs start to appear all over $s skin and glow with the same light!@n", TRUE, ch, 0, 0, TO_ROOM);
-         	 phase_powerup(ch, 0, GET_PHASE(ch));		 
-		 phase_powerup(ch, 1, 2);
-		}
-	   break; // Powerup Phase 2
-	  default:
-	    send_to_imm("Strange Error in star_phase by: %s", GET_NAME(ch));
-	   break; // Error
-	 }
-	 return;
-   } // End of is HOSHIJIN
-   else {
-     return;
-   }
- } // End of ch is/isn't NULL
-
- return;
 }
 
-/* This handles powering up a Hoshijin or powering them down */
-static void phase_powerup(struct char_data *ch, int type, int phase) {
-    if (!ch) {
-        return;
-    }
+/* This controls the powering up of Hoshi-jin from their Eldritch Star */
+void star_phase(struct char_data *ch, int type)
+{
+ struct descriptor_data *d;
+
+ if(ch != NULL) {
+  check_hoshi_phase(ch, type);
+  return;
+ }
+
+for (d = descriptor_list; d; d = d->next) {
+   if (!IS_PLAYING(d)) {
+    continue;
+   }
+   check_hoshi_phase(d->character, type);
+  }
+  
+}
+
+static void phase_powerup(struct char_data *ch, int phase) {
     if (IS_NPC(ch)) {
         return;
     }
+
+    // clear existing bonus...
+    remove_affect(ch, AFF_STARPHASE);
 
     int bonus = 0;
 
@@ -399,25 +360,9 @@ static void phase_powerup(struct char_data *ch, int type, int phase) {
             return;
     }
 
-    if (type == 0) { // Drop their stats
-
-        if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) < 25) {
-            ch->real_abils.str -= bonus;
-        }
-        if (GET_BONUS(ch, BONUS_SLOW) > 0 && GET_CHA(ch) < 25) {
-            ch->real_abils.cha -= bonus;
-        }
-        GET_PHASE(ch) = 0;
-    } else { // Raise their stats
-
-        if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) + bonus <= 25) {
-            ch->real_abils.str += bonus;
-        }
-        if (GET_BONUS(ch, BONUS_SLOW) > 0 && GET_CHA(ch) + bonus <= 25) {
-            ch->real_abils.cha += bonus;
-        }
-
-        GET_PHASE(ch) = phase;
+    if(bonus > 0) {
+      assign_affect(ch, AFF_STARPHASE, 0, -1, bonus, 0, 0, 0, 0, bonus);
     }
+    GET_PHASE(ch) = phase;
     save_char(ch);
 }

@@ -374,6 +374,22 @@ void handle_songs()
 
 }
 
+static void apply_shadow_sitch(struct char_data *ch, struct char_data *vict, int skill)
+{
+  act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
+  act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
+  act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+  decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
+  if (!IS_NPC(vict))
+  {
+    WAIT_STATE(vict, PULSE_2SEC);
+  }
+  else
+  {
+    assign_affect(vict, AFF_SHADOW_STITCH, SKILL_MYSTICMUSIC, -1, 0, 0, 0, 0, 0, -2);
+  }
+}
+
 static void resolve_song(struct char_data *ch)
 {
 
@@ -482,49 +498,13 @@ static void resolve_song(struct char_data *ch)
         if (ch == vict->master || ch->master == vict || ch->master == vict->master) {
          continue;
         } else if (skill > diceroll + 10) {
-         act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
-         act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
-         act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-         if (!IS_NPC(vict)) {
-         WAIT_STATE(vict, PULSE_2SEC);
-         decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-         } else {
-          vict->real_abils.cha -= 2;
-             decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-          if (vict->real_abils.cha < 3) {
-           vict->real_abils.cha = 3;
-          }
-         }
+          apply_shadow_sitch(ch, vict, skill);
         }
        } else if (skill > diceroll + 10) {
-        act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
-        act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
-        act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!IS_NPC(vict)) {
-        WAIT_STATE(vict, PULSE_2SEC);
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-         } else {
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-          vict->real_abils.cha -= 2;
-          if (vict->real_abils.cha < 3) {
-           vict->real_abils.cha = 3;
-          }
-        }
+        apply_shadow_sitch(ch, vict, skill);
        }
       } else if (skill > diceroll + 10) {
-        act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_CHAR);
-        act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR body, slow YOUR actions down!@n", TRUE, ch, 0, vict, TO_VICT);
-        act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S body, slowing $S actions!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!IS_NPC(vict)) {
-        WAIT_STATE(vict, PULSE_2SEC);
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-         } else {
-          vict->real_abils.cha -= 2;
-            decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-          if (vict->real_abils.cha < 3) {
-           vict->real_abils.cha = 3;
-          }
-         }
+        apply_shadow_sitch(ch, vict, skill);
       }
       if ((getCurKI(ch)) <= 0) {
        send_to_char(ch, "You no longer have the ki necessary to play your song.\r\n");
@@ -2980,11 +2960,9 @@ ACMD(do_kanso)
 
   WAIT_STATE(ch, PULSE_2SEC); /* 2 second lag for the technique */
   
-  if (!AFF_FLAGGED(vict, AFF_HYDROZAP)) { /* Drop their AGL/CON if not already lowered */
+  if (!is_affected(vict, AFF_HYDROZAP)) { /* Drop their AGL/CON if not already lowered */
    send_to_char(vict, "@RYou feel less agile and your muscles ache!@n\r\n");
-   SET_BIT_AR(AFF_FLAGS(vict), AFF_HYDROZAP);
-   vict->real_abils.dex -= 4;
-   vict->real_abils.con -= 4;
+   assign_affect(vict, AFF_HYDROZAP, 0, -1, 0, -4, -4, 0, 0, 0);
    save_char(vict);
   }
     

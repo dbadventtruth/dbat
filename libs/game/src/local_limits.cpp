@@ -149,12 +149,10 @@ static void healthy_check(struct char_data *ch)
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     change = TRUE;
   }
-  if (AFF_FLAGGED(ch, AFF_WITHER) && roll >= chance)
+  if (is_affected(ch, AFF_WITHER) && roll >= chance)
   {
-    ch->real_abils.str += 3;
-    ch->real_abils.cha += 3;
+    remove_affect(ch, AFF_WITHER);
     save_char(ch);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_WITHER);
     change = TRUE;
   }
   if (AFF_FLAGGED(ch, AFF_CURSE) && roll >= chance)
@@ -182,11 +180,9 @@ static void healthy_check(struct char_data *ch)
     null_affect(ch, AFF_BLIND);
     change = TRUE;
   }
-  if (AFF_FLAGGED(ch, AFF_HYDROZAP) && roll >= chance)
+  if (is_affected(ch, AFF_HYDROZAP) && roll >= chance)
   {
-    ch->real_abils.dex += 4;
-    ch->real_abils.con += 4;
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_HYDROZAP);
+    remove_affect(ch, AFF_HYDROZAP);
     save_char(ch);
     change = TRUE;
   }
@@ -408,19 +404,15 @@ static int64_t mana_gain(struct char_data *ch)
   {
     gain *= 20;
   }
-  if (PLR_FLAGGED(ch, PLR_POSE) && axion_dice(0) > GET_SKILL(ch, SKILL_POSE))
+  if (is_affected(ch, AFF_SPECIAL_POSE) && axion_dice(0) > GET_SKILL(ch, SKILL_POSE))
   {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_POSE);
+    remove_affect(ch, AFF_SPECIAL_POSE);
     send_to_char(ch, "You feel slightly less confident now.\r\n");
-    ch->real_abils.str -= 8;
-    ch->real_abils.dex -= 8;
     save_char(ch);
   }
-  if (AFF_FLAGGED(ch, AFF_HYDROZAP) && rand_number(1, 4) >= 4)
+  if (is_affected(ch, AFF_HYDROZAP) && rand_number(1, 4) >= 4)
   {
-    ch->real_abils.dex += 4;
-    ch->real_abils.con += 4;
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_HYDROZAP);
+    remove_affect(ch, AFF_HYDROZAP);
     save_char(ch);
   }
 
@@ -986,14 +978,12 @@ static void update_flags(struct char_data *ch)
     act("$n@W breaks out of the ice holding $m prisoner!", TRUE, ch, 0, 0, TO_ROOM);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FROZEN);
   }
-  if (AFF_FLAGGED(ch, AFF_WITHER) && rand_number(1, 6 + sick_fail) == 2)
+  if (is_affected(ch, AFF_WITHER) && rand_number(1, 6 + sick_fail) == 2)
   {
     send_to_char(ch, "@wYour body returns to normal and you beat the withering that plagued you.\r\n");
     act("$n@W's looks more fit now.", TRUE, ch, 0, 0, TO_ROOM);
-    ch->real_abils.str += 3;
-    ch->real_abils.cha += 3;
+    remove_affect(ch, AFF_WITHER);
     save_char(ch);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_WITHER);
   }
   if (wearing_stardust(ch) == 1)
   {
