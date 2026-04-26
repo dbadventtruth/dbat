@@ -218,6 +218,12 @@ struct levelup_data
    struct level_learn_entry *feats;  /* Head of linked list		*/
 };
 
+struct skill_data {
+   int8_t base;
+   int8_t mod;
+   int8_t perf;
+};
+
 struct char_data
 {
    int32_t id;                   /* used by DG triggers			*/
@@ -330,13 +336,7 @@ struct char_data
    int skill_slots;
    int forgeting;
    int forgetcount;
-   int8_t skills[SKILL_TABLE_SIZE + 1];
-   /* array of skills/spells/arts/etc	*/
-   int8_t skillmods[SKILL_TABLE_SIZE + 1];
-   /* array of skill mods			*/
-   int8_t skillperfs[SKILL_TABLE_SIZE + 1];
-   /* array of skill mods                  */
-
+   skill_data skills[SKILL_TABLE_SIZE];
 
    bitvector_t act[PM_ARRAY_MAX]; /* act flag for NPC's; player flag for PC's */
 
