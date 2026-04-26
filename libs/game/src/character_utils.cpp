@@ -1379,6 +1379,18 @@ int know_skill(struct char_data *ch, int skill)
  return (know);
 }
 
+bool is_affected(struct char_data *ch, int aff_flag)
+{
+
+  struct affected_type *af;
+
+  for (af = ch->affected; af; af = af->next) {
+    if (af->location == APPLY_NONE && af->bitvector == aff_flag)
+      return (TRUE);
+  }
+
+  return (FALSE);
+}
 
 void null_affect(struct char_data *ch, int aff_flag)
 {
@@ -1392,13 +1404,22 @@ void null_affect(struct char_data *ch, int aff_flag)
   }
 }
 
+void remove_affect(struct char_data *ch, int aff_flag)
+{
+
+  struct affected_type *af, *next_af;
+
+  for (af = ch->affected; af; af = next_af) {
+    next_af = af->next;
+    if (af->bitvector == aff_flag)
+      affect_remove(ch, af);
+  }
+}
+
 void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur, int str, int con, int intel, int agl, int wis, int spd)
 {
   struct affected_type af[6];
   int num = 0;
-
-  if (dur <= 0)
-   dur = 1;
 
   if (str == 0 && con == 0 && wis == 0 && intel == 0 && agl == 0 && spd == 0) {
    af[num].type = skill;

@@ -3346,9 +3346,9 @@ void nanny(struct descriptor_data *d, char *arg)
      break;
 
     case CON_Q1:
-      d->character->max_hit = rand_number(30, 50);
-      d->character->max_move = rand_number(30, 50);
-      d->character->max_mana = rand_number(30, 50);
+      d->character->basepl = rand_number(30, 50);
+      d->character->basest = rand_number(30, 50);
+      d->character->baseki = rand_number(30, 50);
      if (IS_SAIYAN(d->character)) {
       d->character->real_abils.str = rand_number(12, 18);
       d->character->real_abils.con = rand_number(12, 18);
@@ -3480,30 +3480,30 @@ void nanny(struct descriptor_data *d, char *arg)
 
     switch (*arg) {
       case '1':
-      d->character->max_hit += roll_stats(d->character, 5, 25);
-      d->character->max_move += roll_stats(d->character, 8, 50);
-      d->character->max_mana += roll_stats(d->character, 6, 50);
+      d->character->basepl += roll_stats(d->character, 5, 25);
+      d->character->basest += roll_stats(d->character, 8, 50);
+      d->character->baseki += roll_stats(d->character, 6, 50);
       break;
       case '2':
-      d->character->max_hit += roll_stats(d->character, 5, 55);
-      d->character->max_move += roll_stats(d->character, 8, 40);
-      d->character->max_mana += roll_stats(d->character, 6, 40);
+      d->character->basepl += roll_stats(d->character, 5, 55);
+      d->character->basest += roll_stats(d->character, 8, 40);
+      d->character->baseki += roll_stats(d->character, 6, 40);
       break;
       case '3':
-      d->character->max_hit += roll_stats(d->character, 5, 125);
-      d->character->max_move += roll_stats(d->character, 8, 50);
-      d->character->max_mana += roll_stats(d->character, 6, 40);
+      d->character->basepl += roll_stats(d->character, 5, 125);
+      d->character->basest += roll_stats(d->character, 8, 50);
+      d->character->baseki += roll_stats(d->character, 6, 40);
       break;
       case '4':
-      d->character->max_hit += roll_stats(d->character, 5, 65);
-      d->character->max_move += roll_stats(d->character, 8, 65);
-      d->character->max_mana += roll_stats(d->character, 6, 65);
+      d->character->basepl += roll_stats(d->character, 5, 65);
+      d->character->basest += roll_stats(d->character, 8, 65);
+      d->character->baseki += roll_stats(d->character, 6, 65);
       SET_BIT_AR(PLR_FLAGS(d->character), PLR_SKILLP);
       break;
       case '5':
-      d->character->max_hit += roll_stats(d->character, 5, 75);
-      d->character->max_move += roll_stats(d->character, 8, 100);
-      d->character->max_mana += roll_stats(d->character, 6, 75);
+      d->character->basepl += roll_stats(d->character, 5, 75);
+      d->character->basest += roll_stats(d->character, 8, 100);
+      d->character->baseki += roll_stats(d->character, 6, 75);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3558,27 +3558,27 @@ void nanny(struct descriptor_data *d, char *arg)
     switch (*arg) {
       case '1':
       d->character->alignment += -100;
-      d->character->max_hit += 100;
-      d->character->max_move += 80;
-      d->character->max_mana += 10;
+      d->character->basepl += 100;
+      d->character->basest += 80;
+      d->character->baseki += 10;
       break;
       case '2':
       d->character->alignment += 10;
-      d->character->max_hit += 25;
-      d->character->max_move += 25;
-      d->character->max_mana += 25;
+      d->character->basepl += 25;
+      d->character->basest += 25;
+      d->character->baseki += 25;
       break;
       case '3':
       d->character->alignment += 50;
-      d->character->max_hit += 20;
-      d->character->max_move += 20;
-      d->character->max_mana += 20;
+      d->character->basepl += 20;
+      d->character->basest += 20;
+      d->character->baseki += 20;
       break;
       case '4':
       d->character->alignment += -200;
-      d->character->max_hit += 100;
-      d->character->max_move += 100;
-      d->character->max_mana += 100;
+      d->character->basepl += 100;
+      d->character->basest += 100;
+      d->character->baseki += 100;
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3600,27 +3600,27 @@ void nanny(struct descriptor_data *d, char *arg)
     switch (*arg) {
       case '1':
       d->character->gold += 1000;
-      d->character->max_hit -= rand_number(10, 30);
-      d->character->max_move -= rand_number(10, 30);
-      d->character->max_mana -= rand_number(10, 30);
+      d->character->basepl -= rand_number(10, 30);
+      d->character->basest -= rand_number(10, 30);
+      d->character->baseki -= rand_number(10, 30);
       break;
       case '2':
       d->character->gold = 0;
-      d->character->max_hit += rand_number(50, 165);
-      d->character->max_move += rand_number(50, 165);
-      d->character->max_mana += rand_number(50, 165);
+      d->character->basepl += rand_number(50, 165);
+      d->character->basest += rand_number(50, 165);
+      d->character->baseki += rand_number(50, 165);
       break;
       case '3':
       d->character->gold = 2500;
-      d->character->max_hit -= rand_number(15, 25);
-      d->character->max_move -= rand_number(15, 25);
-      d->character->max_mana -= rand_number(15, 25);
+      d->character->basepl -= rand_number(15, 25);
+      d->character->basest -= rand_number(15, 25);
+      d->character->baseki -= rand_number(15, 25);
       break;
       case '4':
       d->character->gold = 150;
-      d->character->max_hit += rand_number(25, 80);
-      d->character->max_move += rand_number(25, 80);
-      d->character->max_mana += rand_number(25, 80);
+      d->character->basepl += rand_number(25, 80);
+      d->character->basest += rand_number(25, 80);
+      d->character->baseki += rand_number(25, 80);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3641,16 +3641,16 @@ void nanny(struct descriptor_data *d, char *arg)
    case CON_Q5:
     switch (*arg) {
       case '1':
-      d->character->max_hit += rand_number(0, 40);
+      d->character->basepl += rand_number(0, 40);
       break;
       case '2':
-      d->character->max_hit += rand_number(-30, 80);
+      d->character->basepl += rand_number(-30, 80);
       break;
       case '3':
-      d->character->max_hit += rand_number(-25, 60);
+      d->character->basepl += rand_number(-25, 60);
       break;
       case '4':
-      d->character->max_hit += rand_number(0, 50);
+      d->character->basepl += rand_number(0, 50);
       break;
       default:
       write_to_output(d, "That is not an acceptable option.\r\n");
@@ -3674,24 +3674,24 @@ void nanny(struct descriptor_data *d, char *arg)
   case CON_Q6:
     switch (*arg) {
       case '1':
-         d->character->max_hit += rand_number(0, 15);
-         d->character->max_move += rand_number(0, 15);
+         d->character->basepl += rand_number(0, 15);
+         d->character->basest += rand_number(0, 15);
          d->character->choice = 1;
         break;
       case '2':
-         d->character->max_hit += rand_number(0, 30);
+         d->character->basepl += rand_number(0, 30);
          d->character->choice = 2;
         break;
       case '3':
-         d->character->max_hit += rand_number(0, 30);
+         d->character->basepl += rand_number(0, 30);
          d->character->choice = 3;
         break;
       case '4':
-         d->character->max_hit += rand_number(0, 30);
+         d->character->basepl += rand_number(0, 30);
          d->character->choice = 4;
         break;
       case '5':
-         d->character->max_mana += rand_number(0, 50);
+         d->character->baseki += rand_number(0, 50);
          d->character->choice = 5;
         break;
       default:
@@ -4278,11 +4278,6 @@ void nanny(struct descriptor_data *d, char *arg)
            STATE(d) = CON_NEGATIVE;
          } else if (!strcasecmp(arg, "x") || !strcasecmp(arg, "X")) {
           GET_NEGCOUNT(d->character) = 0;
-
-           d->character->basepl = MAX(90L, d->character->basepl);
-           d->character->baseki = MAX(90L, d->character->baseki);
-           d->character->basest = MAX(90L, d->character->basest);
-           d->character->lifeforce = d->character->basest + d->character->baseki;
            write_to_output(d, "\r\n@wTo check the bonuses/negatives you have in game use the status command");
            if (GET_CCPOINTS(d->character) > 0) {
             write_to_output(d, "\r\n@GYour left over points were spent on Practice Sessions@w");
@@ -4324,19 +4319,15 @@ void nanny(struct descriptor_data *d, char *arg)
            STATE(d) = CON_BONUS;
          } else if (!strcasecmp(arg, "x") || !strcasecmp(arg, "X")) {
           GET_NEGCOUNT(d->character) = 0;
-          if (d->character->max_hit <= 0) {
-           d->character->max_hit = 90;
+          if (d->character->basepl <= 0) {
+           d->character->basepl = 90;
           }
-          if (d->character->max_mana <= 0) {
-           d->character->max_mana = 90;
+          if (d->character->baseki <= 0) {
+           d->character->baseki = 90;
           }
-          if (d->character->max_move <= 0) {
-           d->character->max_move = 90;
+          if (d->character->basest <= 0) {
+           d->character->basest = 90;
           }
-           d->character->basepl = d->character->max_hit;
-           d->character->baseki = d->character->max_mana;
-           d->character->basest = d->character->max_move;
-           d->character->lifeforce = d->character->max_move + d->character->max_mana;
            write_to_output(d, "\r\n@wTo check the bonuses/negatives you have in game use the status command");
            if (GET_CCPOINTS(d->character) > 0) {
             write_to_output(d, "\r\n@GYour left over points were spent on Practice Sessions@w");
