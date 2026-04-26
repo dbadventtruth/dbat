@@ -3599,7 +3599,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch)
     act("@w...$e has energy crackling around $s body!", TRUE, i, 0, ch, TO_VICT);
   if (PLR_FLAGGED(i, PLR_OOZARU) && GET_CHARGE(i) && (IS_SAIYAN(i) || IS_HALFBREED(i)))
     act("@w...$e is in the form of a @rgreat ape@w!", TRUE, i, 0, ch, TO_VICT);
-  if (GET_GENOME(i, 0) == 11)
+  if (is_affected(i, AFF_KYODAIKA))
     act("@w...$e has expanded $s body size@w!", TRUE, i, 0, ch, TO_VICT);
   if (AFF_FLAGGED(i, AFF_HAYASA))
       act("@w...$e has a soft @cblue@w glow around $s body!", FALSE, i, 0, ch, TO_VICT);
