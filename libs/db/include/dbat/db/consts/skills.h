@@ -156,4 +156,4 @@
 #define SKILL_BALEFIRE                  556
 #define SKILL_BLESSEDHAMMER             557
 
-#define SKILL_TABLE_SIZE	1000
+#define SKILL_TABLE_SIZE	600
