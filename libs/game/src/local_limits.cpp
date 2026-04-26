@@ -1375,40 +1375,19 @@ void gain_condition(struct char_data *ch, int condition, int value)
       //send_to_char(ch, "@RYou are feeling ravenous!@n\r\n");
       break;
     case 1:
-      send_to_char(ch, "You are extremely hungry!\r\n");
-      break;
     case 2:
-      send_to_char(ch, "You are very hungry!\r\n");
-      break;
     case 3:
-      send_to_char(ch, "You are pretty hungry!\r\n");
-      break;
-    case 4:
-      send_to_char(ch, "You are hungry!\r\n");
-      break;
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-      send_to_char(ch, "Your stomach is growling!\r\n");
+      send_to_char(ch, "You are extremely hungry!\r\n");
       break;
     case 9:
     case 10:
     case 11:
-      send_to_char(ch, "You could use something to eat.\r\n");
+      send_to_char(ch, "You are hungry!\r\n");
       break;
-    case 12:
-    case 13:
-    case 14:
-    case 15:
-    case 16:
-    case 17:
-      send_to_char(ch, "You could use a bite to eat.\r\n");
-      break;
-    case 18:
     case 19:
     case 20:
-      send_to_char(ch, "You could use a snack.\r\n");
+    case 21:
+      send_to_char(ch, "You could use something to eat.\r\n");
       break;
     default:
       break;
@@ -1421,40 +1400,19 @@ void gain_condition(struct char_data *ch, int condition, int value)
       //send_to_char(ch, "@RYou are dehydrated!@n\r\n");
       break;
     case 1:
-      send_to_char(ch, "You are extremely thirsty!\r\n");
-      break;
     case 2:
-      send_to_char(ch, "You are very thirsty!\r\n");
-      break;
     case 3:
-      send_to_char(ch, "You are pretty thirsty!\r\n");
-      break;
-    case 4:
-      send_to_char(ch, "You are thirsty!\r\n");
-      break;
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-      send_to_char(ch, "Your throat is pretty dry!\r\n");
+      send_to_char(ch, "You are extremely thirsty!\r\n");
       break;
     case 9:
     case 10:
     case 11:
-      send_to_char(ch, "You could use something to drink.\r\n");
+      send_to_char(ch, "Your throat is pretty dry!\r\n");
       break;
-    case 12:
-    case 13:
-    case 14:
-    case 15:
-    case 16:
-    case 17:
-      send_to_char(ch, "Your mouth feels pretty dry.\r\n");
-      break;
-    case 18:
     case 19:
     case 20:
-      send_to_char(ch, "You could use a sip of water.\r\n");
+    case 21:
+      send_to_char(ch, "You could use something to drink.\r\n");
       break;
     default:
       break;
