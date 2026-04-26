@@ -286,17 +286,7 @@ int print_skills_by_type(struct char_data *ch, char *buf, int maxsz, int sktype,
     if (t != sktype)
       continue;
 
-    if ((t & SKTYPE_SKILL) || (t & SKTYPE_SPELL)) {
-      for (nlen = 0, known = 0; nlen < NUM_CLASSES; nlen++)
-        if (GET_CLASS_RANKS(ch, nlen) > 0 && (spell_info[i].can_learn_skill[nlen] > SKLEARN_CANT)) {
-          known = spell_info[i].can_learn_skill[nlen];
-        }
-    } else {
-      known = 0;
-    }
-    if (GET_SKILL(ch, i) <= 0) {
-      known = 0;
-    }
+    known = GET_SKILL(ch, i);
     if (*arg) {
      if (atoi(arg) <= 0 && !strstr(spell_info[i].name, arg)) {
       known = 0;
@@ -304,31 +294,25 @@ int print_skills_by_type(struct char_data *ch, char *buf, int maxsz, int sktype,
       known = 0;
      }
     }
-    if (known) {
-      if (t & SKTYPE_LANG) {
-	nlen = snprintf(buf + len, maxsz - len, "%-20s  (%s)\r\n",
+
+    if(known == 0) continue;
+
+    if (t & SKTYPE_LANG) {
+	    nlen = snprintf(buf + len, maxsz - len, "%-20s  (%s)\r\n",
                         spell_info[i].name, GET_SKILL_BASE(ch, i) ? "known" : "unknown");
       } else if (t & SKTYPE_SKILL) {
         if (GET_SKILL_BONUS(ch, i))
           snprintf(buf2, sizeof(buf2), " (base %d + bonus %d)", GET_SKILL_BASE(ch, i), GET_SKILL_BONUS(ch, i));
         else
           buf2[0] = 0;
-        if (known == SKLEARN_CROSSCLASS) {
-         count++;
-         canknow = highest_skill_value(GET_LEVEL(ch), GET_SKILL(ch, i));
-         nlen = snprintf(buf + len, maxsz - len, "@y(@Y%2d@y) @W%-30s  @y(@Y%2d@y) @C%3d@D/@c%3d   %s@n%s%s\r\n", count,
-                          spell_info[i].name, count, GET_SKILL(ch, i), canknow, GET_SKILL_PERF(ch, i) > 0 ? (GET_SKILL_PERF(ch, i) == 1 ? "@ROver Charge" : (GET_SKILL_PERF(ch, i) == 2 ? "@BAccurate" : "@GEfficient")) : "", GET_SKILL_BASE(ch, i) > 100 ? " @D(@YGrand Master@D)@n" : "", buf2);
-        } else {
-         count++;
+        count++;
          canknow = highest_skill_value(GET_LEVEL(ch), GET_SKILL(ch, i));
          nlen = snprintf(buf + len, maxsz - len, "@y(@Y%2d@y) @W%-30s  @y(@Y%2d@y) @C%3d@D/@c%d3   %s@n%s%s\r\n", count,
                           spell_info[i].name, count, GET_SKILL(ch, i), canknow, GET_SKILL_PERF(ch, i) > 0 ? (GET_SKILL_PERF(ch, i) == 1 ? "@ROver Charge" : (GET_SKILL_PERF(ch, i) == 2 ? "@BAccurate" : "@GEfficient")) : "", GET_SKILL_BASE(ch, i) > 100 ? " @D(@YGrand Master@D)@n" : "", buf2);
-       }
       }
       if (len + nlen >= maxsz || nlen < 0)
         break;
       len += nlen;
-    }
   }
 
   return len;
