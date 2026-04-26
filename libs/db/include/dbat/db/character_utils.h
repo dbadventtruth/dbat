@@ -12,6 +12,22 @@
 #include "consts/adminflags.h"
 #include "consts/mobflags.h"
 
+// Stats System
+void char_stats_init(struct char_data *ch);
+stat_t char_stats_get(const struct char_data *ch, uint8_t stat_id);
+stat_t char_stats_set(struct char_data *ch, uint8_t stat_id, stat_t val);
+stat_t char_stats_modify(struct char_data *ch, uint8_t stat_id, stat_t delta);
+
+stat_t char_der_get_affect_bonus(struct char_data *ch, int location, int specific);
+void char_der_invalidate(struct char_data *ch);
+stat_t char_der_get(struct char_data *ch, uint8_t der_id);
+
+stat_t char_skills_base_get(struct char_data *ch, uint8_t skill_id);
+stat_t char_skills_set(struct char_data *ch, uint8_t skill_id, stat_t value);
+stat_t char_skills_modify(struct char_data *ch, uint8_t skill_id, stat_t delta);
+stat_t char_skills_get(struct char_data *ch, uint8_t skill_id);
+stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
+
 // Legacy Macros
 
 /*
