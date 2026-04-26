@@ -307,7 +307,7 @@ int print_skills_by_type(struct char_data *ch, char *buf, int maxsz, int sktype,
           buf2[0] = 0;
         count++;
          canknow = highest_skill_value(GET_LEVEL(ch), GET_SKILL(ch, i));
-         nlen = snprintf(buf + len, maxsz - len, "@y(@Y%2d@y) @W%-30s  @y(@Y%2d@y) @C%3d@D/@c%d3   %s@n%s%s\r\n", count,
+         nlen = snprintf(buf + len, maxsz - len, "@y(@Y%2d@y) @W%-30s  @y(@Y%2d@y) @C%3d@D/@c%3d   %s@n%s%s\r\n", count,
                           spell_info[i].name, count, GET_SKILL(ch, i), canknow, GET_SKILL_PERF(ch, i) > 0 ? (GET_SKILL_PERF(ch, i) == 1 ? "@ROver Charge" : (GET_SKILL_PERF(ch, i) == 2 ? "@BAccurate" : "@GEfficient")) : "", GET_SKILL_BASE(ch, i) > 100 ? " @D(@YGrand Master@D)@n" : "", buf2);
       }
       if (len + nlen >= maxsz || nlen < 0)
