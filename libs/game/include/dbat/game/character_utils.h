@@ -185,7 +185,6 @@ void perform_wear(struct char_data *ch, struct obj_data *obj, int where);
 int find_eq_pos(struct char_data *ch, struct obj_data *obj, char *arg);
 void perform_remove(struct char_data *ch, int pos);
 
-
 int can_grav(struct char_data *ch);
 int check_skill(struct char_data *ch, int skill);
 int check_points(struct char_data *ch, int64_t ki, int64_t st);
@@ -206,6 +205,8 @@ size_t send_to_char(struct char_data *ch, const char *messg, ...) __attribute__(
 void admin_set(struct char_data *ch, int value);
 char *sense_location(struct char_data *ch);
 void null_affect(struct char_data *ch, int aff_flag);
+bool is_affected(struct char_data *ch, int aff_flag);
+void remove_affect(struct char_data *ch, int aff_flag);
 int planet_check(struct char_data *ch, struct char_data *vict);
 /* Player autoexit levels: used as an index to exitlevels           */
 #define EXIT_OFF        0       /* Autoexit off                     */

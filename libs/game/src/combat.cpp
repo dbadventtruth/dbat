@@ -3950,7 +3950,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    dmg = dmg * 0.75;
   }
 
-  if (AFF_FLAGGED(vict, AFF_WITHER)) {
+  if (is_affected(vict, AFF_WITHER)) {
    dmg += (dmg * 0.01) * 20;
   }
 
@@ -4333,20 +4333,13 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
       gain_exp(ch, gain);
      }
     }
-    if (AFF_FLAGGED(vict, AFF_ECHAINS)) {
-     if (IS_NPC(ch) && type == 0) {
-      ch->real_abils.cha -= 2;
-      if (ch->real_abils.cha < 5)
-       ch->real_abils.cha = 5;
-      else {
-       act("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_CHAR);
+    if (is_affected(vict, AFF_ECHAINS) && type == 0) {
+      act("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_CHAR);
        act("@CEthereal chains burn into existence! They quickly latch onto @c$n's@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_ROOM);
-      }
-     } else if (type == 0) {
-       WAIT_STATE(ch, PULSE_3SEC);
-       act("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_CHAR);
-       act("@CEthereal chains burn into existence! They quickly latch onto @c$n's@C body and begin temporarily hampering $s actions!@n", TRUE, ch, 0, vict, TO_ROOM);
-     }
+     if (IS_NPC(ch))
+      assign_affect(vict, AFF_ECHAINS, 0, -1, 0, 0, 0, 0, 0, -2);
+     else 
+      WAIT_STATE(ch, PULSE_3SEC);
     }
    } else if (dmg <= 1) {
     send_to_char(ch, "@D[@GDamage@W: @BPitiful...@D]@n\r\n");

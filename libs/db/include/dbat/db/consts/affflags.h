@@ -77,8 +77,12 @@
 #define AFF_SHELL             72
 #define AFF_IMMUNITY          73
 #define AFF_SPIRITCONTROL     74
+#define AFF_KYODAIKA          75   /* Kyodaika */
+#define AFF_STARPHASE         76
+#define AFF_SPECIAL_POSE      77
+#define AFF_SHADOW_STITCH     78
 
-#define NUM_AFF_FLAGS 75
+#define NUM_AFF_FLAGS 79
 
 #define AF_ARRAY_MAX    4
 
