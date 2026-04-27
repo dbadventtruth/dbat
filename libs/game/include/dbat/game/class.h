@@ -19,7 +19,7 @@ int load_levels();
 void cedit_creation(struct char_data *ch);
 void advance_level(struct char_data *ch, int whichclass);
 int8_t ability_mod_value(int abil);
-int8_t dex_mod_capped(const struct char_data *ch);
+int8_t dex_mod_capped(struct char_data *ch);
 char *class_desc_str(struct char_data *ch, int howlong, int wantthe);
 int total_skill_levels(struct char_data *ch, int skill);
 int highest_skill_value(int level, int type);

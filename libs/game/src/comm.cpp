@@ -1309,7 +1309,7 @@ char *make_prompt(struct descriptor_data *d)
       } else if (PRF_FLAGGED(d->character, PRF_DISPHP)) {
 
           struct char_data* ch = d->character;
-          double perc = ((double)getCurHealth(ch) / (double)getMaxPLTrans(ch)) * 100;
+          double perc = char_meter_get(ch, MTR_POWERLEVEL) * 100;
           char* col = "n";
           if(perc > 100)
               col = "g";

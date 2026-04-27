@@ -2852,7 +2852,7 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch)
   };
   int percent, ar_index;
 
-  percent = (int)(i->health * 100.0);
+  percent = (int)(char_meter_get(ch, MTR_POWERLEVEL) * 100.0);
 
   for (ar_index = 0; diagnosis[ar_index].percent >= 0; ar_index++)
     if (percent >= diagnosis[ar_index].percent) {
@@ -3169,7 +3169,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch)
     send_to_char(ch, "%s", i->long_descr);
 
     if(IS_NPC(i)) {
-      double health = i->health;
+      double health = char_meter_get(i, MTR_POWERLEVEL);
       if(health <= 0.1) {
         act("@R...Should be DEAD soon.@w", TRUE, i, 0, ch, TO_VICT);
       } else if(health <= 0.2) {
@@ -5653,25 +5653,22 @@ ACMD(do_score)
  if (view == full || view == health) {
  send_to_char(ch, "  @cO@D-----------------------------@D[   @cHealth   @D]-----------------------------@cO@n\n");
  send_to_char(ch, "                 @D<@rPowerlevel@D>          <@BKi@D>             <@GStamina@D>@n\n");
- send_to_char(ch, "    @wCurrent   @D-[@R%-16s@D]-[@R%-16s@D]-[@R%-16s@D]@n\n", add_commas(getCurPL(ch)), add_commas(
-         (getCurKI(ch))), add_commas((getCurST(ch))));
- send_to_char(ch, "    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n", add_commas(getEffMaxPL(ch)), add_commas(GET_MAX_MANA(ch)), add_commas(GET_MAX_MOVE(ch)));
- send_to_char(ch, "    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n", add_commas((getEffBasePL(ch))), add_commas(
-         (getEffBaseKI(ch))), add_commas((getEffBaseST(ch))));
-  if (!IS_ANDROID(ch) && (getCurLF(ch)) > 0) {
+ send_to_char(ch, "    @wCurrent   @D-[@R%-16s@D]-[@R%-16s@D]-[@R%-16s@D]@n\n", add_commas(char_meter_current(ch, MTR_POWERLEVEL)), add_commas(char_meter_current(ch, MTR_KI)), add_commas(char_meter_current(ch, MTR_STAMINA)));
+ send_to_char(ch, "    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n", add_commas(char_meter_max(ch, MTR_POWERLEVEL)), add_commas(char_meter_max(ch, MTR_KI)), add_commas(char_meter_max(ch, MTR_STAMINA)));
+ send_to_char(ch, "    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n", add_commas(char_stats_get(ch, STAT_POWERLEVEL)), add_commas(char_stats_get(ch, STAT_KI)), add_commas(char_stats_get(ch, STAT_STAMINA)));
+  if (!IS_ANDROID(ch) && char_meter_current(ch, MTR_LIFE_FORCE) > 0) {
    send_to_char(ch, "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife Percent@D-[@Y%3d%s@D]@n\n", add_commas(
-           (getCurLF(ch))), "/", add_commas((getMaxLF(ch))), GET_LIFEPERC(ch), "%");
+           char_meter_current(ch, MTR_LIFE_FORCE)), "/", add_commas(char_meter_max(ch, MTR_LIFE_FORCE)), GET_LIFEPERC(ch), "%");
   } else if (!IS_ANDROID(ch)) {
-   send_to_char(ch, "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife Percent@D-[@Y%3d%s@D]@n\n", add_commas(0), "/", add_commas(
-           (getMaxLF(ch))), GET_LIFEPERC(ch), "%");
+   send_to_char(ch, "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife Percent@D-[@Y%3d%s@D]@n\n", add_commas(0), "/", add_commas(char_meter_max(ch, MTR_LIFE_FORCE)), GET_LIFEPERC(ch), "%");
   }
  }
  if (view == full || view == stats) {
  send_to_char(ch, "  @cO@D-----------------------------@D[ @cStatistics @D]-----------------------------@cO@n\n");
  send_to_char(ch, "      @D<@wCharacter Level@D: @w%-3d@D> <@wRPP@D: @w%-3d@D> <@wRPP Bank@D: @w%-3d@D>@n\n", GET_LEVEL(ch), GET_RP(ch), GET_RBANK(ch));
  send_to_char(ch, "      @D<@wSpeed Index@D: @w%-15s@D> <@wArmor Index@D: @w%-15s@D>@n\n", add_commas(GET_SPEEDI(ch)), add_commas(GET_ARMOR(ch)));
- send_to_char(ch, "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d (%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n", ch->real_abils.str, GET_STR(ch), ch->real_abils.dex, GET_DEX(ch), ch->real_abils.cha, GET_CHA(ch));
- send_to_char(ch, "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d (%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n", ch->real_abils.con, GET_CON(ch), ch->real_abils.intel, GET_INT(ch), ch->real_abils.wis, GET_WIS(ch));
+ send_to_char(ch, "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d (%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n", char_stats_get(ch, STAT_STRENGTH), GET_STR(ch), char_stats_get(ch, STAT_AGILITY), GET_DEX(ch), char_stats_get(ch, STAT_SPEED), GET_CHA(ch));
+ send_to_char(ch, "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d (%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n", char_stats_get(ch, STAT_CONSTITUTION), GET_CON(ch), char_stats_get(ch, STAT_INTELLIGENCE), GET_INT(ch), char_stats_get(ch, STAT_WISDOM), GET_WIS(ch));
  }
  if (view == full || view == other) {
  send_to_char(ch, "  @cO@D-----------------------------@D[   @cOther    @D]-----------------------------@cO@n\n");
@@ -6587,12 +6584,12 @@ ACMD(do_status)
         if (AFF_FLAGGED(ch, AFF_ETHEREAL))
             send_to_char(ch, "You are ethereal and cannot interact with normal space!\r\n");
 
-        if (GET_REGEN(ch) > 0) {
-            send_to_char(ch, "Something is augmenting your regen rate by %s%d%s!\r\n", GET_REGEN(ch) > 0 ? "+" : "-", GET_REGEN(ch), "%");
+        if (char_der_get(ch, DER_REGEN) > 0) {
+            send_to_char(ch, "Something is augmenting your regen rate by %s%d%s!\r\n", char_der_get(ch, DER_REGEN) > 0 ? "+" : "-", char_der_get(ch, DER_REGEN), "%");
         }
 
-        if (GET_ASB(ch) > 0) {
-            send_to_char(ch, "Something is augmenting your auto-skill training rate by %s%d%s!\r\n", GET_ASB(ch) > 0 ? "+" : "-", GET_ASB(ch), "%");
+        if (char_der_get(ch, DER_SKILL_LEARN) > 0) {
+            send_to_char(ch, "Something is augmenting your auto-skill training rate by %s%d%s!\r\n", char_der_get(ch, DER_SKILL_LEARN) > 0 ? "+" : "-", char_der_get(ch, DER_SKILL_LEARN), "%");
         }
 
         if (ch->lifebonus > 0) {

@@ -106,11 +106,11 @@ void racial_ability_modifiers(struct char_data *ch) {
         chrace = GET_RACE(ch);
     }
 
-    /*ch->real_abils.str += racial_ability_mods[chrace][0];
-    ch->real_abils.con += racial_ability_mods[chrace][1];
-    ch->real_abils.intel += racial_ability_mods[chrace][2];
-    ch->real_abils.wis += racial_ability_mods[chrace][3];
-    ch->real_abils.dex += racial_ability_mods[chrace][4];*/
+    /*char_stats_modify(ch, STAT_STRENGTH, (racial_ability_mods[chrace][0]));
+    char_stats_modify(ch, STAT_CONSTITUTION, (racial_ability_mods[chrace][1]));
+    char_stats_modify(ch, STAT_INTELLIGENCE, (racial_ability_mods[chrace][2]));
+    char_stats_modify(ch, STAT_WISDOM, (racial_ability_mods[chrace][3]));
+    char_stats_modify(ch, STAT_AGILITY, (racial_ability_mods[chrace][4]));*/
 }
 
 
@@ -190,10 +190,10 @@ void set_height_and_weight_by_race(struct char_data *ch) {
     }
 
     mod = dice(2, hw_info[race].heightdie);
-    GET_HEIGHT(ch) = hw_info[race].height[sex] + mod;
+    ch->height = hw_info[race].height[sex] + mod;
     mod *= hw_info[race].weightfac;
     mod /= 100;
-    GET_WEIGHT(ch) = hw_info[race].weight[sex] + mod;
+    ch->weight = hw_info[race].weight[sex] + mod;
 }
 
 

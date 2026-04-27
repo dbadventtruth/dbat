@@ -274,18 +274,9 @@ int load_char(const char *name, struct char_data *ch)
     /* initializations necessary to keep some things straight */
     ch->affected = NULL;
     ch->affectedv = NULL;
-    for (i = 0; i < SKILL_TABLE_SIZE; i++) {
-      SET_SKILL(ch, i, 0);
-      SET_SKILL_BONUS(ch, i, 0);
-      SET_SKILL_PERF(ch, i, 0);
-    }
     GET_SEX(ch) = PFDEF_SEX;
     ch->size = PFDEF_SIZE;
     ch->chclass = CLASS_ROSHI;
-    for (i = 0; i < NUM_CLASSES; i++) {
-      GET_CLASS_NONEPIC(ch, i) = 0;
-      GET_CLASS_EPIC(ch, i) = 0;
-    }
     GET_LOG_USER(ch) = strdup("NOUSER");
     ch->race = PFDEF_RACE;
     GET_ADMLEVEL(ch) = PFDEF_LEVEL;
@@ -300,23 +291,16 @@ int load_char(const char *name, struct char_data *ch)
     GET_CLAN(ch) = strdup("None.");
     GET_LEVEL_ADJ(ch) = PFDEF_LEVEL;
     GET_HOME(ch) = PFDEF_HOMETOWN;
-    GET_HEIGHT(ch) = PFDEF_HEIGHT;
-    GET_WEIGHT(ch) = PFDEF_WEIGHT;
-    ch->basepl = PFDEF_BASEPL;
-    ch->health = 1.0;
+    ch->height = PFDEF_HEIGHT;
+    ch->weight = PFDEF_WEIGHT;
     GET_RELAXCOUNT(ch) = PFDEF_EYE;
     GET_BLESSLVL(ch) = PFDEF_HEIGHT;
-    ch->life = 1.0;
     // GET_LIFEFORCE(ch) = PFDEF_BASEPL;
     GET_LIFEPERC(ch) = PFDEF_WEIGHT;
     GET_STUPIDKISS(ch) = 0;
     GET_POS(ch) = POS_STANDING;
     GET_MAJINIZED(ch) = PFDEF_BASEPL;
     GET_GAUNTLET(ch)   = PFDEF_GAUNTLET;
-    ch->baseki = PFDEF_BASEKI;
-    ch->energy = 1.0;
-    ch->basest = PFDEF_BASEST;
-    ch->stamina = 1.0;
     GET_HAIRL(ch) = PFDEF_HAIRL;
     GET_HAIRC(ch) = PFDEF_HAIRC;
     GET_SKIN(ch) = PFDEF_SKIN;
@@ -408,24 +392,7 @@ int load_char(const char *name, struct char_data *ch)
     for (i = 0; i < 6; i++)
      GET_TRANSCOST(ch, i) = FALSE;
     GET_MOLT_EXP(ch) = PFDEF_EXP;
-    GET_FISHD(ch) = PFDEF_ACCURACY;
-    GET_POLE_BONUS(ch) = PFDEF_ACCURACY;
-    GET_DAMAGE_MOD(ch) = PFDEF_DAMAGE;
     GET_ARMOR(ch) = PFDEF_AC;
-    ch->real_abils.str = PFDEF_STR;
-    ch->real_abils.dex = PFDEF_DEX;
-    ch->real_abils.intel = PFDEF_INT;
-    ch->real_abils.wis = PFDEF_WIS;
-    ch->real_abils.con = PFDEF_CON;
-    ch->real_abils.cha = PFDEF_CHA;
-    //GET_HIT(ch) = PFDEF_HIT;
-    //ch->max_hit = PFDEF_MAXHIT;
-    //GET_MANA(ch) = PFDEF_MANA;
-    //ch->max_mana = PFDEF_MAXMANA;
-    //GET_MOVE(ch) = PFDEF_MOVE;
-    //ch->max_move = PFDEF_MAXMOVE;
-    GET_KI(ch) = PFDEF_KI;
-    GET_MAX_KI(ch) = PFDEF_MAXKI;
     SPEAKING(ch) = PFDEF_SPEAKING;
     GET_OLC_ZONE(ch) = PFDEF_OLC;
     GET_HOST(ch) = NULL;
@@ -490,7 +457,7 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'C':
-             if (!strcmp(tag, "Cha "))  ch->real_abils.cha      = atoi(line);
+             if (!strcmp(tag, "Cha "))  char_stats_set(ch, STAT_SPEED, (strtoll(line, NULL, 10)));
         else if (!strcmp(tag, "Clan"))  GET_CLAN(ch)            = strdup(line);
         else if (!strcmp(tag, "Clar"))  GET_CRANK(ch)           = atoi(line);
 	else if (!strcmp(tag, "Clas"))  ch->chclass = atoi(line);
@@ -498,7 +465,7 @@ int load_char(const char *name, struct char_data *ch)
           sscanf(line, "%d %s", &num, buf2);
           ch->player_specials->color_choices[num] = strdup(buf2);
         }
-        else if (!strcmp(tag, "Con "))  ch->real_abils.con      = atoi(line);
+        else if (!strcmp(tag, "Con "))  char_stats_set(ch, STAT_CONSTITUTION, (strtoll(line, NULL, 10)));
         else if (!strcmp(tag, "Cool"))  GET_COOLDOWN(ch)        = atoi(line);
         else if (!strcmp(tag, "Crtd"))  ch->time.created        = atol(line);
       break;
@@ -507,9 +474,9 @@ int load_char(const char *name, struct char_data *ch)
              if (!strcmp(tag, "Deat"))  GET_DTIME(ch)     = atoi(line);
         else if (!strcmp(tag, "Deac"))  GET_DCOUNT(ch)    = atoi(line);
         else if (!strcmp(tag, "Desc"))  ch->description  = fread_string(fl, buf2);
-        else if (!strcmp(tag, "Dex "))  ch->real_abils.dex      = atoi(line);
+        else if (!strcmp(tag, "Dex "))  char_stats_set(ch, STAT_AGILITY, (strtoll(line, NULL, 10)));
         else if (!strcmp(tag, "Drnk"))  GET_COND(ch, DRUNK)     = atoi(line);
-        else if (!strcmp(tag, "Damg"))  GET_DAMAGE_MOD(ch)          = atoi(line);
+        else if (!strcmp(tag, "Damg"));
         else if (!strcmp(tag, "Droo"))  GET_DROOM(ch)          = atoi(line);
       break;
 
@@ -522,7 +489,7 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'F':
-             if (!strcmp(tag, "Fisd"))  GET_FISHD(ch)           = atoi(line);
+             if (!strcmp(tag, "Fisd"));
         else if (!strcmp(tag, "Frez"))  GET_FREEZE_LEV(ch)      = atoi(line);
         else if (!strcmp(tag, "Forc"))  GET_FORGET_COUNT(ch) = atoi(line);
         else if (!strcmp(tag, "Forg"))  GET_FORGETING(ch) = atoi(line);
@@ -539,7 +506,7 @@ int load_char(const char *name, struct char_data *ch)
       case 'H':
              if (!strcmp(tag, "Hit "))  load_HMVS(ch, line, LOAD_HIT);
         else if (!strcmp(tag, "HitD"))  GET_HITDICE(ch)         = atoi(line);
-        else if (!strcmp(tag, "Hite"))  GET_HEIGHT(ch)          = atoi(line);
+        else if (!strcmp(tag, "Hite"))  ch->height          = atoi(line);
         else if (!strcmp(tag, "Home"))  GET_HOME(ch)            = atoi(line);
         else if (!strcmp(tag, "Host")) {
           if (GET_HOST(ch))
@@ -555,7 +522,7 @@ int load_char(const char *name, struct char_data *ch)
       case 'I':
              if (!strcmp(tag, "Id  "))  GET_IDNUM(ch)           = atol(line);
         else if (!strcmp(tag, "INGl"))  GET_INGESTLEARNED(ch) = atoi(line);
-        else if (!strcmp(tag, "Int "))  ch->real_abils.intel    = atoi(line);
+        else if (!strcmp(tag, "Int "))  char_stats_set(ch, STAT_INTELLIGENCE, (strtoll(line, NULL, 10)));
         else if (!strcmp(tag, "Invs"))  GET_INVIS_LEV(ch)       = atoi(line);
       break;
 
@@ -610,7 +577,7 @@ int load_char(const char *name, struct char_data *ch)
        else if (!strcmp(tag, "PfIn"))  POOFIN(ch)               = strdup(line);
        else if (!strcmp(tag, "PfOt"))  POOFOUT(ch)              = strdup(line);
 #endif
-       else if (!strcmp(tag, "Pole"))  GET_POLE_BONUS(ch)       = atoi(line);
+       else if (!strcmp(tag, "Pole"));
        else if (!strcmp(tag, "Posi"))  GET_POS(ch)              = atoi(line);
        else if (!strcmp(tag, "PwrA"))  GET_POWERATTACK(ch)      = atoi(line);
        else if (!strcmp(tag, "Pref")) {
@@ -654,7 +621,7 @@ int load_char(const char *name, struct char_data *ch)
         }
         else if (!strcmp(tag, "Slot"))  ch->skill_slots         = atoi(line);
         else if (!strcmp(tag, "Spek"))  SPEAKING(ch)		= atoi(line);
-        else if (!strcmp(tag, "Str "))  ch->real_abils.str	= atoi(line);
+        else if (!strcmp(tag, "Str "))  char_stats_set(ch, STAT_STRENGTH, (strtoll(line, NULL, 10)));
         else if (!strcmp(tag, "Stuk"))  ch->stupidkiss          = atoi(line);
         else if (!strcmp(tag, "Supp"))  GET_SUPPRESS(ch)        = atoi(line);
         else if (!strcmp(tag, "Sups"))  GET_SUPP(ch)        = atoi(line);
@@ -698,9 +665,9 @@ int load_char(const char *name, struct char_data *ch)
       break;
 
       case 'W':
-             if (!strcmp(tag, "Wate"))  GET_WEIGHT(ch)          = atoi(line);
+             if (!strcmp(tag, "Wate"))  ch->weight          = atoi(line);
         else if (!strcmp(tag, "Wimp"))  GET_WIMP_LEV(ch)        = atoi(line);
-        else if (!strcmp(tag, "Wis "))  ch->real_abils.wis      = atoi(line);
+        else if (!strcmp(tag, "Wis "))  char_stats_set(ch, STAT_WISDOM, (strtoll(line, NULL, 10)));
       break;
 
       default:
@@ -723,8 +690,6 @@ int load_char(const char *name, struct char_data *ch)
     log("No max age for user %s, using standard max age determination", GET_NAME(ch));
     ch->time.maxage = ch->time.birth + max_age(ch);
   }
-
-  affect_total(ch);
 
   /* initialization for imms */
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
@@ -942,8 +907,6 @@ void save_char(struct char_data * ch)
   if ((i >= MAX_AFFECT) && aff && aff->next)
     log("SYSERR: WARNING: OUT OF STORE ROOM FOR AFFECTED TYPES!!!");
 
-  ch->aff_abils = ch->real_abils;
-
   /* end char_to_store code */
 
   if (GET_NAME(ch))				fprintf(fl, "Name: %s\n", GET_NAME(ch));
@@ -1041,22 +1004,13 @@ void save_char(struct char_data * ch)
   if (GET_COND(ch, DRUNK)  != PFDEF_DRUNK  && GET_ADMLEVEL(ch) < ADMLVL_IMMORT)
     fprintf(fl, "Drnk: %d\n", GET_COND(ch, DRUNK));
 
-  /*
-  if (GET_HIT(ch)	   != PFDEF_HIT  || GET_MAX_HIT(ch)  != PFDEF_MAXHIT)
-    fprintf(fl, "Hit : %" I64T "/%" I64T "\n", GET_HIT(ch),  GET_MAX_HIT(ch));
-  if ((getCurKI(ch))	   != PFDEF_MANA || GET_MAX_MANA(ch) != PFDEF_MAXMANA)
-    fprintf(fl, "Mana: %" I64T "/%" I64T "\n", (getCurKI(ch)), GET_MAX_MANA(ch));
-  if ((getCurST(ch))	   != PFDEF_MOVE || GET_MAX_MOVE(ch) != PFDEF_MAXMOVE)
-    fprintf(fl, "Move: %" I64T "/%" I64T "\n", (getCurST(ch)), GET_MAX_MOVE(ch));
-  if (GET_KI(ch)	   != PFDEF_KI || GET_MAX_KI(ch) != PFDEF_MAXKI)
-    fprintf(fl, "Ki  : %" I64T "/%" I64T "\n", GET_KI(ch), GET_MAX_KI(ch));
-  */
-  if (GET_STR(ch)	   != PFDEF_STR)        fprintf(fl, "Str : %d\n", GET_STR(ch));
-  if (GET_INT(ch)	   != PFDEF_INT)	fprintf(fl, "Int : %d\n", GET_INT(ch));
-  if (GET_WIS(ch)	   != PFDEF_WIS)	fprintf(fl, "Wis : %d\n", GET_WIS(ch));
-  if (GET_DEX(ch)	   != PFDEF_DEX)	fprintf(fl, "Dex : %d\n", GET_DEX(ch));
-  if (GET_CON(ch)	   != PFDEF_CON)	fprintf(fl, "Con : %d\n", GET_CON(ch));
-  if (GET_CHA(ch)	   != PFDEF_CHA)	fprintf(fl, "Cha : %d\n", GET_CHA(ch));
+
+  if (char_stats_get(ch, STAT_STRENGTH)	   != PFDEF_STR)        fprintf(fl, "Str : %ld\n", char_stats_get(ch, STAT_STRENGTH));
+  if (char_stats_get(ch, STAT_INTELLIGENCE) != PFDEF_INT)	fprintf(fl, "Int : %ld\n", char_stats_get(ch, STAT_INTELLIGENCE));
+  if (char_stats_get(ch, STAT_WISDOM)	   != PFDEF_WIS)	fprintf(fl, "Wis : %ld\n", char_stats_get(ch, STAT_WISDOM));
+  if (char_stats_get(ch, STAT_AGILITY)	   != PFDEF_DEX)	fprintf(fl, "Dex : %ld\n", char_stats_get(ch, STAT_AGILITY));
+  if (char_stats_get(ch, STAT_CONSTITUTION) != PFDEF_CON)	fprintf(fl, "Con : %ld\n", char_stats_get(ch, STAT_CONSTITUTION));
+  if (char_stats_get(ch, STAT_SPEED)	   != PFDEF_CHA)	fprintf(fl, "Cha : %ld\n", char_stats_get(ch, STAT_SPEED));
 
   if (GET_COOLDOWN(ch)     != PFDEF_BANK)       fprintf(fl, "Cool: %d\n", GET_COOLDOWN(ch));
   if (GET_COOLDOWN(ch)     != PFDEF_BANK)       fprintf(fl, "Scoo: %d\n", GET_SDCOOLDOWN(ch));
@@ -1074,10 +1028,7 @@ void save_char(struct char_data * ch)
   if (GET_MOLT_EXP(ch)     != PFDEF_EXP)        fprintf(fl, "Mexp: %" I64T "\n", GET_MOLT_EXP(ch));
   if (GET_MAJINIZED(ch)    != PFDEF_EXP)        fprintf(fl, "Majm: %" I64T "\n", GET_MAJINIZED(ch));
   if (GET_MOLT_LEVEL(ch)   != PFDEF_EXP)        fprintf(fl, "Mlvl: %d\n", GET_MOLT_LEVEL(ch));
-  if (GET_FISHD(ch)        != PFDEF_ACCURACY)	fprintf(fl, "Fisd: %d\n", GET_FISHD(ch));
-  if (GET_POLE_BONUS(ch)   != PFDEF_ACCURACY)	fprintf(fl, "Pole: %d\n", GET_POLE_BONUS(ch));
   if (GET_PREFERENCE(ch)   != PFDEF_EYE)        fprintf(fl, "Prff: %d\n", GET_PREFERENCE(ch));
-  if (GET_DAMAGE_MOD(ch)   != PFDEF_DAMAGE)	fprintf(fl, "Damg: %d\n", GET_DAMAGE_MOD(ch));
   if (SPEAKING(ch)	   != PFDEF_SPEAKING)	fprintf(fl, "Spek: %d\n", SPEAKING(ch));
   if (GET_OLC_ZONE(ch)	   != PFDEF_OLC)	fprintf(fl, "Olc : %d\n", GET_OLC_ZONE(ch));
   if (GET_PAGE_LENGTH(ch)  != PFDEF_PAGELENGTH)	fprintf(fl, "Page: %d\n", GET_PAGE_LENGTH(ch));
@@ -1408,22 +1359,18 @@ void load_HMVS(struct char_data *ch, const char *line, int mode)
   switch (mode) {
   case LOAD_HIT:
     //GET_HIT(ch) = num;
-    ch->max_hit = num2;
     break;
 
   case LOAD_MANA:
     //GET_MANA(ch) = num;
-    ch->max_mana = num2;
     break;
 
   case LOAD_MOVE:
     //GET_MOVE(ch) = num;
-    ch->max_move = num2;
     break;
 
   case LOAD_KI:
     //GET_KI(ch) = num;
-    ch->max_ki = num2;
     break;
   }
 }
@@ -1436,15 +1383,15 @@ void load_BASE(struct char_data *ch, const char *line, int mode)
 
   switch (mode) {
   case LOAD_HIT:
-    ch->basepl = num;
+    char_stats_set(ch, STAT_POWERLEVEL, (num));
     break;
 
   case LOAD_MANA:
-      ch->baseki = num;
+      char_stats_set(ch, STAT_KI, (num));
     break;
 
   case LOAD_MOVE:
-      ch->basest = num;
+      char_stats_set(ch, STAT_STAMINA, (num));
     break;
   
   case LOAD_LIFE:

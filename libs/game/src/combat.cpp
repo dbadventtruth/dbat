@@ -4230,7 +4230,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
   }
    if (IS_NPC(vict) && dmg > getMaxHealth(vict) * .7 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
    GET_EXP(vict) /= 2;
-  } else if (IS_NPC(vict) && dmg > getCurHealth(vict) && isFullHealth(vict) * .5 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
+  } else if (IS_NPC(vict) && dmg > char_meter_current(vict, MTR_POWERLEVEL) && isFullHealth(vict) * .5 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
    GET_EXP(vict) /= 2;
   }
  
@@ -4239,11 +4239,11 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    carry_drop(vict, 2);
   }
 
-  if (GET_POS(vict) == POS_SITTING && IS_NPC(vict) && getCurHealth(vict) >= ((getEffMaxPL(vict))) * .98) {
+  if (GET_POS(vict) == POS_SITTING && IS_NPC(vict) && char_meter_current(vict, MTR_POWERLEVEL) >= ((getEffMaxPL(vict))) * .98) {
     do_stand(vict, 0, 0, 0);
   }
  int suppresso = FALSE;
-  if (is_sparring(ch) && is_sparring(vict) && (GET_SUPP(vict) + getCurHealth(vict)) - dmg <= 0) {
+  if (is_sparring(ch) && is_sparring(vict) && (GET_SUPP(vict) + char_meter_current(vict, MTR_POWERLEVEL)) - dmg <= 0) {
     if (!IS_NPC(vict)) {
      act("@c$N@w falls down unconscious, and you stop sparring with $M.@n", TRUE, ch, 0, vict, TO_CHAR);
      act("@C$n@w stops sparring with you as you fall unconscious.@n", TRUE, ch, 0, vict, TO_VICT);
@@ -4324,7 +4324,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    }
 
 
-  if (PLR_FLAGGED(vict, PLR_IMMORTAL) && !is_sparring(ch) && getCurHealth(vict) - dmg <= 0) {
+  if (PLR_FLAGGED(vict, PLR_IMMORTAL) && !is_sparring(ch) && char_meter_current(vict, MTR_POWERLEVEL) - dmg <= 0) {
    if (IN_ARENA(vict)) {
        send_to_all("@R%s@r manages to defeat @R%s@r in the Arena!@n\r\n", GET_NAME(ch), GET_NAME(vict));
        char_from_room(ch);

@@ -145,18 +145,7 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to)
   obj->in_obj = obj_to;
   tmp_obj = obj->in_obj;
 
-  /* Only add weight to container, or back to carrier for non-eternal
-     containers.  Eternal means max capacity < 0 */
-  if (GET_OBJ_VAL(obj->in_obj, VAL_CONTAINER_CAPACITY) > 0)
-  {
-  for (tmp_obj = obj->in_obj; tmp_obj->in_obj; tmp_obj = tmp_obj->in_obj)
-    GET_OBJ_WEIGHT(tmp_obj) += GET_OBJ_WEIGHT(obj);
 
-  /* top level object.  Subtract weight from inventory if necessary. */
-  GET_OBJ_WEIGHT(tmp_obj) += GET_OBJ_WEIGHT(obj);
-  if (tmp_obj->carried_by)
-    IS_CARRYING_W(tmp_obj->carried_by) += GET_OBJ_WEIGHT(obj);
-  }
   if (IN_ROOM(obj_to) != NOWHERE && ROOM_FLAGGED(IN_ROOM(obj_to), ROOM_HOUSE)) {
    SET_BIT_AR(ROOM_FLAGS(IN_ROOM(obj_to)), ROOM_HOUSE_CRASH);
   }
@@ -175,20 +164,6 @@ void obj_from_obj(struct obj_data *obj)
   obj_from = obj->in_obj;
   temp = obj->in_obj;
   REMOVE_FROM_LIST(obj, obj_from->contains, next_content, temp);
-
-  /* Subtract weight from containers container */
-  /* Only worry about weight for non-eternal containers
-     Eternal means max capacity < 0 */
-  if (GET_OBJ_VAL(obj->in_obj, VAL_CONTAINER_CAPACITY) > 0)
-  {
-  for (temp = obj->in_obj; temp->in_obj; temp = temp->in_obj)
-    GET_OBJ_WEIGHT(temp) -= GET_OBJ_WEIGHT(obj);
-
-  /* Subtract weight from char that carries the object */
-  GET_OBJ_WEIGHT(temp) -= GET_OBJ_WEIGHT(obj);
-  if (temp->carried_by)
-    IS_CARRYING_W(temp->carried_by) -= GET_OBJ_WEIGHT(obj);
-  }
 
   if (IN_ROOM(obj_from) != NOWHERE && ROOM_FLAGGED(IN_ROOM(obj_from), ROOM_HOUSE)) {
    SET_BIT_AR(ROOM_FLAGS(IN_ROOM(obj_from)), ROOM_HOUSE_CRASH);
@@ -272,33 +247,20 @@ void char_to_room(struct char_data *ch, room_rnum room)
 /* give an object to a char   */
 void obj_to_char(struct obj_data *object, struct char_data *ch)
 {
-  if (object && ch) {
+  if(!(object && ch)) {
+    log("SYSERR: NULL object (%p) or char (%p) passed to obj_to_char.", object, ch);
+    return;
+  }
+
     object->next_content = ch->carrying;
     ch->carrying = object;
     object->carried_by = ch;
     IN_ROOM(object) = NOWHERE;
-    IS_CARRYING_W(ch) += GET_OBJ_WEIGHT(object);
-    IS_CARRYING_N(ch)++;
-    if ((GET_KAIOKEN(ch) <= 0 && !AFF_FLAGGED(ch, AFF_METAMORPH)) && !OBJ_FLAGGED(object, ITEM_THROW)) {
-
-    } else if (GET_HIT(ch) > getEffMaxPL(ch)) {
-       if (GET_KAIOKEN(ch) > 0) {
-        send_to_char(ch, "@RThe strain of the weight has reduced your kaioken somewhat!@n\n");
-       } else if (AFF_FLAGGED(ch, AFF_METAMORPH)) {
-        send_to_char(ch, "@RYour metamorphosis strains under the additional weight!@n\n");
-       }
-    }
+    char_der_invalidate(ch);
 
     /* set flag for crash-save system, but not on mobs! */
-    if (GET_OBJ_VAL(object, 0) != 0) {
-     if (GET_OBJ_VNUM(object) == 16705 || GET_OBJ_VNUM(object) == 16706 || GET_OBJ_VNUM(object) == 16707) {
-      object->level = GET_OBJ_VAL(object, 0);
-     }
-    }
     if (!IS_NPC(ch))
       SET_BIT_AR(PLR_FLAGS(ch), PLR_CRASH);
-  } else
-    log("SYSERR: NULL obj (%p) or char (%p) passed to obj_to_char.", object, ch);
 }
 
 
@@ -316,58 +278,12 @@ void obj_from_char(struct obj_data *object)
   /* set flag for crash-save system, but not on mobs! */
   if (!IS_NPC(object->carried_by))
     SET_BIT_AR(PLR_FLAGS(object->carried_by), PLR_CRASH);
- 
-  int64_t previous = getEffMaxPL(object->carried_by);
 
-  IS_CARRYING_W(object->carried_by) -= GET_OBJ_WEIGHT(object);
-  IS_CARRYING_N(object->carried_by)--;
-
-    if (GET_OBJ_VAL(object, 0) != 0) {
-     if (GET_OBJ_VNUM(object) == 16705 || GET_OBJ_VNUM(object) == 16706 || GET_OBJ_VNUM(object) == 16707) {
-      object->level = GET_OBJ_VAL(object, 0);
-     }
-    }
-
+  char_der_invalidate(object->carried_by);
   object->carried_by = NULL;
   object->next_content = NULL;
 }
 
-
-
-/* Return the effect of a piece of armor in position eq_pos */
-static int apply_ac(struct char_data *ch, int eq_pos)
-{
-  if (GET_EQ(ch, eq_pos) == NULL) {
-    core_dump();
-    return (0);
-  }
-
-  if (!(GET_OBJ_TYPE(GET_EQ(ch, eq_pos)) == ITEM_ARMOR))
-    return (0);
-
-  /* The following code is an example of how to make the WEAR_ position of the
-   * armor apply MORE AC value based on 'factor' then it's assigned value.
-   * IE: An object with an AC value of 5 and a factor of 3 really gives 15 AC not 5.
-   
-  int factor;
-
-  switch (eq_pos) {
-
-  case WEAR_BODY:
-    factor = 3;
-    break;
-  case WEAR_HEAD:
-  case WEAR_LEGS:
-    factor = 1;
-    break;
-  default:
-    factor = 1;
-    break;
-  }
-
-  return (factor * GET_OBJ_VAL(GET_EQ(ch, eq_pos), VAL_ARMOR_APPLYAC)); */
-  return (GET_OBJ_VAL(GET_EQ(ch, eq_pos), VAL_ARMOR_APPLYAC));
-}
 
 int invalid_align(struct char_data *ch, struct obj_data *obj)
 {
@@ -413,9 +329,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos)
   GET_EQ(ch, pos) = obj;
   obj->worn_by = ch;
   obj->worn_on = pos;
-
-  if (GET_OBJ_TYPE(obj) == ITEM_ARMOR)
-    GET_ARMOR(ch) += apply_ac(ch, pos);
+  char_der_invalidate(ch);
 
   if (IN_ROOM(ch) != NOWHERE) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
@@ -423,17 +337,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos)
 	world[IN_ROOM(ch)].light++;
   } else
     log("SYSERR: IN_ROOM(ch) = NOWHERE when equipping char %s.", GET_NAME(ch));
-
-  for (j = 0; j < MAX_OBJ_AFFECT; j++)
-    affect_modify_ar(ch, obj->affected[j].location,
-		  obj->affected[j].modifier,
-		  obj->affected[j].specific,
-		  GET_OBJ_PERM(obj), TRUE);
-
-  affect_total(ch);
 }
-
-
 
 struct obj_data *unequip_char(struct char_data *ch, int pos)
 {
@@ -449,9 +353,6 @@ struct obj_data *unequip_char(struct char_data *ch, int pos)
   obj->worn_by = NULL;
   obj->worn_on = -1;
 
-  if (GET_OBJ_TYPE(obj) == ITEM_ARMOR)
-    GET_ARMOR(ch) -= apply_ac(ch, pos);
-
   if (IN_ROOM(ch) != NOWHERE) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS))	/* if light is ON */
@@ -461,13 +362,7 @@ struct obj_data *unequip_char(struct char_data *ch, int pos)
 
   GET_EQ(ch, pos) = NULL;
 
-  for (j = 0; j < MAX_OBJ_AFFECT; j++)
-    affect_modify_ar(ch, obj->affected[j].location,
-		  obj->affected[j].modifier,
-		  obj->affected[j].specific,
-		  GET_OBJ_PERM(obj), FALSE);
-
-  affect_total(ch);
+  char_der_invalidate(ch);
 
   return (obj);
 }

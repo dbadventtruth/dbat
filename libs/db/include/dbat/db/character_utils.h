@@ -21,12 +21,27 @@ stat_t char_stats_modify(struct char_data *ch, uint8_t stat_id, stat_t delta);
 stat_t char_der_get_affect_bonus(struct char_data *ch, int location, int specific);
 void char_der_invalidate(struct char_data *ch);
 stat_t char_der_get(struct char_data *ch, uint8_t der_id);
+struct der_bonus char_der_calculate_bonuses(struct char_data *ch, uint8_t der_id);
+stat_t char_der_apply_bonuses(struct char_data *ch, uint8_t der_id, stat_t base_value, struct der_bonus bonus);
+stat_t char_der_calculate(struct char_data *ch, uint8_t der_id, stat_t base_value);
 
+void char_skills_invalidate(struct char_data *ch);
 stat_t char_skills_base_get(struct char_data *ch, uint8_t skill_id);
 stat_t char_skills_set(struct char_data *ch, uint8_t skill_id, stat_t value);
 stat_t char_skills_modify(struct char_data *ch, uint8_t skill_id, stat_t delta);
 stat_t char_skills_get(struct char_data *ch, uint8_t skill_id);
 stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
+
+double char_meter_get(struct char_data *ch, uint8_t meter_id);
+double char_meter_set(struct char_data *ch, uint8_t meter_id, double value);
+double char_meter_modify(struct char_data *ch, uint8_t meter_id, double delta);
+stat_t char_meter_max(struct char_data *ch, uint8_t meter_id);
+stat_t char_meter_current(struct char_data *ch, uint8_t meter_id);
+stat_t char_meter_set_amount(struct char_data *ch, uint8_t meter_id, stat_t amount);
+stat_t char_meter_modify_amount(struct char_data *ch, uint8_t meter_id, stat_t delta);
+
+stat_t char_meter_percent(struct char_data *ch, uint8_t meter_id, double percent);
+
 
 // Legacy Macros
 
@@ -114,10 +129,10 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
 #define GET_EYE(ch)     ((ch)->eye)
 #define GET_DISTFEA(ch) ((ch)->distfea)
 #define GET_HOME(ch)	((ch)->hometown)
-#define GET_WEIGHT(ch)  ((ch)->weight)
-#define GET_HEIGHT(ch)  ((ch)->height)
-#define GET_PC_HEIGHT(ch)	(!IS_NPC(ch) ? age(ch)->year <= 10 ? (int)((ch)->height * 0.68) : age(ch)->year <= 12 ? (int)((ch)->height * 0.72) : age(ch)->year <= 14 ? (int)((ch)->height * 0.85) : age(ch)->year <= 16 ? (int)((ch)->height * 0.92) : (ch)->height : (ch)->height)
-#define GET_PC_WEIGHT(ch)	(!IS_NPC(ch) ? age(ch)->year <= 10 ? (int)((ch)->weight * 0.48) : age(ch)->year <= 12 ? (int)((ch)->weight * 0.55) : age(ch)->year <= 14 ? (int)((ch)->weight * 0.7) : age(ch)->year <= 16 ? (int)((ch)->weight * 0.85) : (ch)->weight : (ch)->weight)
+#define GET_WEIGHT(ch)  char_der_get(ch, DER_WEIGHT)
+#define GET_HEIGHT(ch)  char_der_get(ch, DER_HEIGHT)
+#define GET_PC_HEIGHT(ch)	char_der_get(ch, DER_HEIGHT)
+#define GET_PC_WEIGHT(ch)	char_der_get(ch, DER_WEIGHT)
 #define GET_SEX(ch)	((ch)->sex)
 #define GET_TLEVEL(ch)	((ch)->player_specials->tlevel)
 #define CARRYING(ch)    ((ch)->player_specials->carrying)
@@ -130,21 +145,12 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
 #define GET_SUPP(ch)    ((ch)->suppressed)
 #define GET_RDISPLAY(ch) ((ch)->rdisplay)
 
-#define GET_STR(ch)     ((ch)->aff_abils.str)
-/*
- * We could define GET_ADD to be ((GET_STR(ch) > 18) ?
- *                                ((GET_STR(ch) - 18) * 10) : 0)
- * but it's better to leave it undefined and fix the places that call
- * GET_ADD to use the new semantics for abilities.
- *                               - Elie Rosenblum 13/Dec/2003
- */
-/* The old define: */
-/* #define GET_ADD(ch)     ((ch)->aff_abils.str_add) */
-#define GET_DEX(ch)     ((ch)->aff_abils.dex)
-#define GET_INT(ch)     ((ch)->aff_abils.intel)
-#define GET_WIS(ch)     ((ch)->aff_abils.wis)
-#define GET_CON(ch)     ((ch)->aff_abils.con)
-#define GET_CHA(ch)     ((ch)->aff_abils.cha)
+#define GET_STR(ch)     char_der_get(ch, DER_STRENGTH)
+#define GET_DEX(ch)     char_der_get(ch, DER_AGILITY)
+#define GET_INT(ch)     char_der_get(ch, DER_INTELLIGENCE)
+#define GET_WIS(ch)     char_der_get(ch, DER_WISDOM)
+#define GET_CON(ch)     char_der_get(ch, DER_CONSTITUTION)
+#define GET_CHA(ch)     char_der_get(ch, DER_SPEED)
 
 #define GET_MUTBOOST(ch) (IS_MUTANT(ch) ? ((GET_GENOME(ch, 0) == 1 || GET_GENOME(ch, 1) == 1) ? (GET_SPEEDCALC(ch) + GET_SPEEDBONUS(ch) + GET_SPEEDBOOST(ch)) * 0.3 : 0) : 0)
 #define GET_SPEEDI(ch)  (GET_SPEEDCALC(ch) + GET_SPEEDBONUS(ch) + GET_SPEEDBOOST(ch) + GET_MUTBOOST(ch))
@@ -173,12 +179,12 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
 #define GET_CHARGETO(ch)  ((ch)->chargeto)
 #define GET_ARMOR(ch)     ((ch)->armor)
 #define GET_ARMOR_LAST(ch) ((ch)->armor_last)
-#define GET_HIT(ch)	  (getCurPL(ch))
-#define GET_MAX_HIT(ch)	  (getEffMaxPL(ch))
-#define GET_MAX_MOVE(ch)  (getMaxST(ch))
-#define GET_MAX_MANA(ch)  (getMaxKI(ch))
-#define GET_KI(ch)	  ((ch)->ki)
-#define GET_MAX_KI(ch)    ((ch)->max_ki)
+#define GET_HIT(ch)	  char_meter_current(ch, MTR_POWERLEVEL)
+#define GET_MAX_HIT(ch)	  char_meter_max(ch, MTR_POWERLEVEL)
+#define GET_MAX_MOVE(ch)  char_meter_max(ch, MTR_STAMINA)
+#define GET_MAX_MANA(ch)  char_meter_max(ch, MTR_KI)
+#define GET_KI(ch)	  char_meter_current(ch, MTR_KI)
+#define GET_MAX_KI(ch)    char_meter_max(ch, MTR_KI)
 #define GET_DROOM(ch)     ((ch)->droom)
 #define GET_OVERFLOW(ch)  ((ch)->overf)
 #define GET_SPAM(ch)      ((ch)->spam)
@@ -216,13 +222,6 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
 #define GET_PREFERENCE(ch) ((ch)->preference)
 #define GET_RELAXCOUNT(ch) ((ch)->relax_count)
 #define GET_BLESSLVL(ch)  ((ch)->blesslvl)
-#define GET_ASB(ch)       ((ch)->asb)
-#define GET_REGEN(ch)     ((ch)->regen)
-#define GET_BLESSBONUS(ch) (AFF_FLAGGED(ch, AFF_BLESS) ? (GET_BLESSLVL(ch) >= 100 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.1 : GET_BLESSLVL(ch) >= 60 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.05 : GET_BLESSLVL(ch) >= 40 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.02 : 0) : 0) 
-#define GET_POSELF(ch)    (!IS_NPC(ch) ? is_affected(ch, AFF_SPECIAL_POSE) ? GET_SKILL(ch, SKILL_POSE) >= 100 ? 0.15 : GET_SKILL(ch, SKILL_POSE) >= 60 ? 0.1 : GET_SKILL(ch, SKILL_POSE) >= 40 ? 0.05 : 0 : 0 : 0)
-#define GET_POSEBONUS(ch) (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * GET_POSELF(ch))
-#define GET_LIFEBONUS(ch) (IS_ARLIAN(ch) ? ((GET_MAX_MANA(ch) * 0.01) * (GET_MOLT_LEVEL(ch) / 100)) + ((GET_MAX_MOVE(ch) * 0.01) * (GET_MOLT_LEVEL(ch) / 100)) : 0)
-#define GET_LIFEBONUSES(ch) ((ch)->lifebonus > 0 ? (GET_LIFEBONUS(ch) + GET_BLESSBONUS(ch) + GET_POSEBONUS(ch)) * (((ch)->lifebonus + 100) * 0.01) : (GET_LIFEBONUS(ch) + GET_BLESSBONUS(ch) + GET_POSEBONUS(ch)))
 #define GET_LIFEPERC(ch)  ((ch)->lifeperc)
 #define GET_STUPIDKISS(ch) ((ch)->stupidkiss)
 #define GET_SPEEDBOOST(ch) ((ch)->speedboost)
@@ -240,10 +239,9 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
 #define GET_FORGETING(ch) ((ch)->forgeting)
 #define GET_FORGET_COUNT(ch) ((ch)->forgetcount)
 #define GET_BANK_GOLD(ch) ((ch)->bank_gold)
-#define GET_POLE_BONUS(ch) ((ch)->accuracy)
+#define GET_POLE_BONUS(ch) char_der_get(ch, DER_FISHING_POLE)
 #define GET_FISHSTATE(ch)  ((ch)->fishstate)
-#define GET_FISHD(ch)     ((ch)->accuracy_mod)
-#define GET_DAMAGE_MOD(ch) ((ch)->damage_mod)
+#define GET_FISHD(ch)     ((ch)->fish_distance)
 #define GET_SPELLFAIL(ch) ((ch)->spellfail)
 #define GET_ARMORCHECK(ch) ((ch)->armorcheck)
 #define GET_ARMORCHECKALL(ch) ((ch)->armorcheckall)
@@ -312,13 +310,13 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id);
 #define GET_HOST(ch)		CHECK_PLAYER_SPECIAL((ch), ((ch)->player_specials->host))
 #define GET_HISTORY(ch, i)      CHECK_PLAYER_SPECIAL((ch), ((ch)->player_specials->comm_hist[i]))
 
-#define GET_SKILL_BONUS(ch, i)		(ch->skills[i].mod)
+#define GET_SKILL_BONUS(ch, i)		char_skills_bonus_get(ch, i)
 #define GET_SKILL_PERF(ch, i)           (ch->skills[i].perf)
-#define SET_SKILL_BONUS(ch, i, value)	do { (ch)->skills[i].mod = value; } while (0)
+#define SET_SKILL_BONUS(ch, i, value)	do { ; } while (0)
 #define SET_SKILL_PERF(ch, i, value)    do { (ch)->skills[i].perf = value; } while (0)
-#define GET_SKILL_BASE(ch, i)		(ch->skills[i].base)
-#define GET_SKILL(ch, i)		((ch)->skills[i].base + GET_SKILL_BONUS(ch, i))
-#define SET_SKILL(ch, i, val)		do { (ch)->skills[i].base = val; } while(0)
+#define GET_SKILL_BASE(ch, i)		char_skills_base_get(ch, i)
+#define GET_SKILL(ch, i)		char_skills_get(ch, i)
+#define SET_SKILL(ch, i, val)		char_skills_set(ch, i, val)
 #define BODY_PARTS(ch)  ((ch)->bodyparts)
 
 #define GET_EQ(ch, i)		((ch)->equipment[i])

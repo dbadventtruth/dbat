@@ -27,8 +27,7 @@
 
 /* Local variables */
 int spell_sort_info[SKILL_TABLE_SIZE];
-int top_guild = -1;
-struct guild_data *guild_index;
+
 
 char *guild_customer_string(int guild_nr, int detailed);
 int calculate_skill_cost(struct char_data *ch, int skill);
@@ -111,15 +110,15 @@ void handle_ingest_learn(struct char_data *ch, struct char_data *vict)
 
 			if (GET_SKILL_BASE(ch, i) + 10 < 100)
 			{
-				GET_SKILL_BASE(ch, i) += 10;
+				char_skills_modify(ch, i, 10);
 			}
 			else if (GET_SKILL_BASE(ch, i) > 0 && GET_SKILL_BASE(ch, i) < 100)
 			{
-				GET_SKILL_BASE(ch, i) += 1;
+				char_skills_modify(ch, i, 1);
 			}
 			else
 			{
-				GET_SKILL_BASE(ch, i) = 100;
+				char_skills_set(ch, i, 100);
 			}
 			
 		}
@@ -1065,37 +1064,36 @@ void handle_train(struct char_data *keeper, int guild_nr, struct char_data *ch, 
     send_to_char(ch, "You have no ability training sessions.\r\n");
   else if (!strncasecmp("strength", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.str += 1;
+    char_stats_modify(ch, STAT_STRENGTH, (1));
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("constitution", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.con += 1;
+    char_stats_modify(ch, STAT_CONSTITUTION, (1));
     /* Give them retroactive hit points for constitution */
-    if (! (ch->real_abils.con % 2))
+    if (! (char_stats_get(ch, STAT_CONSTITUTION) % 2))
       //GET_MAX_HIT(ch) += GET_LEVEL(ch);
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("agility", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.dex += 1;
+    char_stats_modify(ch, STAT_AGILITY, (1));
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("intelligence", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.intel += 1;
+    char_stats_modify(ch, STAT_INTELLIGENCE, (1));
     /* Give extra skill practice, but only for this level */
-    if (! (ch->real_abils.intel % 2))
+    if (! (char_stats_get(ch, STAT_INTELLIGENCE) % 2))
       GET_PRACTICES(ch, GET_CLASS(ch)) += 1;
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("wisdom", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.wis += 1;
+    char_stats_modify(ch, STAT_WISDOM, (1));
     GET_TRAINS(ch) -= 1;
   } else if (!strncasecmp("speed", argument, strlen(argument))) {
     send_to_char(ch, CONFIG_OK);
-    ch->real_abils.cha += 1;
+    char_stats_modify(ch, STAT_SPEED, (1));
     GET_TRAINS(ch) -= 1;
   } else
     send_to_char(ch, "Stats: strength constitution agility intelligence wisdom speed\r\n");
-  affect_total(ch);
   return;
 }
 

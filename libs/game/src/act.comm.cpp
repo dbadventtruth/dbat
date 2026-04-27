@@ -326,9 +326,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "speed")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s is now faster!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.cha += 10;
-           if (wch->real_abils.cha > 100) {
-            wch->real_abils.cha = 100;
+           char_stats_modify(wch, STAT_SPEED, (10));
+           if (char_stats_get(wch, STAT_SPEED) > 100) {
+            char_stats_set(wch, STAT_SPEED, (100));
            }
            save_char(wch);
            granted = TRUE;
@@ -352,9 +352,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "strength")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s has more strength!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.str += 10;
-           if (wch->real_abils.str > 100) {
-            wch->real_abils.str = 100;
+           char_stats_modify(wch, STAT_STRENGTH, (10));
+           if (char_stats_get(wch, STAT_STRENGTH) > 100) {
+            char_stats_set(wch, STAT_STRENGTH, (100));
            }
            save_char(wch);
            granted = TRUE;
@@ -367,9 +367,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "intelligence")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s is now smarter!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.intel += 10;
-           if (wch->real_abils.intel > 100) {
-            wch->real_abils.intel = 100;
+           char_stats_modify(wch, STAT_INTELLIGENCE, (10));
+           if (char_stats_get(wch, STAT_INTELLIGENCE) > 100) {
+            char_stats_set(wch, STAT_INTELLIGENCE, (100));
            }
            save_char(wch);
            granted = TRUE;
@@ -382,9 +382,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "wisdom")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s is now wiser!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.wis += 10;
-           if (wch->real_abils.wis > 100) {
-            wch->real_abils.wis = 100;
+           char_stats_modify(wch, STAT_WISDOM, (10));
+           if (char_stats_get(wch, STAT_WISDOM) > 100) {
+            char_stats_set(wch, STAT_WISDOM, (100));
            }
            granted = TRUE;
            SELFISHMETER += 1;
@@ -396,9 +396,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "agility")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s is now more agile!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-          wch->real_abils.dex += 10;
-          if (wch->real_abils.dex > 100) {
-           wch->real_abils.dex = 100;
+          char_stats_modify(wch, STAT_AGILITY, (10));
+          if (char_stats_get(wch, STAT_AGILITY) > 100) {
+           char_stats_set(wch, STAT_AGILITY, (100));
           }
            save_char(wch);
            granted = TRUE;
@@ -411,9 +411,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "constitution")) {
           if (wch != NULL) {
           send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s has more guts!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-          wch->real_abils.con += 10;
-          if (wch->real_abils.con > 100) {
-           wch->real_abils.con = 100;
+          char_stats_modify(wch, STAT_CONSTITUTION, (10));
+          if (char_stats_get(wch, STAT_CONSTITUTION) > 100) {
+           char_stats_set(wch, STAT_CONSTITUTION, (100));
           }
            save_char(wch);
            granted = TRUE;

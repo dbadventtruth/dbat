@@ -321,9 +321,9 @@ static void generate_multiform(struct char_data *ch, int count)
         ch->transclass = ch->transclass;
 
         // Copying these values, but it shouldn't matter because clones no longer work this way.
-        clone->basepl = ch->basepl;
-        clone->baseki = ch->baseki;
-        clone->basest = ch->basest;
+        char_stats_set(clone, STAT_POWERLEVEL, (char_stats_get(ch, STAT_POWERLEVEL)));
+        char_stats_set(clone, STAT_KI, (char_stats_get(ch, STAT_KI)));
+        char_stats_set(clone, STAT_STAMINA, (char_stats_get(ch, STAT_STAMINA)));
 
         // Bioandroid Genome copy...
         clone->genome[0] = ch->genome[0];
@@ -883,11 +883,7 @@ ACMD(do_preference)
  if (!strcasecmp(arg, "throw")) {
   send_to_char(ch, "You will now favor throwing weapons as fighting specialization. You're sure to nail it.\r\n");
   GET_PREFERENCE(ch) = PREFERENCE_THROWING;
-  if (GET_SKILL_BASE(ch, SKILL_THROW) <= 90) {
-   GET_SKILL_BASE(ch, SKILL_THROW) += 10;
-  } else if (GET_SKILL_BASE(ch, SKILL_THROW) < 100) {
-   GET_SKILL_BASE(ch, SKILL_THROW) = 100;
-  }
+  char_skills_modify(ch, SKILL_THROW, 10);
   return;
  } else if (!strcasecmp(arg, "hand")) {
   send_to_char(ch, "You will now favor your body as your fighting specialization. Your body is ready.\r\n");
@@ -2130,8 +2126,8 @@ ACMD(do_scry)
   gainBaseST(vict, (getBaseST(vict) * .01) * boost);
 
   send_to_char(vict, "Your Powerlevel, Ki, and Stamina have improved drastically! On top of that your Intelligence and Wisdom have improved permanantly!\r\n");
-  vict->real_abils.intel += 2;
-  vict->real_abils.wis += 2;
+  char_stats_modify(vict, STAT_INTELLIGENCE, (2));
+  char_stats_modify(vict, STAT_WISDOM, (2));
   GET_PRACTICES(ch, GET_CLASS(ch)) -= 2000;
   if (GET_LEVEL(ch) < 100) {
    send_to_char(ch, "@D[@mPractice Sessions@D:@R -2000@D]@n\r\n");

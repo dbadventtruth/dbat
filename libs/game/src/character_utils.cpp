@@ -122,12 +122,12 @@ void resurrect(char_data *ch, int mode) {
         int losschance = axion_dice(0);
         send_to_char(ch, "@RThe the strain of this type of revival has caused you to be in a weakened state for a few hours (Game time)! Strength, constitution, wisdom, intelligence, speed, and agility have been reduced by a fifth for the duration.@n\r\n");
         int str = -8, intel = -8, wis = -8, spd = -8, con = -8, agl = -8;
-        str = -1 * (ch->real_abils.str / 5);
-        intel = -1 * (ch->real_abils.intel / 5);
-        wis = -1 * (ch->real_abils.wis / 5);
-        spd = -1 * (ch->real_abils.cha / 5);
-        con = -1 * (ch->real_abils.con / 5);
-        agl = -1 * (ch->real_abils.dex / 5);
+        str = -1 * (char_stats_get(ch, STAT_STRENGTH) / 5);
+        intel = -1 * (char_stats_get(ch, STAT_INTELLIGENCE) / 5);
+        wis = -1 * (char_stats_get(ch, STAT_WISDOM) / 5);
+        spd = -1 * (char_stats_get(ch, STAT_SPEED) / 5);
+        con = -1 * (char_stats_get(ch, STAT_CONSTITUTION) / 5);
+        agl = -1 * (char_stats_get(ch, STAT_AGILITY) / 5);
         assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, dur, str, con, intel, agl, wis, spd);
         if (losschance >= 100) {
             int psloss = rand_number(100, 300);
@@ -308,12 +308,8 @@ int calcGravCost(char_data *ch, int64_t num) {
     }
 }
 
-int64_t getCurHealth(char_data *ch) {
-    return getCurPL(ch);
-}
-
 int64_t getMaxHealth(char_data *ch) {
-    return getMaxPL(ch);
+    return char_meter_max(ch, MTR_POWERLEVEL);
 }
 
 double getCurHealthPercent(char_data *ch) {
@@ -333,54 +329,35 @@ bool isFullHealth(char_data *ch) {
 }
 
 int64_t setCurHealth(char_data *ch, int64_t amt) {
-    ch->hit = MAX(0L, ABS(amt));
-    return ch->hit;
+    return char_meter_set_amount(ch, MTR_POWERLEVEL, amt);
 }
 
 int64_t setCurHealthPercent(char_data *ch, double amt) {
-    ch->health = clampHealth(amt);
-    return getCurHealth(ch);
+    char_meter_set(ch, MTR_POWERLEVEL, amt);
+    return char_meter_current(ch, MTR_POWERLEVEL);
 }
 
 int64_t incCurHealth(char_data *ch, int64_t amt, bool limit_max) {
-    double newhealth = ch->health + safeDiv((double)ABS(amt), (double)getEffMaxPL(ch));
-    newhealth = fixnan(newhealth);
-    if(limit_max)
-        ch->health = MIN(1.0, newhealth);
-    else
-        ch->health = newhealth;
-    ch->health = clampHealth(ch->health);
-    return getCurHealth(ch);
+    char_meter_modify_amount(ch, MTR_POWERLEVEL, amt);
+    return char_meter_current(ch, MTR_POWERLEVEL);
 };
 
 int64_t decCurHealth(char_data *ch, int64_t amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = safeDiv((double)floor, (double)getEffMaxPL(ch));
-    double newhealth = ch->health - safeDiv((double)ABS(amt), (double)getEffMaxPL(ch));
-    newhealth = fixnan(newhealth);
-    ch->health = MAX(fl, newhealth);
-    ch->health = clampHealth(ch->health);
-    return getCurHealth(ch);
+    return incCurHealth(ch, -ABS(amt), floor);
 }
 
 int64_t incCurHealthPercent(char_data *ch, double amt, bool limit_max) {
-    ch->health += ABS(amt);
-    if(limit_max)
-        ch->health = MIN(1.0, ch->health);
-    return getCurHealth(ch);
+    char_meter_modify(ch, MTR_POWERLEVEL, amt);
+    return char_meter_current(ch, MTR_POWERLEVEL);
 }
 
 int64_t decCurHealthPercent(char_data *ch, double amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = (double)floor / (double)getEffMaxPL(ch);
-    ch->health = MAX(fl, ch->health-ABS(amt));
-    return getCurHealth(ch);
+    char_meter_modify(ch, MTR_POWERLEVEL, -amt);
+    return char_meter_current(ch, MTR_POWERLEVEL);
 }
 
 void restoreHealth(char_data *ch, bool announce) {
-    if(!isFullHealth(ch)) ch->health = 1;
+    char_meter_set(ch, MTR_POWERLEVEL, 1.0);
 }
 
 int64_t healCurHealth(char_data *ch, int64_t amt) {
@@ -392,48 +369,23 @@ int64_t harmCurHealth(char_data *ch, int64_t amt) {
 }
 
 int64_t getMaxPLTrans(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
-    int64_t total = 0;
-    if(form.flag) {
-        total = (form.bonus + getEffBasePL(ch)) * form.mult;
-    } else {
-        total = getEffBasePL(ch) * form.mult;
-    }
-    total += ch->max_hit;
-    return total;
+    return char_der_get(ch, DER_POWERLEVEL);
 }
 
 int64_t getMaxPL(char_data *ch) {
-    int64_t total = getMaxPLTrans(ch);
-    if(GET_KAIOKEN(ch) > 0) {
-        total += (total / 10) * GET_KAIOKEN(ch);
-    }
-    if(AFF_FLAGGED(ch, AFF_METAMORPH)) {
-        total += (total * .6);
-    }
-    return total;
+    return char_der_get(ch, DER_POWERLEVEL);
 }
 
 int64_t getCurPL(char_data *ch) {
-    double health = clampHealth(ch->health);
-    if(ch->suppression > 0){
-        return (int64_t)(getEffMaxPL(ch) * MIN(health, (double)ch->suppression/100));
-    } else {
-        return (int64_t)(getEffMaxPL(ch) * health);
-    }
+    return char_meter_current(ch, MTR_POWERLEVEL);
 }
 
 int64_t getEffBasePL(char_data *ch) {
-    if(ch->original) return getEffBasePL(ch->original);
-    if(ch->clones) {
-        return getBasePL(ch) / (ch->clones + 1);
-    } else {
-        return getBasePL(ch);
-    }
+    return 0;
 }
 
 int64_t getBasePL(char_data *ch) {
-    return ch->basepl;
+    return char_stats_get(ch, STAT_POWERLEVEL);
 }
 
 double getCurPLPercent(char_data *ch) {
@@ -449,40 +401,23 @@ int64_t getPercentOfMaxPL(char_data *ch, double amt) {
 }
 
 bool isFullPL(char_data *ch) {
-    return ch->health >= 1.0;
+    return char_meter_get(ch, MTR_POWERLEVEL) >= 1.0;
 }
 
 int64_t getCurKI(char_data *ch) {
-    return (int64_t)(getMaxKI(ch) * clampHealth(ch->energy));
+    return char_meter_current(ch, MTR_KI);
 }
 
 int64_t getMaxKI(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
-    int64_t total = 0;
-    if(form.flag) {
-        total = (form.bonus + getEffBaseKI(ch)) * form.mult;
-    } else {
-        total = getEffBaseKI(ch);
-    }
-    total += ch->max_ki;
-    return total;
-}
-
-int64_t getEffBaseKI(char_data *ch) {
-    if(ch->original) return getEffBaseKI(ch->original);
-    if(ch->clones) {
-        return getBaseKI(ch) / (ch->clones + 1);
-    } else {
-        return getBaseKI(ch);
-    }
+    return char_der_get(ch, DER_KI);
 }
 
 int64_t getBaseKI(char_data *ch) {
-    return ch->baseki;
+    return char_stats_get(ch, STAT_KI);
 }
 
 double getCurKIPercent(char_data *ch) {
-    return (double)getCurKI(ch) / (double)getMaxKI(ch);
+    return char_meter_get(ch, MTR_KI);
 }
 
 int64_t getPercentOfCurKI(char_data *ch, double amt) {
@@ -494,80 +429,49 @@ int64_t getPercentOfMaxKI(char_data *ch, double amt) {
 }
 
 bool isFullKI(char_data *ch) {
-    return ch->energy >= 1.0;
+    return char_meter_get(ch, MTR_KI) >= 1.0;
 }
 
 int64_t setCurKI(char_data *ch, int64_t amt) {
-    int64_t maxki = getMaxKI(ch);
-    // how much percent of maxki is amt? set energy to that.
-    ch->energy = safeDiv((double)ABS(amt), (double)maxki);
+    char_meter_set_amount(ch, MTR_KI, amt);
     return getCurKI(ch);
 }
 
 int64_t setCurKIPercent(char_data *ch, double amt) {
-    ch->energy = clampHealth(amt);
+    char_meter_set(ch, MTR_KI, amt);
     return getCurKI(ch);
 }
 
 int64_t incCurKI(char_data *ch, int64_t amt, bool limit_max) {
-    double newenergy = ch->energy + safeDiv((double)ABS(amt), (double)getMaxKI(ch));
-    newenergy = fixnan(newenergy);
-    if(limit_max)
-        ch->energy = MIN(1.0, newenergy);
-    else
-        ch->energy = newenergy;
-    ch->energy = clampHealth(ch->energy);
+    char_meter_modify_amount(ch, MTR_KI, amt);
     return getCurKI(ch);
-};
+}
 
 int64_t decCurKI(char_data *ch, int64_t amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = safeDiv((double)floor, (double)getMaxKI(ch));
-    double newenergy = ch->energy - safeDiv((double)ABS(amt), (double)getMaxKI(ch));
-    newenergy = fixnan(newenergy);
-    ch->energy = MAX(fl, newenergy);
-    ch->energy = clampHealth(ch->energy);
+    char_meter_modify_amount(ch, MTR_KI, -ABS(amt));
     return getCurKI(ch);
 }
 
 int64_t incCurKIPercent(char_data *ch, double amt, bool limit_max) {
-    if(limit_max)
-        ch->energy = MIN(1.0, ch->energy+ABS(amt));
-    else
-        ch->energy += ABS(amt);
+    char_meter_modify(ch, MTR_KI, amt);
     return getCurKI(ch);
 }
 
 int64_t decCurKIPercent(char_data *ch, double amt, int64_t floor) {
-    if(!strcasecmp(ch->name, "Wayland")) {
-        send_to_char(ch, "decCurKIPercent called with: %f\r\n", amt);
-    }
-    double fl = 0.0;
-    if(floor > 0)
-        fl = (double)floor / (double)getMaxKI(ch);
-    ch->energy = MAX(fl, ch->energy-ABS(amt));
+    char_meter_modify(ch, MTR_KI, -amt);
     return getCurKI(ch);
 }
 
 void restoreKI(char_data *ch, bool announce) {
-    if(!isFullKI(ch)) ch->energy = 1;
+    if(!isFullKI(ch)) char_meter_set(ch, MTR_KI, 1.0);
 }
 
 int64_t getCurST(char_data *ch) {
-    return (int64_t)(getMaxST(ch) * clampHealth(ch->stamina));
+    return char_meter_current(ch, MTR_STAMINA);
 }
 
 int64_t getMaxST(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
-    int64_t total = 0;
-    if(form.flag) {
-        total = (form.bonus + getEffBaseST(ch)) * form.mult;
-    } else {
-        total = getEffBaseST(ch);
-    }
-    total += ch->max_move;
-    return total;
+    return char_der_get(ch, DER_STAMINA);
 }
 
 int64_t getEffBaseST(char_data *ch) {
@@ -580,7 +484,7 @@ int64_t getEffBaseST(char_data *ch) {
 }
 
 int64_t getBaseST(char_data *ch) {
-    return ch->basest;
+    return char_stats_get(ch, STAT_STAMINA);
 }
 
 double getCurSTPercent(char_data *ch) {
@@ -596,71 +500,53 @@ int64_t getPercentOfMaxST(char_data *ch, double amt) {
 }
 
 bool isFullST(char_data *ch) {
-    return ch->stamina >= 1;
+    return char_meter_get(ch, MTR_STAMINA) >= 1.0;
 }
 
 int64_t setCurST(char_data *ch, int64_t amt) {
-    ch->move = MAX(0L, ABS(amt));
-    return ch->move;
+    char_meter_set_amount(ch, MTR_STAMINA, amt);
+    return getCurST(ch);
 }
 
 int64_t setCurSTPercent(char_data *ch, double amt) {
-    ch->move = MAX(0L, (int64_t)(getMaxST(ch) * ABS(amt)));
-    return ch->move;
+    char_meter_set(ch, MTR_STAMINA, amt);
+    return getCurST(ch);
 }
 
 int64_t incCurST(char_data *ch, int64_t amt, bool limit_max) {
-    double newstamina = ch->stamina + safeDiv((double)ABS(amt), (double)getMaxST(ch));
-    newstamina = fixnan(newstamina);
-    if(limit_max)
-        ch->stamina = MIN(1.0, newstamina);
-    else
-        ch->stamina = newstamina;
-    ch->stamina = clampHealth(ch->stamina);
+    char_meter_modify_amount(ch, MTR_STAMINA, amt);
     return getCurST(ch);
 };
 
 int64_t decCurST(char_data *ch, int64_t amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = safeDiv((double)floor, (double)getMaxST(ch));
-    double newstamina = ch->stamina - safeDiv((double)ABS(amt), (double)getMaxST(ch));
-    newstamina = fixnan(newstamina);
-    ch->stamina = MAX(fl, newstamina);
-    ch->stamina = clampHealth(ch->stamina);
+    char_meter_modify_amount(ch, MTR_STAMINA, -ABS(amt));
     return getCurST(ch);
 }
 
 int64_t incCurSTPercent(char_data *ch, double amt, bool limit_max) {
-    if(limit_max)
-        ch->stamina = MIN(1.0, ch->stamina+ABS(amt));
-    else
-        ch->stamina += ABS(amt);
-    return getMaxST(ch);
+    char_meter_modify(ch, MTR_STAMINA, amt);
+    return getCurST(ch);
 }
 
 int64_t decCurSTPercent(char_data *ch, double amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = (double)floor / (double)getMaxST(ch);
-    ch->stamina = MAX(fl, ch->stamina-ABS(amt));
+    char_meter_modify(ch, MTR_STAMINA, -amt);
     return getCurST(ch);
 }
 
 void restoreST(char_data *ch, bool announce) {
-    if(!isFullST(ch)) ch->stamina = 1;
+    if(!isFullST(ch)) char_meter_set(ch, MTR_STAMINA, 1.0);
 }
 
 int64_t getCurLF(char_data *ch) {
-    return (int64_t)(getMaxLF(ch) * clampHealth(ch->life));
+    return char_meter_current(ch, MTR_LIFE_FORCE);
 }
 
 int64_t getMaxLF(char_data *ch) {
-    return (IS_DEMON(ch) ? (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.75) + GET_LIFEBONUSES(ch) : (IS_KONATSU(ch) ? (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.85) + GET_LIFEBONUSES(ch) : (GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5) + GET_LIFEBONUSES(ch)));
+    return char_der_get(ch, DER_LIFE_FORCE);
 }
 
 double getCurLFPercent(char_data *ch) {
-    return ch->life;
+    return char_meter_get(ch, MTR_LIFE_FORCE);
 }
 
 int64_t getPercentOfCurLF(char_data *ch, double amt) {
@@ -672,59 +558,41 @@ int64_t getPercentOfMaxLF(char_data *ch, double amt) {
 }
 
 bool isFullLF(char_data *ch) {
-    return ch->life >= 1.0;
+    return char_meter_get(ch, MTR_LIFE_FORCE) >= 1.0;
 }
 
 int64_t setCurLF(char_data *ch, int64_t amt) {
-    ch->life = MAX(0L, ABS(amt));
+    char_meter_set_amount(ch, MTR_LIFE_FORCE, amt);
     return getCurLF(ch);
 }
 
 int64_t setCurLFPercent(char_data *ch, double amt) {
-    ch->life = MAX(0L, (int64_t)(getMaxLF(ch) * ABS(amt)));
+    char_meter_set(ch, MTR_LIFE_FORCE, amt);
     return getCurLF(ch);
 }
 
 int64_t incCurLF(char_data *ch, int64_t amt, bool limit_max) {
-    double newlife = ch->life + safeDiv((double)ABS(amt), (double)getMaxLF(ch));
-    newlife = fixnan(newlife);
-    if(limit_max)
-        ch->life = MIN(1.0, newlife);
-    else
-        ch->life = newlife;
-    ch->life = clampHealth(ch->life);
+    char_meter_modify_amount(ch, MTR_LIFE_FORCE, amt);
     return getCurLF(ch);
 };
 
 int64_t decCurLF(char_data *ch, int64_t amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = safeDiv((double)floor, (double)getMaxLF(ch));
-    double newlife = ch->life - safeDiv((double)ABS(amt), (double)getMaxLF(ch));
-    newlife = fixnan(newlife);
-    ch->life = MAX(fl, newlife);
-    ch->life = clampHealth(ch->life);
+    char_meter_modify_amount(ch, MTR_LIFE_FORCE, -ABS(amt));
     return getCurLF(ch);
 }
 
 int64_t incCurLFPercent(char_data *ch, double amt, bool limit_max) {
-    if(limit_max)
-        ch->life = MIN(1.0, ch->life+ABS(amt));
-    else
-        ch->life += ABS(amt);
+    char_meter_modify(ch, MTR_LIFE_FORCE, amt);
     return getCurLF(ch);
 }
 
 int64_t decCurLFPercent(char_data *ch, double amt, int64_t floor) {
-    double fl = 0.0;
-    if(floor > 0)
-        fl = (double)floor / (double)getMaxLF(ch);
-    ch->life = MAX(fl, ch->life-ABS(amt));
+    char_meter_modify(ch, MTR_LIFE_FORCE, -amt);
     return getCurLF(ch);
 }
 
 void restoreLF(char_data *ch, bool announce) {
-    if(!isFullLF(ch)) ch->life = 1;
+    if(!isFullLF(ch)) char_meter_set(ch, MTR_LIFE_FORCE, 1.0);
 }
 
 bool isFullVitals(char_data *ch) {
@@ -810,18 +678,18 @@ void restoreLimbs(char_data *ch, bool announce) {
 }
 
 int64_t gainBasePL(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basepl += amt;
-    return ch->basepl;
+    char_stats_modify(ch, STAT_POWERLEVEL, (amt));
+    return char_stats_get(ch, STAT_POWERLEVEL);
 }
 
 int64_t gainBaseST(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basest += amt;
-    return ch->basest;
+    char_stats_modify(ch, STAT_STAMINA, (amt));
+    return char_stats_get(ch, STAT_STAMINA);
 }
 
 int64_t gainBaseKI(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->baseki += amt;
-    return ch->baseki;
+    char_stats_modify(ch, STAT_KI, (amt));
+    return char_stats_get(ch, STAT_KI);
 }
 
 void gainBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
@@ -831,18 +699,18 @@ void gainBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
 }
 
 int64_t loseBasePL(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basepl = MAX(1L, ch->basepl-amt);
-    return ch->basepl;
+    char_stats_set(ch, STAT_POWERLEVEL, (MAX(1L, char_stats_get(ch, STAT_POWERLEVEL)-amt)));
+    return char_stats_get(ch, STAT_POWERLEVEL);
 }
 
 int64_t loseBaseST(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basest = MAX(1L, ch->basest-amt);
-    return ch->basest;
+    char_stats_set(ch, STAT_STAMINA, (MAX(1L, char_stats_get(ch, STAT_STAMINA)-amt)));
+    return char_stats_get(ch, STAT_STAMINA);
 }
 
 int64_t loseBaseKI(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->baseki = MAX(1L, ch->baseki-amt);
-    return ch->baseki;
+    char_stats_set(ch, STAT_KI, (MAX(1L, char_stats_get(ch, STAT_KI)-amt)));
+    return char_stats_get(ch, STAT_KI);
 }
 
 void loseBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
@@ -852,27 +720,27 @@ void loseBaseAll(char_data *ch, int64_t amt, bool trans_mult) {
 }
 
 int64_t gainBasePLPercent(char_data *ch, double amt, bool trans_mult) {
-    return gainBasePL(ch, ch->basepl * amt, trans_mult);
+    return gainBasePL(ch, char_stats_get(ch, STAT_POWERLEVEL) * amt, trans_mult);
 }
 
 int64_t gainBaseKIPercent(char_data *ch, double amt, bool trans_mult) {
-    return gainBaseKI(ch, ch->baseki * amt, trans_mult);
+    return gainBaseKI(ch, char_stats_get(ch, STAT_KI) * amt, trans_mult);
 }
 
 int64_t gainBaseSTPercent(char_data *ch, double amt, bool trans_mult) {
-    return gainBaseST(ch, ch->basest * amt, trans_mult);
+    return gainBaseST(ch, char_stats_get(ch, STAT_STAMINA) * amt, trans_mult);
 }
 
 int64_t loseBasePLPercent(char_data *ch, double amt, bool trans_mult) {
-    return loseBasePL(ch, ch->basepl * amt, trans_mult);
+    return loseBasePL(ch, char_stats_get(ch, STAT_POWERLEVEL) * amt, trans_mult);
 }
 
 int64_t loseBaseKIPercent(char_data *ch, double amt, bool trans_mult) {
-    return loseBaseKI(ch, ch->baseki * amt, trans_mult);
+    return loseBaseKI(ch, char_stats_get(ch, STAT_KI) * amt, trans_mult);
 }
 
 int64_t loseBaseSTPercent(char_data *ch, double amt, bool trans_mult) {
-    return loseBaseST(ch, ch->basest * amt, trans_mult);
+    return loseBaseST(ch, char_stats_get(ch, STAT_STAMINA) * amt, trans_mult);
 }
 
 void gainBaseAllPercent(char_data *ch, double amt, bool trans_mult) {
@@ -888,26 +756,19 @@ void loseBaseAllPercent(char_data *ch, double amt, bool trans_mult) {
 }
 
 int64_t getMaxCarryWeight(char_data *ch) {
-    return MAX(1L, (getMaxPL(ch) / 200) + (GET_STR(ch) * 50));
+    return char_der_get(ch, DER_CARRY_CAPACITY);
 }
 
 int64_t getCurGearWeight(char_data *ch) {
-    int64_t total_weight = 0;
-
-    for (int i = 0; i < NUM_WEARS; i++) {
-        if (GET_EQ(ch, i)) {
-            total_weight += GET_OBJ_WEIGHT(GET_EQ(ch, i));
-        }
-    }
-    return total_weight;
+    return char_der_get(ch, DER_WEIGHT_EQUIPPED);
 }
 
 int64_t getCurCarriedWeight(char_data *ch) {
-    return getCurGearWeight(ch) + ch->carry_weight;
+    return char_der_get(ch, DER_WEIGHT_CARRIED);
 }
 
 int64_t getAvailableCarryWeight(char_data *ch) {
-    return getMaxCarryWeight(ch) - getCurCarriedWeight(ch);
+    return char_der_get(ch, DER_CARRY_CAPACITY) - char_der_get(ch, DER_WEIGHT_CARRIED);
 }
 
 // speednar is in utils.cpp
@@ -928,11 +789,13 @@ bool isWeightedPL(char_data *ch) {
 void apply_kaioken(char_data *ch, int times, bool announce) {
     GET_KAIOKEN(ch) = times;
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_POWERUP);
+    char_der_invalidate(ch);
 
     if(announce) {
         send_to_char(ch, "@rA dark red aura bursts up around your body as you achieve Kaioken x %d!@n\r\n", times);
         act("@rA dark red aura bursts up around @R$n@r as they achieve a level of Kaioken!@n", TRUE, ch, 0, 0, TO_ROOM);
     }
+    
 }
 
 void remove_kaioken(char_data *ch, int8_t announce) {
@@ -941,6 +804,7 @@ void remove_kaioken(char_data *ch, int8_t announce) {
         return;
     }
     GET_KAIOKEN(ch) = 0;
+    char_der_invalidate(ch);
 
     switch(announce) {
         case 1:
@@ -951,6 +815,7 @@ void remove_kaioken(char_data *ch, int8_t announce) {
             send_to_char(ch, "You lose focus and your kaioken disappears.\r\n");
             act("$n loses focus and $s kaioken aura disappears.", TRUE, ch, 0, 0, TO_ROOM);
     }
+    
 }
 
 void dispel_ash(struct char_data *ch)
@@ -3587,8 +3452,8 @@ void improve_skill(struct char_data *ch, int skill, int num)
   roll += roll * .25;
  }
 
- if (GET_ASB(ch) > 0) {
-  roll -= (roll * 0.01) * GET_ASB(ch);
+ if (char_der_get(ch, DER_SKILL_LEARN) > 0) {
+  roll -= (roll * 0.01) * char_der_get(ch, DER_SKILL_LEARN);
  }
 
  roll = MAX(roll, 300);
@@ -3919,14 +3784,14 @@ int roll_stats(struct char_data *ch, int type, int bonus)
   int powerlevel = 0, ki = 1, stamina = 2;
 
   if (type == powerlevel) {
-   base_num = ch->real_abils.str * 3;
-   max_num = ch->real_abils.str * 5;
+   base_num = char_stats_get(ch, STAT_STRENGTH) * 3;
+   max_num = char_stats_get(ch, STAT_STRENGTH) * 5;
   } else if (type == ki) {
-   base_num = ch->real_abils.intel * 3;
-   max_num = ch->real_abils.intel * 5;
+   base_num = char_stats_get(ch, STAT_INTELLIGENCE) * 3;
+   max_num = char_stats_get(ch, STAT_INTELLIGENCE) * 5;
   } else if (type == stamina) {
-   base_num = ch->real_abils.con * 3;
-   max_num = ch->real_abils.con * 5;
+   base_num = char_stats_get(ch, STAT_CONSTITUTION) * 3;
+   max_num = char_stats_get(ch, STAT_CONSTITUTION) * 5;
   }
 
  pool = rand_number(base_num, max_num) + bonus;

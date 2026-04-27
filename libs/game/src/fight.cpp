@@ -837,7 +837,7 @@ void fight_stack()
        DRAGGING(ch) = NULL;
       }
 
-      if (GET_LIFEPERC(ch) > 0 && ch->health < (double)GET_LIFEPERC(ch)/100 && (getCurLF(ch)) > 0 && !IS_ANDROID(ch)) {
+      if (GET_LIFEPERC(ch) > 0 && char_meter_get(ch, MTR_POWERLEVEL) < (double)GET_LIFEPERC(ch)/100 && (getCurLF(ch)) > 0 && !IS_ANDROID(ch)) {
        if (rand_number(1, 15) >= 14) {
         if ((getCurLF(ch)) >= (getMaxLF(ch)) * 0.05 || AFF_FLAGGED(ch, AFF_HEALGLOW) || (IS_KANASSAN(ch) &&
                 (getCurLF(ch)) >= (getMaxLF(ch)) * 0.03)) {

@@ -1,9 +1,11 @@
 #include "dbat/db/derived.h"
-#include "dbat/db/character_utils.h"
+#include "dbat/game/character_utils.h"
 #include "dbat/db/objects.h"
 #include "dbat/db/object_utils.h"
 #include "dbat/db/consts/applies.h"
 #include "dbat/db/utils.h"
+
+#include "dbat/game/races.h"
 
 static stat_t der_simple_base(struct char_data *ch, uint8_t der_id)
 {
@@ -20,9 +22,6 @@ static stat_t der_simple_base(struct char_data *ch, uint8_t der_id)
         case DER_POWERLEVEL: stat_id = STAT_POWERLEVEL; break;
         case DER_KI: stat_id = STAT_KI; break;
         case DER_STAMINA: stat_id = STAT_STAMINA; break;
-        // Physics
-        case DER_HEIGHT: stat_id = STAT_HEIGHT; break;
-        case DER_WEIGHT: stat_id = STAT_WEIGHT; break;
         default: return 0;
     }
     return char_stats_get(ch, stat_id);
@@ -113,10 +112,98 @@ static stat_t der_weight_burden(struct char_data *ch, uint8_t der_id)
     return (((double)carried / (double)capacity) * 100.0);
 }
 
+static stat_t der_vital_base(struct char_data *ch, uint8_t der_id) {
+    
+
+    if(ch->original) {
+        // this is a clone. use the original's base value for this derived stat.
+        return der_vital_base(ch->original, der_id);
+    } else {
+        stat_t base_value = der_simple_base(ch, der_id);
+        if(ch->clones) {
+            // we have clones... it's the Tien trick, so we divide.
+            return base_value / (ch->clones + 1);
+        }
+        return base_value;
+    }
+
+}
+
+static stat_t der_vital_eff(struct char_data *ch, uint8_t der_id) {
+    stat_t base_value = ch->derived_stats[der_id].base;
+
+    struct der_bonus bonus = char_der_calculate_bonuses(ch, der_id);
+    auto form = get_race(ch->race)->getCurForm(ch);
+    if(form.flag) {
+        bonus.additive_multiplier += (stat_t)((form.mult - 1.0) * 100.0);
+        bonus.post_bonus += form.bonus;
+    }
+
+    stat_t calculated = char_der_apply_bonuses(ch, der_id, base_value, bonus);
+
+    switch(der_id) {
+        case DER_POWERLEVEL: {
+            if(GET_KAIOKEN(ch) > 0) {
+                calculated += (calculated / 10) * GET_KAIOKEN(ch);
+            }
+            if(AFF_FLAGGED(ch, AFF_METAMORPH)) {
+                calculated += (calculated * .6);
+            }
+        }
+        break;
+        default:
+        break;
+    }
+
+    return calculated;
+}
+
+static stat_t der_vital_lifeforce(struct char_data *ch, uint8_t der_id) {
+    stat_t stamina = char_der_get(ch, DER_STAMINA);
+    stat_t ki = char_der_get(ch, DER_KI);
+
+    return (stamina + ki) * 0.5;
+}
+
+static stat_t der_vital_eff_ef(struct char_data *ch, uint8_t der_id) {
+    stat_t base_value = ch->derived_stats[der_id].base;
+
+    struct der_bonus bonus = char_der_calculate_bonuses(ch, der_id);
+
+    if(IS_DEMON(ch)) {
+        // Demons have -25%
+        bonus.additive_multiplier -= 25;
+    } else if(IS_KONATSU(ch)) {
+        // Konatsus have -50%
+        bonus.additive_multiplier -= 50;
+    } else if(IS_ARLIAN(ch)) {
+        // arlians have this weird molt level interaction...
+        stat_t stamina = char_der_get(ch, DER_STAMINA);
+        stat_t ki = char_der_get(ch, DER_KI);
+        stat_t arlian = (stamina + ki) * 0.01 * (GET_MOLT_LEVEL(ch) / 100);
+        bonus.post_bonus += arlian;
+    }
+
+    if(AFF_FLAGGED(ch, AFF_BLESS)) {
+        // at skill 100, bless gives +10% bonus.
+        // let's just make this a linear increase.
+        bonus.additive_multiplier += (GET_BLESSLVL(ch) * 0.1);
+    }
+
+    if(is_affected(ch, AFF_SPECIAL_POSE)) {
+        int skill = GET_SKILL(ch, SKILL_POSE);
+        // at skill 100, pose gives +15% bonus.
+        // This should scale so that at skill 1, it gives +0.15% bonus.
+        bonus.additive_multiplier += (skill * 0.15);
+    }
+
+    return char_der_apply_bonuses(ch, der_id, base_value, bonus);
+}
+
 static stat_t der_powerlevel_suppressed(struct char_data *ch, uint8_t der_id) {
     stat_t powerlevel = char_der_get(ch, DER_POWERLEVEL);
     stat_t burden = 100 - char_der_get(ch, DER_WEIGHT_BURDEN);
-    stat_t suppressed = char_stats_get(ch, STAT_SUPPRESS);
+    stat_t suppressed = ch->suppression;
 
     stat_t max_burden = (suppressed > 0) ? MIN(burden, suppressed) : burden;
     if(max_burden <= 0) return 0;
@@ -136,13 +223,13 @@ const struct der_definition der_definitions[NUM_DERIVED_STATS] = {
     {"speed", STATDEF_MIN | STATDEF_MAX, der_simple_base, NULL, 1, 150, APPLY_CHA, {-1, -1, -1, -1, -1}},
 
     // Vitals
-    {"powerlevel", STATDEF_MIN, der_simple_base, NULL, 1, 0, APPLY_HIT, {-1, -1, -1, -1, -1}},
-    {"ki", STATDEF_MIN, der_simple_base, NULL, 1, 0, APPLY_MANA, {-1, -1, -1, -1, -1}},
-    {"stamina", STATDEF_MIN, der_simple_base, NULL, 1, 0, APPLY_MOVE, {-1, -1, -1, -1, -1}},
+    {"powerlevel", STATDEF_MIN, der_vital_base, der_vital_eff, 1, 0, APPLY_HIT, {-1, -1, -1, -1, -1}},
+    {"ki", STATDEF_MIN, der_vital_base, der_vital_eff, 1, 0, APPLY_MANA, {-1, -1, -1, -1, -1}},
+    {"stamina", STATDEF_MIN, der_vital_base, der_vital_eff, 1, 0, APPLY_MOVE, {-1, -1, -1, -1, -1}},
 
-    {"life_force", STATDEF_MIN, NULL, NULL, 1, 0, 0, {DER_POWERLEVEL, DER_KI, DER_STAMINA, -1, -1}},
+    {"life_force", STATDEF_MIN, der_vital_lifeforce, der_vital_eff_ef, 1, 0, 0, {DER_POWERLEVEL, DER_KI, DER_STAMINA, -1, -1}},
 
-    {"powerlevel_suppressed", STATDEF_MIN, NULL, NULL, 1, 100, 0, {DER_POWERLEVEL, -1, -1, -1, -1}},
+    {"powerlevel_suppressed", STATDEF_MIN, der_powerlevel_suppressed, NULL, 1, 100, 0, {DER_POWERLEVEL, -1, -1, -1, -1}},
 
     // physics
     {"height", 0, der_simple_base, NULL, 0, 0, APPLY_CHAR_HEIGHT, {-1, -1, -1, -1, -1}},

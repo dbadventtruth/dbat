@@ -455,9 +455,9 @@ int write_mobile_record(mob_vnum mvnum, struct char_data *mob, FILE *fd)
                 fbuf1, fbuf2, fbuf3, fbuf4,
                 abuf1, abuf2, abuf3, abuf4,
 		GET_ALIGNMENT(mob),
-		GET_HITDICE(mob), GET_FISHD(mob), 10 - (GET_ARMOR(mob) / 10),
+		GET_HITDICE(mob), 0, 10 - (GET_ARMOR(mob) / 10),
                 GET_HIT(mob), (getCurKI(mob)), (getCurST(mob)), GET_NDD(mob), GET_SDD(mob),
-		GET_DAMAGE_MOD(mob)
+		0
   );
   fprintf(fd, 	"%d 0 %d %d\n"
 		"%d %d %d\n",

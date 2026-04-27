@@ -70,9 +70,6 @@ stat_t char_stats_modify(struct char_data *ch, uint8_t stat_id, stat_t delta) {
 static void char_der_invalidate_specific(struct char_data *ch, uint8_t der_id) {
   ch->derived_stats[der_id].calculated = false;
   ch->derived_stats[der_id].base = 0;
-  ch->derived_stats[der_id].pre_bonus = 0;
-  ch->derived_stats[der_id].additive_multiplier = 0;
-  ch->derived_stats[der_id].post_bonus = 0;
   ch->derived_stats[der_id].effective = 0;
 }
 
@@ -118,6 +115,18 @@ static void char_skills_helper(struct char_data *ch, uint8_t skill_id) {
   ch->skills[skill_id].cached = true;
 }
 
+static void char_skills_invalidate_specific(struct char_data *ch, uint8_t skill_id) {
+  ch->skills[skill_id].cached = false;
+  ch->skills[skill_id].bonus = 0;
+  ch->skills[skill_id].total = 0;
+}
+
+void char_skills_invalidate(struct char_data *ch) {
+  for(int i = 0; i < SKILL_TABLE_SIZE; i++) {
+    char_skills_invalidate_specific(ch, i);
+  }
+}
+
 stat_t char_skills_base_get(struct char_data *ch, uint8_t skill_id) {
   if(skill_id < 0 || skill_id > SKILL_TABLE_SIZE) {
     return 0; // or some error value
@@ -130,8 +139,7 @@ stat_t char_skills_set(struct char_data *ch, uint8_t skill_id, stat_t value) {
     return 0; // or some error value
   }
   ch->skills[skill_id].base = MIN(0, MAX(100, value));
-  // just naively invalidate the entire cache for now.
-  // worry about optimizing this later.
+  char_skills_invalidate_specific(ch, skill_id);
   char_skills_helper(ch, skill_id);
   return ch->skills[skill_id].base;
 }
@@ -160,24 +168,34 @@ stat_t char_skills_bonus_get(struct char_data *ch, uint8_t skill_id) {
   return ch->skills[skill_id].bonus;
 }
 
-static stat_t char_der_calculate(struct char_data *ch, uint8_t der_id, stat_t base_value) {
-  stat_t total_value = 0;
-  
+struct der_bonus char_der_calculate_bonuses(struct char_data *ch, uint8_t der_id) {
   // TODO: new modifier system will go here.
+  struct der_bonus bonus = {0, 0, 0};
 
   // now if it makes sense, we'll iterate other affect sources...
   if(der_definitions[der_id].apply != APPLY_NONE) {
-    ch->derived_stats[der_id].post_bonus += char_der_get_affect_bonus(ch, der_definitions[der_id].apply, -1);
+    bonus.post_bonus += char_der_get_affect_bonus(ch, der_definitions[der_id].apply, -1);
   }
 
-  double pre_bonus = base_value + ch->derived_stats[der_id].pre_bonus;
-  double additive_multiplier = (100.0 + ch->derived_stats[der_id].additive_multiplier) / 100.0;
+  return bonus;
+}
+
+stat_t char_der_apply_bonuses(struct char_data *ch, uint8_t der_id, stat_t base_value, struct der_bonus bonus) {
+  double pre_bonus = base_value + bonus.pre_bonus;
+  double additive_multiplier = (100.0 + bonus.additive_multiplier) / 100.0;
 
   stat_t multiplied = pre_bonus * additive_multiplier;
 
-  stat_t post_bonus = multiplied + ch->derived_stats[der_id].post_bonus;
+  stat_t post_bonus = multiplied + bonus.post_bonus;
 
   return post_bonus;
+}
+
+stat_t char_der_calculate(struct char_data *ch, uint8_t der_id, stat_t base_value) {
+  struct der_bonus bonus = char_der_calculate_bonuses(ch, der_id);
+
+  stat_t total_value = char_der_apply_bonuses(ch, der_id, base_value, bonus);
+  return total_value;
 }
 
 stat_t char_der_get(struct char_data *ch, uint8_t der_id) {
@@ -217,4 +235,73 @@ stat_t char_der_get(struct char_data *ch, uint8_t der_id) {
   ch->derived_stats[der_id].calculated = true;
 
   return total_value;
+}
+
+
+double char_meter_get(struct char_data *ch, uint8_t meter_id) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  return ch->meters[meter_id];
+}
+
+double char_meter_set(struct char_data *ch, uint8_t meter_id, double value) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  ch->meters[meter_id] = MAX(0.0, MIN(1.0, value));
+  return ch->meters[meter_id];
+}
+
+double char_meter_modify(struct char_data *ch, uint8_t meter_id, double delta) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  double new_value = ch->meters[meter_id] + delta;
+  return char_meter_set(ch, meter_id, new_value);
+}
+
+stat_t char_meter_max(struct char_data *ch, uint8_t meter_id) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  uint8_t der_id = meter_definitions[meter_id].der_id;
+  return char_der_get(ch, der_id);
+}
+
+stat_t char_meter_current(struct char_data *ch, uint8_t meter_id) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  double perc = char_meter_get(ch, meter_id);
+  stat_t max = char_meter_max(ch, meter_id);
+  return (stat_t)(perc * max);
+}
+
+stat_t char_meter_set_amount(struct char_data *ch, uint8_t meter_id, stat_t amount) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  stat_t max = char_meter_max(ch, meter_id);
+  double perc = (max > 0) ? ((double)amount / (double)max) : 0;
+  char_meter_set(ch, meter_id, perc);
+  return char_meter_current(ch, meter_id);
+}
+
+stat_t char_meter_modify_amount(struct char_data *ch, uint8_t meter_id, stat_t delta) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  stat_t current = char_meter_current(ch, meter_id);
+  stat_t new_amount = current + delta;
+  return char_meter_set_amount(ch, meter_id, new_amount);
+}
+
+stat_t char_meter_percent(struct char_data *ch, uint8_t meter_id, double percent) {
+  if (meter_id < 0 || meter_id > NUM_METERS) {
+    return 0; // or some error value
+  }
+  stat_t max = char_meter_max(ch, meter_id);
+  double value = MAX(0.0, MIN(1.0, percent));
+  return max*value;
 }

@@ -1028,15 +1028,6 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case ART_WHOLENESS_OF_BODY:
-    healing = GET_MAX_HIT(victim) - GET_HIT(victim);
-    healing = MAX(0, healing);
-    tmp = GET_KI(ch) / 2;
-    if (tmp > healing)
-      tmp = healing;
-    else {
-      healing = tmp;
-    }
-    GET_KI(ch) -= tmp * 2;
     break;
   }
   update_pos(victim);
@@ -1199,14 +1190,6 @@ void affect_update_violence(void)
       next = af->next;
       if (af->duration >= 1) {
         af->duration--;
-        switch (af->type) {
-        case ART_EMPTY_BODY:
-          if (GET_KI(i) >= 10) {
-            GET_KI(i) -= 10;
-          } else {
-            af->duration = 0; /* Wear it off immediately! No more ki */
-          }
-        }
       } else if (af->duration == -1) {     /* No action */
         continue;
       }

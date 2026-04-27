@@ -248,20 +248,18 @@ void medit_setup_existing(struct descriptor_data *d, int rmob_num)
 void init_mobile(struct char_data *mob)
 {
   clear_char(mob);
-
-  //GET_HIT(mob) = 0;
-  //GET_MAX_MANA(mob) = 0;
-  GET_NDD(mob) = 0;
   GET_SEX(mob) = SEX_MALE;
-  GET_HITDICE(mob) = 0;
   mob->chclass = CLASS_NPC_COMMONER;
 
-  GET_WEIGHT(mob) = rand_number(100, 200);
-  GET_HEIGHT(mob) = rand_number(100, 200);
+  mob->weight = rand_number(100, 200);
+  mob->height = rand_number(100, 200);
 
-  mob->real_abils.str = mob->real_abils.intel = mob->real_abils.wis = rand_number(8, 16);
-  mob->real_abils.dex = mob->real_abils.con = mob->real_abils.cha = rand_number(8, 16);
-  mob->aff_abils = mob->real_abils;
+  char_stats_set(mob, STAT_STRENGTH, rand_number(8, 16));
+  char_stats_set(mob, STAT_INTELLIGENCE, rand_number(8, 16));
+  char_stats_set(mob, STAT_WISDOM, rand_number(8, 16));
+  char_stats_set(mob, STAT_AGILITY, rand_number(8, 16));
+  char_stats_set(mob, STAT_CONSTITUTION, rand_number(8, 16));
+  char_stats_set(mob, STAT_SPEED, rand_number(8, 16));
 
   SET_BIT_AR(MOB_FLAGS(mob), MOB_ISNPC);
   mob->player_specials = &dummy_mob;
@@ -498,14 +496,14 @@ void medit_disp_menu(struct descriptor_data *d)
   "@g4@n) L-Desc:-\r\n@y%s"
   "@g5@n) D-Desc:-\r\n@y%s"
   "@g6@n) Level:       [@c%4d@n],  @g7@n) Alignment:    [@c%5d@n]\r\n"
-  "@g8@n) Accuracy Mod:[@c%4d@n],  @g9@n) Damage Mod:   [@c%5d@n]\r\n"
+  "@g8@n) ------------:[@c%4d@n],  @g9@n) ----------:   [@c%5d@n]\r\n"
   "@gA@n) NumDamDice:  [@c%4d@n],  @gB@n) SizeDamDice:  [@c%5d@n]\r\n"
   "@gC@n) Num HP Dice: [@c%4" I64T "@n],  @gD@n) Size HP Dice: [@c%5" I64T "@n],  @gE@n) HP Bonus: [@c%5" I64T "@n]\r\n"
   "@gF@n) Armor Class: [@c%4d@n],  @gG@n) Exp:      [@c%" I64T "@n],  @gH@n) Gold:  [@c%8d@n]\r\n",
 
 	  OLC_NUM(d), genders[(int)GET_SEX(mob)], GET_ALIAS(mob),
 	  GET_SDESC(mob), GET_LDESC(mob), GET_DDESC(mob), GET_HITDICE(mob),
-	  GET_ALIGNMENT(mob), GET_FISHD(mob), GET_DAMAGE_MOD(mob),
+	  GET_ALIGNMENT(mob), 0, 0,
 	  GET_NDD(mob), GET_SDD(mob), GET_HIT(mob), (getCurKI(mob)),
                   (getCurST(mob)), GET_ARMOR(mob), GET_EXP(mob), GET_GOLD(mob)
 	  );
@@ -840,14 +838,14 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_ACCURACY:
-    GET_FISHD(OLC_MOB(d)) = LIMIT(i, 0, 50);
+    //GET_FISHD(OLC_MOB(d)) = LIMIT(i, 0, 50);
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
     break;
 
   case MEDIT_DAMAGE:
-    GET_DAMAGE_MOD(OLC_MOB(d)) = LIMIT(i, 0, 50);
+    //GET_DAMAGE_MOD(OLC_MOB(d)) = LIMIT(i, 0, 50);
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }

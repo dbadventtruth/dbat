@@ -53,6 +53,12 @@ struct der_definition {
 
 #define NUM_DERIVED_STATS 25
 
+struct der_bonus {
+    stat_t pre_bonus;
+    stat_t additive_multiplier;
+    stat_t post_bonus;
+};
+
 // This struct is used for storing derived stat data on the character.
 struct der_data {
     // If not calculated, base/effective will be recalculated
@@ -60,12 +66,6 @@ struct der_data {
 
     // The base value calculated by the base_func.
     stat_t base;
-    // Apply modifiers set by affects/applies.
-    stat_t pre_bonus;
-
-    stat_t additive_multiplier;
-
-    stat_t post_bonus;
 
     // The final effective value after all calculations.
     stat_t effective;

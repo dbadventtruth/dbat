@@ -206,94 +206,94 @@ static void mob_stats(struct char_data *mob)
    finish = 20;
 
   if (!IS_HUMANOID(mob)) {
-   mob->real_abils.str = rand_number(start, finish);
-   mob->real_abils.intel = rand_number(start, finish) - 30;
-   mob->real_abils.wis = rand_number(start, finish) - 30;
-   mob->real_abils.dex = rand_number(start + 5, finish);
-   mob->real_abils.con = rand_number(start + 5, finish);
-   mob->real_abils.cha = rand_number(start, finish);
+   char_stats_set(mob, STAT_STRENGTH, (rand_number(start, finish)));
+   char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish) - 30));
+   char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish) - 30));
+   char_stats_set(mob, STAT_AGILITY, (rand_number(start + 5, finish)));
+   char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start + 5, finish)));
+   char_stats_set(mob, STAT_SPEED, (rand_number(start, finish)));
   } else {
    if (IS_SAIYAN(mob)) {
-    mob->real_abils.str = rand_number(start + 10, finish);
-    mob->real_abils.intel = rand_number(start, finish - 10);
-    mob->real_abils.wis = rand_number(start, finish - 5);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start + 5, finish);
-    mob->real_abils.cha = rand_number(start + 5, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start + 10, finish)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish - 10)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish - 5)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start + 5, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start + 5, finish)));
    } else if (IS_KONATSU(mob)) {
-    mob->real_abils.str = rand_number(start, finish - 10);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start + 10, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start, finish - 10)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start + 10, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start, finish)));
    } else if (IS_ANDROID(mob)) {
-    mob->real_abils.str = rand_number(start, finish);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish - 10);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish - 10)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start, finish)));
    } else if (IS_MAJIN(mob)) {
-    mob->real_abils.str = rand_number(start, finish);
-    mob->real_abils.intel = rand_number(start, finish - 10);
-    mob->real_abils.wis = rand_number(start, finish - 5);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start + 15, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish - 10)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish - 5)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start + 15, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start, finish)));
    } else if (IS_TRUFFLE(mob)) {
-    mob->real_abils.str = rand_number(start, finish - 10);
-    mob->real_abils.intel = rand_number(start + 15, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start, finish - 10)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start + 15, finish)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start, finish)));
    } else if (IS_ICER(mob)) {
-    mob->real_abils.str = rand_number(start + 5, finish);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start + 10, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start + 5, finish)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start + 10, finish)));
    } else {
-    mob->real_abils.str = rand_number(start, finish);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stats_set(mob, STAT_STRENGTH, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_WISDOM, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_AGILITY, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_CONSTITUTION, (rand_number(start, finish)));
+    char_stats_set(mob, STAT_SPEED, (rand_number(start, finish)));
    }
   }
 
-  if (mob->real_abils.str > 100)
-   mob->real_abils.str = 100;
-  else if (mob->real_abils.str < 5)
-   mob->real_abils.str = rand_number(5, 8);
+  if (char_stats_get(mob, STAT_STRENGTH) > 100)
+   char_stats_set(mob, STAT_STRENGTH, (100));
+  else if (char_stats_get(mob, STAT_STRENGTH) < 5)
+   char_stats_set(mob, STAT_STRENGTH, (rand_number(5, 8)));
 
-  if (mob->real_abils.intel > 100)
-   mob->real_abils.intel = 100;
-  else if (mob->real_abils.intel < 5)
-   mob->real_abils.intel = rand_number(5, 8);
+  if (char_stats_get(mob, STAT_INTELLIGENCE) > 100)
+   char_stats_set(mob, STAT_INTELLIGENCE, (100));
+  else if (char_stats_get(mob, STAT_INTELLIGENCE) < 5)
+   char_stats_set(mob, STAT_INTELLIGENCE, (rand_number(5, 8)));
 
-  if (mob->real_abils.wis > 100)
-   mob->real_abils.wis = 100;
-  else if (mob->real_abils.wis < 5)
-   mob->real_abils.wis = rand_number(5, 8);
+  if (char_stats_get(mob, STAT_WISDOM) > 100)
+   char_stats_set(mob, STAT_WISDOM, (100));
+  else if (char_stats_get(mob, STAT_WISDOM) < 5)
+   char_stats_set(mob, STAT_WISDOM, (rand_number(5, 8)));
 
-  if (mob->real_abils.con > 100)
-   mob->real_abils.con = 100;
-  else if (mob->real_abils.con < 5)
-   mob->real_abils.con = rand_number(5, 8);
+  if (char_stats_get(mob, STAT_CONSTITUTION) > 100)
+   char_stats_set(mob, STAT_CONSTITUTION, (100));
+  else if (char_stats_get(mob, STAT_CONSTITUTION) < 5)
+   char_stats_set(mob, STAT_CONSTITUTION, (rand_number(5, 8)));
 
-  if (mob->real_abils.cha > 100)
-   mob->real_abils.cha = 100;
-  else if (mob->real_abils.cha < 5)
-   mob->real_abils.cha = rand_number(5, 8);
+  if (char_stats_get(mob, STAT_SPEED) > 100)
+   char_stats_set(mob, STAT_SPEED, (100));
+  else if (char_stats_get(mob, STAT_SPEED) < 5)
+   char_stats_set(mob, STAT_SPEED, (rand_number(5, 8)));
 
-  if (mob->real_abils.dex > 100)
-   mob->real_abils.dex = 100;
-  else if (mob->real_abils.dex < 5)
-   mob->real_abils.dex = rand_number(5, 8);
+  if (char_stats_get(mob, STAT_AGILITY) > 100)
+   char_stats_set(mob, STAT_AGILITY, (100));
+  else if (char_stats_get(mob, STAT_AGILITY) < 5)
+   char_stats_set(mob, STAT_AGILITY, (rand_number(5, 8)));
 }
 
 /* Convert CWG-SunTzu armor objects to new armor types */
@@ -1816,29 +1816,14 @@ static void renum_zone_table(void)
 
 static void mob_autobalance(struct char_data *ch)
 {
-    /* Try to add some baseline defaults based on level choice. */
-    //GET_HIT(ch) = 0;
-    //GET_MANA(ch) = 0;
-    //GET_MOVE(ch) = 0;
-    GET_EXP(ch) = 0;
-    GET_ARMOR(ch) = 0;
-    GET_NDD(ch) = 0;
-    GET_SDD(ch) = 0;
-    GET_DAMAGE_MOD(ch) = 0;
+
 }
 
 static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr)
 {
   int j, t[10];
   char line[READ_SIZE];
- 
-  ch->real_abils.str = 0;
-  ch->real_abils.intel = 0;
-  ch->real_abils.wis = 0;
-  ch->real_abils.dex = 0;
-  ch->real_abils.con = 0;
-  ch->real_abils.cha = 0;
- 
+
   if (!get_line(mob_f, line)) {
     log("SYSERR: Format error in mob #%d, file ended after S flag!", nr);
     return 0;
@@ -1857,16 +1842,15 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr)
   GET_ARMOR(ch) = 10 * (10 - t[2]);
  
   /* max hit = 0 is a flag that H, M, V is xdy+z */
-  ch->basepl = t[3];
-  ch->baseki = t[4];
-  ch->basest = t[5];
-  ch->health = 1.0;
-  ch->energy = 1.0;
-  ch->stamina = 1.0;
+  char_stats_set(ch, STAT_POWERLEVEL, (t[3]));
+  char_stats_set(ch, STAT_KI, (t[4]));
+  char_stats_set(ch, STAT_STAMINA, (t[5]));
+  for(int i = 0; i < NUM_METERS; i++) {
+    ch->meters[i] = 1.0;
+  }
 
   ch->mob_specials.damnodice = t[6];
   ch->mob_specials.damsizedice = t[7];
-  GET_DAMAGE_MOD(ch) = t[8];
  
   if (!get_line(mob_f, line)) {
     log("SYSERR: Format error in mob #%d, second line after S flag\n"
@@ -1975,7 +1959,7 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
 
   CASE("Str") {
     RANGE(0, 200);
-    ch->real_abils.str = num_arg;
+    char_stats_set(ch, STAT_STRENGTH, (num_arg));
   }
 
   CASE("StrAdd") {
@@ -1985,27 +1969,27 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
 
   CASE("Int") {
     RANGE(0, 200);
-    ch->real_abils.intel = num_arg;
+    char_stats_set(ch, STAT_INTELLIGENCE, (num_arg));
   }
 
   CASE("Wis") {
     RANGE(0, 200);
-    ch->real_abils.wis = num_arg;
+    char_stats_set(ch, STAT_WISDOM, (num_arg));
   }
 
   CASE("Dex") {
     RANGE(0, 200);
-    ch->real_abils.dex = num_arg;
+    char_stats_set(ch, STAT_AGILITY, (num_arg));
   }
 
   CASE("Con") {
     RANGE(0, 200);
-    ch->real_abils.con = num_arg;
+    char_stats_set(ch, STAT_CONSTITUTION, (num_arg));
   }
 
   CASE("Cha") {
     RANGE(0, 200);
-    ch->real_abils.cha = num_arg;
+    char_stats_set(ch, STAT_SPEED, (num_arg));
   }
  
   CASE("Hit") {
@@ -2015,7 +1999,6 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
  
   CASE("MaxHit") {
     RANGE(0, 99999);
-    ch->max_hit = num_arg;
   }
  
   CASE("Mana") {
@@ -2025,7 +2008,6 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
  
   CASE("MaxMana") {
     RANGE(0, 99999);
-    ch->max_mana = num_arg;
   }
  
   CASE("Moves") {
@@ -2035,7 +2017,6 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
  
   CASE("MaxMoves") {
     RANGE(0, 99999);
-    ch->max_move = num_arg;
   }
  
   CASE("Affect") {
@@ -2272,17 +2253,6 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch)
     letter = fread_letter(mob_f);
     ungetc(letter, mob_f);
   }
-
-  ch->aff_abils = ch->real_abils;
-
-  for (j = 0; j < NUM_WEARS; j++)
-    ch->equipment[j] = NULL;
-
-  /* Uncomment to force all mob files to be rewritten. Good for initial AUTOBALANCE setup.
-   * if (bitsavetodisk) {
-   *   add_to_save_list(zone_table[real_zone_by_thing(nr)].number, 0);
-   *   converting = TRUE;
-   * } */
 
   return 1;
 }
@@ -3262,47 +3232,47 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 
   GET_LPLAY(mob) = time(0);
  bool autoset = false;
-  if (mob->basepl <= 1) {
+  if (char_stats_get(mob, STAT_POWERLEVEL) <= 1) {
       autoset = true;
-      mob->basepl = GET_LEVEL(mob) * mult;
+      char_stats_set(mob, STAT_POWERLEVEL, (GET_LEVEL(mob) * mult));
    if (GET_LEVEL(mob) > 140) {
-       mob->basepl *= 8;
+       char_stats_set(mob, STAT_POWERLEVEL, (char_stats_get(mob, STAT_POWERLEVEL) * 8));
    } else if (GET_LEVEL(mob) > 130) {
-       mob->basepl *= 6;
+       char_stats_set(mob, STAT_POWERLEVEL, (char_stats_get(mob, STAT_POWERLEVEL) * 6));
    } else if (GET_LEVEL(mob) > 120) {
-       mob->basepl *= 3;
+       char_stats_set(mob, STAT_POWERLEVEL, (char_stats_get(mob, STAT_POWERLEVEL) * 3));
    } else if (GET_LEVEL(mob) > 110) {
-       mob->basepl *= 2;
+       char_stats_set(mob, STAT_POWERLEVEL, (char_stats_get(mob, STAT_POWERLEVEL) * 2));
    }
   }
   if (autoset) {
-      mob->baseki = GET_LEVEL(mob) * mult;
+      char_stats_set(mob, STAT_KI, (GET_LEVEL(mob) * mult));
    if (GET_LEVEL(mob) > 140) {
-       mob->baseki *= 8;
+       char_stats_set(mob, STAT_KI, (char_stats_get(mob, STAT_KI) * 8));
    } else if (GET_LEVEL(mob) > 130) {
-       mob->baseki *= 6;
+       char_stats_set(mob, STAT_KI, (char_stats_get(mob, STAT_KI) * 6));
    } else if (GET_LEVEL(mob) > 120) {
-       mob->baseki *= 3;
+       char_stats_set(mob, STAT_KI, (char_stats_get(mob, STAT_KI) * 3));
    } else if (GET_LEVEL(mob) > 110) {
-       mob->baseki *= 2;
+       char_stats_set(mob, STAT_KI, (char_stats_get(mob, STAT_KI) * 2));
    }
   }
   if (autoset) {
-      mob->basest = GET_LEVEL(mob) * mult;
+      char_stats_set(mob, STAT_STAMINA, (GET_LEVEL(mob) * mult));
    if (GET_LEVEL(mob) > 140) {
-       mob->basest *= 8;
+       char_stats_set(mob, STAT_STAMINA, (char_stats_get(mob, STAT_STAMINA) * 8));
    } else if (GET_LEVEL(mob) > 130) {
-       mob->basest *= 6;
+       char_stats_set(mob, STAT_STAMINA, (char_stats_get(mob, STAT_STAMINA) * 6));
    } else if (GET_LEVEL(mob) > 120) {
-       mob->basest *= 3;
+       char_stats_set(mob, STAT_STAMINA, (char_stats_get(mob, STAT_STAMINA) * 3));
    } else if (GET_LEVEL(mob) > 110) {
-       mob->basest *= 2;
+       char_stats_set(mob, STAT_STAMINA, (char_stats_get(mob, STAT_STAMINA) * 2));
    }
   }
   if (GET_MOB_VNUM(mob) == 2245) {
-   mob->basepl = rand_number(1, 4);
-   mob->baseki = rand_number(1, 4);
-   mob->basest = rand_number(1, 4);
+   char_stats_set(mob, STAT_POWERLEVEL, (rand_number(1, 4)));
+   char_stats_set(mob, STAT_KI, (rand_number(1, 4)));
+   char_stats_set(mob, STAT_STAMINA, (rand_number(1, 4)));
   }
 
   int base = 0;
@@ -4688,9 +4658,9 @@ void init_char(struct char_data *ch)
     GET_CLASS_NONEPIC(ch, GET_CLASS(ch)) = GET_LEVEL(ch);
 
     /* The implementor never goes through do_start(). */
-    ch->baseki = 1000;
-    ch->basepl = 1000;
-    ch->basest = 1000;
+    char_stats_set(ch, STAT_KI, (1000));
+    char_stats_set(ch, STAT_POWERLEVEL, (1000));
+    char_stats_set(ch, STAT_STAMINA, (1000));
   }
 
   set_title(ch, NULL);
@@ -5638,4 +5608,3 @@ void write_level_data(struct char_data *ch, FILE *fl)
   }
   fprintf(fl, "end\n");
 }
-

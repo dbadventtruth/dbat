@@ -26,7 +26,6 @@ bool is_soft_cap(char_data *ch, int64_t type);
 int wearing_android_canister(char_data *ch);
 int calcGravCost(char_data *ch, int64_t num);
 
-int64_t getCurHealth(char_data *ch);
 int64_t getMaxHealth(char_data *ch);
 double getCurHealthPercent(char_data *ch);
 int64_t getPercentOfCurHealth(char_data *ch, double amt);
@@ -55,7 +54,6 @@ bool isFullPL(char_data *ch);
 int64_t getCurKI(char_data *ch);
 int64_t getMaxKI(char_data *ch);
 int64_t getBaseKI(char_data *ch);
-int64_t getEffBaseKI(char_data *ch);
 double getCurKIPercent(char_data *ch);
 int64_t getPercentOfCurKI(char_data *ch, double amt);
 int64_t getPercentOfMaxKI(char_data *ch, double amt);

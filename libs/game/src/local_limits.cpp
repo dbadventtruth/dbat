@@ -661,9 +661,9 @@ int64_t hit_gain(struct char_data *ch)
     }
   }
 
-  if (GET_REGEN(ch) > 0)
+  if (char_der_get(ch, DER_REGEN) > 0)
   {
-    gain += (gain * 0.01) * GET_REGEN(ch);
+    gain += (gain * 0.01) * char_der_get(ch, DER_REGEN);
   }
 
   return (gain);
@@ -839,9 +839,9 @@ static int64_t move_gain(struct char_data *ch)
   if (cook_element(IN_ROOM(ch)) == 1)
     gain *= 2;
 
-  if (GET_REGEN(ch) > 0)
+  if (char_der_get(ch, DER_REGEN) > 0)
   {
-    gain += (gain * 0.01) * GET_REGEN(ch);
+    gain += (gain * 0.01) * char_der_get(ch, DER_REGEN);
   }
 
   return (gain);
@@ -934,23 +934,23 @@ static void update_flags(struct char_data *ch)
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 2) == 2)
     {
-      ch->real_abils.intel -= 1;
-      ch->real_abils.wis -= 1;
+      char_stats_modify(ch, STAT_INTELLIGENCE, -(1));
+      char_stats_modify(ch, STAT_WISDOM, -(1));
       send_to_char(ch, "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (ch->real_abils.wis < 4)
-        ch->real_abils.wis = 4;
-      if (ch->real_abils.intel < 4)
-        ch->real_abils.intel = 4;
+      if (char_stats_get(ch, STAT_WISDOM) < 4)
+        char_stats_set(ch, STAT_WISDOM, (4));
+      if (char_stats_get(ch, STAT_INTELLIGENCE) < 4)
+        char_stats_set(ch, STAT_INTELLIGENCE, (4));
     }
     else if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 20) == 1)
     {
-      ch->real_abils.intel -= 1;
-      ch->real_abils.wis -= 1;
+      char_stats_modify(ch, STAT_INTELLIGENCE, -(1));
+      char_stats_modify(ch, STAT_WISDOM, -(1));
       send_to_char(ch, "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (ch->real_abils.wis < 4)
-        ch->real_abils.wis = 4;
-      if (ch->real_abils.intel < 4)
-        ch->real_abils.intel = 4;
+      if (char_stats_get(ch, STAT_WISDOM) < 4)
+        char_stats_set(ch, STAT_WISDOM, (4));
+      if (char_stats_get(ch, STAT_INTELLIGENCE) < 4)
+        char_stats_set(ch, STAT_INTELLIGENCE, (4));
     }
   }
   if (AFF_FLAGGED(ch, AFF_SHOCKED) && rand_number(1, 4) == 4)
@@ -1028,9 +1028,9 @@ static int ki_gain(struct char_data *ch)
   if (AFF_FLAGGED(ch, AFF_POISON))
     gain /= 4;
 
-  if (GET_REGEN(ch) > 0)
+  if (char_der_get(ch, DER_REGEN) > 0)
   {
-    gain += (gain * 0.01) * GET_REGEN(ch);
+    gain += (gain * 0.01) * char_der_get(ch, DER_REGEN);
   }
 
   return (gain);
@@ -1681,25 +1681,25 @@ static void heal_limb(struct char_data *ch)
     {
       if (axion_dice(-10) > GET_CON(ch))
       {
-        ch->real_abils.str -= 1;
-        ch->real_abils.dex -= 1;
-        ch->real_abils.cha -= 1;
+        char_stats_modify(ch, STAT_STRENGTH, -(1));
+        char_stats_modify(ch, STAT_AGILITY, -(1));
+        char_stats_modify(ch, STAT_SPEED, -(1));
         send_to_char(ch, "@RYou lose 1 Strength, Agility, and Speed!\r\n");
-        if (ch->real_abils.str < 4)
+        if (char_stats_get(ch, STAT_STRENGTH) < 4)
         {
-          ch->real_abils.str = 4;
+          char_stats_set(ch, STAT_STRENGTH, (4));
         }
-        if (ch->real_abils.con < 4)
+        if (char_stats_get(ch, STAT_CONSTITUTION) < 4)
         {
-          ch->real_abils.con = 4;
+          char_stats_set(ch, STAT_CONSTITUTION, (4));
         }
-        if (ch->real_abils.dex < 4)
+        if (char_stats_get(ch, STAT_AGILITY) < 4)
         {
-          ch->real_abils.dex = 4;
+          char_stats_set(ch, STAT_AGILITY, (4));
         }
-        if (ch->real_abils.cha < 4)
+        if (char_stats_get(ch, STAT_SPEED) < 4)
         {
-          ch->real_abils.cha = 4;
+          char_stats_set(ch, STAT_SPEED, (4));
         }
         save_char(ch);
       }

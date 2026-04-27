@@ -1185,12 +1185,12 @@ SPECIAL(augmenter)
    one_argument(argument, arg);
  
    if (CMD_IS("augment")) {
-     int strength = ch->real_abils.str;
-     int intel = ch->real_abils.intel;
-     int wisdom = ch->real_abils.wis;
-     int speed = ch->real_abils.cha;
-     int consti = ch->real_abils.con;
-     int agility = ch->real_abils.dex;
+     int strength = char_stats_get(ch, STAT_STRENGTH);
+     int intel = char_stats_get(ch, STAT_INTELLIGENCE);
+     int wisdom = char_stats_get(ch, STAT_WISDOM);
+     int speed = char_stats_get(ch, STAT_SPEED);
+     int consti = char_stats_get(ch, STAT_CONSTITUTION);
+     int agility = char_stats_get(ch, STAT_AGILITY);
 
      int strcost = strength * 1200;
      int intcost = intel * 1200;
@@ -1217,7 +1217,7 @@ SPECIAL(augmenter)
      else { /* They can augment it! */
       act("@WThe machine's arm moves out and quickly augments your body with microscopic attachments.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@WThe Augmenter 9001 moves its arm over to @C$n@W and quickly operates on $s body.@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->real_abils.str += 1;
+      char_stats_modify(ch, STAT_STRENGTH, (1));
       GET_GOLD(ch) -= strcost;
       save_char(ch);
      }
@@ -1229,7 +1229,7 @@ SPECIAL(augmenter)
      else { /* They can augment it! */
       act("@WThe machine's arm moves out and quickly augments your body with microscopic attachments.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@WThe Augmenter 9001 moves its arm over to @C$n@W and quickly operates on $s body.@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->real_abils.intel += 1;
+      char_stats_modify(ch, STAT_INTELLIGENCE, (1));
       GET_GOLD(ch) -= intcost;
       save_char(ch);
      }
@@ -1241,7 +1241,7 @@ SPECIAL(augmenter)
      else { /* They can augment it! */
       act("@WThe machine's arm moves out and quickly augments your body with microscopic attachments.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@WThe Augmenter 9001 moves its arm over to @C$n@W and quickly operates on $s body.@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->real_abils.con += 1;
+      char_stats_modify(ch, STAT_CONSTITUTION, (1));
       GET_GOLD(ch) -= concost;
       save_char(ch);
      }
@@ -1253,7 +1253,7 @@ SPECIAL(augmenter)
      else { /* They can augment it! */
       act("@WThe machine's arm moves out and quickly augments your body with microscopic attachments.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@WThe Augmenter 9001 moves its arm over to @C$n@W and quickly operates on $s body.@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->real_abils.cha += 1;
+      char_stats_modify(ch, STAT_SPEED, (1));
       GET_GOLD(ch) -= specost;
       save_char(ch);
      }
@@ -1265,7 +1265,7 @@ SPECIAL(augmenter)
      else { /* They can augment it! */
       act("@WThe machine's arm moves out and quickly augments your body with microscopic attachments.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@WThe Augmenter 9001 moves its arm over to @C$n@W and quickly operates on $s body.@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->real_abils.dex += 1;
+      char_stats_modify(ch, STAT_AGILITY, (1));
       GET_GOLD(ch) -= agicost;
       save_char(ch);
      }
@@ -1277,7 +1277,7 @@ SPECIAL(augmenter)
      else { /* They can augment it! */
       act("@WThe machine's arm moves out and quickly augments your body with microscopic attachments.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@WThe Augmenter 9001 moves its arm over to @C$n@W and quickly operates on $s body.@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->real_abils.wis += 1;
+      char_stats_modify(ch, STAT_WISDOM, (1));
       GET_GOLD(ch) -= wiscost;
       save_char(ch);
      }

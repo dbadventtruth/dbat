@@ -23,7 +23,7 @@
 #include "consts/sizes.h"
 #include "index.h"
 #include "htree.h"
-#include "derived.h"
+#include "meter.h"
 
 #define PM_ARRAY_MAX 4
 
@@ -246,6 +246,7 @@ struct char_data
 
    stat_t stats[NUM_CHARACTER_STATS]; /* Array of character stats		*/
    der_data derived_stats[NUM_DERIVED_STATS]; /* Array of derived stats		*/
+   double meters[NUM_METERS]; /* Array of character meters		*/
 
    int size;   /* Size class of char                   */
    int8_t sex; /* PC / NPC's sex                       */
@@ -276,8 +277,6 @@ struct char_data
    char *rdisplay;
    char *voice; /* PC's snet voice */
 
-   struct abil_data real_abils; /* Abilities without modifiers   */
-   struct abil_data aff_abils;  /* Abils with spells/stones/etc  */
    struct player_special_data *player_specials;
    /* PC specials				*/
    struct mob_special_data mob_specials;
@@ -365,23 +364,6 @@ struct char_data
    int64_t exp; /* The experience of the player		*/
    int upgrade; // android upgrade points
 
-   // Base stats
-   int64_t basepl;
-   int64_t baseki;
-   int64_t basest;
-
-   // used for temporaryt storage of bonuses
-   int64_t max_mana; /* Max mana for PC/NPC			*/
-   int64_t max_hit; /* Max hit for PC/NPC			*/
-   int64_t max_move; /* Max move for PC/NPC			*/
-   int64_t max_ki; /* Max ki for PC/NPC			*/
-
-   // resource meters, ranges from 0 to 1.0
-   double health;
-   double energy;
-   double stamina;
-   double life;
-
    // how much you're suppressed.
    int64_t suppression;
 
@@ -459,7 +441,7 @@ struct char_data
    // Chargen bonus/flaw points
    int ccpoints;
    int negcount;
-   int bonuses[MAX_BONUSES];
+   bool bonuses[MAX_BONUSES];
    int choice;
 
    // cooldowns here
@@ -494,8 +476,8 @@ struct char_data
    int transcost[6];
    int kaioken; // current level of kaioken 0-20
 
-   // Fishing stuff - accuracy_mod is fish_pole_bonus
-   int accuracy_mod; /* Any bonus or penalty to the accuracy	*/
+   // Fishing stuff
+   int fish_distance; /* Any bonus or penalty to the accuracy	*/
    int fishstate;
 
    char *temp_prompt;
