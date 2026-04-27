@@ -42,7 +42,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // C library - libs/db
-    const mod_dbat_db = b.createModule(.{ .target = target, .optimize = optimize, .link_libc = true });
+    const mod_dbat_db = b.createModule(.{ .target = target, .optimize = optimize, .link_libc = true, .root_source_file = b.path("libs/db/src/db.zig") });
 
     mod_dbat_db.addIncludePath(b.path("libs/db/include"));
     const db_files = getSourceFiles(b, "libs/db/src", ".cpp");

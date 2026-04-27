@@ -50,7 +50,6 @@ void load_majin(struct char_data *ch, const char *line);
 struct player_index_element *player_table = NULL;	/* index to plr file	 */
 int top_of_p_table = 0;		/* ref to top of table		 */
 int top_of_p_file = 0;		/* ref of size of p file	 */
-long top_idnum = 0;		/* highest idnum in use		 */
 
 
 /* external ASCII Player Files vars */
@@ -97,7 +96,6 @@ void build_player_index(void)
     CREATE(player_table[i].name, char, strlen(arg2) + 1);
     strcpy(player_table[i].name, arg2);
     player_table[i].flags = asciiflag_conv(bits);
-    top_idnum = MAX(top_idnum, player_table[i].id);
   }
 
   fclose(plr_index);

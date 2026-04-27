@@ -236,7 +236,7 @@
 #define GET_SDCOOLDOWN(ch) ((ch)->con_sdcooldown)
 #define GET_INGESTLEARNED(ch) ((ch)->ingestLearned)
 #define GET_POS(ch)		((ch)->position)
-#define GET_IDNUM(ch)		((ch)->idnum)
+#define GET_IDNUM(ch)		((ch)->id)
 #define GET_ID(x)		((x)->id)
 #define IS_CARRYING_W(ch)	((ch)->carry_weight)
 #define IS_CARRYING_N(ch)	((ch)->carry_items)

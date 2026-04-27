@@ -18,6 +18,8 @@ struct obj_spellbook_spell {
 
 /* ================== Memory Structure for Objects ================== */
 struct obj_data {
+   int64_t id;
+
    obj_vnum item_number;	/* Where in data-base			*/
    room_rnum in_room;		/* In what room -1 when conta/carr	*/
    room_vnum room_loaded;	/* Room loaded in, for room_max checks	*/
@@ -46,10 +48,6 @@ struct obj_data {
 
    struct obj_data *in_obj;       /* In what object NULL when none    */
    struct obj_data *contains;     /* Contains objects                 */
-
-   int32_t id;                       /* used by DG triggers              */
-   time_t generation;             /* creation time for dupe check     */
-   int64_t unique_id;  /* random bits for dupe check       */
 
    struct trig_proto_list *proto_script; /* list of default triggers  */
    struct script_data *script;    /* script info for the object       */

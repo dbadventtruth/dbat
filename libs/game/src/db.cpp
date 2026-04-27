@@ -8,6 +8,7 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
 #include "dbat/game/db.h"
+#include "dbat/db/db.h"
 #include "dbat/db/consts/maximums.h"
 #include "dbat/db/utils.h"
 #include "dbat/db/help.h"
@@ -169,8 +170,6 @@ void free_assemblies(void);
 /* external vars */
 extern int no_specials;
 extern int scheck;
-
-extern long top_idnum;
 
 static void dragon_level(struct char_data *ch)
 {
@@ -4666,10 +4665,11 @@ void init_char(struct char_data *ch)
 {
   int i;
 
+  ch->id = char_game_nextid();
+
   /* create a player_special structure */
   if (ch->player_specials == NULL) {
     CREATE(ch->player_specials, struct player_special_data, 1);
-    memset((void *) ch->player_specials, 0, sizeof(struct player_special_data));
   }
 
   GET_ADMLEVEL(ch) = ADMLVL_NONE;
@@ -4709,7 +4709,7 @@ void init_char(struct char_data *ch)
   set_height_and_weight_by_race(ch);
 
   if ((i = get_ptable_by_name(GET_NAME(ch))) != -1)
-    player_table[i].id = GET_IDNUM(ch) = ++top_idnum;
+    player_table[i].id = ch->id;
   else
     log("SYSERR: init_char: Character '%s' not found in player table.", GET_NAME(ch));
 

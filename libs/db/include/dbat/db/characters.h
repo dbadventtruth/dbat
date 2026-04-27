@@ -226,8 +226,7 @@ struct skill_data {
 
 struct char_data
 {
-   int32_t id;                   /* used by DG triggers			*/
-   int32_t idnum;                 /* player's idnum; -1 for mobiles	*/
+   int64_t id;
 
    int pfilepos;          /* playerfile pos			*/
    mob_rnum nr;           /* Mob's rnum				*/
@@ -336,7 +335,7 @@ struct char_data
    int skill_slots;
    int forgeting;
    int forgetcount;
-   skill_data skills[SKILL_TABLE_SIZE];
+   struct skill_data skills[SKILL_TABLE_SIZE];
 
    bitvector_t act[PM_ARRAY_MAX]; /* act flag for NPC's; player flag for PC's */
 
