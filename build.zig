@@ -99,7 +99,6 @@ pub fn build(b: *std.Build) void {
     });
     circle_mod.linkLibrary(dbat_db);
     circle_mod.linkLibrary(dbat_game);
-    circle_mod.addImport("zlua", zlua_dep.module("zlua"));
 
     b.installArtifact(dbat_db);
     b.installArtifact(dbat_game);
