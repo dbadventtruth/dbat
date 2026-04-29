@@ -2841,7 +2841,7 @@ static void damtype_unarmed_preference(char_data *ch, int64_t *dam) {
 
 static void damtype_focus(char_data *ch, int64_t *dam, int64_t focus, int divby) {
     if (focus > 0) {
-        dam += focus * (*dam / divby);
+        *dam += focus * (*dam / divby);
     }
 }
 
