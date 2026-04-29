@@ -893,11 +893,11 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl, int hitspo
 
   remove_limb(vict, 0);
   die(vict, ch);
-  if (AFF_FLAGGED(ch, AFF_GROUP)) {
+  /*if (AFF_FLAGGED(ch, AFF_GROUP)) {
    group_gain(ch, vict);
   } else {
    solo_gain(ch, vict);
-  }
+  }*/
   char corp[256];
   if (!IS_NPC(ch) && (ch != vict) && PRF_FLAGGED(ch, PRF_AUTOGOLD)) {
    sprintf(corp, "all.zenni corpse");
