@@ -3543,7 +3543,7 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
   } 
 
   gravity = ROOM_GRAVITY(IN_ROOM(ch));
-  gmult = GET_LEVEL(ch) * ((gravity / 5) + 6);
+  gmult = GET_LEVEL(ch) * ((gravity / 10) + 6);
  
   if (GET_EQ(ch, WEAR_SH)) {
    struct obj_data *obj = GET_EQ(ch, WEAR_SH);
