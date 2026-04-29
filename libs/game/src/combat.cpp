@@ -3575,8 +3575,8 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
 
   int64_t chavg = (ch->max_hit + ch->max_mana + ch->max_move) / 3;
   int64_t victavg = (vict->max_hit + vict->max_mana + vict->max_move) / 3;
-  int characterStrength = getDigits(chavg);
-  int victimStrength = getDigits(victavg);
+  int characterStrength = get_digits(chavg);
+  int victimStrength = get_digits(victavg);
 
   if (chance >= rand_number(60, 75)) {
    int64_t num = 0,  maxnum = 500000;
@@ -3682,7 +3682,7 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
 }
 
 /*Get the amount of digits within a number*/
-int getDigits(int64_t n) {
+int get_digits(int64_t n) {
     int count = 1;
 
     while (n <= -10 || n >= 10) {
