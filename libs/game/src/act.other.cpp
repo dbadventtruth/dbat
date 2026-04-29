@@ -6000,9 +6000,9 @@ ACMD(do_focus)
       act("However $N seems unaffected by the poison.", TRUE, ch, 0, vict, TO_NOTVICT);
      } else {
       vict->poisonby = ch;
-      if (GET_CHARGE(ch) > 0) {
-       send_to_char(ch, "You lose your concentration and release your charged ki!\r\n");
-       do_charge(ch, "release", 0, 0);
+      if (GET_CHARGE(vict) > 0) {
+       send_to_char(vict, "You lose your concentration and release your charged ki!\r\n");
+       do_charge(vict, "release", 0, 0);
       }
       int duration = GET_INT(ch) / 20;
       assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0, 0);
