@@ -3524,7 +3524,9 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
  int chance = 0, gmult, gravity, bonus = 1, difference = 0;
  int64_t gain = 0, pl = 0, ki = 0, st = 0, gaincalc = 0;
 
- if (ch != NULL && !IS_NPC(ch)) {
+ if (ch == NULL) return;
+ if (IS_NPC(ch)) return;
+
   if (dmg > GET_MAX_HIT(vict) / 10) {
    chance = rand_number(20, 100);
   }
@@ -3573,8 +3575,8 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
 
   int64_t chavg = (ch->max_hit + ch->max_mana + ch->max_move) / 3;
   int64_t victavg = (vict->max_hit + vict->max_mana + vict->max_move) / 3;
-  int characterStrength = std::log10(chavg) + 1;
-  int victimStrength = std::log10(victavg) + 1;
+  int characterStrength = getDigits(chavg);
+  int victimStrength = getDigits(victavg);
 
   if (chance >= rand_number(60, 75)) {
    int64_t num = 0,  maxnum = 500000;
@@ -3676,9 +3678,18 @@ void spar_gain(struct char_data *ch, struct char_data *vict, int type, int64_t d
       gainBaseKI(ch, ki);
     }
     send_to_char(ch, "\r\n");
-   
   }
- }
+}
+
+/*Get the amount of digits within a number*/
+int getDigits(int64_t n) {
+    int count = 1;
+
+    while (n <= -10 || n >= 10) {
+        n /= 10;
+        count++;
+    }
+    return count;
 }
 
 
