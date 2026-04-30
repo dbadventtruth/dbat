@@ -14,7 +14,6 @@ void Crash_extract_norent_eq(struct char_data *ch);
 void Crash_rentsave(struct char_data *ch, int cost);
 int Obj_to_store(struct obj_data *obj, FILE *fl, int location);
 void update_obj_file(void);
-int cp(struct char_data *ch);
 void delete_inv_backup(struct char_data *ch);
 int	Crash_delete_file(char *name);
 int	Crash_delete_crashfile(struct char_data *ch);

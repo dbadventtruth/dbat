@@ -9653,7 +9653,6 @@ ACMD(do_quit)
     }
 
     Crash_rentsave(ch, 0);
-    cp(ch);
 
     extract_char(ch);		/* Char is saved before extracting. */
   }
@@ -9703,7 +9702,6 @@ ACMD(do_save)
   }
   save_char(ch);
   Crash_crashsave(ch);
-  cp(ch);
 
 }
 
