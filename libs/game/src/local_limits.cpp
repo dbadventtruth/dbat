@@ -1542,7 +1542,6 @@ static void check_idling(struct char_data *ch)
         ch->desc = NULL;
       }
       Crash_rentsave(ch, 0);
-      cp(ch);
       mudlog(CMP, ADMLVL_GOD, TRUE, "%s force-rented and extracted (idle).", GET_NAME(ch));
       extract_char(ch);
     }
