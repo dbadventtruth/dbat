@@ -1106,15 +1106,12 @@ int Crash_load(struct char_data *ch)
   if ((fl = fopen(cmfname, "r+b")))
     return Crash_load_file(ch, fl, cmfname);
 
-  if (errno != ENOENT)
-  { /* if it fails, NOT because of no file */
-    sprintf(buf1, "SYSERR: READING OBJECT FILE %s (5)", cmfname);
-    perror(buf1);
+  sprintf(buf1, "SYSERR: READING OBJECT FILE %s (5)", cmfname);
+  perror(buf1);
     send_to_char(ch,
                  "\r\n********************* NOTICE *********************\r\n"
                  "There was a problem loading your objects from disk.\r\n"
                  "Trying your backup object file.\r\n");
-  }
 
   if ((fl = fopen(cmfnamebak, "r+b")))
   {
@@ -1122,14 +1119,12 @@ int Crash_load(struct char_data *ch)
     return Crash_load_file(ch, fl, cmfnamebak);
   }
 
-  if (errno != ENOENT) {
-    Crash_log_file_error("fopen backup object file", cmfnamebak, __FILE__, __LINE__);
+  Crash_log_file_error("fopen backup object file", cmfnamebak, __FILE__, __LINE__);
     mudlog(NRM, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s entering game with no equipment. Loading backup failed.", GET_NAME(ch));
     send_to_char(ch,
                      "\r\n********************* NOTICE *********************\r\n"
                      "There was a problem loading your objects from backup.\r\n"
                      "Contact staff for assistance.\r\n");
-  }
   
   return -1;
 }
