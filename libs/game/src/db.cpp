@@ -11,7 +11,6 @@
 #include "dbat/db/consts/maximums.h"
 #include "dbat/db/utils.h"
 #include "dbat/db/help.h"
-#include "dbat/db/htree.h"
 #include "dbat/game/stringutils.h"
 
 #include "dbat/game/character_utils.h"
@@ -45,7 +44,6 @@
 #include "dbat/game/comm.h"
 #include "dbat/game/dg_scripts.h"
 #include "dbat/game/interpreter.h"
-#include "dbat/db/htree.h"
 #include "dbat/game/genolc.h"
 #include "dbat/game/shop.h"
 #include "dbat/game/handler.h"
@@ -669,7 +667,6 @@ void destroy_db(void)
   }
   free(world);
   top_of_world = 0;
-  htree_free(room_htree);
 
   /* Objects */
   for (cnt = 0; cnt <= top_of_objt; cnt++) {
@@ -689,7 +686,6 @@ void destroy_db(void)
   }
   free(obj_proto);
   free(obj_index);
-  htree_free(obj_htree);
 
   /* Mobiles */
   for (cnt = 0; cnt <= top_of_mobt; cnt++) {
@@ -712,7 +708,6 @@ void destroy_db(void)
   }
   free(mob_proto);
   free(mob_index);
-  htree_free(mob_htree);
 
   /* Shops */
   destroy_shops();
@@ -796,8 +791,6 @@ void destroy_db(void)
   free_feats();
 
   free_obj_unique_hash();
-
-  htree_shutdown();
 
   log("Freeing Assemblies.");
   free_assemblies();
@@ -1481,9 +1474,7 @@ static void parse_room(FILE *fl, int virtual_nr)
   world[room_nr].name = fread_string(fl, buf2);
   world[room_nr].description = fread_string(fl, buf2);
 
-  if (! room_htree)
-    room_htree = htree_init();
-  htree_add(room_htree, virtual_nr, room_nr);
+  room_game_register(virtual_nr, room_nr);
 
   if (!get_line(fl, line)) {
     log("SYSERR: Expecting roomflags/sector type of room #%d but file ended!",
@@ -2303,9 +2294,7 @@ static void parse_mobile(FILE *mob_f, int nr)
   mob_proto[i].desc = NULL;
 
   if (parse_mobile_from_file(mob_f, mob_proto + i)) {
-    if (! mob_htree)
-      mob_htree = htree_init();
-    htree_add(mob_htree, nr, i);
+    mobile_prototype_register(nr, i);
 
     top_of_mobt = i++;
   } else { /* We used to exit in the file reading code, but now we do it here */
@@ -2331,9 +2320,7 @@ static char *parse_object(FILE *obj_f, int nr)
   obj_index[i].number = 0;
   obj_index[i].func = NULL;
 
-  if (! obj_htree)
-    obj_htree = htree_init();
-  htree_add(obj_htree, nr, i);
+  object_prototype_register(nr, i);
 
   clear_object(obj_proto + i);
   obj_proto[i].item_number = i;
@@ -4735,149 +4722,6 @@ void init_char(struct char_data *ch)
   SPEAKING(ch) = SKILL_LANG_COMMON;
   GET_FEAT_POINTS(ch) = 1;
 }
-
-/* returns the real number of the room with given virtual number */
-room_rnum real_room(room_vnum vnum)
-{
-  room_rnum bot, top, mid, i, last_top;
-
-  i = htree_find(room_htree, vnum);
-
-  if (i != NOWHERE && world[i].number == vnum)
-    return i;
-  else {
-    bot = 0;
-    top = top_of_world;
-
-    /* perform binary search on world-table */
-    for (;;) {
-      last_top = top;
-      mid = (bot + top) / 2;
-
-      if ((world + mid)->number == vnum) {
-        log("room_htree sync fix: %d: %d -> %d", vnum, i, mid);
-        htree_add(room_htree, vnum, mid);
-        return (mid);
-      }
-      if (bot >= top)
-        return (NOWHERE);
-      if ((world + mid)->number > vnum)
-        top = mid - 1;
-      else
-        bot = mid + 1;
-
-      if (top > last_top)
-        return NOWHERE;
-    }
-  }
-}
-
-
-
-/* returns the real number of the monster with given virtual number */
-mob_rnum real_mobile(mob_vnum vnum)
-{
-  if(vnum == NOTHING) {
-    return NOBODY;
-  }
-  mob_rnum bot, top, mid, i, last_top;
-
-  i = htree_find(mob_htree, vnum);
-
-  if (i != NOBODY && mob_index[i].vnum == vnum)
-    return i;
-  else {
-    bot = 0;
-    top = top_of_mobt;
-
-    /* perform binary search on mob-table */
-    for (;;) {
-      last_top = top;
-      mid = (bot + top) / 2;
-
-      if ((mob_index + mid)->vnum == vnum) {
-        log("mob_htree sync fix: %d: %d -> %d", vnum, i, mid);
-        htree_add(mob_htree, vnum, mid);
-        return (mid);
-      }
-      if (bot >= top)
-        return (NOBODY);
-      if ((mob_index + mid)->vnum > vnum)
-        top = mid - 1;
-      else
-        bot = mid + 1;
-
-      if (top > last_top)
-        return NOWHERE;
-    }
-  }
-}
-
-
-/* returns the real number of the object with given virtual number */
-obj_rnum real_object(obj_vnum vnum)
-{
-  obj_rnum bot, top, mid, i, last_top;
-
-  i = htree_find(obj_htree, vnum);
-
-  if (i != NOWHERE && obj_index[i].vnum == vnum)
-    return i;
-  else {
-    bot = 0;
-    top = top_of_objt;
-
-    /* perform binary search on obj-table */
-    for (;;) {
-      last_top = top;
-      mid = (bot + top) / 2;
-
-      if ((obj_index + mid)->vnum == vnum) {
-        log("obj_htree sync fix: %d: %d -> %d", vnum, i, mid);
-        htree_add(obj_htree, vnum, mid);
-        return (mid);
-      }
-      if (bot >= top)
-        return (NOTHING);
-      if ((obj_index + mid)->vnum > vnum)
-        top = mid - 1;
-      else
-        bot = mid + 1;
-
-      if (top > last_top)
-        return NOWHERE;
-    }
-  }
-}
-
-/* returns the real number of the room with given virtual number */
-zone_rnum real_zone(zone_vnum vnum)
-{
-  zone_rnum bot, top, mid, last_top;
-
-  bot = 0;
-  top = top_of_zone_table;
-
-  /* perform binary search on world-table */
-  for (;;) {
-    last_top = top;
-    mid = (bot + top) / 2;
-
-    if ((zone_table + mid)->number == vnum)
-      return (mid);
-    if (bot >= top)
-      return (NOWHERE);
-    if ((zone_table + mid)->number > vnum)
-      top = mid - 1;
-    else
-      bot = mid + 1;
- 
-    if (top > last_top)
-      return NOWHERE;
-  }
-}
-
-
 
 /*
  * Extend later to include more checks.

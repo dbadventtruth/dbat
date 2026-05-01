@@ -4,7 +4,6 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "dbat/db/htree.h"
 #include "dbat/db/shops.h"
 #include "dbat/game/dg_scripts.h"
 #include "dbat/game/genobj.h"
@@ -162,7 +161,7 @@ obj_rnum insert_object(struct obj_data *obj, obj_vnum ovnum)
     obj_index[i] = obj_index[i - 1];
     obj_proto[i] = obj_proto[i - 1];
     obj_proto[i].item_number = i;
-    htree_add(obj_htree, obj_index[i].vnum, i);
+    object_prototype_register(obj_index[i].vnum, i);
   }
 
   /* Not found, place at 0. */
@@ -188,7 +187,7 @@ obj_rnum index_object(struct obj_data *obj, obj_vnum ovnum, obj_rnum ornum)
   copy_object_preserve(&obj_proto[ornum], obj);
   obj_proto[ornum].in_room = NOWHERE;
 
-  htree_add(obj_htree, obj_index[ornum].vnum, ornum);
+  object_prototype_register(obj_index[ornum].vnum, ornum);
 
   return ornum;
 }
@@ -460,7 +459,7 @@ int delete_object(obj_rnum rnum)
 
   zrnum = real_zone_by_thing(GET_OBJ_VNUM(obj));
 
-  htree_del(obj_htree, obj->item_number);
+  object_prototype_deregister(obj->item_number);
 
   /* This is something you might want to read about in the logs. */
   log("GenOLC: delete_object: Deleting object #%d (%s).", GET_OBJ_VNUM(obj), obj->short_description);

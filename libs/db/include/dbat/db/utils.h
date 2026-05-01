@@ -3,7 +3,7 @@
 extern "C" {
 #endif
 
-#include <cstdint>
+#include <stdint.h>
 
 #define YESNO(a) ((a) ? "YES" : "NO")
 #define ONOFF(a) ((a) ? "ON" : "OFF")

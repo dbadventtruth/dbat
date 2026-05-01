@@ -12,6 +12,7 @@
 #include "dbat/game/dg_scripts.h"
 #include "dbat/game/ban.h"
 #include "dbat/game/genolc.h"
+#include "dbat/db/init.h"
 
 #include <unistd.h>
 
@@ -162,6 +163,7 @@ int main(int argc, char **argv)
     }
     log("Using %s as data directory.", dir);
 
+    init_zig();
     if (scheck)
         boot_world();
     else {
@@ -171,6 +173,7 @@ int main(int argc, char **argv)
 
     log("Clearing game world.");
     destroy_db();
+    deinit_zig();
 
     if (!scheck) {
         log("Clearing other memory.");

@@ -3,7 +3,6 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "dbat/db/htree.h"
 #include "dbat/db/shops.h"
 #include "dbat/db/guilds.h"
 #include "dbat/game/genmob.h"
@@ -74,7 +73,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum)
     mob_index[i] = mob_index[i - 1];
     mob_proto[i] = mob_proto[i - 1];
     mob_proto[i].nr++;
-    htree_add(mob_htree, mob_index[i].vnum, i);
+    mobile_prototype_register(mob_index[i].vnum, i);
   }
   if (!found) {
     mob_proto[0] = *mob;
@@ -83,7 +82,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum)
     mob_index[0].vnum = vnum;
     mob_index[0].number = 0;
     mob_index[0].func = 0;
-    htree_add(mob_htree, mob_index[0].vnum, 0);
+    mobile_prototype_register(mob_index[0].vnum, 0);
   }
 
   log("GenOLC: add_mobile: Added mobile %d at index #%d.", vnum, found);

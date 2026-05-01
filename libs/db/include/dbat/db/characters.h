@@ -26,7 +26,6 @@ extern "C" {
 #include "consts/senseis.h"
 #include "consts/sizes.h"
 #include "index.h"
-#include "htree.h"
 
 #define PM_ARRAY_MAX 4
 
@@ -572,7 +571,6 @@ extern struct player_special_data dummy_mob;
 extern struct index_data *mob_index;
 extern struct char_data *mob_proto;
 extern mob_rnum top_of_mobt;
-extern struct htree_node *mob_htree;
 extern long max_mob_id;
 
 #ifdef __cplusplus

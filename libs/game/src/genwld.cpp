@@ -4,7 +4,6 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "dbat/db/htree.h"
 #include "dbat/db/shops.h"
 #include "dbat/game/dg_scripts.h"
 
@@ -69,7 +68,7 @@ room_rnum add_room(struct room_data *room)
       for (tobj = world[i].contents; tobj; tobj = tobj->next_content)
 	IN_ROOM(tobj) += (IN_ROOM(tobj) != NOWHERE);
     }
-    htree_add(room_htree, world[i].number, i);
+    room_game_register(world[i].number, i);
   }
   if (!found) {
     world[0] = *room;	/* Last place, in front. */
@@ -149,7 +148,7 @@ int delete_room(room_rnum rnum)
   add_to_save_list(zone_table[room->zone].number, SL_WLD);
 
   /* remove from realnum lookup tree */
-  htree_del(room_htree, room->number);
+  room_game_deregister(room->number);
 
   /* This is something you might want to read about in the logs. */
   log("GenOLC: delete_room: Deleting room #%d (%s).", room->number, room->name);

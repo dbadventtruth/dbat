@@ -16,6 +16,11 @@ extern "C" {
 #include "consts/adminflags.h"
 #include "consts/mobflags.h"
 
+mob_rnum real_mobile(mob_vnum vnum);
+void mobile_prototype_register(mob_vnum vnum, mob_rnum rnum);
+void mobile_prototype_deregister(mob_vnum vnum);
+char_data* mobile_prototype_by_id(mob_vnum vnum);
+
 // Legacy Macros
 
 /*
