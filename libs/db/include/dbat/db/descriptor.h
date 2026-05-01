@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/maximums.h"
 #include "consts/constates.h"
@@ -92,3 +96,7 @@ struct descriptor_data {
 
 
 extern struct descriptor_data *descriptor_list;
+
+#ifdef __cplusplus
+}
+#endif

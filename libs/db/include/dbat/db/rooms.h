@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/roomflags.h"
 #include "consts/directions.h"
@@ -57,3 +61,7 @@ struct room_data {
 extern struct room_data *world;
 extern room_rnum top_of_world;
 extern struct htree_node *room_htree;
+
+#ifdef __cplusplus
+}
+#endif

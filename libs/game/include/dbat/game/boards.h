@@ -56,4 +56,3 @@ struct board_info *locate_board(obj_vnum board_vnum);
 
 void remove_board_msg(obj_vnum board_vnum, struct char_data * ch, int arg);
 
-extern struct board_info *bboards;

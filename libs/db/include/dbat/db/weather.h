@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include "consts/weather.h"
 
@@ -18,3 +22,7 @@ struct time_info_data {
 
 extern struct time_info_data time_info;/* the infomation about the time    */
 extern struct weather_data weather_info;	/* the infomation about the weather */
+
+#ifdef __cplusplus
+}
+#endif

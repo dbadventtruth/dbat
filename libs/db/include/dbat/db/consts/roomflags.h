@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /* Room flags: used in room_data.room_flags */
@@ -75,3 +78,7 @@
 #define RF_ARRAY_MAX    4
 
 extern const char *room_bits[NUM_ROOM_FLAGS+1];
+
+#ifdef __cplusplus
+}
+#endif

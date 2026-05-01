@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 
 struct board_msg {
@@ -39,3 +43,7 @@ struct board_info {
 };
 
 extern struct board_info *bboards;
+
+#ifdef __cplusplus
+}
+#endif

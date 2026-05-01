@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Ocarina Songs */
 #define SONG_SAFETY             1
@@ -14,3 +17,7 @@
 #define SONG_TELEPORT_KANASSA  11
 
 extern const char *song_types[];
+
+#ifdef __cplusplus
+}
+#endif

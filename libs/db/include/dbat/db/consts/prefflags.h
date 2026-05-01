@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /*  flags: used by char_data.player_specials.pref */
@@ -67,3 +70,7 @@
 #define PR_ARRAY_MAX    4
 
 extern const char *preference_bits[NUM_PRF_FLAGS+1];
+
+#ifdef __cplusplus
+}
+#endif

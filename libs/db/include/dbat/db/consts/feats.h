@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Combat feats that apply to a specific weapon type */
 #define CFEAT_IMPROVED_CRITICAL			0
@@ -13,3 +16,7 @@
 #define MAX_FEATS	        750
 #define FT_ARRAY_MAX	4
 #define NUM_FEATS_DEFINED       252
+
+#ifdef __cplusplus
+}
+#endif

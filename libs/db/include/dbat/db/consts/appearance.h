@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Distinguishing Feature */
 #define DISTFEA_EYE             0
 #define DISTFEA_HAIR            1
@@ -108,3 +112,7 @@ extern const char *hairc_types[];
 extern const char *hairs_types[];
 extern const char *skin_types[];
 extern const char *aura_types[];
+
+#ifdef __cplusplus
+}
+#endif

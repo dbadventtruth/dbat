@@ -45,15 +45,15 @@ pub fn build(b: *std.Build) void {
     const mod_dbat_db = b.createModule(.{ .target = target, .optimize = optimize, .link_libc = true });
 
     mod_dbat_db.addIncludePath(b.path("libs/db/include"));
-    const db_files = getSourceFiles(b, "libs/db/src", ".cpp");
-    mod_dbat_db.addCSourceFiles(.{ .files = db_files, .flags = &[_][]const u8{ "-std=gnu++23", "-w", "-g" } });
+    const db_files = getSourceFiles(b, "libs/db/src", ".c");
+    mod_dbat_db.addCSourceFiles(.{ .files = db_files, .flags = &[_][]const u8{ "-std=gnu23", "-w", "-g" } });
 
     const dbat_db = b.addLibrary(.{
         .name = "dbat_db",
         .linkage = .static,
         .root_module = mod_dbat_db,
     });
-    dbat_db.linkLibCpp();
+    dbat_db.linkLibC();
 
     const mod_dbat_game = b.createModule(.{ .target = target, .optimize = optimize, .link_libc = true });
     mod_dbat_game.addIncludePath(b.path("libs/db/include"));

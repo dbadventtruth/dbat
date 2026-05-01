@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include "consts/types.h"
 
@@ -19,3 +23,7 @@ struct affected_type {
 
    struct affected_type *next;
 };
+
+#ifdef __cplusplus
+}
+#endif

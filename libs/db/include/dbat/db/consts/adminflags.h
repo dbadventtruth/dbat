@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * ADM flags - define admin privs for chars
  */
@@ -25,3 +29,7 @@
 #define NUM_ADMFLAGS            19
 #define AD_ARRAY_MAX	4
 extern const char *admin_flags[NUM_ADMFLAGS+1];
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Exit info: used in room_data.dir_option.exit_info */
 #define EX_ISDOOR		(1 << 0)   /* Exit is a door		*/
@@ -10,3 +13,7 @@
 #define NUM_EXIT_FLAGS 5
 
 extern const char *exit_bits[NUM_EXIT_FLAGS+1];
+
+#ifdef __cplusplus
+}
+#endif

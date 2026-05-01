@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "flags.h"
 
@@ -75,3 +79,7 @@ void room_set_geffect(struct room_data *room, int geffect);
 
 #define W_EXIT(room, num)     (world[(room)].dir_option[(num)])
 #define R_EXIT(room, num)     ((room)->dir_option[(num)])
+
+#ifdef __cplusplus
+}
+#endif

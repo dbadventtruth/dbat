@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define SHADOW_DRAGON1_VNUM 81
 #define SHADOW_DRAGON2_VNUM 82
@@ -7,3 +10,7 @@
 #define SHADOW_DRAGON5_VNUM 85
 #define SHADOW_DRAGON6_VNUM 86
 #define SHADOW_DRAGON7_VNUM 87
+
+#ifdef __cplusplus
+}
+#endif

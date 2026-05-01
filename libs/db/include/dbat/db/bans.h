@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/maximums.h"
 
@@ -19,3 +23,7 @@ struct ban_list_element {
 
 extern struct ban_list_element *ban_list;
 extern int num_invalid;
+
+#ifdef __cplusplus
+}
+#endif

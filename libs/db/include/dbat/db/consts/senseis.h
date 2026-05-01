@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Taken from the SRD under OGL, see ../doc/srd.txt for information */
 #define CLASS_UNDEFINED	        -1
@@ -80,3 +83,7 @@ extern const char *sensei_style[MAX_SENSEI];
 extern const char *pc_class_types[NUM_CLASSES+1];
 extern const char *class_names[NUM_CLASSES+1];
 extern const char *class_abbrevs[NUM_CLASSES+1];
+
+#ifdef __cplusplus
+}
+#endif

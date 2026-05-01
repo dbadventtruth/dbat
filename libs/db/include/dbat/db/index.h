@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 
 struct index_data {
@@ -11,3 +15,7 @@ struct index_data {
 };
 
 typedef struct index_data index_data;
+
+#ifdef __cplusplus
+}
+#endif

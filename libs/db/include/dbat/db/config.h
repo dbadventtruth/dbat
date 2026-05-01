@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 
 
@@ -234,3 +238,7 @@ extern struct config_data config_info;
 
   /** Character Creation Method **/
 #define CONFIG_CREATION_METHOD	config_info.creation.method
+
+#ifdef __cplusplus
+}
+#endif

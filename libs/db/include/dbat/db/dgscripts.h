@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/triggers.h"
 #include "index.h"
@@ -138,3 +142,7 @@ extern struct index_data **trig_index;
 extern struct index_data **trig_index;
 extern struct trig_data *trigger_list;
 extern int top_of_trigt;
+
+#ifdef __cplusplus
+}
+#endif

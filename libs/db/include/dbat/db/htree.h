@@ -1,4 +1,8 @@
-#pragma once 
+#pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 
 /* Magic constants: */
@@ -29,3 +33,7 @@ void htree_add(struct htree_node *root, IDXTYPE index, IDXTYPE content);
 void htree_del(struct htree_node *root, IDXTYPE index);
 IDXTYPE htree_find(struct htree_node *root, IDXTYPE index);
 void htree_test();
+
+#ifdef __cplusplus
+}
+#endif

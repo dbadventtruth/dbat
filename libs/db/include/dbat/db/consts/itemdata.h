@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "materials.h"
 #include "conditions.h"
 
@@ -487,3 +491,7 @@ extern const char *color_liquid[NUM_LIQ_TYPES+1];
 extern int drink_aff[NUM_LIQ_TYPES][NUM_CONDITIONS];
 extern const char *fullness[NUM_FULLNESS+1];
 extern const char *material_names[NUM_MATERIALS+1];
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <cstdint>
 
@@ -84,3 +87,7 @@ static inline double fixnan(double val) {
             }					\
       }						\
 
+
+#ifdef __cplusplus
+}
+#endif

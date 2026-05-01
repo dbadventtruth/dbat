@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 
 
@@ -32,3 +36,7 @@ struct alias_data *find_alias(struct alias_data *alias_list, char *str);
 
 int find_command(const char *command);
 extern struct command_info *complete_cmd_info;
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 
@@ -42,3 +45,7 @@
 #define NUM_MOB_FLAGS 35
 
 extern const char *action_bits[NUM_MOB_FLAGS+1];
+
+#ifdef __cplusplus
+}
+#endif

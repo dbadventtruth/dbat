@@ -1,4 +1,7 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* used in the socials */
 struct social_messg {
@@ -39,3 +42,7 @@ struct social_messg {
 
 extern struct social_messg *soc_mess_list;
 extern int top_of_socialt;
+
+#ifdef __cplusplus
+}
+#endif

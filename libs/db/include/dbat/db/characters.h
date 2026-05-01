@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/prefflags.h"
 #include "consts/magic.h"
@@ -336,7 +340,7 @@ struct char_data
    int skill_slots;
    int forgeting;
    int forgetcount;
-   skill_data skills[SKILL_TABLE_SIZE];
+   struct skill_data skills[SKILL_TABLE_SIZE];
 
    bitvector_t act[PM_ARRAY_MAX]; /* act flag for NPC's; player flag for PC's */
 
@@ -570,3 +574,7 @@ extern struct char_data *mob_proto;
 extern mob_rnum top_of_mobt;
 extern struct htree_node *mob_htree;
 extern long max_mob_id;
+
+#ifdef __cplusplus
+}
+#endif

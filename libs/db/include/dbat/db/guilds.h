@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/skills.h"
 #include "consts/feats.h"
@@ -21,3 +25,7 @@ struct guild_data {
 
 extern struct guild_data *guild_index;
 extern int top_guild;
+
+#ifdef __cplusplus
+}
+#endif

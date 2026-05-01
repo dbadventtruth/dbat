@@ -1,4 +1,8 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "consts/types.h"
 #include "consts/itemdata.h"
 #include "consts/maximums.h"
@@ -103,3 +107,7 @@ extern struct obj_data *obj_proto;
 extern obj_rnum top_of_objt;
 extern struct htree_node *obj_htree;
 extern long max_obj_id;
+
+#ifdef __cplusplus
+}
+#endif
