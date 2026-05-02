@@ -4734,6 +4734,8 @@ void init_char(struct char_data *ch)
   GET_LOADROOM(ch) = NOWHERE;
   SPEAKING(ch) = SKILL_LANG_COMMON;
   GET_FEAT_POINTS(ch) = 1;
+  // initialize plrobjs so it doesn't complain on startup.
+  Crash_crashsave(ch);
 }
 
 /* returns the real number of the room with given virtual number */
