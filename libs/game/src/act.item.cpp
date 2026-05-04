@@ -3729,10 +3729,10 @@ ACMD(do_eat)
 
   // available hunger
   int foob = 48 - GET_COND(ch, HUNGER);
-  int maxfval = MIN(1, GET_OBJ_VAL(food, VAL_FOOD_MAXFOODVAL));
+  int maxfval = MAX(1, GET_OBJ_VAL(food, VAL_FOOD_MAXFOODVAL));
   // amount that can be eaten - tasting only consumes 1 point, eating consumes as much as possible
   // VAL_FOOD_FOODVAL is the amount of nutrition remaining, while value 1 is the max possible it once had.
-  amount = MIN(1, MIN(foob, (subcmd == SCMD_EAT ? GET_OBJ_VAL(food, VAL_FOOD_FOODVAL) : 1)));
+  amount = MAX(1, MIN(foob, (subcmd == SCMD_EAT ? GET_OBJ_VAL(food, VAL_FOOD_FOODVAL) : 1)));
   double percent_eaten = (double)amount / (double)maxfval;
 
   gain_condition(ch, HUNGER, amount);
