@@ -552,7 +552,8 @@ void game_loop(socklen_t cmmother_desc)
       if (*(d->output) && FD_ISSET(d->descriptor, &output_set)) {
 	/* Output for this player is ready */
 	if (process_output(d) < 0) {
-        close_socket(d);
+        // commented out close_socket since process_output already does this, so having it here causes a double-free crash
+        //close_socket(d); 
 	  log("ERROR: Tried to send output to dead socket!");
         }
 	else

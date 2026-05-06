@@ -1360,7 +1360,7 @@ void load_skills(FILE *fl, struct char_data *ch, bool mods)
   do {
     get_line(fl, line);
     sscanf(line, "%d %d %d", &num, &num2, &num3);
-    if (num != 0) {
+    if (num > -1 && num < SKILL_TABLE_SIZE) {
       if (mods) {
         SET_SKILL_BONUS(ch, num, num2);
       }

@@ -44,45 +44,168 @@ static void Crash_extract_norents(struct obj_data *obj);
 static void Crash_extract_expensive(struct obj_data *obj);
 static void Crash_calculate_rent(struct obj_data *obj, int *cost);
 static void Crash_cryosave(struct char_data *ch, int cost);
-static int inv_backup(struct char_data *ch);
-static int load_inv_backup(struct char_data *ch);
+static int Crash_load_file(struct char_data *ch, FILE *fl, const char *filename);
+
+static void Crash_log_file_error(const char *operation, const char *filename, const char *file, int line)
+{
+  basic_mud_log("SYSERR: %s:%d: %s failed for %s: %s", file, line, operation, filename, strerror(errno));
+}
+
+static int Crash_build_save_filename(char *dst, size_t dst_size, const char *filename, const char *suffix,
+                                     const char *file, int line)
+{
+  int written = snprintf(dst, dst_size, "%s%s", filename, suffix);
+
+  if (written < 0 || (size_t)written >= dst_size)
+  {
+    basic_mud_log("SYSERR: %s:%d: crashsave path too long for %s%s", file, line, filename, suffix);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static int Crash_close_save_file(FILE *fp, const char *filename, const char *file, int line)
+{
+  if (fflush(fp) == EOF)
+  {
+    Crash_log_file_error("fflush", filename, file, line);
+    fclose(fp);
+    return FALSE;
+  }
+
+  if (fsync(fileno(fp)) == -1)
+  {
+    Crash_log_file_error("fsync", filename, file, line);
+    fclose(fp);
+    return FALSE;
+  }
+
+  if (fclose(fp) == EOF)
+  {
+    Crash_log_file_error("fclose", filename, file, line);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost, const char *save_type)
+{
+  char filename[MAX_INPUT_LENGTH], tmpfile[MAX_STRING_LENGTH], bakfile[MAX_STRING_LENGTH];
+  int j;
+  FILE *fp;
+
+  if (!get_filename(filename, sizeof(filename), NEW_OBJ_FILES, GET_NAME(ch)))
+  {
+    basic_mud_log("SYSERR: %s:%d: get_filename failed for %s of %s", __FILE__, __LINE__, save_type, GET_NAME(ch));
+    return FALSE;
+  }
+
+  if (!Crash_build_save_filename(tmpfile, sizeof(tmpfile), filename, ".tmp", __FILE__, __LINE__) ||
+      !Crash_build_save_filename(bakfile, sizeof(bakfile), filename, ".bak", __FILE__, __LINE__))
+    return FALSE;
+
+  if (!(fp = fopen(tmpfile, "wb")))
+  {
+    Crash_log_file_error("fopen", tmpfile, __FILE__, __LINE__);
+    return FALSE;
+  }
+
+  if (fprintf(fp, "%d %d %d %d %d %d\r\n", rentcode, (int)time(0), cost,
+              GET_GOLD(ch), GET_BANK_GOLD(ch), 0) < 0)
+  {
+    Crash_log_file_error("fprintf", tmpfile, __FILE__, __LINE__);
+    fclose(fp);
+    remove(tmpfile);
+    return FALSE;
+  }
+
+  for (j = 0; j < NUM_WEARS; j++)
+    if (GET_EQ(ch, j))
+    {
+      if (!Crash_save(GET_EQ(ch, j), fp, j + 1))
+      {
+        Crash_restore_weight(GET_EQ(ch, j));
+        basic_mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s equipment position %d", __FILE__, __LINE__, save_type, GET_NAME(ch), j);
+        fclose(fp);
+        remove(tmpfile);
+        return FALSE;
+      }
+      if (ferror(fp))
+      {
+        Crash_restore_weight(GET_EQ(ch, j));
+        Crash_log_file_error("write", tmpfile, __FILE__, __LINE__);
+        fclose(fp);
+        remove(tmpfile);
+        return FALSE;
+      }
+      Crash_restore_weight(GET_EQ(ch, j));
+    }
+
+  if (!Crash_save(ch->carrying, fp, 0))
+  {
+    Crash_restore_weight(ch->carrying);
+    basic_mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s inventory", __FILE__, __LINE__, save_type, GET_NAME(ch));
+    fclose(fp);
+    remove(tmpfile);
+    return FALSE;
+  }
+
+  if (ferror(fp))
+  {
+    Crash_restore_weight(ch->carrying);
+    Crash_log_file_error("write", tmpfile, __FILE__, __LINE__);
+    fclose(fp);
+    remove(tmpfile);
+    return FALSE;
+  }
+
+  Crash_restore_weight(ch->carrying);
+
+  if (!Crash_close_save_file(fp, tmpfile, __FILE__, __LINE__))
+  {
+    remove(tmpfile);
+    return FALSE;
+  }
+
+  if (rename(filename, bakfile) == -1 && errno != ENOENT)
+  {
+    Crash_log_file_error("rename existing save to backup", filename, __FILE__, __LINE__);
+    remove(tmpfile);
+    return FALSE;
+  }
+
+  if (rename(tmpfile, filename) == -1)
+  {
+    Crash_log_file_error("rename temporary save", tmpfile, __FILE__, __LINE__);
+    if (rename(bakfile, filename) == -1)
+      Crash_log_file_error("restore backup save", bakfile, __FILE__, __LINE__);
+    return FALSE;
+  }
+
+  return TRUE;
+}
 
 void delete_inv_backup(struct char_data *ch)
 {
   FILE *source;
-  char source_file[20480];
+  char source_file[20480], filename[20480];
   char alpha[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH];
-  sprintf(name, GET_NAME(ch));
 
-  if (name[0] == 'a' || name[0] == 'A' || name[0] == 'b' || name[0] == 'B' || name[0] == 'c' || name[0] == 'C' || name[0] == 'd' || name[0] == 'D' || name[0] == 'e' || name[0] == 'E')
+  if (!get_filename(source_file, sizeof(source_file), NEW_OBJ_FILES, GET_NAME(ch)))
   {
-    sprintf(alpha, "A-E");
+    return;
   }
-  else if (name[0] == 'f' || name[0] == 'F' || name[0] == 'g' || name[0] == 'G' || name[0] == 'h' || name[0] == 'H' || name[0] == 'i' || name[0] == 'I' || name[0] == 'j' || name[0] == 'J')
-  {
-    sprintf(alpha, "F-J");
-  }
-  else if (name[0] == 'k' || name[0] == 'K' || name[0] == 'l' || name[0] == 'L' || name[0] == 'm' || name[0] == 'M' || name[0] == 'n' || name[0] == 'N' || name[0] == 'o' || name[0] == 'O')
-  {
-    sprintf(alpha, "K-O");
-  }
-  else if (name[0] == 'p' || name[0] == 'P' || name[0] == 'q' || name[0] == 'Q' || name[0] == 'r' || name[0] == 'R' || name[0] == 's' || name[0] == 'S' || name[0] == 't' || name[0] == 'T')
-  {
-    sprintf(alpha, "P-T");
-  }
-  else if (name[0] == 'u' || name[0] == 'U' || name[0] == 'v' || name[0] == 'V' || name[0] == 'w' || name[0] == 'W' || name[0] == 'x' || name[0] == 'X' || name[0] == 'y' || name[0] == 'Y' || name[0] == 'z' || name[0] == 'Z')
-  {
-    sprintf(alpha, "U-Z");
-  }
-  sprintf(source_file, "" SLASH "home" SLASH "dbat" SLASH "dbat" SLASH "data" SLASH "plrobjs" SLASH " %s" SLASH "%s.copy", alpha, ch->name);
+  snprintf(filename, sizeof(filename), "%s.bak", source_file);
 
-  if (!(source = fopen(source_file, "r")))
+  if (!(source = fopen(filename, "r")))
   {
     return;
   }
   fclose(source);
 
-  if (remove(source_file) < 0 && errno != ENOENT)
+  if (remove(filename) < 0 && errno != ENOENT)
     log("ERROR: Couldn't delete backup inv.");
   /*  SYSERR_DESC:
    *  When an alias file cannot be removed, this error will occur,
@@ -92,167 +215,11 @@ void delete_inv_backup(struct char_data *ch)
   return;
 }
 
-int load_inv_backup(struct char_data *ch)
-{
-  if (GET_LEVEL(ch) < 2)
-    return (-1);
-
-  char chx;
-  FILE *source, *target;
-  char source_file[20480], target_file[20480], buf2[20480];
-  char alpha[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH];
-  sprintf(name, GET_NAME(ch));
-
-  if (name[0] == 'a' || name[0] == 'A' || name[0] == 'b' || name[0] == 'B' || name[0] == 'c' || name[0] == 'C' || name[0] == 'd' || name[0] == 'D' || name[0] == 'e' || name[0] == 'E')
-  {
-    sprintf(alpha, "A-E");
-  }
-  else if (name[0] == 'f' || name[0] == 'F' || name[0] == 'g' || name[0] == 'G' || name[0] == 'h' || name[0] == 'H' || name[0] == 'i' || name[0] == 'I' || name[0] == 'j' || name[0] == 'J')
-  {
-    sprintf(alpha, "F-J");
-  }
-  else if (name[0] == 'k' || name[0] == 'K' || name[0] == 'l' || name[0] == 'L' || name[0] == 'm' || name[0] == 'M' || name[0] == 'n' || name[0] == 'N' || name[0] == 'o' || name[0] == 'O')
-  {
-    sprintf(alpha, "K-O");
-  }
-  else if (name[0] == 'p' || name[0] == 'P' || name[0] == 'q' || name[0] == 'Q' || name[0] == 'r' || name[0] == 'R' || name[0] == 's' || name[0] == 'S' || name[0] == 't' || name[0] == 'T')
-  {
-    sprintf(alpha, "P-T");
-  }
-  else if (name[0] == 'u' || name[0] == 'U' || name[0] == 'v' || name[0] == 'V' || name[0] == 'w' || name[0] == 'W' || name[0] == 'x' || name[0] == 'X' || name[0] == 'y' || name[0] == 'Y' || name[0] == 'z' || name[0] == 'Z')
-  {
-    sprintf(alpha, "U-Z");
-  }
-
-  sprintf(source_file, "" SLASH "home" SLASH "dbat" SLASH "dbat" SLASH "data" SLASH "plrobjs" SLASH " %s" SLASH "%s.copy", alpha, ch->name);
-  if (!get_filename(buf2, sizeof(buf2), NEW_OBJ_FILES, GET_NAME(ch)))
-    return -1;
-  sprintf(target_file, "/home/dbat/dbat/data/%s", buf2);
-
-  if (!(source = fopen(source_file, "r")))
-  {
-    log("Source in load_inv_backup failed to load.");
-    log(source_file);
-    return -1;
-  }
-
-  if (!(target = fopen(target_file, "w")))
-  {
-    log("Target in load_inv_backup failed to load.");
-    log(target_file);
-    return -1;
-  }
-
-  while ((chx = fgetc(source)) != EOF)
-    fputc(chx, target);
-
-  log("Inventory backup restore successful.");
-
-  fclose(source);
-  fclose(target);
-
-  return 1;
-}
-
-static int inv_backup(struct char_data *ch)
-{
-  FILE *backup;
-  char buf[20480];
-
-  char alpha[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH];
-  sprintf(name, GET_NAME(ch));
-
-  if (name[0] == 'a' || name[0] == 'A' || name[0] == 'b' || name[0] == 'B' || name[0] == 'c' || name[0] == 'C' || name[0] == 'd' || name[0] == 'D' || name[0] == 'e' || name[0] == 'E')
-  {
-    sprintf(alpha, "A-E");
-  }
-  else if (name[0] == 'f' || name[0] == 'F' || name[0] == 'g' || name[0] == 'G' || name[0] == 'h' || name[0] == 'H' || name[0] == 'i' || name[0] == 'I' || name[0] == 'j' || name[0] == 'J')
-  {
-    sprintf(alpha, "F-J");
-  }
-  else if (name[0] == 'k' || name[0] == 'K' || name[0] == 'l' || name[0] == 'L' || name[0] == 'm' || name[0] == 'M' || name[0] == 'n' || name[0] == 'N' || name[0] == 'o' || name[0] == 'O')
-  {
-    sprintf(alpha, "K-O");
-  }
-  else if (name[0] == 'p' || name[0] == 'P' || name[0] == 'q' || name[0] == 'Q' || name[0] == 'r' || name[0] == 'R' || name[0] == 's' || name[0] == 'S' || name[0] == 't' || name[0] == 'T')
-  {
-    sprintf(alpha, "P-T");
-  }
-  else if (name[0] == 'u' || name[0] == 'U' || name[0] == 'v' || name[0] == 'V' || name[0] == 'w' || name[0] == 'W' || name[0] == 'x' || name[0] == 'X' || name[0] == 'y' || name[0] == 'Y' || name[0] == 'z' || name[0] == 'Z')
-  {
-    sprintf(alpha, "U-Z");
-  }
-
-  sprintf(buf, "" SLASH "home" SLASH "dbat" SLASH "dbat" SLASH "data" SLASH "plrobjs" SLASH " %s" SLASH "%s.copy", alpha, ch->name);
-
-  if (!(backup = fopen(buf, "r")))
-    return -1;
-
-  fclose(backup);
-
-  return 1;
-}
-
-int cp(struct char_data *ch)
-{
-  char chx;
-  FILE *source, *target;
-  char source_file[20480], target_file[20480], buf2[20480];
-  char alpha[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH];
-  sprintf(name, GET_NAME(ch));
-
-  if (name[0] == 'a' || name[0] == 'A' || name[0] == 'b' || name[0] == 'B' || name[0] == 'c' || name[0] == 'C' || name[0] == 'd' || name[0] == 'D' || name[0] == 'e' || name[0] == 'E')
-  {
-    sprintf(alpha, "A-E");
-  }
-  else if (name[0] == 'f' || name[0] == 'F' || name[0] == 'g' || name[0] == 'G' || name[0] == 'h' || name[0] == 'H' || name[0] == 'i' || name[0] == 'I' || name[0] == 'j' || name[0] == 'J')
-  {
-    sprintf(alpha, "F-J");
-  }
-  else if (name[0] == 'k' || name[0] == 'K' || name[0] == 'l' || name[0] == 'L' || name[0] == 'm' || name[0] == 'M' || name[0] == 'n' || name[0] == 'N' || name[0] == 'o' || name[0] == 'O')
-  {
-    sprintf(alpha, "K-O");
-  }
-  else if (name[0] == 'p' || name[0] == 'P' || name[0] == 'q' || name[0] == 'Q' || name[0] == 'r' || name[0] == 'R' || name[0] == 's' || name[0] == 'S' || name[0] == 't' || name[0] == 'T')
-  {
-    sprintf(alpha, "P-T");
-  }
-  else if (name[0] == 'u' || name[0] == 'U' || name[0] == 'v' || name[0] == 'V' || name[0] == 'w' || name[0] == 'W' || name[0] == 'x' || name[0] == 'X' || name[0] == 'y' || name[0] == 'Y' || name[0] == 'z' || name[0] == 'Z')
-  {
-    sprintf(alpha, "U-Z");
-  }
-
-  sprintf(target_file, "" SLASH "home" SLASH "dbat" SLASH "dbat" SLASH "data" SLASH "plrobjs" SLASH " %s" SLASH "%s.copy", alpha, ch->name);
-  if (!get_filename(buf2, sizeof(buf2), NEW_OBJ_FILES, GET_NAME(ch)))
-    return -1;
-  sprintf(source_file, "" SLASH "home" SLASH "dbat" SLASH "dbat" SLASH "data" SLASH " %s", buf2);
-
-  if (!(source = fopen(source_file, "r")))
-  {
-    log("Source failed to load.");
-    log(source_file);
-    return -1;
-  }
-
-  if (!(target = fopen(target_file, "w")))
-  {
-    log("Target failed to load.");
-    log(target_file);
-    return -1;
-  }
-
-  while ((chx = fgetc(source)) != EOF)
-    fputc(chx, target);
-
-  fclose(source);
-  fclose(target);
-
-  return 1;
-}
-
 int Obj_to_store(struct obj_data *obj, FILE *fl, int location)
 {
   my_obj_save_to_disk(fl, obj, location);
+  if (ferror(fl))
+    return (0);
   return (1);
 }
 
@@ -738,43 +705,11 @@ static void Crash_calculate_rent(struct obj_data *obj, int *cost)
 
 void Crash_crashsave(struct char_data *ch)
 {
-  char buf[MAX_INPUT_LENGTH];
-  int j;
-  FILE *fp;
-
   if (IS_NPC(ch))
     return;
 
-  if (!get_filename(buf, sizeof(buf), NEW_OBJ_FILES, GET_NAME(ch)))
-    return;
-
-  if (!(fp = fopen(buf, "wb")))
-    return;
-
-  fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_CRASH, (int)time(0), 0, GET_GOLD(ch),
-          GET_BANK_GOLD(ch), 0);
-
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j))
-    {
-      if (!Crash_save(GET_EQ(ch, j), fp, j + 1))
-      {
-        fclose(fp);
-        return;
-      }
-      Crash_restore_weight(GET_EQ(ch, j));
-    }
-
-  if (!Crash_save(ch->carrying, fp, 0))
-  {
-    fclose(fp);
-    return;
-  }
-
-  Crash_restore_weight(ch->carrying);
-
-  fclose(fp);
-  REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CRASH);
+  if (Crash_write_safe_file(ch, RENT_CRASH, 0, "crashsave"))
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CRASH);
 }
 
 void Crash_idlesave(struct char_data *ch)
@@ -861,42 +796,20 @@ void Crash_idlesave(struct char_data *ch)
 
 void Crash_rentsave(struct char_data *ch, int cost)
 {
-  char buf[MAX_INPUT_LENGTH];
   int j;
-  FILE *fp;
 
   if (IS_NPC(ch))
-    return;
-
-  if (!get_filename(buf, sizeof(buf), NEW_OBJ_FILES, GET_NAME(ch)))
-    return;
-
-  if (!(fp = fopen(buf, "wb")))
     return;
 
   Crash_extract_norent_eq(ch);
   Crash_extract_norents(ch->carrying);
 
-  fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_RENTED, (int)time(0), cost,
-          GET_GOLD(ch), GET_BANK_GOLD(ch), 0);
+  if (!Crash_write_safe_file(ch, RENT_RENTED, cost, "rentsave"))
+    return;
 
   for (j = 0; j < NUM_WEARS; j++)
     if (GET_EQ(ch, j))
-    {
-      if (!Crash_save(GET_EQ(ch, j), fp, j + 1))
-      {
-        fclose(fp);
-        return;
-      }
-      Crash_restore_weight(GET_EQ(ch, j));
       Crash_extract_objs(GET_EQ(ch, j));
-    }
-  if (!Crash_save(ch->carrying, fp, 0))
-  {
-    fclose(fp);
-    return;
-  }
-  fclose(fp);
 
   Crash_extract_objs(ch->carrying);
 }
@@ -1182,8 +1095,43 @@ void Crash_save_all(void)
 int Crash_load(struct char_data *ch)
 {
   FILE *fl;
-  char cmfname[MAX_STRING_LENGTH];
-  char buf1[MAX_STRING_LENGTH], buf2[MAX_STRING_LENGTH];
+  char cmfname[MAX_STRING_LENGTH], cmfnamebak[MAX_STRING_LENGTH], buf1[MAX_STRING_LENGTH];
+
+  if (!get_filename(cmfname, sizeof(cmfname), NEW_OBJ_FILES, GET_NAME(ch)))
+    return 1;
+
+  if (!Crash_build_save_filename(cmfnamebak, sizeof(cmfnamebak), cmfname, ".bak", __FILE__, __LINE__))
+    return -1;
+
+  if ((fl = fopen(cmfname, "r+b")))
+    return Crash_load_file(ch, fl, cmfname);
+
+  sprintf(buf1, "SYSERR: READING OBJECT FILE %s (5)", cmfname);
+  perror(buf1);
+    send_to_char(ch,
+                 "\r\n********************* NOTICE *********************\r\n"
+                 "There was a problem loading your objects from disk.\r\n"
+                 "Trying your backup object file.\r\n");
+
+  if ((fl = fopen(cmfnamebak, "r+b")))
+  {
+    mudlog(NRM, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s loading backup object file %s.", GET_NAME(ch), cmfnamebak);
+    return Crash_load_file(ch, fl, cmfnamebak);
+  }
+
+  Crash_log_file_error("fopen backup object file", cmfnamebak, __FILE__, __LINE__);
+    mudlog(NRM, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s entering game with no equipment. Loading backup failed.", GET_NAME(ch));
+    send_to_char(ch,
+                     "\r\n********************* NOTICE *********************\r\n"
+                     "There was a problem loading your objects from backup.\r\n"
+                     "Contact staff for assistance.\r\n");
+  
+  return -1;
+}
+
+static int Crash_load_file(struct char_data *ch, FILE *fl, const char *filename)
+{
+  char buf2[MAX_STRING_LENGTH];
   char line[256];
   int t[30], danger, zwei = 0, num_of_days;
   int orig_rent_code;
@@ -1194,48 +1142,6 @@ int Crash_load(struct char_data *ch)
   struct extra_descr_data *new_descr;
   int rentcode, timed, netcost, gold, account, nitems;
   char f1[READ_SIZE], f2[READ_SIZE], f3[READ_SIZE], f4[READ_SIZE];
-
-  if (!get_filename(cmfname, sizeof(cmfname), NEW_OBJ_FILES, GET_NAME(ch)))
-    return 1;
-
-  if (!(fl = fopen(cmfname, "r+b")))
-  {
-    if (errno != ENOENT)
-    { /* if it fails, NOT because of no file */
-      sprintf(buf1, "SYSERR: READING OBJECT FILE %s (5)", cmfname);
-      perror(buf1);
-      send_to_char(ch,
-                   "\r\n********************* NOTICE *********************\r\n"
-                   "There was a problem loading your objects from disk.\r\n"
-                   "Contact a God for assistance.\r\n");
-    }
-    if (GET_LEVEL(ch) > 1)
-    {
-      mudlog(NRM, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s entering game with no equipment. Loading backup.", GET_NAME(ch));
-    }
-    if (!inv_backup(ch))
-    {
-      return -1;
-    }
-    else
-    {
-      if (!load_inv_backup(ch))
-        return -1;
-      else if (!(fl = fopen(cmfname, "r+b")))
-      {
-        if (errno != ENOENT)
-        { /* if it fails, NOT because of no file */
-          sprintf(buf1, "SYSERR: READING OBJECT FILE %s (5)", cmfname);
-          perror(buf1);
-          send_to_char(ch,
-                       "\r\n********************* NOTICE *********************\r\n"
-                       "There was a problem loading your objects from disk.\r\n"
-                       "Contact a God for assistance.\r\n");
-        }
-        return -1;
-      }
-    }
-  }
 
   if (!feof(fl))
     get_line(fl, line);
@@ -1603,8 +1509,6 @@ int Crash_load(struct char_data *ch)
          GET_NAME(ch), GET_LEVEL(ch), num_objs, CONFIG_MAX_OBJ_SAVE);
 
   fclose(fl);
-
-  Crash_crashsave(ch);
 
   if ((orig_rent_code == RENT_RENTED) || (orig_rent_code == RENT_CRYO))
     return 0;

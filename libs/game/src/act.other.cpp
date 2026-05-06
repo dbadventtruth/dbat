@@ -1372,8 +1372,8 @@ ACMD(do_train)
       return;
   }
 
-  if(*stat_val >= 45 && GET_BONUS(ch, nega_trait) > 0) {
-      send_to_char(ch, "You're not able to withstand increasing your %s beyond 45.\r\n", stat_name);
+  if(*stat_val >= 70 && GET_BONUS(ch, nega_trait) > 0) {
+      send_to_char(ch, "You're not able to withstand increasing your %s beyond 70.\r\n", stat_name);
       return;
   }
 
@@ -6000,9 +6000,9 @@ ACMD(do_focus)
       act("However $N seems unaffected by the poison.", TRUE, ch, 0, vict, TO_NOTVICT);
      } else {
       vict->poisonby = ch;
-      if (GET_CHARGE(ch) > 0) {
-       send_to_char(ch, "You lose your concentration and release your charged ki!\r\n");
-       do_charge(ch, "release", 0, 0);
+      if (GET_CHARGE(vict) > 0) {
+       send_to_char(vict, "You lose your concentration and release your charged ki!\r\n");
+       do_charge(vict, "release", 0, 0);
       }
       int duration = GET_INT(ch) / 20;
       assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0, 0);
@@ -9653,7 +9653,6 @@ ACMD(do_quit)
     }
 
     Crash_rentsave(ch, 0);
-    cp(ch);
 
     extract_char(ch);		/* Char is saved before extracting. */
   }
@@ -9703,7 +9702,6 @@ ACMD(do_save)
   }
   save_char(ch);
   Crash_crashsave(ch);
-  cp(ch);
 
 }
 

@@ -52,6 +52,7 @@
 #include "dbat/game/mail.h"
 #include "dbat/game/clan.h"
 #include "dbat/game/boards.h"
+#include "dbat/game/log.h"
 #include "dbat/game/objsave.h"
 #include "dbat/game/genmob.h"
 #include "dbat/game/spells.h"
@@ -5015,6 +5016,30 @@ static int check_bitvector_names(bitvector_t bits, size_t namecount, const char 
   return (error);
 }
 
+static int obj_save_fprintf(FILE *fp, struct obj_data *obj, const char *context,
+                            const char *file, int line, const char *format, ...)
+{
+  va_list args;
+  int result;
+
+  va_start(args, format);
+  result = vfprintf(fp, format, args);
+  va_end(args);
+
+  if (result < 0 || ferror(fp)) {
+    int saved_errno = errno;
+    basic_mud_log("SYSERR: %s:%d: fprintf failed saving object #%d (%s): %s",
+                  file, line, GET_OBJ_VNUM(obj), context,
+                  saved_errno ? strerror(saved_errno) : "stream error");
+    return 0;
+  }
+
+  return 1;
+}
+
+#define OBJ_SAVE_FPRINTF(fp, obj, context, ...) \
+  obj_save_fprintf((fp), (obj), (context), __FILE__, __LINE__, __VA_ARGS__)
+
 int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate)
 {
   int counter2, i;
@@ -5035,7 +5060,7 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate)
     sprintascii(ebuf2, GET_OBJ_EXTRA(obj)[2]);
     sprintascii(ebuf3, GET_OBJ_EXTRA(obj)[3]);
 
-    fprintf(fp,
+    if (!OBJ_SAVE_FPRINTF(fp, obj, "base object data",
       "#%d\n"
       "%d %d %d %d %d %d %d %d %d %s %s %s %s %d %d %d %d %d %d %d %d\n",
       GET_OBJ_VNUM(obj), locate, GET_OBJ_VAL(obj, 0), GET_OBJ_VAL(obj, 1),
@@ -5044,13 +5069,14 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate)
       ebuf0, ebuf1, ebuf2, ebuf3,
       GET_OBJ_VAL(obj, 8), GET_OBJ_VAL(obj, 9),
       GET_OBJ_VAL(obj, 10), GET_OBJ_VAL(obj, 11), GET_OBJ_VAL(obj, 12),
-      GET_OBJ_VAL(obj, 13), GET_OBJ_VAL(obj, 14), GET_OBJ_VAL(obj, 15));
+      GET_OBJ_VAL(obj, 13), GET_OBJ_VAL(obj, 14), GET_OBJ_VAL(obj, 15)))
+      return 0;
 
   if (!(OBJ_FLAGGED(obj,ITEM_UNIQUE_SAVE)) && !GET_OBJ_TYPE(obj) == ITEM_SPELLBOOK) {
     return 1;
   }
 
-  fprintf(fp,
+  if (!OBJ_SAVE_FPRINTF(fp, obj, "XAP object data",
     "XAP\n"
     "%s~\n"
     "%s~\n"
@@ -5061,22 +5087,27 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate)
     obj->description ? obj->description : "undefined",
     buf1, GET_OBJ_TYPE(obj), GET_OBJ_WEAR(obj)[0], 
     GET_OBJ_WEAR(obj)[1], GET_OBJ_WEAR(obj)[2], GET_OBJ_WEAR(obj)[3], 
-    GET_OBJ_WEIGHT(obj), GET_OBJ_COST(obj), GET_OBJ_RENT(obj));
+    GET_OBJ_WEIGHT(obj), GET_OBJ_COST(obj), GET_OBJ_RENT(obj)))
+    return 0;
 
   if (obj->generation)
-  fprintf(fp, "G\n%ld\n", obj->generation);
+    if (!OBJ_SAVE_FPRINTF(fp, obj, "generation", "G\n%ld\n", obj->generation))
+      return 0;
   if (obj->unique_id)
-  fprintf(fp, "U\n%" I64T "\n", obj->unique_id);
+    if (!OBJ_SAVE_FPRINTF(fp, obj, "unique id", "U\n%" I64T "\n", obj->unique_id))
+      return 0;
 
-  fprintf(fp, "Z\n%d\n", GET_OBJ_SIZE(obj));
+  if (!OBJ_SAVE_FPRINTF(fp, obj, "size", "Z\n%d\n", GET_OBJ_SIZE(obj)))
+    return 0;
 
   /* Do we have affects? */
   for (counter2 = 0; counter2 < MAX_OBJ_AFFECT; counter2++)
     if (obj->affected[counter2].modifier)
-      fprintf(fp, "A\n"
+      if (!OBJ_SAVE_FPRINTF(fp, obj, "affect", "A\n"
         "%d %d %d\n",
         obj->affected[counter2].location, obj->affected[counter2].modifier,
-        obj->affected[counter2].specific);
+        obj->affected[counter2].specific))
+        return 0;
 
   /* Do we have extra descriptions? */
     if (obj->ex_description) {        /*. Yep, save them too . */
@@ -5087,11 +5118,12 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate)
         }
         strcpy(buf1, ex_desc->description);
         strip_string(buf1);
-        fprintf(fp, "E\n"
+        if (!OBJ_SAVE_FPRINTF(fp, obj, "extra description", "E\n"
           "%s~\n"
           "%s~\n",
           ex_desc->keyword,
-          buf1);
+          buf1))
+          return 0;
       }
     }
 
@@ -5101,12 +5133,15 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate)
         if (obj->sbinfo[i].spellname == 0) {
           break;
         }
-        fprintf(fp, "S\n" "%d %d\n", obj->sbinfo[i].spellname, obj->sbinfo[i].pages);
+        if (!OBJ_SAVE_FPRINTF(fp, obj, "spellbook", "S\n" "%d %d\n", obj->sbinfo[i].spellname, obj->sbinfo[i].pages))
+          return 0;
         continue;
       }
     }
     return 1;
 }
+
+#undef OBJ_SAVE_FPRINTF
 
  /* This procedure removes the '\r\n' from a string so that it may be
    saved to a file.  Use it only on buffers, not on the orginal
@@ -5638,4 +5673,3 @@ void write_level_data(struct char_data *ch, FILE *fl)
   }
   fprintf(fl, "end\n");
 }
-
