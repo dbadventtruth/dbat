@@ -2839,9 +2839,9 @@ static void damtype_unarmed_preference(char_data *ch, int64_t *dam) {
     }
 }
 
-static void damtype_focus(char_data *ch, int64_t *dam, int64_t focus, int divby) {
+static void damtype_focus(char_data *ch, int64_t *dam, int64_t focus) {
     if (focus > 0) {
-        *dam += focus * (*dam / divby);
+        dam += focus * (*dam / 200);
     }
 }
 
@@ -2942,6 +2942,7 @@ static void damtype_icer_ki(char_data *ch, int64_t *dam, int bon) {
 int64_t damtype(struct char_data *ch, int type, int skill, double percent)
 {
  int64_t dam = 0, cou1 = 0, cou2 = 0, focus = 0;
+ int tier = 0;
 
  /* Player damages based on attack */
  if (!IS_NPC(ch)) {
@@ -3118,7 +3119,6 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent)
 
   if(ki) dam *= 1.25;
 
-
   switch (type) {
    case -1:
     if(!PLR_FLAGGED(ch, PLR_THANDW))
@@ -3159,25 +3159,17 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent)
     break;
 
    case 7: /* Kiball */
-    damtype_focus(ch, &dam, focus, 1000);
-    damtype_human_ki(ch, &dam, 25);
-   break;
    case 9: /* Kiblast */
-    damtype_focus(ch, &dam, focus, 500);
-    damtype_human_ki(ch, &dam, 25);
-   break;
    case 10: /* Beam/Shog */
    case 11: /* Tsuihidan */
    case 12: /* Renzo */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_ki(ch, &dam, 25);
+    tier = 1;
    break;
    case 13: /* Kamehameha */
     if (focus > 0) {
      dam += (dam * 0.005) * focus;
     }
-    damtype_human_grandmaster(ch, skill, &dam);
-    damtype_human_ki(ch, &dam, 15);
+    tier = 2;
    break;
    case 14: /* Masenko */
    case 15: /* Dodonpa */
@@ -3188,142 +3180,71 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent)
    case 20: /* Psychic Blast */
    case 21: /* Honoo */
    case 24: /* Bakuhatsuha */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_ki(ch, &dam, 15);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 22: /* Dual Beam */
-    damtype_focus(ch, &dam, focus, 200);
+    tier = 2;
    break;
    case 23: /* Rogafufuken */
     dam += (dam / 100) * GET_STR(ch);
-    damtype_focus(ch, &dam, focus, 200);
     if (GET_BONUS(ch, BONUS_BRAWLER) > 0) {
      dam += dam * .2;
     }
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 2;
    break;
    case 25: /* Kienzan */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 3;
    break;
    case 26: /* Tribeam */
-
     if (!IS_NPC(ch) && percent > 0.15) {
      double hitperc = (percent - 0.15) * 5;
       int64_t amount = getEffMaxPL(ch) * hitperc;
      int64_t difference = GET_HIT(ch) - amount;
 
      decCurHealth(ch, amount, 1);
-
-     damtype_focus(ch, &dam, focus, 200);
-   } else {
-        damtype_focus(ch, &dam, focus, 200);
    }
-    damtype_saiyan_ki(ch, &dam, 20);
-   damtype_human_grandmaster(ch, skill, &dam);
+    tier = 3;
    break;
    case 27: /* Special Beam Cannon */
     dam += (dam / 100) * GET_INT(ch);
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 3;
    break;
    case 28: /* Final Flash */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 29: /* Crusher Ball */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 30: /* Darkness Dragon Slash */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 31: /* Psychic Barrage */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 32: /* Hell Flash */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 33: /* Hell Spear Blast */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
+    tier = 3;
    break;
    case 34: /* Kakusanha */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_icer_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 35: /* Scatter Shot */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_icer_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 36: /* Big Bang */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_icer_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 37: /* Phoenix Slash */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_icer_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 38: /* Deathball */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_icer_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 39: /* Spirit ball */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_icer_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 4;
    break;
    case 40: /* Genki Dama */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_kai_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 41: /* Genocide */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_kai_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 5;
    break;
    case 42: /* Kousengan */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 1;
    break;
    case 43: /* Water Spikes */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 2;
    break;
    case 44: /* Spiral Comet 1 */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 45: /* Spiral Comet 2 */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 4;
    break;
    case 46: /* Star Breaker */
-    damtype_focus(ch, &dam, focus, 200);
+    tier = 3;
    break;
    case 47: /* Water Razor */
-    damtype_focus(ch, &dam, focus, 200);
-   break;
    case 48: /* Koteiru Bakuha */
-    damtype_focus(ch, &dam, focus, 200);
+    tier = 4;
    break;
    case 49: /* Hell Spiral */
-    damtype_focus(ch, &dam, focus, 200);
     if (!IS_NPC(ch)) {
      if (PLR_FLAGGED(ch, PLR_TRANS6)) {
       dam += dam;
@@ -3339,26 +3260,36 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent)
       dam += (dam * 0.01) * 5;
      }
     }
+    tier = 4;
    break;
    case 50: /* Seishou Enko */
-    damtype_focus(ch, &dam, focus, 200);
+    tier = 2;
     break;
    case 53: /* Star Nova */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_ki(ch, &dam, 15);
+    tier = 4;
    break;
    case 54: /* Zen Blade */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_saiyan_ki(ch, &dam, 20);
-    damtype_human_grandmaster(ch, skill, &dam);
+    tier = 3;
    break;
    case 55: /* Sundering Force */
-    damtype_focus(ch, &dam, focus, 200);
-    damtype_human_grandmaster(ch, skill, &dam);
-   break;
    case 57: /* Light Grenade */
-    damtype_focus(ch, &dam, focus, 200);
+    tier = 4;
    break;
+  }
+  if (ki) {
+    damtype_human_grandmaster(ch, skill, &dam);
+    if(skill != 13) //Kamehameha uses focus differently
+      damtype_focus(ch, &dam, focus);
+    if(tier == 1)
+      damtype_human_ki(ch, &dam, 25);
+    if(tier == 2)
+      damtype_human_ki(ch, &dam, 15);
+    if(tier == 3)
+      damtype_saiyan_ki(ch, &dam, 20);
+    if(tier == 4)
+      damtype_icer_ki(ch, &dam, 20);
+    if(tier == 5)
+      damtype_kai_ki(ch, &dam, 20);
   }
  }
  else {
