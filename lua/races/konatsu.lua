@@ -5,4 +5,9 @@ return {
     abbreviation = "kon",
     size = "medium",
     pc_ok = true,
+    modifiers = function()
+        return {
+            { target = { "derived", "lifeforce" }, kind = "multiplier", value = 8500, label = "Konatsu" },
+        }
+    end,
 }

@@ -916,7 +916,7 @@ ACMD(do_moondust)
   cost += (getMaxLF(ch)) * 0.02;
   heal = cost * 3;
 
-  if (GET_HIT(ch) >= (getEffMaxPL(ch)) * 0.8) {
+  if (GET_HIT(ch) >= (getMaxPL(ch)) * 0.8) {
    cost = cost * 0.5;
   }
 
@@ -2448,6 +2448,7 @@ if (GET_ALIGNMENT(ch) >= 51) {
 
   int duration = GET_INT(ch) / 12;
   assign_affect(ch, AFF_METAMORPH, SKILL_METAMORPH, duration, 0, 0, 0, 0, 0, 0);
+  char_condition_apply(ch, "dark_metamorphosis", "affect", "dark_metamorphosis");
   incCurHealthPercent(ch, .6);
   return;
  }
@@ -2874,7 +2875,7 @@ ACMD(do_kanso)
     char_stat_set(ch, "thirst", 48);
 
   /* Heal the user */
-  incCurHealth(ch, (getEffMaxPL(ch) * .01) * dam);
+  incCurHealth(ch, (getMaxPL(ch) * .01) * dam);
 
   WAIT_STATE(ch, PULSE_2SEC); /* 2 second lag for the technique */
   
@@ -3747,7 +3748,7 @@ ACMD(do_adrenaline)
      act("@GYou focus your mind and begin to overwork your powerful adrenal glands and your wounds begin to heal!@n", TRUE, ch, 0, 0, TO_CHAR);
      act("@g$n@G seems to concentrate and $s wounds begin to heal!@n", TRUE, ch, 0, 0, TO_ROOM);
 
-        if (GET_HIT(ch) + trade > getEffMaxPL(ch))
+        if (GET_HIT(ch) + trade > getMaxPL(ch))
             send_to_char(ch, "Some of your stamina was wasted because your powerlevel maxed out.\r\n");
         incCurHealth(ch, trade);
         decCurST(ch, trade);

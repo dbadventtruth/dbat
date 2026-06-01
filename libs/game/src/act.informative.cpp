@@ -3675,7 +3675,7 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch)
                (AFF_FLAGS(i)[2]    == AFF_FLAGS(j)[2]     ) &&
                (AFF_FLAGS(i)[3]    == AFF_FLAGS(j)[3]     ) &&
                (!FIGHTING(i) && !FIGHTING(j)) &&
-               (GET_HIT(i) == getEffMaxPL(i) && GET_HIT(j) == getEffMaxPL(j)) &&
+               (GET_HIT(i) == getMaxPL(i) && GET_HIT(j) == getMaxPL(j)) &&
                !strcmp(GET_NAME(i), GET_NAME(j))         ) {
             for (tmphide = hideinfo; tmphide; tmphide = tmphide->next)
               if (tmphide->hidden == j)
@@ -5090,7 +5090,7 @@ ACMD(do_score)
  send_to_char(ch, "                 @D<@rPowerlevel@D>          <@BKi@D>             <@GStamina@D>@n\n");
  send_to_char(ch, "    @wCurrent   @D-[@R%-16s@D]-[@R%-16s@D]-[@R%-16s@D]@n\n", add_commas(getCurPL(ch)), add_commas(
          (getCurKI(ch))), add_commas((getCurST(ch))));
- send_to_char(ch, "    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n", add_commas(getEffMaxPL(ch)), add_commas(GET_MAX_MANA(ch)), add_commas(GET_MAX_MOVE(ch)));
+ send_to_char(ch, "    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n", add_commas(getMaxPL(ch)), add_commas(GET_MAX_MANA(ch)), add_commas(GET_MAX_MOVE(ch)));
  send_to_char(ch, "    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n", add_commas((getEffBasePL(ch))), add_commas(
          (getEffBaseKI(ch))), add_commas((getEffBaseST(ch))));
   if (!IS_ANDROID(ch) && (getCurLF(ch)) > 0) {

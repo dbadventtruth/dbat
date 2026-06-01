@@ -446,6 +446,9 @@ void char_admlevel_set(struct char_data *ch, int admlevel);
 bool char_admflagged(struct char_data *ch, int pos);
 bool char_admflag_toggle(struct char_data *ch, int pos);
 void char_admflag_set(struct char_data *ch, int pos, bool value);
+bool char_plrflagged(struct char_data *ch, int pos);
+bool char_plrflag_toggle(struct char_data *ch, int pos);
+void char_plrflag_set(struct char_data *ch, int pos, bool value);
 
 void char_inventory_iterate(struct char_data *ch, bool recursive, obj_iter_fn func, void *ctx);
 void char_equipment_iterate(struct char_data *ch, bool recursive, obj_iter_fn func, void *ctx);
@@ -496,8 +499,13 @@ int64_t char_skill_perf_set(struct char_data *ch, const char* skill, int64_t val
 int64_t char_skill_perf_mod(struct char_data *ch, const char* skill, int64_t mod);
 
 bool char_condition_has(struct char_data *ch, const char *condition);
+bool char_condition_id_has_tag(const char *condition, const char *tag);
+bool char_condition_has_tag(struct char_data *ch, const char *tag);
+const char *char_condition_active_with_tag(struct char_data *ch, const char *tag);
 bool char_condition_add(struct char_data *ch, const char *condition, const char *source_category, const char *source_id);
+bool char_condition_apply(struct char_data *ch, const char *condition, const char *source_category, const char *source_id);
 bool char_condition_remove(struct char_data *ch, const char *condition, const char *reason);
+int char_condition_remove_tag(struct char_data *ch, const char *tag, const char *reason);
 void char_condition_update(struct char_data *ch);
 int64_t char_condition_stacks_get(struct char_data *ch, const char *condition);
 int64_t char_condition_stacks_set(struct char_data *ch, const char *condition, int64_t value);

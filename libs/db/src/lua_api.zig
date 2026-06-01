@@ -281,6 +281,40 @@ pub fn conditionDefinition(name: []const u8) ?ConditionDefinition {
     };
 }
 
+pub fn conditionHasTag(name: []const u8, tag: []const u8) bool {
+    if (!initialized or name.len == 0 or tag.len == 0) return false;
+    if (!(pushThing("conditions", name) catch return false)) return false;
+    defer pop(1);
+    return hasStringInField(-1, "tags", tag);
+}
+
+pub fn conditionsConflict(new_condition: []const u8, active_condition: []const u8) bool {
+    if (!initialized or new_condition.len == 0 or active_condition.len == 0) return false;
+    if (!(pushThing("conditions", new_condition) catch return false)) return false;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "exclusive_tags") != .table) {
+        lua.pop(1);
+        return false;
+    }
+    defer lua.pop(1);
+
+    const table_index = lua.getTop();
+    var pos: zlua.Integer = 1;
+    while (lua.getIndex(table_index, pos) != .nil) : (pos += 1) {
+        const tag = lua.toString(-1) catch {
+            lua.pop(1);
+            continue;
+        };
+        const found = conditionHasTag(active_condition, tag);
+        lua.pop(1);
+        if (found) return true;
+    }
+    lua.pop(1);
+    return false;
+}
+
 pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hook_name: [:0]const u8) void {
     if (!initialized or condition.len == 0) return;
     if (!(pushThing("conditions", condition) catch return)) return;
@@ -325,7 +359,55 @@ pub fn emitConditionModifiers(ch: *cdb.char_data, cache: *modifiers_api.Modifier
     while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
         defer lua.pop(1);
         if (!lua.isTable(-1)) continue;
-        addModifierFromLua(cache, condition, -1);
+        addModifierFromLua(cache, "condition", condition, -1);
+    }
+}
+
+pub fn emitRaceModifiers(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache, race_id: c_int) void {
+    if (!initialized) return;
+    const lua = lua_state.?;
+    const top = lua.getTop();
+    defer lua.setTop(top);
+
+    if (lua.getGlobal("dbat") != .table) return;
+    if (lua.getField(-1, "registry") != .table) return;
+    if (lua.getField(-1, "races") != .table) return;
+
+    lua.pushNil();
+    while (lua.next(-2)) {
+        defer lua.pop(1);
+        if (!lua.isTable(-1)) continue;
+        const legacy_id = optionalIntegerField(-1, "legacy_id") orelse continue;
+        if (legacy_id != race_id) continue;
+        const slug = optionalStringField(-1, "id") orelse continue;
+        emitModifiersFromDefinition(ch, cache, "race", slug, -1, false);
+        return;
+    }
+}
+
+fn emitModifiersFromDefinition(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache, source_category: []const u8, source_id: []const u8, definition_index: i32, with_condition: bool) void {
+    const lua = lua_state.?;
+    if (lua.getField(definition_index, "modifiers") != .function) {
+        lua.pop(1);
+        return;
+    }
+
+    characters_lua.pushCharacter(lua, ch.id);
+    if (with_condition) characters_lua.pushCondition(lua, ch.id, source_id);
+    lua.protectedCall(.{ .args = if (with_condition) 2 else 1, .results = 1 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("{s} {s}.modifiers failed: {s}", .{ source_category, source_id, message });
+        lua.pop(1);
+        return;
+    };
+    defer lua.pop(1);
+    if (!lua.isTable(-1)) return;
+
+    var pos: zlua.Integer = 1;
+    while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
+        defer lua.pop(1);
+        if (!lua.isTable(-1)) continue;
+        addModifierFromLua(cache, source_category, source_id, -1);
     }
 }
 
@@ -356,8 +438,9 @@ fn optionalBoolField(index: i32, comptime field_name: [:0]const u8) ?bool {
     return lua.toBoolean(-1);
 }
 
-fn addModifierFromLua(cache: *modifiers_api.ModifierCache, condition: []const u8, index: i32) void {
+fn addModifierFromLua(cache: *modifiers_api.ModifierCache, source_category: []const u8, source_id: []const u8, index: i32) void {
     const lua = lua_state.?;
+    const modifier_allocator = cache.allocator;
     if (lua.getField(index, "target") != .table) {
         lua.pop(1);
         return;
@@ -374,16 +457,16 @@ fn addModifierFromLua(cache: *modifiers_api.ModifierCache, condition: []const u8
     const kind_text = optionalStringField(index, "kind") orelse "flat";
     const kind = parseModifierKind(kind_text) orelse return;
     const value = optionalIntegerField(index, "value") orelse 0;
-    const label = optionalStringField(index, "label") orelse condition;
+    const label = optionalStringField(index, "label") orelse source_id;
 
     cache.add(.{
-        .source_category = allocator.dupe(u8, "condition") catch return,
-        .source_id = allocator.dupe(u8, condition) catch return,
-        .target_category = allocator.dupe(u8, target_category) catch return,
-        .target_id = allocator.dupe(u8, target_id) catch return,
+        .source_category = modifier_allocator.dupe(u8, source_category) catch return,
+        .source_id = modifier_allocator.dupe(u8, source_id) catch return,
+        .target_category = modifier_allocator.dupe(u8, target_category) catch return,
+        .target_id = modifier_allocator.dupe(u8, target_id) catch return,
         .kind = kind,
         .value = value,
-        .label = allocator.dupe(u8, label) catch return,
+        .label = modifier_allocator.dupe(u8, label) catch return,
         .owned_strings = true,
     }) catch {};
 }
@@ -407,8 +490,12 @@ fn tableString(index: i32, pos: zlua.Integer) ?[]const u8 {
 }
 
 fn hasTag(index: i32, tag: []const u8) bool {
+    return hasStringInField(index, "tags", tag);
+}
+
+fn hasStringInField(index: i32, comptime field_name: [:0]const u8, value: []const u8) bool {
     const lua = lua_state.?;
-    if (lua.getField(index, "tags") != .table) {
+    if (lua.getField(index, field_name) != .table) {
         lua.pop(1);
         return false;
     }
@@ -416,11 +503,11 @@ fn hasTag(index: i32, tag: []const u8) bool {
 
     var pos: zlua.Integer = 1;
     while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
-        const value = lua.toString(-1) catch {
+        const item = lua.toString(-1) catch {
             lua.pop(1);
             continue;
         };
-        const found = std.mem.eql(u8, value, tag);
+        const found = std.mem.eql(u8, item, value);
         lua.pop(1);
         if (found) return true;
     }
@@ -513,6 +600,16 @@ fn openDbat(lua: *Lua) i32 {
     lua.pushFunction(zlua.wrap(luaLog));
     lua.setField(-2, "log");
 
+    lua.pushFunction(zlua.wrap(luaConditionHasTag));
+    lua.setField(-2, "condition_has_tag");
+
+    return 1;
+}
+
+fn luaConditionHasTag(lua: *Lua) i32 {
+    const condition = lua.toString(1) catch "";
+    const tag = lua.toString(2) catch "";
+    lua.pushBoolean(conditionHasTag(condition, tag));
     return 1;
 }
 

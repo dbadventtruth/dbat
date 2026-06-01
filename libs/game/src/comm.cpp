@@ -1280,7 +1280,7 @@ char *make_prompt(struct descriptor_data *d)
           if(PRF_FLAGGED(d->character, PRF_DISPHP) && len < sizeof(prompt)) {
               char* col = "n";
               struct char_data* ch = d->character;
-              if(getMaxPL(ch) > getMaxPLTrans(ch))
+              if(getMaxPL(ch) > getMaxPL(ch))
                   col = "g";
               else if(isWeightedPL(ch))
                   col = "m";
@@ -1297,7 +1297,7 @@ char *make_prompt(struct descriptor_data *d)
       } else if (PRF_FLAGGED(d->character, PRF_DISPHP)) {
 
           struct char_data* ch = d->character;
-          double perc = ((double)getCurHealth(ch) / (double)getMaxPLTrans(ch)) * 100;
+          double perc = ((double)getCurHealth(ch) / (double)getMaxPL(ch)) * 100;
           char* col = "n";
           if(perc > 100)
               col = "g";

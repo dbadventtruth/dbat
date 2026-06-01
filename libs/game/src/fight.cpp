@@ -270,13 +270,13 @@ static void mob_attack(struct char_data *ch, char *buf)
    if (GET_CLASS(ch) == CLASS_SHADOWDANCER && rand_number(1, 3) == 3) {
     sprintf(buf2, "ass %s", buf);
     do_throw(ch, buf2, 0, 0);
-   } else if (IS_ANDROID(ch) && MOB_FLAGGED(ch, MOB_REPAIR) && GET_HIT(ch) <= (getEffMaxPL(ch)) * 0.5 && rand_number(1, 20) >= 16) {
+   } else if (IS_ANDROID(ch) && MOB_FLAGGED(ch, MOB_REPAIR) && GET_HIT(ch) <= (getMaxPL(ch)) * 0.5 && rand_number(1, 20) >= 16) {
     do_srepair(ch, NULL, 0, 0);
    } else if (IS_ANDROID(ch) && MOB_FLAGGED(ch, MOB_ABSORB) && rand_number(1, 20) >= 19) {
     do_absorb(ch, buf2, 0, 0);
-   } else if ((IS_BIO(ch) || IS_MAJIN(ch)) && GET_HIT(ch) <= (getEffMaxPL(ch)) * 0.5 && rand_number(1, 20) >= 17) {
+   } else if ((IS_BIO(ch) || IS_MAJIN(ch)) && GET_HIT(ch) <= (getMaxPL(ch)) * 0.5 && rand_number(1, 20) >= 17) {
     do_regenerate(ch, "25", 0, 0);
-   } else if (IS_NAMEK(ch) && GET_HIT(ch) <= (getEffMaxPL(ch)) * 0.5 && rand_number(1, 20) == 20) {
+   } else if (IS_NAMEK(ch) && GET_HIT(ch) <= (getMaxPL(ch)) * 0.5 && rand_number(1, 20) == 20) {
     do_regenerate(ch, "25", 0, 0);
    } else if (pick_n_throw(ch, buf)) {
     /* This determines if they throw and also handles it */
@@ -1102,7 +1102,7 @@ void fight_stack()
       if (PLR_FLAGGED(ch, PLR_POWERUP) && rand_number(1, 3) == 3) {
        char buf3[MAX_STRING_LENGTH];
         int64_t ghit = GET_HIT(ch);
-        int64_t gmaxhit = getEffMaxPL(ch);
+        int64_t gmaxhit = getMaxPL(ch);
         int64_t gki = getCurKI(ch);
         int64_t gmaxki = GET_MAX_MANA(ch);
 
@@ -1137,7 +1137,7 @@ void fight_stack()
        }
        
        ghit = GET_HIT(ch);
-        gmaxhit = getEffMaxPL(ch);
+        gmaxhit = getMaxPL(ch);
         gki = getCurKI(ch);
         gmaxki = GET_MAX_MANA(ch);
 
@@ -1160,7 +1160,7 @@ void fight_stack()
        }
 
        ghit = GET_HIT(ch);
-        gmaxhit = getEffMaxPL(ch);
+        gmaxhit = getMaxPL(ch);
         gki = getCurKI(ch);
         gmaxki = GET_MAX_MANA(ch);
 
@@ -1178,7 +1178,7 @@ void fight_stack()
          incCurST(ch, raise);
         }
 
-        gmaxhit = getEffMaxPL(ch);
+        gmaxhit = getMaxPL(ch);
 
         if (gmaxhit < 50000) {
          act("@RYou continue to powerup, as wind billows out from around you!@n", TRUE, ch, 0, 0, TO_CHAR);
@@ -2498,7 +2498,7 @@ void group_gain(struct char_data *ch, struct char_data *victim)
      if (!IS_WEIGHTED(f->follower)) {
       tot_levels += GET_LEVEL(f->follower);
       tot_members++;
-     } else if (getEffMaxPL(f->follower) >= getEffMaxPL(ch) * 0.5) {
+     } else if (getMaxPL(f->follower) >= getMaxPL(ch) * 0.5) {
       tot_levels += GET_LEVEL(f->follower);
       tot_members++;
      }
@@ -2528,9 +2528,9 @@ void group_gain(struct char_data *ch, struct char_data *victim)
   if (AFF_FLAGGED(k, AFF_GROUP) && char_room_get(k) == char_room_get(ch)) {
    if (!IS_WEIGHTED(k)) {
     perform_group_gain(k, base, victim);
-   } else if (k != ch && (getEffMaxPL(k)()) >= (getEffMaxPL(ch)) * 0.5) {
+   } else if (k != ch && (getMaxPL(k)()) >= (getMaxPL(ch)) * 0.5) {
     perform_group_gain(k, base, victim);
-   } else if (k == ch && (getEffMaxPL(k)()) >= GET_MAX_HIT(ch) * 0.5) {
+   } else if (k == ch && (getMaxPL(k)()) >= GET_MAX_HIT(ch) * 0.5) {
     perform_group_gain(k, base, victim);
    } else {
     if (k == ch) {
@@ -2545,7 +2545,7 @@ void group_gain(struct char_data *ch, struct char_data *victim)
 
   for (f = k->followers; f; f = f->next) {
     if (AFF_FLAGGED(f->follower, AFF_GROUP) && char_room_get(f->follower) == char_room_get(ch)) {
-     //if ((getEffMaxPL(f->follower)()) >= GET_MAX_HIT(ch) * 0.5)
+     //if ((getMaxPL(f->follower)()) >= GET_MAX_HIT(ch) * 0.5)
       //perform_group_gain(f->follower, base, victim);
     }
   }

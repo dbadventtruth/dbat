@@ -962,7 +962,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check)
        if (IS_NPC(ch) && IS_HUMANOID(ch) && rand_number(1, 2) == 2) {
         do_fly(ch, 0, 0, 0);
        }
-        decCurHealth(ch, getEffMaxPL(ch) / 20);
+        decCurHealth(ch, getMaxPL(ch) / 20);
         if (GET_HIT(ch) <= 0) {
             act("@rYou have burned to death!@n", TRUE, ch, 0, 0, TO_CHAR);
             act("@R$n@r has burned to death!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -972,7 +972,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check)
     if (DRAGGING(ch) && !IS_DEMON(DRAGGING(ch))) {
      act("@R$N@r gets burned!@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
      act("@R$N@r gets burned!@n", TRUE, ch, 0, DRAGGING(ch), TO_ROOM);
-     decCurHealth(DRAGGING(ch), getEffMaxPL(DRAGGING(ch)) / 20);
+     decCurHealth(DRAGGING(ch), getMaxPL(DRAGGING(ch)) / 20);
        if (GET_HIT(DRAGGING(ch)) < 0) {
         act("@rYou have burned to death!@n", TRUE, DRAGGING(ch), 0, 0, TO_CHAR);
         act("@R$n@r has burned to death!@n", TRUE, DRAGGING(ch), 0, 0, TO_ROOM);
@@ -2293,7 +2293,7 @@ static void handle_fall(struct char_data *ch)
   }
   if (!EXIT(ch, 5) || room_sector_type_get(char_room_get(ch)) != SECT_FLYING) {
    act("@r$n slams into the ground!@n", TRUE, ch, 0, 0, TO_ROOM);
-        decCurHealthFloored(ch, getEffMaxPL(ch) / 20, 1);
+        decCurHealthFloored(ch, getMaxPL(ch) / 20, 1);
 
    act("@rYou slam into the ground!@n", TRUE, ch, 0, 0, TO_CHAR);
    look_at_room(char_room_get(ch), ch, 0);
@@ -2308,7 +2308,7 @@ static void handle_fall(struct char_data *ch)
    decCurST(ch, getCurCarriedWeight(ch));
    act("@RYou are drowning!@n", TRUE, ch, 0, 0, TO_CHAR);
    act("@C$n@b gulps water as $e struggles to stay above the water line.@n", TRUE, ch, 0, 0, TO_ROOM);
-   if (GET_HIT(ch) - ((getEffMaxPL(ch)) / 3) <= 0) {
+   if (GET_HIT(ch) - ((getMaxPL(ch)) / 3) <= 0) {
     act("@rYou drown!@n", TRUE, ch, 0, 0, TO_CHAR);
     act("@R$n@r drowns!@n", TRUE, ch, 0, 0, TO_ROOM);
     die(ch, NULL);

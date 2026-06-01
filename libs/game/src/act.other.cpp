@@ -1904,8 +1904,8 @@ ACMD(do_candy)
         return;
     }
 
-    int64_t ch_max = getMaxPLTrans(ch);
-    int64_t vict_max = getMaxPLTrans(vict);
+    int64_t ch_max = getMaxPL(ch);
+    int64_t vict_max = getMaxPL(vict);
 
     if (!IS_NPC(vict)) {
         send_to_char(ch, "You can't turn them into candy.\r\n");
@@ -2227,7 +2227,7 @@ ACMD(do_suppress)
   return;
  }
 
-  int64_t max = getEffMaxPL(ch);
+  int64_t max = getMaxPL(ch);
  int64_t amt = ((max * 0.01) * num);
 
     reveal_hiding(ch, 0);
@@ -2496,6 +2496,7 @@ ACMD(do_pose)
   }
   send_to_char(ch, "@WYou feel your confidence increase! @G+8 Str @Wand@G +8 Agl!@n\r\n");
   assign_affect(ch, AFF_SPECIAL_POSE, SKILL_POSE, -1, 8, 0, 0, 8, 0, 0);
+  char_condition_apply(ch, "special_pose", "affect", "special_pose");
   save_char(ch);
   int64_t before = (getMaxLF(ch));
   incCurLF(ch, (getMaxLF(ch)) - before);
@@ -2530,7 +2531,7 @@ ACMD(do_fury) {
   }
 
   if (!*arg) {
-   if (GET_HIT(ch) < getEffMaxPL(ch)) {
+   if (GET_HIT(ch) < getMaxPL(ch)) {
     if ((getCurLF(ch)) >= (getMaxLF(ch)) * 0.2) {
       restoreHealthAnnounced(ch, false);
      decCurLFPercent(ch, .2);
@@ -3849,7 +3850,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
  }
  else if (!(strcmp(arg, "senzu"))) {
   cost = GET_MAX_MANA(ch);
-   int64_t cost2 = getEffMaxPL(ch) - 1;
+   int64_t cost2 = getMaxPL(ch) - 1;
    
   if (senzu == FALSE) {
    send_to_char(ch, "What do you want to create?\r\n");
@@ -3966,7 +3967,7 @@ ACMD(do_srepair)
    send_to_char(ch, "You do not have enough stamina to repair yourself.\r\n");
    return;
   }
-  else if (GET_HIT(ch) >= getEffMaxPL(ch)) {
+  else if (GET_HIT(ch) >= getMaxPL(ch)) {
    send_to_char(ch, "You are already at full functionality and do not require repairs.\r\n");
    return;
   }
@@ -4002,7 +4003,7 @@ ACMD(do_srepair)
     heal += heal * .25;
    }
 
-    if(incCurHealth(ch, heal) == getEffMaxPL(ch)) {
+    if(incCurHealth(ch, heal) == getMaxPL(ch)) {
        send_to_char(ch, "You are fully repaired now.\r\n");
    }
 
@@ -4854,12 +4855,12 @@ ACMD(do_regenerate) {
   return;
  }
 
- if (GET_HIT(ch) >= getEffMaxPL(ch)) {
+ if (GET_HIT(ch) >= getMaxPL(ch)) {
   send_to_char(ch, "You do not need to regenerate, you are at full health.\r\n");
   return;
  }
 
-  if (GET_SUPPRESS(ch) > 0 && GET_HIT(ch) >= ((getEffMaxPL(ch) / 100) * GET_SUPPRESS(ch))) {
+  if (GET_SUPPRESS(ch) > 0 && GET_HIT(ch) >= ((getMaxPL(ch) / 100) * GET_SUPPRESS(ch))) {
   send_to_char(ch, "You do not need to regenerate, you are at full health.\r\n");
   return;
  }
@@ -4886,7 +4887,7 @@ ACMD(do_regenerate) {
   return;
  }
 
-  amt = (getEffMaxPL(ch) * 0.01) * num;
+  amt = (getMaxPL(ch) * 0.01) * num;
  if (amt > 1)
   amt /= 2;
 
@@ -4913,7 +4914,7 @@ ACMD(do_regenerate) {
 
    reveal_hiding(ch, 0);
 
- if (GET_HIT(ch) >= getEffMaxPL(ch)) {
+ if (GET_HIT(ch) >= getMaxPL(ch)) {
   act("You concentrate your ki and regenerate your body completely.", TRUE, ch, 0, 0, TO_CHAR);
   act("$n concentrates and regenerates $s body completely.", TRUE, ch, 0, 0, TO_ROOM);
  }
@@ -5552,12 +5553,14 @@ ACMD(do_focus)
     assign_affect(ch, AFF_BLESS, SKILL_BLESS, duration, 0, 0, 0, 0, 0, 0);
        decCurKI(ch, getMaxKI(ch) / 20);
     reveal_hiding(ch, 0);
-    if (IS_KABITO(ch)) {
-     GET_BLESSLVL(ch) = GET_SKILL(ch, SKILL_BLESS);
-    } else {
-     GET_BLESSLVL(ch) = 0;
-    }
-    act("You focus ki while chanting spiritual words. You feel your body recovering at above normal speed!", TRUE, ch, 0, 0, TO_CHAR);
+     if (IS_KABITO(ch)) {
+      GET_BLESSLVL(ch) = GET_SKILL(ch, SKILL_BLESS);
+     } else {
+      GET_BLESSLVL(ch) = 0;
+     }
+     char_condition_apply(ch, "bless", "affect", "bless");
+     char_condition_number_set(ch, "bless", "level", GET_BLESSLVL(ch));
+     act("You focus ki while chanting spiritual words. You feel your body recovering at above normal speed!", TRUE, ch, 0, 0, TO_CHAR);
     act("$n focuses ki while chanting spiritual words. $n smiles after finishing $s chant.", TRUE, ch, 0, 0, TO_ROOM);
     if (AFF_FLAGGED(ch, AFF_CURSE)) {
      send_to_char(ch, "Your cursing was nullified!\r\n");
@@ -5606,12 +5609,14 @@ ACMD(do_focus)
      assign_affect(vict, AFF_BLESS, SKILL_BLESS, duration, 0, 0, 0, 0, 0, 0);
         decCurKI(ch, getMaxKI(ch) / 20);
      reveal_hiding(ch, 0);
-     if (IS_KAI(ch)) {
-      GET_BLESSLVL(vict) = GET_SKILL(ch, SKILL_BLESS);
-     } else {
-      GET_BLESSLVL(vict) = 0;
-     }
-     act("You focus ki while chanting spiritual words. Blessing $N with faster regeneration!", TRUE, ch, 0, vict, TO_CHAR);
+      if (IS_KAI(ch)) {
+       GET_BLESSLVL(vict) = GET_SKILL(ch, SKILL_BLESS);
+      } else {
+       GET_BLESSLVL(vict) = 0;
+      }
+      char_condition_apply(vict, "bless", "affect", "bless");
+      char_condition_number_set(vict, "bless", "level", GET_BLESSLVL(vict));
+      act("You focus ki while chanting spiritual words. Blessing $N with faster regeneration!", TRUE, ch, 0, vict, TO_CHAR);
      act("$n focuses ki while chanting spiritual words. $n then places a hand on your head, blessing you!", TRUE, ch, 0, vict, TO_VICT);
      act("$n focuses ki while chanting spiritual words. $n then places a hand on $N's head, blessing them!", TRUE, ch, 0, vict, TO_NOTVICT);
      if ((vict->master == ch || ch->master == vict || ch->master == vict->master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
@@ -6812,7 +6817,7 @@ ACMD(do_heal)
    heal += heal * .1;
   }
 
-  if (heal < getEffMaxPL(vict)) {
+  if (heal < getMaxPL(vict)) {
    heal += (heal / 100) * (GET_WIS(ch) / 4);
   }
 
@@ -6821,7 +6826,7 @@ ACMD(do_heal)
    return;
   }
 
-  if (GET_HIT(vict) >= getEffMaxPL(vict)) {
+  if (GET_HIT(vict) >= getMaxPL(vict)) {
    if (vict != ch) {
     send_to_char(ch, "They are already at full health.\r\n");
    } else {
@@ -6830,7 +6835,7 @@ ACMD(do_heal)
    return;   
   }
 
-   if (GET_SUPPRESS(vict) > 0 && GET_HIT(vict) >= ((getEffMaxPL(vict) / 100) * GET_SUPPRESS(vict))) {
+   if (GET_SUPPRESS(vict) > 0 && GET_HIT(vict) >= ((getMaxPL(vict) / 100) * GET_SUPPRESS(vict))) {
    send_to_char(ch, "They are already at full health.\r\n");
    return;
   }
@@ -6910,7 +6915,7 @@ ACMD(do_heal)
    improve_skill(ch, SKILL_HEAL, 0);
    if (vict->master == ch || ch->master == vict || ch->master == vict->master) {
     if (IS_NAIL(ch) && IS_NAMEK(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && GET_HIT(vict) <=
-                                                                                                     getEffMaxPL(vict) * 0.85 && rand_number(1, 3) == 3) {
+                                                                                                     getMaxPL(vict) * 0.85 && rand_number(1, 3) == 3) {
       char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * 0.005);
     }
    }
@@ -8477,35 +8482,35 @@ ACMD(do_pushup)
     act("@gYou do a pushup, and it was a really hard one to finish.@n", TRUE, ch, 0, 0, TO_CHAR);
     act("@g$n does a pushup, while sweating profusely.@n", TRUE, ch, 0, 0, TO_ROOM);
    }
-   if (cost >= getMaxPLTrans(ch) / 2) {
+   if (cost >= getMaxPL(ch) / 2) {
     send_to_char(ch, "This gravity is a great challenge for you!\r\n");
     bonus *= 10;
    }
-   else if (cost >= getMaxPLTrans(ch) / 4) {
+   else if (cost >= getMaxPL(ch) / 4) {
     send_to_char(ch, "This gravity is an awesome challenge for you!\r\n");
     bonus *= 8;
    }
-   else if (cost >= getMaxPLTrans(ch) / 10) {
+   else if (cost >= getMaxPL(ch) / 10) {
     send_to_char(ch, "This gravity is a good challenge for you!\r\n");
     bonus *= 6;
    }
-   else if (cost < getMaxPLTrans(ch) / 1000) {
+   else if (cost < getMaxPL(ch) / 1000) {
     send_to_char(ch, "This gravity is so easy to you, you could do it in your sleep....\r\n");
     bonus /= 8;
    }
-   else if (cost < getMaxPLTrans(ch) / 100) {
+   else if (cost < getMaxPL(ch) / 100) {
     send_to_char(ch, "This gravity is the opposite of a challenge for you....\r\n");
     bonus /= 5;
    }
-   else if (cost < getMaxPLTrans(ch) / 50) {
+   else if (cost < getMaxPL(ch) / 50) {
     send_to_char(ch, "This gravity is definitely not a challenge for you....\r\n");
     bonus /= 4;
    }
-   else if (cost < getMaxPLTrans(ch) / 30) {
+   else if (cost < getMaxPL(ch) / 30) {
     send_to_char(ch, "This gravity is barely a challenge for you....\r\n");
     bonus /= 3;
    }
-   else if (cost < getMaxPLTrans(ch) / 20) {
+   else if (cost < getMaxPL(ch) / 20) {
     send_to_char(ch, "This gravity is hardly a challenge for you....\r\n");
     bonus /= 2;
    }
@@ -8915,7 +8920,7 @@ void base_update(void)
 				act("@C$n@W absorbs stamina and ki from you!@n", TRUE, d->character, 0, ABSORBING(d->character), TO_VICT);
 				send_to_char(ABSORBING(d->character), "@wTry 'escape'!@n\r\n");
 				act("@C$n@W absorbs stamina and ki from @c$N@w!@n", TRUE, d->character, 0, ABSORBING(d->character), TO_NOTVICT);
-				if (GET_HIT(d->character) < getEffMaxPL(d->character)) {
+				if (GET_HIT(d->character) < getMaxPL(d->character)) {
                     incCurHealth(d->character, getMaxKI(d->character) * .04);
 					send_to_char(d->character, "@CYou convert a portion of the absorbed energy into refilling your powerlevel.@n\r\n");
 				}
@@ -10111,12 +10116,12 @@ static int perform_group(struct char_data *ch, struct char_data *vict, int highl
   }
 
   if (highlvl >= 100) {
-   if ((getEffMaxPL(vict))) > highpl * 1.5) {
+   if ((getMaxPL(vict))) > highpl * 1.5) {
     act("$n is too powerful right now to be in a level 100 group with you.", TRUE, vict, 0, ch, TO_VICT);
     return (0);
    }
 
-   if ((getEffMaxPL(vict))) < lowpl * 0.5) {
+   if ((getMaxPL(vict))) < lowpl * 0.5) {
     act("$n is too weak right now to be in a level 100 group with you.", TRUE, vict, 0, ch, TO_VICT);
     return (0);
    }
@@ -10211,8 +10216,8 @@ ACMD(do_group)
 
   highlvl = GET_LEVEL(ch);
   lowlvl = GET_LEVEL(ch);
-  highpl = getEffMaxPL(ch);
-  lowpl = getEffMaxPL(ch);
+  highpl = getMaxPL(ch);
+  lowpl = getMaxPL(ch);
 
   for (found = 0, f = ch->followers; f; f = f->next) {
    if (AFF_FLAGGED(f->follower, AFF_GROUP)) {
@@ -10546,10 +10551,10 @@ ACMD(do_use)
        }
         refreshed = FALSE;
 
-        if (GET_HIT(ch) <= getEffMaxPL(ch)  * 0.99) {
-            incCurHealth(ch, large_rand(getEffMaxPL(ch) * 0.08, getEffMaxPL(ch) * 0.16));
+        if (GET_HIT(ch) <= getMaxPL(ch)  * 0.99) {
+            incCurHealth(ch, large_rand(getMaxPL(ch) * 0.08, getMaxPL(ch) * 0.16));
          refreshed = TRUE;
-        } else if ((getCurKI(ch)) <= getEffMaxPL(ch)  * 0.99) {
+        } else if ((getCurKI(ch)) <= getMaxPL(ch)  * 0.99) {
             incCurKI(ch, large_rand(GET_MAX_MANA(ch) * 0.08, GET_MAX_MANA(ch) * 0.16));
          refreshed = TRUE;
         } else if ((getCurST(ch)) <= GET_MAX_MOVE(ch)  * 0.99) {
@@ -11392,7 +11397,7 @@ ACMD(do_fix)
    return;
  } else { /* For androids repairing themselves */
 
-   if (GET_HIT(ch) >= getEffMaxPL(ch)) {
+   if (GET_HIT(ch) >= getMaxPL(ch)) {
     send_to_char(ch, "Your body is already in peak condition.\r\n");
     return; 
    } else if (GET_SKILL(ch, SKILL_REPAIR) < axion_dice(0)) {
@@ -11406,10 +11411,10 @@ ACMD(do_fix)
     act("You use the repair kit to fix part of your body...", TRUE, ch, 0, 0, TO_CHAR);
     act("$n works on their body with a repair kit.", TRUE, ch, 0, 0, TO_ROOM);
     int64_t mult = GET_SKILL(ch, SKILL_REPAIR);
-    int64_t add = (getEffMaxPL(ch) * 0.005 + 10) * mult;
+    int64_t add = (getMaxPL(ch) * 0.005 + 10) * mult;
 
     extract_obj(obj4);
-    if (incCurHealth(ch, add) == getEffMaxPL(ch)) {
+    if (incCurHealth(ch, add) == getMaxPL(ch)) {
      send_to_char(ch, "Your body has been totally repaired.\r\n");
      WAIT_STATE(ch, PULSE_5SEC);
     } else {
@@ -12260,7 +12265,7 @@ ACMD(do_aid)
     dc = axion_dice(0);
     if ((GET_SKILL(ch, SKILL_FIRST_AID) + 1) > dc) {
       send_to_char(ch, "You bandage %s's wounds.\r\n", GET_NAME(vict));
-      int64_t roll = (getEffMaxPL(vict) / 100) * (GET_WIS(ch) / 4) + getEffMaxPL(vict) * 0.25;
+      int64_t roll = (getMaxPL(vict) / 100) * (GET_WIS(ch) / 4) + getMaxPL(vict) * 0.25;
       if (GET_BONUS(ch, BONUS_HEALER) > 0) {
        roll += roll * .1;
       }

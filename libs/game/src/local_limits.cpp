@@ -865,7 +865,7 @@ static void update_flags(struct char_data *ch)
 
   if (GET_BONUS(ch, BONUS_LATE) && GET_POS(ch) == POS_SLEEPING && rand_number(1, 3) == 3)
   {
-    if (GET_HIT(ch) >= (getEffMaxPL(ch)) && (getCurST(ch)) >= GET_MAX_MOVE(ch) && (getCurKI(ch)) >= GET_MAX_MANA(ch))
+    if (GET_HIT(ch) >= (getMaxPL(ch)) && (getCurST(ch)) >= GET_MAX_MOVE(ch) && (getCurKI(ch)) >= GET_MAX_MANA(ch))
     {
       send_to_char(ch, "You FINALLY wake up.\r\n");
       act("$n wakes up.", TRUE, ch, 0, 0, TO_ROOM);
@@ -1866,7 +1866,7 @@ static void point_update_characters(void)
           decCurST(i, getCurCarriedWeight(i));
           act("@RYou are drowning!@n", TRUE, i, 0, 0, TO_CHAR);
           act("@C$n@b gulps water as $e struggles to stay above the water line.@n", TRUE, i, 0, 0, TO_ROOM);
-          if (GET_HIT(i) - ((getEffMaxPL(i)) / 3) <= 0)
+          if (GET_HIT(i) - ((getMaxPL(i)) / 3) <= 0)
           {
             act("@rYou drown!@n", TRUE, i, 0, 0, TO_CHAR);
             act("@R$n@r drowns!@n", TRUE, i, 0, 0, TO_ROOM);
@@ -1874,7 +1874,7 @@ static void point_update_characters(void)
           }
           else
           {
-            decCurHealth(i, (getEffMaxPL(i)) / 3);
+            decCurHealth(i, (getMaxPL(i)) / 3);
           }
         }
       }
@@ -1887,7 +1887,7 @@ static void point_update_characters(void)
         }
         else
         {
-          if ((GET_HIT(i) - hit_gain(i)) > (getEffMaxPL(i)) * 0.05)
+          if ((GET_HIT(i) - hit_gain(i)) > (getMaxPL(i)) * 0.05)
           {
             send_to_char(i, "You struggle trying to hold your breath!\r\n");
             decCurHealth(i, hit_gain(i) + getPercentOfMaxHealth(i, .05));
@@ -1909,7 +1909,7 @@ static void point_update_characters(void)
         }
         else
         {
-          if ((GET_HIT(i) - hit_gain(i)) > (getEffMaxPL(i)) * 0.05)
+          if ((GET_HIT(i) - hit_gain(i)) > (getMaxPL(i)) * 0.05)
           {
             send_to_char(i, "You struggle trying to hold your breath!\r\n");
             decCurHealth(i, hit_gain(i) + getPercentOfMaxHealth(i, .05));
@@ -1979,7 +1979,7 @@ static void point_update_characters(void)
           send_to_char(i, "@wYou feel relaxed and better.@n\r\n");
           if (!isFullLF(i))
           {
-            if (!IS_ANDROID(i) && !FIGHTING(i) && GET_SUPPRESS(i) <= 0 && GET_HIT(i) != (getEffMaxPL(i)))
+            if (!IS_ANDROID(i) && !FIGHTING(i) && GET_SUPPRESS(i) <= 0 && GET_HIT(i) != (getMaxPL(i)))
             {
               incCurLFPercent(i, .15);
               send_to_char(i, "@CYou feel more lively.@n\r\n");
@@ -2022,7 +2022,7 @@ static void point_update_characters(void)
         {
           send_to_char(i, "You puke as the poison burns through your blood.\r\n");
           act("$n shivers and then pukes.", TRUE, i, 0, 0, TO_ROOM);
-          decCurHealth(i, getEffMaxPL(i) * cost);
+          decCurHealth(i, getMaxPL(i) * cost);
         }
         else
         {

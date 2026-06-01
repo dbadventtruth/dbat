@@ -3731,7 +3731,7 @@ ACMD(do_eat)
       gain_exp(ch, expbonus);
       char_stat_mod(ch, "practices", psbonus);
       send_to_char(ch, "That was exceptionally delicious! @D[@mPS@D: @C+%d@D] [@gEXP@D: @G+%s@D]@n\r\n", psbonus, add_commas(expbonus));
-      if (!GET_OBJ_VAL(food, VAL_FOOD_POISON) && GET_HIT(ch) < (getEffMaxPL(ch)) && subcmd != SCMD_TASTE)
+      if (!GET_OBJ_VAL(food, VAL_FOOD_POISON) && GET_HIT(ch) < (getMaxPL(ch)) && subcmd != SCMD_TASTE)
       {
         if (obj_weight_get(food) < 6)
         {

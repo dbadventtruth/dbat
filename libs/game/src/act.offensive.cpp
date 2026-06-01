@@ -8765,7 +8765,7 @@ ACMD(do_attack)
          /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
          break;
        }/* end slash switch*/
-        if (beforepl - GET_HIT(vict) >= (getEffMaxPL(vict)) * 0.025) {
+        if (beforepl - GET_HIT(vict) >= (getMaxPL(vict)) * 0.025) {
         cut_limb(ch, vict, wlvl, hitspot);
        }
       break;
@@ -9981,7 +9981,7 @@ ACMD(do_attack2)
          /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
          break;
        }/* end slash switch*/
-       if (beforepl - GET_HIT(vict) >= (getEffMaxPL(vict)) * 0.025) {
+       if (beforepl - GET_HIT(vict) >= (getMaxPL(vict)) * 0.025) {
        cut_limb(ch, vict, wlvl, hitspot);
       }
       break;
@@ -11264,7 +11264,7 @@ ACMD(do_kiblast)
       /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
      break;
    }
-      if (master_pass == TRUE && record > GET_HIT(vict) && (record - GET_HIT(vict) > (getEffMaxPL(vict)) * 0.025)) {
+      if (master_pass == TRUE && record > GET_HIT(vict) && (record - GET_HIT(vict) > (getMaxPL(vict)) * 0.025)) {
        if (!AFF_FLAGGED(vict, AFF_KNOCKED) && !AFF_FLAGGED(vict, AFF_SANCTUARY)) {
         act("@C$N@W is knocked out!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@WYou are knocked out!@n", TRUE, ch, 0, vict, TO_VICT);

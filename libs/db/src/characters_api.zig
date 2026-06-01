@@ -500,6 +500,18 @@ pub export fn char_admflag_set(ch: *cdb.char_data, pos: c_int, value: bool) void
     bitflags.set(&ch.admflags, pos, value);
 }
 
+pub export fn char_plrflagged(ch: *cdb.char_data, pos: c_int) bool {
+    return bitflags.get(ch.act[0..], pos);
+}
+
+pub export fn char_plrflag_toggle(ch: *cdb.char_data, pos: c_int) bool {
+    return bitflags.toggle(ch.act[0..], pos);
+}
+
+pub export fn char_plrflag_set(ch: *cdb.char_data, pos: c_int, value: bool) void {
+    bitflags.set(ch.act[0..], pos, value);
+}
+
 pub export fn char_inventory_iterate(ch: *cdb.char_data, recursive: bool, func: ?obj_api.ObjIterFn, ctx: ?*anyopaque) void {
     const callback = func orelse return;
     _ = obj_api.objContentsListIterate(ch.carrying, recursive, callback, ctx);
@@ -864,6 +876,27 @@ pub export fn char_condition_has(ch: *cdb.char_data, condition: ?[*:0]const u8) 
     return zigdata.conditions.contains(name);
 }
 
+pub export fn char_condition_id_has_tag(condition: ?[*:0]const u8, tag: ?[*:0]const u8) bool {
+    const condition_name = statName(condition) orelse return false;
+    const tag_name = statName(tag) orelse return false;
+    return lua_api.conditionHasTag(condition_name, tag_name);
+}
+
+pub export fn char_condition_has_tag(ch: *cdb.char_data, tag: ?[*:0]const u8) bool {
+    return char_condition_active_with_tag(ch, tag) != null;
+}
+
+pub export fn char_condition_active_with_tag(ch: *cdb.char_data, tag: ?[*:0]const u8) [*c]const u8 {
+    const tag_name = statName(tag) orelse return null;
+    if (ch.zigdata == null) return null;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var it = zigdata.conditions.keyIterator();
+    while (it.next()) |key| {
+        if (lua_api.conditionHasTag(key.*, tag_name)) return @ptrCast(key.*.ptr);
+    }
+    return null;
+}
+
 pub export fn char_condition_add(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) bool {
     const name = statName(condition) orelse return false;
     const definition = lua_api.conditionDefinition(name) orelse return false;
@@ -871,7 +904,7 @@ pub export fn char_condition_add(ch: *cdb.char_data, condition: ?[*:0]const u8, 
     const is_new = !zigdata.conditions.contains(name);
 
     if (is_new) {
-        const key = std.heap.page_allocator.dupe(u8, name) catch return false;
+        const key = std.heap.page_allocator.dupeZ(u8, name) catch return false;
         var instance = ConditionInstance.init(std.heap.page_allocator, name) catch {
             std.heap.page_allocator.free(key);
             return false;
@@ -891,6 +924,29 @@ pub export fn char_condition_add(ch: *cdb.char_data, condition: ?[*:0]const u8, 
     return true;
 }
 
+pub export fn char_condition_apply(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) bool {
+    const name = statName(condition) orelse return false;
+    if (lua_api.conditionDefinition(name) == null) return false;
+    if (ch.zigdata) |ptr| {
+        const zigdata: *CharacterData = @ptrCast(@alignCast(ptr));
+        var to_remove = std.array_list.Managed([:0]u8).init(std.heap.page_allocator);
+        defer {
+            for (to_remove.items) |item| std.heap.page_allocator.free(item);
+            to_remove.deinit();
+        }
+
+        var it = zigdata.conditions.keyIterator();
+        while (it.next()) |key| {
+            if (std.mem.eql(u8, key.*, name)) continue;
+            if (!lua_api.conditionsConflict(name, key.*)) continue;
+            to_remove.append(std.heap.page_allocator.dupeZ(u8, key.*) catch return false) catch return false;
+        }
+
+        for (to_remove.items) |item| _ = char_condition_remove(ch, item.ptr, "exclusive");
+    }
+    return char_condition_add(ch, condition, source_category, source_id);
+}
+
 pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u8, reason: ?[*:0]const u8) bool {
     _ = reason;
     const name = statName(condition) orelse return false;
@@ -902,6 +958,29 @@ pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u
     conditionChanged(zigdata);
     lua_api.callConditionHook(ch, name, "on_remove");
     return true;
+}
+
+pub export fn char_condition_remove_tag(ch: *cdb.char_data, tag: ?[*:0]const u8, reason: ?[*:0]const u8) c_int {
+    const tag_name = statName(tag) orelse return 0;
+    if (ch.zigdata == null) return 0;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var to_remove = std.array_list.Managed([:0]u8).init(std.heap.page_allocator);
+    defer {
+        for (to_remove.items) |item| std.heap.page_allocator.free(item);
+        to_remove.deinit();
+    }
+
+    var it = zigdata.conditions.keyIterator();
+    while (it.next()) |key| {
+        if (!lua_api.conditionHasTag(key.*, tag_name)) continue;
+        to_remove.append(std.heap.page_allocator.dupeZ(u8, key.*) catch return 0) catch return 0;
+    }
+
+    var removed: c_int = 0;
+    for (to_remove.items) |item| {
+        if (char_condition_remove(ch, item.ptr, reason)) removed += 1;
+    }
+    return removed;
 }
 
 pub export fn char_condition_update(ch: *cdb.char_data) void {
@@ -1004,6 +1083,7 @@ fn putOwnedString(instance: *ConditionInstance, key: []const u8, value: []const 
 }
 
 fn emitConditionModifiers(ch: *cdb.char_data, zigdata: *CharacterData) void {
+    lua_api.emitRaceModifiers(ch, &zigdata.modifiers, ch.race);
     var it = zigdata.conditions.iterator();
     while (it.next()) |entry| lua_api.emitConditionModifiers(ch, &zigdata.modifiers, entry.key_ptr.*);
 }

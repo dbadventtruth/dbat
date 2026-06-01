@@ -50,7 +50,7 @@ int64_t healCurHealth(char_data *ch, int64_t amt);
 int64_t harmCurHealth(char_data *ch, int64_t amt);
 
 int64_t getMaxPL(char_data *ch);
-int64_t getMaxPLTrans(char_data *ch);
+int64_t getMaxPL(char_data *ch);
 int64_t getCurPL(char_data *ch);
 int64_t getBasePL(char_data *ch);
 int64_t getEffBasePL(char_data *ch);
@@ -178,7 +178,7 @@ int64_t getCurCarriedWeight(char_data *ch);
 int64_t getAvailableCarryWeight(char_data *ch);
 
 double speednar(char_data *ch);
-int64_t getEffMaxPL(char_data *ch);
+int64_t getMaxPL(char_data *ch);
 bool isWeightedPL(char_data *ch);
 
 void apply_kaioken(char_data *ch, int times, bool announce);

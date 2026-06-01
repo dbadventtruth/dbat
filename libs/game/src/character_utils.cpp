@@ -342,7 +342,7 @@ int64_t setCurHealthPercent(char_data *ch, double amt) {
 }
 
 int64_t incCurHealthLimited(char_data *ch, int64_t amt, bool limit_max) {
-    double newhealth = ch->health + safeDiv((double)ABS(amt), (double)getEffMaxPL(ch));
+    double newhealth = ch->health + safeDiv((double)ABS(amt), (double)getMaxPL(ch));
     newhealth = fixnan(newhealth);
     if(limit_max)
         ch->health = MIN(1.0, newhealth);
@@ -359,8 +359,8 @@ int64_t incCurHealth(char_data *ch, int64_t amt) {
 int64_t decCurHealthFloored(char_data *ch, int64_t amt, int64_t floor) {
     double fl = 0.0;
     if(floor > 0)
-        fl = safeDiv((double)floor, (double)getEffMaxPL(ch));
-    double newhealth = ch->health - safeDiv((double)ABS(amt), (double)getEffMaxPL(ch));
+        fl = safeDiv((double)floor, (double)getMaxPL(ch));
+    double newhealth = ch->health - safeDiv((double)ABS(amt), (double)getMaxPL(ch));
     newhealth = fixnan(newhealth);
     ch->health = MAX(fl, newhealth);
     ch->health = clampHealth(ch->health);
@@ -385,7 +385,7 @@ int64_t incCurHealthPercent(char_data *ch, double amt) {
 int64_t decCurHealthPercentFloored(char_data *ch, double amt, int64_t floor) {
     double fl = 0.0;
     if(floor > 0)
-        fl = (double)floor / (double)getEffMaxPL(ch);
+        fl = (double)floor / (double)getMaxPL(ch);
     ch->health = MAX(fl, ch->health-ABS(amt));
     return getCurHealth(ch);
 }
@@ -410,37 +410,13 @@ int64_t harmCurHealth(char_data *ch, int64_t amt) {
     return decCurHealth(ch, amt);
 }
 
-int64_t getMaxPLTrans(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
-    int64_t total = 0;
-    if(form.flag) {
-        total = (form.bonus + getEffBasePL(ch)) * form.mult;
-    } else {
-        total = getEffBasePL(ch) * form.mult;
-    }
-    auto bonus = char_legacy_modifier(ch, APPLY_HIT, -1);
-    total += bonus;
-    return total;
-}
-
-int64_t getMaxPL(char_data *ch) {
-    int64_t total = getMaxPLTrans(ch);
-    if(GET_KAIOKEN(ch) > 0) {
-        total += (total / 10) * GET_KAIOKEN(ch);
-    }
-    if(AFF_FLAGGED(ch, AFF_METAMORPH)) {
-        total += (total * .6);
-    }
-    return total;
-}
-
 int64_t getCurPL(char_data *ch) {
     double health = clampHealth(ch->health);
     int64_t suppression = char_stat_get(ch, "suppression");
     if(suppression > 0){
-        return (int64_t)(getEffMaxPL(ch) * MIN(health, (double)suppression/100));
+        return (int64_t)(getMaxPL(ch) * MIN(health, (double)suppression/100));
     } else {
-        return (int64_t)(getEffMaxPL(ch) * health);
+        return (int64_t)(getMaxPL(ch) * health);
     }
 }
 
@@ -478,15 +454,7 @@ int64_t getCurKI(char_data *ch) {
 }
 
 int64_t getMaxKI(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
-    int64_t total = 0;
-    if(form.flag) {
-        total = (form.bonus + getEffBaseKI(ch)) * form.mult;
-    } else {
-        total = getEffBaseKI(ch);
-    }
-    auto bonus = char_legacy_modifier(ch, APPLY_KI, -1) + char_legacy_modifier(ch, APPLY_MANA, -1);
-    total += bonus;
+    auto total = char_der_total_get(ch, "ki");
     return total;
 }
 
@@ -601,15 +569,7 @@ int64_t getCurST(char_data *ch) {
 }
 
 int64_t getMaxST(char_data *ch) {
-    auto form = get_race(ch->race)->getCurForm(ch);
-    int64_t total = 0;
-    if(form.flag) {
-        total = (form.bonus + getEffBaseST(ch)) * form.mult;
-    } else {
-        total = getEffBaseST(ch);
-    }
-    auto bonus = char_legacy_modifier(ch, APPLY_MOVE, -1);
-    total += bonus;
+    auto total = char_der_total_get(ch, "stamina");
     return total;
 }
 
@@ -718,15 +678,8 @@ int64_t getCurLF(char_data *ch) {
     return (int64_t)(getMaxLF(ch) * clampHealth(ch->life));
 }
 
-#define GET_BLESSBONUS(ch) (AFF_FLAGGED(ch, AFF_BLESS) ? (GET_BLESSLVL(ch) >= 100 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.1 : GET_BLESSLVL(ch) >= 60 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.05 : GET_BLESSLVL(ch) >= 40 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.02 : 0) : 0) 
-#define GET_POSELF(ch)    (!IS_NPC(ch) ? is_affected(ch, AFF_SPECIAL_POSE) ? GET_SKILL(ch, SKILL_POSE) >= 100 ? 0.15 : GET_SKILL(ch, SKILL_POSE) >= 60 ? 0.1 : GET_SKILL(ch, SKILL_POSE) >= 40 ? 0.05 : 0 : 0 : 0)
-#define GET_POSEBONUS(ch) (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * GET_POSELF(ch))
-#define GET_LIFEBONUS(ch) (IS_ARLIAN(ch) ? ((GET_MAX_MANA(ch) * 0.01) * (GET_MOLT_LEVEL(ch) / 100)) + ((GET_MAX_MOVE(ch) * 0.01) * (GET_MOLT_LEVEL(ch) / 100)) : 0)
-#define GET_LIFEBONUSES(ch) (lifebonus > 0 ? (GET_LIFEBONUS(ch) + GET_BLESSBONUS(ch) + GET_POSEBONUS(ch)) * ((lifebonus + 100) * 0.01) : (GET_LIFEBONUS(ch) + GET_BLESSBONUS(ch) + GET_POSEBONUS(ch)))
-
 int64_t getMaxLF(char_data *ch) {
-    auto lifebonus = char_legacy_modifier(ch, APPLY_LIFEMAX, -1);
-    return (IS_DEMON(ch) ? (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.75) + GET_LIFEBONUSES(ch) : (IS_KONATSU(ch) ? (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.85) + GET_LIFEBONUSES(ch) : (GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5) + GET_LIFEBONUSES(ch)));
+    return char_der_total_get(ch, "lifeforce");
 }
 
 double getCurLFPercent(char_data *ch) {
@@ -1090,21 +1043,19 @@ int64_t getAvailableCarryWeight(char_data *ch) {
 
 // speednar is in utils.cpp
 
-int64_t getEffMaxPL(char_data *ch) {
-    int64_t maxpl = getMaxPL(ch);
-    if(IS_NPC(ch)) {
-        return maxpl;
-    }
-    double snar = speednar(ch);
-    return maxpl * (1.0 - snar);
+int64_t getMaxPL(char_data *ch) {
+    auto total = char_der_total_get(ch, "powerlevel");
+    return total;
 }
 
 bool isWeightedPL(char_data *ch) {
-    return getMaxPL(ch) > getEffMaxPL(ch);
+    return false;
 }
 
 void apply_kaioken(char_data *ch, int times, bool announce) {
     char_stat_set(ch, "kaioken", times);
+    char_condition_apply(ch, "kaioken", "command", "kaioken");
+    char_condition_number_set(ch, "kaioken", "level", times);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_POWERUP);
 
     if(announce) {
@@ -1119,6 +1070,7 @@ void remove_kaioken(char_data *ch, int8_t announce) {
         return;
     }
     char_stat_set(ch, "kaioken", 0);
+    char_condition_remove(ch, "kaioken", "kaioken_removed");
 
     switch(announce) {
         case 1:
@@ -1578,6 +1530,9 @@ void null_affect(struct char_data *ch, int aff_flag)
     if (af->location == APPLY_NONE && af->bitvector == aff_flag)
       affect_remove(ch, af);
   }
+  if (aff_flag == AFF_BLESS) char_condition_remove(ch, "bless", "affect_removed");
+  if (aff_flag == AFF_SPECIAL_POSE) char_condition_remove(ch, "special_pose", "affect_removed");
+  if (aff_flag == AFF_METAMORPH) char_condition_remove(ch, "dark_metamorphosis", "affect_removed");
 }
 
 void remove_affect(struct char_data *ch, int aff_flag)
@@ -1590,6 +1545,9 @@ void remove_affect(struct char_data *ch, int aff_flag)
     if (af->bitvector == aff_flag)
       affect_remove(ch, af);
   }
+  if (aff_flag == AFF_BLESS) char_condition_remove(ch, "bless", "affect_removed");
+  if (aff_flag == AFF_SPECIAL_POSE) char_condition_remove(ch, "special_pose", "affect_removed");
+  if (aff_flag == AFF_METAMORPH) char_condition_remove(ch, "dark_metamorphosis", "affect_removed");
 }
 
 void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur, int str, int con, int intel, int agl, int wis, int spd)

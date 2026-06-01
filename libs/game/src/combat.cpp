@@ -1352,13 +1352,13 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance, int are
    return;
   }
 
-  if (power > (getEffMaxPL(vict)) * 0.5) {
+  if (power > (getMaxPL(vict)) * 0.5) {
    dmg = rand_number(25, 40);
-  } else if (power > (getEffMaxPL(vict)) * 0.25) {
+  } else if (power > (getMaxPL(vict)) * 0.25) {
    dmg = rand_number(15, 24);
-  } else if (power > (getEffMaxPL(vict)) * 0.10) {
+  } else if (power > (getMaxPL(vict)) * 0.10) {
    dmg = rand_number(8, 14);
-  } else if (power > (getEffMaxPL(vict)) * 0.05) {
+  } else if (power > (getMaxPL(vict)) * 0.05) {
    dmg = rand_number(4, 7);
   } else {
    dmg = rand_number(1, 3);;
@@ -3209,7 +3209,7 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent)
 
     if (!IS_NPC(ch) && percent > 0.15) {
      double hitperc = (percent - 0.15) * 5;
-      int64_t amount = getEffMaxPL(ch) * hitperc;
+      int64_t amount = getMaxPL(ch) * hitperc;
      int64_t difference = GET_HIT(ch) - amount;
 
       decCurHealthFloored(ch, amount, 1);
@@ -4042,7 +4042,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
  if (IS_HUMANOID(vict) && !IS_NPC(ch) && IS_NPC(vict) && (!is_sparring(ch) || !is_sparring(vict))) {
   remember(vict, ch);
  }
-  if (IS_NPC(vict) && GET_HIT(vict) > ((getEffMaxPL(vict))) / 4) {
+  if (IS_NPC(vict) && GET_HIT(vict) > ((getMaxPL(vict))) / 4) {
     LASTHIT(vict) = GET_IDNUM(ch);
   }
   if (AFF_FLAGGED(vict, AFF_SLEEP) && rand_number(1, 2) == 2) {
@@ -4105,11 +4105,11 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
   }
  
 
-  if (CARRYING(vict) && dmg > (((getEffMaxPL(vict))) * 0.01) && rand_number(1, 10) >= 8) {
+  if (CARRYING(vict) && dmg > (((getMaxPL(vict))) * 0.01) && rand_number(1, 10) >= 8) {
    carry_drop(vict, 2);
   }
 
-  if (GET_POS(vict) == POS_SITTING && IS_NPC(vict) && getCurHealth(vict) >= ((getEffMaxPL(vict))) * .98) {
+  if (GET_POS(vict) == POS_SITTING && IS_NPC(vict) && getCurHealth(vict) >= ((getMaxPL(vict))) * .98) {
     do_stand(vict, 0, 0, 0);
   }
  int suppresso = FALSE;
@@ -4260,7 +4260,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
       act("@R$N@w self destructs with a mild explosion!@n", TRUE, ch, 0, vict, TO_ROOM);
    }
    if (dmg > 1) {
-     if (type <= 0 && GET_HIT(ch) >= getEffMaxPL(ch) * 0.5) {
+     if (type <= 0 && GET_HIT(ch) >= getMaxPL(ch) * 0.5) {
      int64_t raise = (GET_MAX_MANA(ch) * 0.005) + 1;
      incCurKI(ch, raise);
     }
@@ -4323,7 +4323,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
     set_fighting(vict, ch);
    }
    if (dmg > 1 && suppresso == FALSE) {
-     if (type == 0 && GET_HIT(ch) >= getEffMaxPL(ch) * 0.5) {
+     if (type == 0 && GET_HIT(ch) >= getMaxPL(ch) * 0.5) {
      int64_t raise = (GET_MAX_MANA(ch) * 0.005) + 1;
      incCurKI(ch, raise);
     }

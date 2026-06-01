@@ -90,6 +90,9 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "admin_flagged", luaCharacterAdminFlagged);
     addMethod(lua, "admin_flag_set", luaCharacterAdminFlagSet);
     addMethod(lua, "admin_flag_toggle", luaCharacterAdminFlagToggle);
+    addMethod(lua, "player_flagged", luaCharacterPlayerFlagged);
+    addMethod(lua, "player_flag_set", luaCharacterPlayerFlagSet);
+    addMethod(lua, "player_flag_toggle", luaCharacterPlayerFlagToggle);
     addMethod(lua, "stat_get", luaCharacterStatGet);
     addMethod(lua, "stat_set", luaCharacterStatSet);
     addMethod(lua, "stat_mod", luaCharacterStatMod);
@@ -113,8 +116,12 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "skill_perf_set", luaCharacterSkillPerfSet);
     addMethod(lua, "skill_perf_mod", luaCharacterSkillPerfMod);
     addMethod(lua, "condition_has", luaCharacterConditionHas);
+    addMethod(lua, "condition_has_tag", luaCharacterConditionHasTag);
+    addMethod(lua, "condition_active_with_tag", luaCharacterConditionActiveWithTag);
     addMethod(lua, "condition_add", luaCharacterConditionAdd);
+    addMethod(lua, "condition_apply", luaCharacterConditionApply);
     addMethod(lua, "condition_remove", luaCharacterConditionRemove);
+    addMethod(lua, "condition_remove_tag", luaCharacterConditionRemoveTag);
     addMethod(lua, "condition", luaCharacterCondition);
     addMethod(lua, "condition_number_get", luaCharacterConditionNumberGet);
     addMethod(lua, "condition_number_set", luaCharacterConditionNumberSet);
@@ -448,6 +455,21 @@ fn luaCharacterAdminFlagToggle(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharacterPlayerFlagged(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_plrflagged(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "player flag")));
+    return 1;
+}
+
+fn luaCharacterPlayerFlagSet(lua: *Lua) i32 {
+    cdb.char_plrflag_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "player flag"), boolean(lua, 3));
+    return 0;
+}
+
+fn luaCharacterPlayerFlagToggle(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_plrflag_toggle(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "player flag")));
+    return 1;
+}
+
 fn luaCharacterStatGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.char_stat_get(checkCharacter(lua), string(lua, 2)));
     return 1;
@@ -558,6 +580,22 @@ fn luaCharacterConditionHas(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharacterConditionHasTag(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_condition_has_tag(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterConditionActiveWithTag(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const condition = cdb.char_condition_active_with_tag(ch, string(lua, 2));
+    if (condition == null) {
+        lua.pushNil();
+        return 1;
+    }
+    pushCondition(lua, cdb.char_id_get(ch), std.mem.span(condition));
+    return 1;
+}
+
 fn luaCharacterConditionAdd(lua: *Lua) i32 {
     const source_category = if (lua.isNoneOrNil(3)) "lua" else string(lua, 3);
     const source_id = if (lua.isNoneOrNil(4)) "unknown" else string(lua, 4);
@@ -565,9 +603,22 @@ fn luaCharacterConditionAdd(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharacterConditionApply(lua: *Lua) i32 {
+    const source_category = if (lua.isNoneOrNil(3)) "lua" else string(lua, 3);
+    const source_id = if (lua.isNoneOrNil(4)) "unknown" else string(lua, 4);
+    lua.pushBoolean(cdb.char_condition_apply(checkCharacter(lua), string(lua, 2), source_category, source_id));
+    return 1;
+}
+
 fn luaCharacterConditionRemove(lua: *Lua) i32 {
     const reason = if (lua.isNoneOrNil(3)) "removed" else string(lua, 3);
     lua.pushBoolean(cdb.char_condition_remove(checkCharacter(lua), string(lua, 2), reason));
+    return 1;
+}
+
+fn luaCharacterConditionRemoveTag(lua: *Lua) i32 {
+    const reason = if (lua.isNoneOrNil(3)) "removed" else string(lua, 3);
+    lua.pushInteger(cdb.char_condition_remove_tag(checkCharacter(lua), string(lua, 2), reason));
     return 1;
 }
 

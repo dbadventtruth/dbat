@@ -117,7 +117,7 @@ extern "C" {
 #define IS_GRAP(ch)     (GRAPPLING(ch) || GRAPPLED(ch))
 #define GET_SPEEDINT(ch) (IS_BIO(ch) ? ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1200) / 1200) + (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100)) : ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1000) / 1000) + (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100)))
 #define IS_INFERIOR(ch) (IS_KONATSU(ch) || IS_DEMON(ch))
-#define IS_WEIGHTED(ch) (getEffMaxPL(ch) < GET_MAX_HIT(ch))
+#define IS_WEIGHTED(ch) (getMaxPL(ch) < GET_MAX_HIT(ch))
 
 
 #define GET_EXP(ch)	  char_stat_get((ch), "experience")
@@ -135,7 +135,7 @@ extern "C" {
 #define GET_CHARGETO(ch)  ((ch)->chargeto)
 #define GET_ARMOR(ch)     char_der_total_get((ch), "armor")
 #define GET_HIT(ch)	  getCurPL(ch)
-#define GET_MAX_HIT(ch)	  getEffMaxPL(ch)
+#define GET_MAX_HIT(ch)	  getMaxPL(ch)
 #define GET_MAX_MOVE(ch)  getMaxST(ch)
 #define GET_MAX_MANA(ch)  getMaxKI(ch)
 #define GET_KI(ch)	  ((ch)->ki)
