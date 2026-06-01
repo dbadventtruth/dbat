@@ -15,3 +15,4 @@
 #include "help.h"
 #include "config.h"
 #include "extradesc.h"
+#include "weather.h"

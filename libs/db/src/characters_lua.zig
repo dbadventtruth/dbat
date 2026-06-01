@@ -120,6 +120,8 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "condition_active_with_tag", luaCharacterConditionActiveWithTag);
     addMethod(lua, "condition_add", luaCharacterConditionAdd);
     addMethod(lua, "condition_apply", luaCharacterConditionApply);
+    addMethod(lua, "condition_apply_variables", luaCharacterConditionApplyVariables);
+    addMethod(lua, "condition_apply_number", luaCharacterConditionApplyNumber);
     addMethod(lua, "condition_remove", luaCharacterConditionRemove);
     addMethod(lua, "condition_remove_tag", luaCharacterConditionRemoveTag);
     addMethod(lua, "condition", luaCharacterCondition);
@@ -610,10 +612,72 @@ fn luaCharacterConditionApply(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharacterConditionApplyVariables(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const condition = string(lua, 2);
+    var numbers = collectNumberArgs(lua, 3);
+    defer numbers.deinit();
+    var strings = collectStringArgs(lua, 4);
+    defer strings.deinit();
+    const source_category = if (lua.isNoneOrNil(5)) "lua" else string(lua, 5);
+    const source_id = if (lua.isNoneOrNil(6)) "unknown" else string(lua, 6);
+    lua.pushBoolean(cdb.char_condition_apply_with_variables(ch, condition, source_category, source_id, numbers.items.ptr, numbers.items.len, strings.items.ptr, strings.items.len));
+    return 1;
+}
+
+fn luaCharacterConditionApplyNumber(lua: *Lua) i32 {
+    const source_category = if (lua.isNoneOrNil(5)) "lua" else string(lua, 5);
+    const source_id = if (lua.isNoneOrNil(6)) "unknown" else string(lua, 6);
+    lua.pushBoolean(cdb.char_condition_apply_with_number(checkCharacter(lua), string(lua, 2), source_category, source_id, string(lua, 3), intCastOrError(lua, i64, integer(lua, 4), "condition number")));
+    return 1;
+}
+
 fn luaCharacterConditionRemove(lua: *Lua) i32 {
     const reason = if (lua.isNoneOrNil(3)) "removed" else string(lua, 3);
     lua.pushBoolean(cdb.char_condition_remove(checkCharacter(lua), string(lua, 2), reason));
     return 1;
+}
+
+fn collectNumberArgs(lua: *Lua, index: i32) std.array_list.Managed(cdb.condition_number_arg) {
+    var result = std.array_list.Managed(cdb.condition_number_arg).init(std.heap.page_allocator);
+    if (lua.isNoneOrNil(index)) return result;
+    if (!lua.isTable(index)) lua.typeError(index, "table");
+
+    lua.pushNil();
+    while (lua.next(index)) {
+        const key = lua.toString(-2) catch {
+            lua.pop(1);
+            continue;
+        };
+        const value = lua.toInteger(-1) catch {
+            lua.pop(1);
+            continue;
+        };
+        result.append(.{ .key = @ptrCast(key.ptr), .value = intCastOrError(lua, i64, value, "condition number") }) catch lua.raiseErrorStr("out of memory", .{});
+        lua.pop(1);
+    }
+    return result;
+}
+
+fn collectStringArgs(lua: *Lua, index: i32) std.array_list.Managed(cdb.condition_string_arg) {
+    var result = std.array_list.Managed(cdb.condition_string_arg).init(std.heap.page_allocator);
+    if (lua.isNoneOrNil(index)) return result;
+    if (!lua.isTable(index)) lua.typeError(index, "table");
+
+    lua.pushNil();
+    while (lua.next(index)) {
+        const key = lua.toString(-2) catch {
+            lua.pop(1);
+            continue;
+        };
+        const value = lua.toString(-1) catch {
+            lua.pop(1);
+            continue;
+        };
+        result.append(.{ .key = @ptrCast(key.ptr), .value = @ptrCast(value.ptr) }) catch lua.raiseErrorStr("out of memory", .{});
+        lua.pop(1);
+    }
+    return result;
 }
 
 fn luaCharacterConditionRemoveTag(lua: *Lua) i32 {

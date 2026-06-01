@@ -600,6 +600,9 @@ fn openDbat(lua: *Lua) i32 {
     lua.pushFunction(zlua.wrap(luaLog));
     lua.setField(-2, "log");
 
+    lua.pushFunction(zlua.wrap(luaTime));
+    lua.setField(-2, "time");
+
     lua.pushFunction(zlua.wrap(luaConditionHasTag));
     lua.setField(-2, "condition_has_tag");
 
@@ -610,6 +613,19 @@ fn luaConditionHasTag(lua: *Lua) i32 {
     const condition = lua.toString(1) catch "";
     const tag = lua.toString(2) catch "";
     lua.pushBoolean(conditionHasTag(condition, tag));
+    return 1;
+}
+
+fn luaTime(lua: *Lua) i32 {
+    lua.newTable();
+    lua.pushInteger(cdb.time_info.hours);
+    lua.setField(-2, "hours");
+    lua.pushInteger(cdb.time_info.day);
+    lua.setField(-2, "day");
+    lua.pushInteger(cdb.time_info.month);
+    lua.setField(-2, "month");
+    lua.pushInteger(cdb.time_info.year);
+    lua.setField(-2, "year");
     return 1;
 }
 

@@ -10,6 +10,16 @@ const TransformData = struct {
     // this is a placeholder for now.
 };
 
+const ConditionNumberArg = extern struct {
+    key: ?[*:0]const u8,
+    value: i64,
+};
+
+const ConditionStringArg = extern struct {
+    key: ?[*:0]const u8,
+    value: ?[*:0]const u8,
+};
+
 const DerivedData = struct {
     value: i64,
 };
@@ -898,6 +908,10 @@ pub export fn char_condition_active_with_tag(ch: *cdb.char_data, tag: ?[*:0]cons
 }
 
 pub export fn char_condition_add(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) bool {
+    return char_condition_add_with_variables(ch, condition, source_category, source_id, null, 0, null, 0);
+}
+
+pub export fn char_condition_add_with_variables(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, numbers: ?[*]const ConditionNumberArg, number_count: usize, strings: ?[*]const ConditionStringArg, string_count: usize) bool {
     const name = statName(condition) orelse return false;
     const definition = lua_api.conditionDefinition(name) orelse return false;
     const zigdata = char_ensure_zigdata(ch) orelse return false;
@@ -918,13 +932,20 @@ pub export fn char_condition_add(ch: *cdb.char_data, condition: ?[*:0]const u8, 
         zigdata.conditions.getPtr(name).?.stacks += 1;
     }
 
-    if (zigdata.conditions.getPtr(name)) |instance| addConditionSource(instance, source_category, source_id) catch {};
+    if (zigdata.conditions.getPtr(name)) |instance| {
+        addConditionVariables(instance, numbers, number_count, strings, string_count) catch return false;
+        addConditionSource(instance, source_category, source_id) catch {};
+    }
     conditionChanged(zigdata);
     lua_api.callConditionHook(ch, name, "on_apply");
     return true;
 }
 
 pub export fn char_condition_apply(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) bool {
+    return char_condition_apply_with_variables(ch, condition, source_category, source_id, null, 0, null, 0);
+}
+
+pub export fn char_condition_apply_with_variables(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, numbers: ?[*]const ConditionNumberArg, number_count: usize, strings: ?[*]const ConditionStringArg, string_count: usize) bool {
     const name = statName(condition) orelse return false;
     if (lua_api.conditionDefinition(name) == null) return false;
     if (ch.zigdata) |ptr| {
@@ -944,7 +965,17 @@ pub export fn char_condition_apply(ch: *cdb.char_data, condition: ?[*:0]const u8
 
         for (to_remove.items) |item| _ = char_condition_remove(ch, item.ptr, "exclusive");
     }
-    return char_condition_add(ch, condition, source_category, source_id);
+    return char_condition_add_with_variables(ch, condition, source_category, source_id, numbers, number_count, strings, string_count);
+}
+
+pub export fn char_condition_apply_with_number(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, key: ?[*:0]const u8, value: i64) bool {
+    const args = [_]ConditionNumberArg{.{ .key = key, .value = value }};
+    return char_condition_apply_with_variables(ch, condition, source_category, source_id, &args, args.len, null, 0);
+}
+
+pub export fn char_condition_apply_with_numbers2(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, key1: ?[*:0]const u8, value1: i64, key2: ?[*:0]const u8, value2: i64) bool {
+    const args = [_]ConditionNumberArg{ .{ .key = key1, .value = value1 }, .{ .key = key2, .value = value2 } };
+    return char_condition_apply_with_variables(ch, condition, source_category, source_id, &args, args.len, null, 0);
 }
 
 pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u8, reason: ?[*:0]const u8) bool {
@@ -1063,6 +1094,22 @@ fn addConditionSource(instance: *ConditionInstance, source_category: ?[*:0]const
         .category = try std.heap.page_allocator.dupe(u8, category),
         .id = try std.heap.page_allocator.dupe(u8, id),
     });
+}
+
+fn addConditionVariables(instance: *ConditionInstance, numbers: ?[*]const ConditionNumberArg, number_count: usize, strings: ?[*]const ConditionStringArg, string_count: usize) !void {
+    if (numbers) |items| {
+        for (items[0..number_count]) |item| {
+            const key = statName(item.key) orelse continue;
+            try putOwnedNumber(instance, key, item.value);
+        }
+    }
+    if (strings) |items| {
+        for (items[0..string_count]) |item| {
+            const key = statName(item.key) orelse continue;
+            const value = statName(item.value) orelse continue;
+            try putOwnedString(instance, key, value);
+        }
+    }
 }
 
 fn putOwnedNumber(instance: *ConditionInstance, key: []const u8, value: i64) !void {

@@ -498,12 +498,26 @@ int64_t char_skill_perf_get(struct char_data *ch, const char* skill);
 int64_t char_skill_perf_set(struct char_data *ch, const char* skill, int64_t value);
 int64_t char_skill_perf_mod(struct char_data *ch, const char* skill, int64_t mod);
 
+struct condition_number_arg {
+    const char *key;
+    int64_t value;
+};
+
+struct condition_string_arg {
+    const char *key;
+    const char *value;
+};
+
 bool char_condition_has(struct char_data *ch, const char *condition);
 bool char_condition_id_has_tag(const char *condition, const char *tag);
 bool char_condition_has_tag(struct char_data *ch, const char *tag);
 const char *char_condition_active_with_tag(struct char_data *ch, const char *tag);
 bool char_condition_add(struct char_data *ch, const char *condition, const char *source_category, const char *source_id);
+bool char_condition_add_with_variables(struct char_data *ch, const char *condition, const char *source_category, const char *source_id, const struct condition_number_arg *numbers, size_t number_count, const struct condition_string_arg *strings, size_t string_count);
 bool char_condition_apply(struct char_data *ch, const char *condition, const char *source_category, const char *source_id);
+bool char_condition_apply_with_variables(struct char_data *ch, const char *condition, const char *source_category, const char *source_id, const struct condition_number_arg *numbers, size_t number_count, const struct condition_string_arg *strings, size_t string_count);
+bool char_condition_apply_with_number(struct char_data *ch, const char *condition, const char *source_category, const char *source_id, const char *key, int64_t value);
+bool char_condition_apply_with_numbers2(struct char_data *ch, const char *condition, const char *source_category, const char *source_id, const char *key1, int64_t value1, const char *key2, int64_t value2);
 bool char_condition_remove(struct char_data *ch, const char *condition, const char *reason);
 int char_condition_remove_tag(struct char_data *ch, const char *tag, const char *reason);
 void char_condition_update(struct char_data *ch);

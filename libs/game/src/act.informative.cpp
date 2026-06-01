@@ -5868,7 +5868,7 @@ ACMD(do_status)
         if (PLR_FLAGGED(ch, PLR_NOGROW)) {
             send_to_char(ch, "Your tail is no longer regrowing!\r\n");
         }
-        if (is_affected(ch, AFF_SPECIAL_POSE)) {
+        if (char_condition_has(ch, "special_pose")) {
             send_to_char(ch, "You are feeling confident from your pose earlier.\r\n");
         }
         if (is_affected(ch, AFF_HYDROZAP)) {

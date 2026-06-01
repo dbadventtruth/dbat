@@ -2444,7 +2444,7 @@ ACMD(do_pose)
   return;
  }
 
- if (is_affected(ch, AFF_SPECIAL_POSE)) {
+ if (char_condition_has(ch, "special_pose")) {
   send_to_char(ch, "You are already feeling good and confident from a previous pose.\r\n");
   return;
  }
@@ -2461,8 +2461,8 @@ ACMD(do_pose)
    send_to_char(ch, "You can't handle having your strength increased beyond 70.\r\n");
    return;
   }
-  if (char_stat_get(ch, "agility") + 8 > 70 && GET_BONUS(ch, BONUS_CLUMSY) > 0) {
-   send_to_char(ch, "You can't handle having your agility increased beyond 70.\r\n");
+  if (char_stat_get(ch, "wisdom") + 8 > 70 && GET_BONUS(ch, BONUS_FOOLISH) > 0) {
+   send_to_char(ch, "You can't handle having your wisdom increased beyond 70.\r\n");
    return;
   }
 
@@ -2494,11 +2494,10 @@ ACMD(do_pose)
    act("@C$n@W drops down to one knee while angling $s arms up to either side and slanting $s hands down like wings!@n", TRUE, ch, 0, 0, TO_ROOM);  
    break;
   }
-  send_to_char(ch, "@WYou feel your confidence increase! @G+8 Str @Wand@G +8 Agl!@n\r\n");
-  assign_affect(ch, AFF_SPECIAL_POSE, SKILL_POSE, -1, 8, 0, 0, 8, 0, 0);
+  send_to_char(ch, "@WYou feel your confidence increase! @G+8 Str @Wand@G +8 Wis!@n\r\n");
+  int64_t before = (getMaxLF(ch));
   char_condition_apply(ch, "special_pose", "affect", "special_pose");
   save_char(ch);
-  int64_t before = (getMaxLF(ch));
   incCurLF(ch, (getMaxLF(ch)) - before);
      decCurST(ch, getMaxST(ch) / 40);
   improve_skill(ch, SKILL_POSE, 0);

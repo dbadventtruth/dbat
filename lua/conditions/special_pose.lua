@@ -12,9 +12,13 @@ return {
     persistent = false,
     modifiers = function(ch)
         local bonus = pose_bonus(ch)
-        if bonus <= 0 then return {} end
-        return {
-            { target = { "derived", "lifeforce" }, kind = "percent", value = bonus, label = "Special Pose" },
+        local modifiers = {
+            { target = { "derived", "strength" }, kind = "flat", value = 8, label = "Special Pose" },
+            { target = { "derived", "wisdom" }, kind = "flat", value = 8, label = "Special Pose" },
         }
+        if bonus > 0 then
+            modifiers[#modifiers + 1] = { target = { "derived", "lifeforce" }, kind = "percent", value = bonus, label = "Special Pose" }
+        end
+        return modifiers
     end,
 }

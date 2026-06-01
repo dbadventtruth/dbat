@@ -409,9 +409,9 @@ static int64_t mana_gain(struct char_data *ch)
   {
     gain *= 20;
   }
-  if (is_affected(ch, AFF_SPECIAL_POSE) && axion_dice(0) > GET_SKILL(ch, SKILL_POSE))
+  if (char_condition_has(ch, "special_pose") && axion_dice(0) > GET_SKILL(ch, SKILL_POSE))
   {
-    remove_affect(ch, AFF_SPECIAL_POSE);
+    char_condition_remove(ch, "special_pose", "pose_faded");
     send_to_char(ch, "You feel slightly less confident now.\r\n");
     save_char(ch);
   }

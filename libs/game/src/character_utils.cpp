@@ -1054,8 +1054,7 @@ bool isWeightedPL(char_data *ch) {
 
 void apply_kaioken(char_data *ch, int times, bool announce) {
     char_stat_set(ch, "kaioken", times);
-    char_condition_apply(ch, "kaioken", "command", "kaioken");
-    char_condition_number_set(ch, "kaioken", "level", times);
+    char_condition_apply_with_number(ch, "kaioken", "command", "kaioken", "level", times);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_POWERUP);
 
     if(announce) {
