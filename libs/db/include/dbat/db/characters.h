@@ -462,6 +462,7 @@ struct obj_data *char_equipment_get(struct char_data *ch, size_t pos);
 
 void char_send_text(struct char_data *ch, const char *text);
 void char_send_textf(struct char_data *ch, const char *format, ...);
+bool char_cmd_execute(struct char_data *ch, const char *command, const char *arguments);
 
 // Character API stuff that makes use of the new Lua API.
 void char_zig_free(struct char_data *ch);
@@ -530,6 +531,17 @@ int64_t char_condition_number_set(struct char_data *ch, const char *condition, c
 int64_t char_condition_number_mod(struct char_data *ch, const char *condition, const char *key, int64_t mod);
 const char *char_condition_string_get(struct char_data *ch, const char *condition, const char *key);
 bool char_condition_string_set(struct char_data *ch, const char *condition, const char *key, const char *value);
+
+bool char_transform_has(struct char_data *ch, const char *transform);
+bool char_transform_add(struct char_data *ch, const char *transform);
+bool char_transform_remove(struct char_data *ch, const char *transform);
+bool char_transform_unlocked(struct char_data *ch, const char *transform);
+bool char_transform_unlock(struct char_data *ch, const char *transform, const char *source);
+int64_t char_transform_number_get(struct char_data *ch, const char *transform, const char *key);
+int64_t char_transform_number_set(struct char_data *ch, const char *transform, const char *key, int64_t value);
+int64_t char_transform_number_mod(struct char_data *ch, const char *transform, const char *key, int64_t mod);
+const char *char_transform_string_get(struct char_data *ch, const char *transform, const char *key);
+bool char_transform_string_set(struct char_data *ch, const char *transform, const char *key, const char *value);
 
 // Below this is globals and database functions
 extern struct char_data *character_list;

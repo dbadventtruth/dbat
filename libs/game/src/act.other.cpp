@@ -7590,6 +7590,9 @@ ACMD(do_summon)
 ACMD(do_transform)
 {
 
+  char_cmd_execute(ch, "transform", argument);
+  return;
+
 	char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
 	char buf3[MAX_INPUT_LENGTH];
 

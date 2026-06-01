@@ -46,6 +46,7 @@ comptime {
     forceApiExports(guilds);
     forceApiExports(zones);
     forceApiExports(zones_api);
+    forceApiExports(lua_api);
     forceApiExports(json_api);
     forceApiExports(dgscripts);
     std.testing.refAllDecls(flags_json);

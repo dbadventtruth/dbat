@@ -187,6 +187,7 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
     if (stats.object.count() > 0) try jsonx.put(&object, allocator, "stats", stats);
     if (meters.object.count() > 0) try jsonx.put(&object, allocator, "meters", meters);
     try jsonx.putNonEmpty(&object, allocator, "conditions_v2", try serializeConditions(allocator, ch));
+    try jsonx.putNonEmpty(&object, allocator, "transformations_v2", try serializeTransformations(allocator, ch));
 
     return object;
 }
@@ -292,6 +293,7 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (jsonx.field(value, "affected_by")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, affectedFlagSet);
         if (jsonx.field(value, "meters")) |meters| try deserializeMeters(ch, meters);
         if (jsonx.field(value, "conditions_v2")) |conditions| try deserializeConditions(ch, conditions);
+        if (jsonx.field(value, "transformations_v2")) |transformations| try deserializeTransformations(ch, transformations);
     }
 
     if (options.mode == .npc) {
@@ -664,6 +666,73 @@ fn deserializeConditionStrings(ch: *cdb.char_data, id: []const u8, strings: Json
         const value_z = try std.heap.page_allocator.dupeZ(u8, entry.value_ptr.string);
         defer std.heap.page_allocator.free(value_z);
         _ = cdb.char_condition_string_set(ch, id_z.ptr, key_z.ptr, value_z.ptr);
+    }
+}
+
+fn serializeTransformations(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
+    var object = jsonx.newObject(allocator);
+    if (ch.zigdata == null) return object;
+    const data: *characters_api.CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var it = data.transforms.iterator();
+    while (it.next()) |entry| try jsonx.put(&object, allocator, entry.key_ptr.*, try serializeTransformation(allocator, entry.value_ptr));
+    return object;
+}
+
+fn serializeTransformation(allocator: std.mem.Allocator, transform: *characters_api.TransformData) !JsonValue {
+    var object = jsonx.newObject(allocator);
+
+    var numbers = jsonx.newObject(allocator);
+    var number_it = transform.numbers.iterator();
+    while (number_it.next()) |entry| try jsonx.putInt(&numbers, allocator, entry.key_ptr.*, entry.value_ptr.*);
+    if (numbers.object.count() > 0) try jsonx.put(&object, allocator, "numbers", numbers);
+
+    var strings = jsonx.newObject(allocator);
+    var string_it = transform.strings.iterator();
+    while (string_it.next()) |entry| try jsonx.putSlice(&strings, allocator, entry.key_ptr.*, entry.value_ptr.*);
+    if (strings.object.count() > 0) try jsonx.put(&object, allocator, "strings", strings);
+    return object;
+}
+
+fn deserializeTransformations(ch: *cdb.char_data, transformations: JsonValue) !void {
+    if (transformations != .object) return error.ExpectedObject;
+    var it = transformations.object.iterator();
+    while (it.next()) |entry| {
+        const id = entry.key_ptr.*;
+        const item = entry.value_ptr.*;
+        if (item != .object) return error.ExpectedObject;
+        const id_z = try std.heap.page_allocator.dupeZ(u8, id);
+        defer std.heap.page_allocator.free(id_z);
+        _ = cdb.char_transform_add(ch, id_z.ptr);
+        if (jsonx.field(item, "numbers")) |numbers| try deserializeTransformationNumbers(ch, id, numbers);
+        if (jsonx.field(item, "strings")) |strings| try deserializeTransformationStrings(ch, id, strings);
+    }
+}
+
+fn deserializeTransformationNumbers(ch: *cdb.char_data, id: []const u8, numbers: JsonValue) !void {
+    if (numbers != .object) return error.ExpectedObject;
+    const id_z = try std.heap.page_allocator.dupeZ(u8, id);
+    defer std.heap.page_allocator.free(id_z);
+    var it = numbers.object.iterator();
+    while (it.next()) |entry| {
+        if (entry.value_ptr.* != .integer) return error.ExpectedInteger;
+        const key_z = try std.heap.page_allocator.dupeZ(u8, entry.key_ptr.*);
+        defer std.heap.page_allocator.free(key_z);
+        _ = cdb.char_transform_number_set(ch, id_z.ptr, key_z.ptr, entry.value_ptr.integer);
+    }
+}
+
+fn deserializeTransformationStrings(ch: *cdb.char_data, id: []const u8, strings: JsonValue) !void {
+    if (strings != .object) return error.ExpectedObject;
+    const id_z = try std.heap.page_allocator.dupeZ(u8, id);
+    defer std.heap.page_allocator.free(id_z);
+    var it = strings.object.iterator();
+    while (it.next()) |entry| {
+        if (entry.value_ptr.* != .string) return error.ExpectedString;
+        const key_z = try std.heap.page_allocator.dupeZ(u8, entry.key_ptr.*);
+        defer std.heap.page_allocator.free(key_z);
+        const value_z = try std.heap.page_allocator.dupeZ(u8, entry.value_ptr.string);
+        defer std.heap.page_allocator.free(value_z);
+        _ = cdb.char_transform_string_set(ch, id_z.ptr, key_z.ptr, value_z.ptr);
     }
 }
 

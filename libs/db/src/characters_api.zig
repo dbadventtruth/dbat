@@ -6,8 +6,31 @@ const obj_api = @import("objects_api.zig");
 const lua_api = @import("lua_api.zig");
 const modifiers_api = @import("modifiers_api.zig");
 
-const TransformData = struct {
-    // this is a placeholder for now.
+pub const TransformData = struct {
+    id: []const u8,
+    numbers: std.StringHashMap(i64),
+    strings: std.StringHashMap([]const u8),
+
+    pub fn init(alloc: std.mem.Allocator, id: []const u8) !TransformData {
+        return .{
+            .id = try alloc.dupe(u8, id),
+            .numbers = std.StringHashMap(i64).init(alloc),
+            .strings = std.StringHashMap([]const u8).init(alloc),
+        };
+    }
+
+    pub fn deinit(self: *TransformData, alloc: std.mem.Allocator) void {
+        alloc.free(self.id);
+        var number_keys = self.numbers.keyIterator();
+        while (number_keys.next()) |key| alloc.free(key.*);
+        self.numbers.deinit();
+        var string_it = self.strings.iterator();
+        while (string_it.next()) |entry| {
+            alloc.free(entry.key_ptr.*);
+            alloc.free(entry.value_ptr.*);
+        }
+        self.strings.deinit();
+    }
 };
 
 const ConditionNumberArg = extern struct {
@@ -219,6 +242,11 @@ pub const CharacterData = struct {
 
     pub fn deinit(self: *CharacterData) void {
         self.modifiers.deinit();
+        var transforms = self.transforms.iterator();
+        while (transforms.next()) |entry| {
+            std.heap.page_allocator.free(entry.key_ptr.*);
+            entry.value_ptr.deinit(std.heap.page_allocator);
+        }
         self.transforms.deinit();
         var meters = self.meters.keyIterator();
         while (meters.next()) |key| std.heap.page_allocator.free(key.*);
@@ -1080,11 +1108,102 @@ pub export fn char_condition_string_set(ch: *cdb.char_data, condition: ?[*:0]con
     return true;
 }
 
+pub export fn char_transform_has(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
+    const name = statName(transform) orelse return false;
+    if (ch.zigdata == null) return false;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    return zigdata.transforms.contains(name);
+}
+
+pub export fn char_transform_add(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
+    const name = statName(transform) orelse return false;
+    const zigdata = char_ensure_zigdata(ch) orelse return false;
+    if (zigdata.transforms.contains(name)) return true;
+
+    const key = std.heap.page_allocator.dupeZ(u8, name) catch return false;
+    var data = TransformData.init(std.heap.page_allocator, name) catch {
+        std.heap.page_allocator.free(key);
+        return false;
+    };
+    zigdata.transforms.put(key, data) catch {
+        data.deinit(std.heap.page_allocator);
+        std.heap.page_allocator.free(key);
+        return false;
+    };
+    return true;
+}
+
+pub export fn char_transform_remove(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
+    const name = statName(transform) orelse return false;
+    if (ch.zigdata == null) return false;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var removed = zigdata.transforms.fetchRemove(name) orelse return false;
+    std.heap.page_allocator.free(removed.key);
+    removed.value.deinit(std.heap.page_allocator);
+    return true;
+}
+
+pub export fn char_transform_unlocked(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
+    return char_transform_number_get(ch, transform, "unlocked") != 0;
+}
+
+pub export fn char_transform_unlock(ch: *cdb.char_data, transform: ?[*:0]const u8, source: ?[*:0]const u8) bool {
+    _ = statName(transform) orelse return false;
+    if (!char_transform_add(ch, transform)) return false;
+    _ = char_transform_number_set(ch, transform, "unlocked", 1);
+    if (statName(source)) |source_text| {
+        if (source_text.len > 0) _ = char_transform_string_set(ch, transform, "unlock_source", source);
+    }
+    return true;
+}
+
+pub export fn char_transform_number_get(ch: *cdb.char_data, transform: ?[*:0]const u8, key: ?[*:0]const u8) i64 {
+    const data = transformGet(ch, transform) orelse return 0;
+    const name = statName(key) orelse return 0;
+    return data.numbers.get(name) orelse 0;
+}
+
+pub export fn char_transform_number_set(ch: *cdb.char_data, transform: ?[*:0]const u8, key: ?[*:0]const u8, value: i64) i64 {
+    if (!char_transform_add(ch, transform)) return 0;
+    const data = transformGet(ch, transform) orelse return 0;
+    const name = statName(key) orelse return 0;
+    putOwnedTransformNumber(data, name, value) catch return 0;
+    return value;
+}
+
+pub export fn char_transform_number_mod(ch: *cdb.char_data, transform: ?[*:0]const u8, key: ?[*:0]const u8, mod: i64) i64 {
+    const value = char_transform_number_get(ch, transform, key) + mod;
+    return char_transform_number_set(ch, transform, key, value);
+}
+
+pub export fn char_transform_string_get(ch: *cdb.char_data, transform: ?[*:0]const u8, key: ?[*:0]const u8) [*c]const u8 {
+    const data = transformGet(ch, transform) orelse return null;
+    const name = statName(key) orelse return null;
+    const value = data.strings.get(name) orelse return null;
+    return @ptrCast(value.ptr);
+}
+
+pub export fn char_transform_string_set(ch: *cdb.char_data, transform: ?[*:0]const u8, key: ?[*:0]const u8, value: ?[*:0]const u8) bool {
+    if (!char_transform_add(ch, transform)) return false;
+    const data = transformGet(ch, transform) orelse return false;
+    const name = statName(key) orelse return false;
+    const text = statName(value) orelse return false;
+    putOwnedTransformString(data, name, text) catch return false;
+    return true;
+}
+
 fn conditionGet(ch: *cdb.char_data, condition: ?[*:0]const u8) ?*ConditionInstance {
     const name = statName(condition) orelse return null;
     if (ch.zigdata == null) return null;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     return zigdata.conditions.getPtr(name);
+}
+
+fn transformGet(ch: *cdb.char_data, transform: ?[*:0]const u8) ?*TransformData {
+    const name = statName(transform) orelse return null;
+    if (ch.zigdata == null) return null;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    return zigdata.transforms.getPtr(name);
 }
 
 fn addConditionSource(instance: *ConditionInstance, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) !void {
@@ -1127,6 +1246,23 @@ fn putOwnedString(instance: *ConditionInstance, key: []const u8, value: []const 
         return;
     }
     try instance.strings.put(try std.heap.page_allocator.dupe(u8, key), try std.heap.page_allocator.dupeZ(u8, value));
+}
+
+fn putOwnedTransformNumber(data: *TransformData, key: []const u8, value: i64) !void {
+    if (data.numbers.getPtr(key)) |existing| {
+        existing.* = value;
+        return;
+    }
+    try data.numbers.put(try std.heap.page_allocator.dupe(u8, key), value);
+}
+
+fn putOwnedTransformString(data: *TransformData, key: []const u8, value: []const u8) !void {
+    if (data.strings.getPtr(key)) |existing| {
+        std.heap.page_allocator.free(existing.*);
+        existing.* = try std.heap.page_allocator.dupeZ(u8, value);
+        return;
+    }
+    try data.strings.put(try std.heap.page_allocator.dupe(u8, key), try std.heap.page_allocator.dupeZ(u8, value));
 }
 
 fn emitConditionModifiers(ch: *cdb.char_data, zigdata: *CharacterData) void {

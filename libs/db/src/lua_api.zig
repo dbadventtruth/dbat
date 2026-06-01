@@ -203,6 +203,201 @@ pub fn pop(count: i32) void {
     lua_state.?.pop(count);
 }
 
+pub export fn char_cmd_execute(ch: *cdb.char_data, command: ?[*:0]const u8, arguments: ?[*:0]const u8) bool {
+    if (!initialized) return false;
+    const command_name = spanNonEmpty(command) orelse return false;
+    const argument_text = if (arguments) |ptr| std.mem.span(ptr) else "";
+    if (!(pushThing("commands", command_name) catch return false)) return false;
+
+    const lua = lua_state.?;
+    const top = lua.getTop();
+    defer lua.setTop(top - 1);
+
+    if (!lua.isTable(-1)) return false;
+    const command_index = lua.getTop();
+    const slug = optionalStringField(command_index, "id") orelse command_name;
+    const alias = commandAlias(command_index, command_name) catch command_name;
+    defer if (alias.ptr != command_name.ptr) allocator.free(alias);
+
+    if (!callCommandGate(ch, command_index, "can_see", slug)) return false;
+    if (!callCommandGate(ch, command_index, "can_execute", slug)) return false;
+
+    if (lua.getField(command_index, "execute") != .function) {
+        lua.pop(1);
+        std.log.err("command {s} has no execute function", .{slug});
+        return false;
+    }
+
+    pushCommandContext(lua, ch, slug, alias, argument_text) catch {
+        lua.pop(1);
+        return false;
+    };
+
+    lua.protectedCall(.{ .args = 1, .results = 1 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("command {s}.execute failed: {s}", .{ slug, message });
+        lua.pop(1);
+        return false;
+    };
+    defer lua.pop(1);
+    if (lua.isBoolean(-1) and !lua.toBoolean(-1)) return false;
+    return true;
+}
+
+fn spanNonEmpty(value: ?[*:0]const u8) ?[]const u8 {
+    const ptr = value orelse return null;
+    const text = std.mem.span(ptr);
+    if (text.len == 0) return null;
+    return text;
+}
+
+fn callCommandGate(ch: *cdb.char_data, command_index: i32, comptime field_name: [:0]const u8, slug: []const u8) bool {
+    const lua = lua_state.?;
+    if (lua.getField(command_index, field_name) != .function) {
+        lua.pop(1);
+        return true;
+    }
+    characters_lua.pushCharacter(lua, ch.id);
+    lua.protectedCall(.{ .args = 1, .results = 1 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("command {s}.{s} failed: {s}", .{ slug, field_name, message });
+        lua.pop(1);
+        return false;
+    };
+    defer lua.pop(1);
+    if (lua.isBoolean(-1)) return lua.toBoolean(-1);
+    return !lua.isNoneOrNil(-1);
+}
+
+fn commandAlias(command_index: i32, input: []const u8) ![]const u8 {
+    const lua = lua_state.?;
+    if (lua.getField(command_index, "aliases") != .table) {
+        lua.pop(1);
+        return try lowerAscii(input);
+    }
+    defer lua.pop(1);
+
+    var pos: zlua.Integer = 1;
+    while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
+        defer lua.pop(1);
+        if (!lua.isTable(-1)) continue;
+        if (aliasMatches(-1, input)) |sensitive| {
+            if (sensitive) return input;
+            return try lowerAscii(input);
+        }
+    }
+    lua.pop(1);
+    return try lowerAscii(input);
+}
+
+fn aliasMatches(index: i32, input: []const u8) ?bool {
+    const alias = commandAliasName(index) orelse return null;
+    const min = commandAliasMin(index) orelse alias.len;
+    const sensitive = commandAliasSensitive(index);
+    if (input.len < min or input.len > alias.len) return null;
+    const prefix = alias[0..input.len];
+    const matches = if (sensitive) std.mem.eql(u8, input, prefix) else std.ascii.eqlIgnoreCase(input, prefix);
+    return if (matches) sensitive else null;
+}
+
+fn commandAliasName(index: i32) ?[]const u8 {
+    const by_name = optionalStringField(index, "name");
+    if (by_name) |value| return value;
+    return tableString(index, 1);
+}
+
+fn commandAliasMin(index: i32) ?usize {
+    if (optionalIntegerField(index, "min")) |value| return std.math.cast(usize, value) orelse null;
+    const lua = lua_state.?;
+    if (lua.getIndex(index, 2) == .nil) {
+        lua.pop(1);
+        return null;
+    }
+    defer lua.pop(1);
+    const value = lua.toInteger(-1) catch return null;
+    return std.math.cast(usize, value) orelse null;
+}
+
+fn commandAliasSensitive(index: i32) bool {
+    if (optionalBoolField(index, "sensitive")) |value| return value;
+    const lua = lua_state.?;
+    if (lua.getIndex(index, 3) == .nil) {
+        lua.pop(1);
+        return false;
+    }
+    defer lua.pop(1);
+    if (!lua.isBoolean(-1)) return false;
+    return lua.toBoolean(-1);
+}
+
+fn lowerAscii(input: []const u8) ![]const u8 {
+    const result = try allocator.dupe(u8, input);
+    for (result) |*char| char.* = std.ascii.toLower(char.*);
+    return result;
+}
+
+fn pushCommandContext(lua: *Lua, ch: *cdb.char_data, command: []const u8, alias: []const u8, arguments: []const u8) !void {
+    lua.newTable();
+
+    characters_lua.pushCharacter(lua, ch.id);
+    lua.setField(-2, "ch");
+    characters_lua.pushCharacter(lua, ch.id);
+    lua.setField(-2, "actor");
+    _ = lua.pushString(command);
+    lua.setField(-2, "command");
+    _ = lua.pushString(alias);
+    lua.setField(-2, "alias");
+    _ = lua.pushString(arguments);
+    lua.setField(-2, "arguments");
+    try pushArgParams(lua, arguments);
+    lua.setField(-2, "argparams");
+}
+
+fn pushArgParams(lua: *Lua, arguments: []const u8) !void {
+    lua.newTable();
+    _ = lua.pushString(arguments);
+    lua.setField(-2, "raw");
+
+    if (std.mem.indexOfScalar(u8, arguments, '=')) |equals_index| {
+        lua.pushBoolean(true);
+        lua.setField(-2, "equals");
+        const left = arguments[0..equals_index];
+        const right = arguments[equals_index + 1 ..];
+        _ = lua.pushString(left);
+        lua.setField(-2, "lsargs");
+        _ = lua.pushString(right);
+        lua.setField(-2, "rsargs");
+        try pushTokens(lua, left);
+        lua.setField(-2, "left_tokens");
+        try pushTokens(lua, right);
+        lua.setField(-2, "right_tokens");
+    } else {
+        lua.pushBoolean(false);
+        lua.setField(-2, "equals");
+        _ = lua.pushString(arguments);
+        lua.setField(-2, "lsargs");
+        _ = lua.pushString("");
+        lua.setField(-2, "rsargs");
+        try pushTokens(lua, arguments);
+        lua.setField(-2, "left_tokens");
+        lua.newTable();
+        lua.setField(-2, "right_tokens");
+    }
+
+    try pushTokens(lua, arguments);
+    lua.setField(-2, "tokens");
+}
+
+fn pushTokens(lua: *Lua, text: []const u8) !void {
+    lua.newTable();
+    var iter = std.mem.tokenizeAny(u8, text, " \t\r\n");
+    var index: zlua.Integer = 1;
+    while (iter.next()) |token| : (index += 1) {
+        _ = lua.pushString(token);
+        lua.setIndex(-2, index);
+    }
+}
+
 pub fn statDefinition(name: []const u8) ?StatDefinition {
     if (!initialized or name.len == 0) return null;
     if (!(pushThing("stats", name) catch return null)) return null;

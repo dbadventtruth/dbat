@@ -54,6 +54,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "__tostring", luaCharacterToString);
     addMethod(lua, "valid", luaCharacterValid);
     addMethod(lua, "is_same", luaCharacterIsSame);
+    addMethod(lua, "send", luaCharacterSend);
     addMethod(lua, "id_get", luaCharacterIdGet);
     addMethod(lua, "proto_id_get", luaCharacterProtoIdGet);
     addMethod(lua, "proto_id_set", luaCharacterProtoIdSet);
@@ -130,6 +131,16 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "condition_number_mod", luaCharacterConditionNumberMod);
     addMethod(lua, "condition_string_get", luaCharacterConditionStringGet);
     addMethod(lua, "condition_string_set", luaCharacterConditionStringSet);
+    addMethod(lua, "transform_has", luaCharacterTransformHas);
+    addMethod(lua, "transform_add", luaCharacterTransformAdd);
+    addMethod(lua, "transform_remove", luaCharacterTransformRemove);
+    addMethod(lua, "transform_unlocked", luaCharacterTransformUnlocked);
+    addMethod(lua, "transform_unlock", luaCharacterTransformUnlock);
+    addMethod(lua, "transform_number_get", luaCharacterTransformNumberGet);
+    addMethod(lua, "transform_number_set", luaCharacterTransformNumberSet);
+    addMethod(lua, "transform_number_mod", luaCharacterTransformNumberMod);
+    addMethod(lua, "transform_string_get", luaCharacterTransformStringGet);
+    addMethod(lua, "transform_string_set", luaCharacterTransformStringSet);
     addMethod(lua, "inventory_count", luaCharacterInventoryCount);
     addMethod(lua, "equipment_count", luaCharacterEquipmentCount);
     addMethod(lua, "inventory_get", luaCharacterInventoryGet);
@@ -258,6 +269,12 @@ fn luaCharacterToString(lua: *Lua) i32 {
         _ = lua.pushFString("dbat.Character(%d, stale)", .{handle.id});
     }
     return 1;
+}
+
+fn luaCharacterSend(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    if (ch.desc != null) cdb.desc_send_text(ch.desc, string(lua, 2));
+    return 0;
 }
 
 fn luaCharacterIdGet(lua: *Lua) i32 {
@@ -719,6 +736,57 @@ fn luaCharacterConditionStringGet(lua: *Lua) i32 {
 
 fn luaCharacterConditionStringSet(lua: *Lua) i32 {
     lua.pushBoolean(cdb.char_condition_string_set(checkCharacter(lua), string(lua, 2), string(lua, 3), string(lua, 4)));
+    return 1;
+}
+
+fn luaCharacterTransformHas(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_transform_has(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterTransformAdd(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_transform_add(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterTransformRemove(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_transform_remove(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterTransformUnlocked(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_transform_unlocked(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterTransformUnlock(lua: *Lua) i32 {
+    const source = if (lua.isNoneOrNil(3)) "lua" else string(lua, 3);
+    lua.pushBoolean(cdb.char_transform_unlock(checkCharacter(lua), string(lua, 2), source));
+    return 1;
+}
+
+fn luaCharacterTransformNumberGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_transform_number_get(checkCharacter(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaCharacterTransformNumberSet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_transform_number_set(checkCharacter(lua), string(lua, 2), string(lua, 3), intCastOrError(lua, i64, integer(lua, 4), "transform number")));
+    return 1;
+}
+
+fn luaCharacterTransformNumberMod(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_transform_number_mod(checkCharacter(lua), string(lua, 2), string(lua, 3), intCastOrError(lua, i64, integer(lua, 4), "transform number delta")));
+    return 1;
+}
+
+fn luaCharacterTransformStringGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.char_transform_string_get(checkCharacter(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaCharacterTransformStringSet(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_transform_string_set(checkCharacter(lua), string(lua, 2), string(lua, 3), string(lua, 4)));
     return 1;
 }
 
