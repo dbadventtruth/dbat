@@ -1582,7 +1582,7 @@ static void make_pcorpse(struct char_data *ch)
       money = create_money(GET_GOLD(ch));
       obj_to_obj(money, corpse);
     }
-    GET_GOLD(ch) = 0;
+    char_stat_set(ch, "money", 0);
   }
 
   obj_to_room(corpse, char_room_get(ch));
@@ -1815,7 +1815,7 @@ static void make_corpse(struct char_data *ch, struct char_data *tch)
       money = create_money(GET_GOLD(ch));
       obj_to_obj(money, corpse);
     }
-    GET_GOLD(ch) = 0;
+    char_stat_set(ch, "money", 0);
   }
  if (!MOB_FLAGGED(ch, MOB_HUSK)) {
   ch->carrying = NULL;
@@ -1976,7 +1976,7 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
        psreward = 0;
        send_to_char(killer, "@D[@G+0 @BPS @cCapped at 50 for Absorb@D]@n\r\n");
       } else {
-       GET_PRACTICES(killer, GET_CLASS(killer)) += psreward;
+        char_stat_mod(killer, "practices", psreward);
        send_to_char(killer, "@D[@G+%d @BPS@D]@n\r\n", psreward);
       }
      }
@@ -1987,23 +1987,23 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
       send_to_char(killer, "@D[@G+0 @mUpgrade Point @r-WEAK-@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 10) {
-      GET_UP(killer) += 3;
+      char_stat_mod(killer, "upgrades", 3);
       send_to_char(killer, "@D[@G+3 @mUpgrade Point@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 8) {
-      GET_UP(killer) += 6;
+      char_stat_mod(killer, "upgrades", 6);
       send_to_char(killer, "@D[@G+6 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 4) {
-      GET_UP(killer) += 12;
+      char_stat_mod(killer, "upgrades", 12);
       send_to_char(killer, "@D[@G+12 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 2) {
-      GET_UP(killer) += 16;
+      char_stat_mod(killer, "upgrades", 16);
       send_to_char(killer, "@D[@G+16 @mUpgrade Points@D]@n\r\n");
     }
      else {
-       GET_UP(killer) += 28;
+        char_stat_mod(killer, "upgrades", 28);
       send_to_char(killer, "@D[@G+28 @mUpgrade Points@D]@n\r\n");
      }
     }
@@ -2012,23 +2012,23 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
       send_to_char(killer, "@D[@G+0 @mUpgrade Point @r-WEAK-@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 10) {
-      GET_UP(killer) += 5;
+      char_stat_mod(killer, "upgrades", 5);
       send_to_char(killer, "@D[@G+5 @mUpgrade Point@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 6) {
-      GET_UP(killer) += 12;
+      char_stat_mod(killer, "upgrades", 12);
       send_to_char(killer, "@D[@G+12 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 4) {
-      GET_UP(killer) += 18;
+      char_stat_mod(killer, "upgrades", 18);
       send_to_char(killer, "@D[@G+18 @mUpgrade Points@D]@n\r\n");
     }
     else if (GET_LEVEL(killer) > GET_LEVEL(ch) + 2) {
-      GET_UP(killer) += 28;
+      char_stat_mod(killer, "upgrades", 28);
       send_to_char(killer, "@D[@G+28 @mUpgrade Points@D]@n\r\n");
     }
      else {
-       GET_UP(killer) += 36;
+        char_stat_mod(killer, "upgrades", 36);
       send_to_char(killer, "@D[@G+36 @mUpgrade Points@D]@n\r\n");
      }
     }
@@ -2180,7 +2180,7 @@ void raw_kill(struct char_data * ch, struct char_data * killer)
     if(!IS_NPC(ch)) {
         if (IS_ANDROID(ch) && !PLR_FLAGGED(ch, PLR_ABSORB) && android_lose && GET_UP(ch) > 5) {
             int loss = GET_UP(ch) / 5;
-            GET_UP(ch) -= loss;
+            char_stat_mod(ch, "upgrades", -loss);
             send_to_char(ch, "@rYou lose @R%s@r upgrade points!@n\r\n", add_commas(loss));
         }
         Crash_delete_crashfile(ch);
@@ -2240,13 +2240,13 @@ void die(struct char_data *ch, struct char_data *killer)
     decCurKIPercentFloored(ch, 1, 1);
     decCurSTPercentFloored(ch, 1, 1);
     null_affect(ch, AFF_POISON);
-    if (GET_COND(ch, HUNGER) >= 0)
+    if (char_stat_get(ch, "hunger") >= 0)
     {
-      GET_COND(ch, HUNGER) = 48;
+      char_stat_set(ch, "hunger", 48);
     }
-    if (GET_COND(ch, THIRST) >= 0)
+    if (char_stat_get(ch, "thirst") >= 0)
     {
-      GET_COND(ch, THIRST) = 48;
+      char_stat_set(ch, "thirst", 48);
     }
     if (FIGHTING(ch))
     {
@@ -2306,27 +2306,27 @@ void die(struct char_data *ch, struct char_data *killer)
       if (killer != NULL && IS_NPC(killer))
       {
         GET_DTIME(ch) = time(0) + 7200;
-        GET_DCOUNT(ch) += 1;
+        char_stat_mod(ch, "death_count", 1);
       }
       else if (killer != NULL && !IS_NPC(killer))
       {
         GET_DTIME(ch) = time(0) + 345600;
         SET_BIT_AR(PLR_FLAGS(ch), PLR_PDEATH);
-        GET_DCOUNT(ch) += 1;
+        char_stat_mod(ch, "death_count", 1);
       }
       else
       {
         GET_DTIME(ch) = time(0) + 7200;
-        GET_DCOUNT(ch) += 1;
+        char_stat_mod(ch, "death_count", 1);
       }
     }
-    if (GET_COND(ch, HUNGER) >= 0)
+    if (char_stat_get(ch, "hunger") >= 0)
     {
-      GET_COND(ch, HUNGER) = 48;
+      char_stat_set(ch, "hunger", 48);
     }
-    if (GET_COND(ch, THIRST) >= 0)
+    if (char_stat_get(ch, "thirst") >= 0)
     {
-      GET_COND(ch, THIRST) = 48;
+      char_stat_set(ch, "thirst", 48);
     }
   }
 
@@ -2423,7 +2423,7 @@ static void perform_group_gain(struct char_data *ch, int base, struct char_data 
   }
   if (group_bonus(ch, 2) == 2) {
    send_to_char(ch, "You receive a bonus from your group's leader! @D[@G+2 PS!@D]@n\r\n");
-   GET_PRACTICES(ch, GET_CLASS(ch)) += 2;
+    char_stat_mod(ch, "practices", 2);
   } else if (group_bonus(ch, 2) == 3) {
    send_to_char(ch, "You receive a bonus from your group's leader! @D[@G+5%s Exp!@D]@n\r\n", "%");
    share += share * 0.05;
@@ -2445,7 +2445,7 @@ static void perform_group_gain(struct char_data *ch, int base, struct char_data 
            incCurHealthPercent(ch, .02);
            send_to_char(ch, "You receive a bonus from your group's leader! @D[@G5%s PL Repaired@D]@n\r\n", "%");
        } else if (PLR_FLAGGED(leader, PLR_SENSEM) && !PLR_FLAGGED(ch, PLR_ABSORB)) {
-           GET_UP(ch) += 5;
+            char_stat_mod(ch, "upgrades", 5);
            send_to_char(ch, "You receive a bonus from your group's leader! @D[@G+5 @mUpgrade Points@D]@n\r\n");
        }
    } else {

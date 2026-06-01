@@ -224,7 +224,7 @@ void list_mobiles(struct char_data *ch, struct zone_data *zone, mob_vnum vmin, m
 
     send_to_char(ch, "@g%4d@n) [@g%-5d@n] @[3]%-*s @C%-9s @c%-9s @y[%4d]@n %s\r\n",
                   counter, mob->vnum, count_color_chars(mob->short_descr)+30, mob->short_descr, TRUE_RACE((mob)), SENSEI_NAME((mob)),
-                  mob->level + mob->level_adj + mob->race_level, mob->proto_script ? " [TRIG]" : "");
+                  mob_proto_stat_get(mob, "level"), mob->proto_script ? " [TRIG]" : "");
   }
   
   if (counter == 0) {

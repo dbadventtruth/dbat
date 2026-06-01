@@ -255,19 +255,19 @@ ACMD(do_rpp)
 	 }
 	 if (!strcasecmp(arg2, "evil")) {
           send_to_char(ch, "You change your alignment to Evil.\r\n");
-          GET_ALIGNMENT(ch) = -750;
+          char_stat_set(ch, "alignment", -750);
 	 } else if (!strcasecmp(arg2, "sorta-evil")) {
           send_to_char(ch, "You change your alignment to Sorta Evil.\r\n");
-          GET_ALIGNMENT(ch) = -50;
+          char_stat_set(ch, "alignment", -50);
 	 } else if (!strcasecmp(arg2, "neutral")) {
           send_to_char(ch, "You change your alignment to Neutral.\r\n");
-          GET_ALIGNMENT(ch) = 0;
+          char_stat_set(ch, "alignment", 0);
  	 } else if (!strcasecmp(arg2, "sorta-good")) {
           send_to_char(ch, "You change your alignment to Sorta Good.\r\n");
-          GET_ALIGNMENT(ch) = 51;
+          char_stat_set(ch, "alignment", 51);
 	 } else if (!strcasecmp(arg2, "good")) {
           send_to_char(ch, "You change your alignment to Good.\r\n");
-          GET_ALIGNMENT(ch) = 300;
+          char_stat_set(ch, "alignment", 300);
 	 } else {
           send_to_char(ch, "That is not an acceptable option for changing alignment.\r\n");
           return;
@@ -282,7 +282,7 @@ ACMD(do_rpp)
 	 send_to_char(ch, "You do not have enough RPP for that selection.\r\n");
 	 return;
 	} else {
-     GET_BANK_GOLD(ch) += 7500;
+     char_stat_mod(ch, "money_bank", 7500);
      send_to_char(ch, "Your bank zenni has been increased by 7,500\r\n");
     } /* Can pay for it */
    } /* End Simple Zenni Reward */
@@ -298,7 +298,7 @@ ACMD(do_rpp)
 	  return;
 	 }
 	 if (!strcasecmp(arg2, "str")) {
-       if (GET_BONUS(ch, BONUS_WIMP) > 0 && ch->real_abils.str >= 70) {
+       if (GET_BONUS(ch, BONUS_WIMP) > 0 && char_stat_get(ch, "strength") >= 70) {
         send_to_char(ch, "You can't because that stat maxes at 70 due to a trait negative.\r\n");
         return;
        } else if (GET_STR(ch) >= 100) {
@@ -306,9 +306,9 @@ ACMD(do_rpp)
         return;
        }
        send_to_char(ch, "You increase your strength by 2.\r\n");
-       ch->real_abils.str += 2;
+       char_stat_mod(ch, "strength", 2);
      } else if (!strcasecmp(arg2, "con")) {
-       if (GET_BONUS(ch, BONUS_FRAIL) > 0 && ch->real_abils.con >= 70) {
+       if (GET_BONUS(ch, BONUS_FRAIL) > 0 && char_stat_get(ch, "constitution") >= 70) {
         send_to_char(ch, "You can't because that stat maxes at 70 due to a trait negative.\r\n");
         return;
        } else if (GET_CON(ch) >= 100) {
@@ -316,9 +316,9 @@ ACMD(do_rpp)
         return;
        }
        send_to_char(ch, "You increase your constitution by 2.\r\n");
-       ch->real_abils.con += 2;
+       char_stat_mod(ch, "constitution", 2);
      } else if (!strcasecmp(arg2, "int")) {
-       if (GET_BONUS(ch, BONUS_DULL) > 0 && ch->real_abils.intel >= 70) {
+       if (GET_BONUS(ch, BONUS_DULL) > 0 && char_stat_get(ch, "intelligence") >= 70) {
         send_to_char(ch, "You can't because that stat maxes at 70 due to a trait negative.\r\n");
         return;
        } else if (GET_INT(ch) >= 100) {
@@ -326,9 +326,9 @@ ACMD(do_rpp)
         return;
        }
        send_to_char(ch, "You increase your intelligence by 2.\r\n");
-       ch->real_abils.intel += 2;
+       char_stat_mod(ch, "intelligence", 2);
      } else if (!strcasecmp(arg2, "wis")) {
-       if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && ch->real_abils.wis >= 70) {
+       if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && char_stat_get(ch, "wisdom") >= 70) {
         send_to_char(ch, "You can't because that stat maxes at 70 due to a trait negative.\r\n");
         return;
        } else if (GET_WIS(ch) >= 100) {
@@ -336,9 +336,9 @@ ACMD(do_rpp)
         return;
        }
        send_to_char(ch, "You increase your wisdom by 2.\r\n");
-       ch->real_abils.wis += 2;
+       char_stat_mod(ch, "wisdom", 2);
      } else if (!strcasecmp(arg2, "spd")) {
-       if (GET_BONUS(ch, BONUS_SLOW) > 0 && ch->real_abils.cha >= 70) {
+       if (GET_BONUS(ch, BONUS_SLOW) > 0 && char_stat_get(ch, "speed") >= 70) {
         send_to_char(ch, "You can't because that stat maxes at 70 due to a trait negative.\r\n");
         return;
        } else if (GET_CHA(ch) >= 100) {
@@ -346,9 +346,9 @@ ACMD(do_rpp)
         return;
        }
        send_to_char(ch, "You increase your speed by 2.\r\n");
-       ch->real_abils.cha += 2;
+       char_stat_mod(ch, "speed", 2);
      } else if (!strcasecmp(arg2, "agl")) {
-       if (GET_BONUS(ch, BONUS_CLUMSY) > 0 && ch->real_abils.dex >= 70) {
+       if (GET_BONUS(ch, BONUS_CLUMSY) > 0 && char_stat_get(ch, "agility") >= 70) {
         send_to_char(ch, "You can't because that stat maxes at 70 due to a trait negative.\r\n");
         return;
        } else if (GET_DEX(ch) >= 100) {
@@ -356,7 +356,7 @@ ACMD(do_rpp)
         return;
        }
        send_to_char(ch, "You increase your speed by 2.\r\n");
-       ch->real_abils.dex += 2;
+       char_stat_mod(ch, "agility", 2);
 	 } else {
        send_to_char(ch, "That is not an acceptable option for changing alignment.\r\n");
        return;
@@ -371,7 +371,7 @@ ACMD(do_rpp)
 	 send_to_char(ch, "You do not have enough RPP for that selection.\r\n");
 	 return;
 	} else {
-     GET_PRACTICES(ch, GET_CLASS(ch)) += 750;
+     char_stat_mod(ch, "practices", 750);
      send_to_char(ch, "Your practices have been increased by 750\r\n");
     } /* Can pay for it */
    } /* End Simple Zenni Reward */
@@ -402,7 +402,7 @@ ACMD(do_rpp)
      send_to_char(ch, "You can not buy experience anymore UNTIL you level.\r\n");
      return;
 	} else {
-     GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * .52;
+     char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * .52);
      send_to_char(ch, "You gained 50%s of the entire experience needed for your next level.\r\n", "%");
     } /* Can pay for it */
    } /* End Simple Exp Reward */
@@ -541,7 +541,7 @@ ACMD(do_rpp)
          send_to_char(ch, "You are already at your skillslot cap.\r\n");
          return;
     } else {
-     GET_SLOTS(ch) += 1;
+     char_stat_mod(ch, "skill_slots", 1);
     } /* Can pay for it */
   } /*End Skillslot Reward */
 
@@ -762,10 +762,10 @@ ACMD(do_willpower)
    return;
   }
   else {
-   GET_EXP(ch) = 0;
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+   char_stat_set(ch, "experience", 0);
+   char_stat_mod(ch, "practices", -100);
    if (GET_LEVEL(ch) >= 100) {
-      GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+      char_stat_mod(ch, "practices", -100);
    }
    if (rand_number(10, 100) - GET_INT(ch) > 60) {
           reveal_hiding(ch, 0);
@@ -774,10 +774,10 @@ ACMD(do_willpower)
     return;
    }
    else {
-   GET_EXP(ch) = 0;
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+   char_stat_set(ch, "experience", 0);
+   char_stat_mod(ch, "practices", -100);
    if (GET_LEVEL(ch) >= 100) {
-      GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+      char_stat_mod(ch, "practices", -100);
    }
           reveal_hiding(ch, 0);
     act("@WYou focus all your knowledge and will on breaking free. Dark purple energy swirls around your body and the M on your forehead burns brightly. After a few moments the ground splits beneath you and while letting out a piercing scream the M disappears from your forehead! You are free while still keeping the boost you had recieved from the majinization!@n", TRUE, ch, 0, 0, TO_CHAR);
@@ -1196,12 +1196,12 @@ ACMD(do_train)
 
  int strcap = 5000, spdcap = 5000, intcap = 5000, wiscap = 5000, concap = 5000, aglcap = 5000;
 
- strcap += 500 * ch->real_abils.str;
- intcap += 500 * ch->real_abils.intel;
- wiscap += 500 * ch->real_abils.wis;
- spdcap += 500 * ch->real_abils.cha;
- concap += 500 * ch->real_abils.con;
- aglcap += 500 * ch->real_abils.dex;
+ strcap += 500 * char_stat_get(ch, "strength");
+ intcap += 500 * char_stat_get(ch, "intelligence");
+ wiscap += 500 * char_stat_get(ch, "wisdom");
+ spdcap += 500 * char_stat_get(ch, "speed");
+ concap += 500 * char_stat_get(ch, "constitution");
+ aglcap += 500 * char_stat_get(ch, "agility");
 
  if (IS_HUMAN(ch)) {
   intcap = intcap * 0.75;
@@ -1220,12 +1220,12 @@ ACMD(do_train)
 
  if (!*arg) {
   send_to_char(ch, "@D-------------[ @GTraining Status @D]-------------@n\r\n");
-  send_to_char(ch, "  @mStrength Progress    @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINSTR(ch)), ch->real_abils.str >= 80 ? "@rCAPPED" : add_commas(strcap));
-  send_to_char(ch, "  @mSpeed Progress       @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINSPD(ch)), ch->real_abils.cha >= 80 ? "@rCAPPED" : add_commas(spdcap));
-  send_to_char(ch, "  @mConstitution Progress@D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINCON(ch)), ch->real_abils.con >= 80 ? "@rCAPPED" : add_commas(concap));
-  send_to_char(ch, "  @mIntelligence Progress@D: @R%6s/%6s@n\r\n", add_commas(GET_TRAININT(ch)), ch->real_abils.intel >= 80 ? "@rCAPPED" : add_commas(intcap));
-  send_to_char(ch, "  @mWisdom Progress      @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINWIS(ch)), ch->real_abils.wis >= 80 ? "@rCAPPED" : add_commas(wiscap));
-  send_to_char(ch, "  @mAgility Progress     @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINAGL(ch)), ch->real_abils.dex >= 80 ? "@rCAPPED" : add_commas(aglcap));
+  send_to_char(ch, "  @mStrength Progress    @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINSTR(ch)), char_stat_get(ch, "strength") >= 80 ? "@rCAPPED" : add_commas(strcap));
+  send_to_char(ch, "  @mSpeed Progress       @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINSPD(ch)), char_stat_get(ch, "speed") >= 80 ? "@rCAPPED" : add_commas(spdcap));
+  send_to_char(ch, "  @mConstitution Progress@D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINCON(ch)), char_stat_get(ch, "constitution") >= 80 ? "@rCAPPED" : add_commas(concap));
+  send_to_char(ch, "  @mIntelligence Progress@D: @R%6s/%6s@n\r\n", add_commas(GET_TRAININT(ch)), char_stat_get(ch, "intelligence") >= 80 ? "@rCAPPED" : add_commas(intcap));
+  send_to_char(ch, "  @mWisdom Progress      @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINWIS(ch)), char_stat_get(ch, "wisdom") >= 80 ? "@rCAPPED" : add_commas(wiscap));
+  send_to_char(ch, "  @mAgility Progress     @D: @R%6s/%6s@n\r\n", add_commas(GET_TRAINAGL(ch)), char_stat_get(ch, "agility") >= 80 ? "@rCAPPED" : add_commas(aglcap));
   send_to_char(ch, "@D  -----------------------------------------  @n\r\n");
   send_to_char(ch, "  @CCurrent Weight Held  @D: @c%s@n\r\n", add_commas(weight));
   send_to_char(ch, "@D---------------------------------------------@n\r\n");
@@ -1308,72 +1308,72 @@ ACMD(do_train)
   }
 
   int stat_id = 0;
-  int8_t *stat_val = nullptr;
-  char *stat_name = nullptr;
+   const char *stat_name_key = nullptr;
+   const char *stat_name = nullptr;
+   const char *stat_train_name = nullptr;
   int bonus_trait = -1;
   int nega_trait = -1;
-  int *stat_train = nullptr;
-  int needed = 0;
+   int needed = 0;
 
   if(!strcasecmp("str", arg)) {
       stat_id = 1;
-      stat_val = &(ch->real_abils.str);
-      stat_name = "strength";
-      bonus_trait = BONUS_BRAWNY;
-      nega_trait = BONUS_WIMP;
-      stat_train = &(ch->trainstr);
-      needed = strcap;
+      stat_name_key = "strength";
+       stat_name = "strength";
+       bonus_trait = BONUS_BRAWNY;
+       nega_trait = BONUS_WIMP;
+       stat_train_name = "train_strength";
+       needed = strcap;
   } else if (!strcasecmp("spd", arg)) {
       stat_id = 2;
-      stat_val = &(ch->real_abils.cha);
-      stat_name = "speed";
-      bonus_trait = BONUS_QUICK;
-      nega_trait = BONUS_SLOW;
-      stat_train = &(ch->trainspd);
-      needed = spdcap;
+      stat_name_key = "speed";
+       stat_name = "speed";
+       bonus_trait = BONUS_QUICK;
+       nega_trait = BONUS_SLOW;
+       stat_train_name = "train_speed";
+       needed = spdcap;
   } else if (!strcasecmp("con", arg)) {
       stat_id = 3;
-      stat_val = &(ch->real_abils.con);
-      stat_name = "constitution";
-      bonus_trait = BONUS_STURDY;
-      nega_trait = BONUS_FRAIL;
-      stat_train = &(ch->traincon);
-      needed = concap;
+      stat_name_key = "constitution";
+       stat_name = "constitution";
+       bonus_trait = BONUS_STURDY;
+       nega_trait = BONUS_FRAIL;
+       stat_train_name = "train_constitution";
+       needed = concap;
   } else if (!strcasecmp("agl", arg)) {
       stat_id = 4;
-      stat_val = &(ch->real_abils.dex);
-      stat_name = "agility";
-      bonus_trait = BONUS_AGILE;
-      nega_trait = BONUS_CLUMSY;
-      stat_train = &(ch->trainagl);
-      needed = aglcap;
+      stat_name_key = "agility";
+       stat_name = "agility";
+       bonus_trait = BONUS_AGILE;
+       nega_trait = BONUS_CLUMSY;
+       stat_train_name = "train_agility";
+       needed = aglcap;
   } else if (!strcasecmp("int", arg)) {
       stat_id = 5;
-      stat_val = &(ch->real_abils.intel);
-      stat_name = "intelligence";
-      bonus_trait = BONUS_SCHOLARLY;
-      nega_trait = BONUS_DULL;
-      stat_train = &(ch->trainint);
-      needed = intcap;
+      stat_name_key = "intelligence";
+       stat_name = "intelligence";
+       bonus_trait = BONUS_SCHOLARLY;
+       nega_trait = BONUS_DULL;
+       stat_train_name = "train_intelligence";
+       needed = intcap;
   } else if (!strcasecmp("wis", arg)) {
       stat_id = 6;
-      stat_val = &(ch->real_abils.wis);
-      stat_name = "wisdom";
-      bonus_trait = BONUS_SAGE;
-      nega_trait = BONUS_FOOLISH;
-      stat_train = &(ch->trainwis);
-      needed = wiscap;
+      stat_name_key = "wisdom";
+       stat_name = "wisdom";
+       bonus_trait = BONUS_SAGE;
+       nega_trait = BONUS_FOOLISH;
+       stat_train_name = "train_wisdom";
+       needed = wiscap;
   } else {
       send_to_char(ch, "Syntax: train (str | spd | agl | wis | int | con)\r\n");
       return;
   }
 
-  if(*stat_val == 80) {
+  if(char_stat_get(ch, stat_name_key) == 80) {
       send_to_char(ch, "Your base %s is maxed!\r\n", stat_name);
       return;
   }
 
-  if(*stat_val >= 70 && GET_BONUS(ch, nega_trait) > 0) {
+  if(char_stat_get(ch, stat_name_key) >= 70 && GET_BONUS(ch, nega_trait) > 0) {
       send_to_char(ch, "You're not able to withstand increasing your %s beyond 70.\r\n", stat_name);
       return;
   }
@@ -1386,7 +1386,7 @@ ACMD(do_train)
   else if (GET_LEVEL(ch) > 20)
       stat_cap = 40;
 
-  if(*stat_val >= stat_cap) {
+  if(char_stat_get(ch, stat_name_key) >= stat_cap) {
       send_to_char(ch, "You have reached the stat cap for your level.\r\n");
       return;
   }
@@ -1551,48 +1551,49 @@ ACMD(do_train)
 
     switch (bonus) {
         case 1:
-            *stat_train += 5 + plus;
+            char_stat_mod(ch, stat_train_name, 5 + plus);
             send_to_char(ch, "You feel slight improvement. @D[@G+%d@D]@n\r\n", (plus + 5));
             WAIT_STATE(ch, PULSE_3SEC);
             break;
         case 2:
-            *stat_train += 10 + plus;
+            char_stat_mod(ch, stat_train_name, 10 + plus);
             send_to_char(ch, "You feel some improvement. @D[@G+%d@D]@n\r\n", (plus + 10));
             WAIT_STATE(ch, PULSE_3SEC);
             break;
         case 3:
-            *stat_train += 25 + plus;
+            char_stat_mod(ch, stat_train_name, 25 + plus);
             send_to_char(ch, "You feel good improvement. @D[@G+%d@D]@n\r\n", (plus + 25));
             WAIT_STATE(ch, PULSE_3SEC);
             break;
         case 4:
-            *stat_train += 50 + plus;
+            char_stat_mod(ch, stat_train_name, 50 + plus);
             send_to_char(ch, "You feel great improvement! @D[@G+%d@D]@n\r\n", (plus + 50));
             WAIT_STATE(ch, PULSE_5SEC);
             break;
         case 5:
-            *stat_train += 100 + plus;
+            char_stat_mod(ch, stat_train_name, 100 + plus);
             send_to_char(ch, "You feel awesome improvement! @D[@G+%d@D]@n\r\n", (plus + 100));
             WAIT_STATE(ch, PULSE_5SEC);
             break;
         default:
-            *stat_train += 1;
+            char_stat_mod(ch, stat_train_name, 1);
             send_to_char(ch, "You barely feel any improvement. @D[@G+1@D]@n\r\n");
             WAIT_STATE(ch, PULSE_3SEC);
             break;
     }
 
     if(sensei > -1) {
-        GET_GOLD(ch) -= 8;
-        GET_PRACTICES(ch, GET_CLASS(ch)) -= 1;
+        char_stat_mod(ch, "money", -8);
+        char_stat_mod(ch, "practices", -1);
     }
 
-    if (*stat_train >= needed) {
-        *stat_train -= needed;
+    int stat_train = char_stat_get(ch, stat_train_name);
+    if (stat_train >= needed) {
+        char_stat_set(ch, stat_train_name, stat_train - needed);
         send_to_char(ch, "You feel your %s improve!@n\r\n", stat_name);
-        *stat_val += 1;
+        char_stat_mod(ch, stat_name_key, 1);
         if (IS_PICCOLO(ch) && IS_NAMEK(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0) {
-            GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * 0.25;
+            char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * 0.25);
             send_to_char(ch, "You gained quite a bit of experience from that!\r\n");
         }
         save_char(ch);
@@ -2013,44 +2014,44 @@ ACMD(do_future)
  }
 
  if (vict != ch) {
-  if (vict->real_abils.cha + 5 > 70 && GET_BONUS(vict, BONUS_SLOW) > 0) {
+  if (char_stat_get(vict, "speed") + 5 > 70 && GET_BONUS(vict, BONUS_SLOW) > 0) {
    send_to_char(ch, "They can't handle having their speed increased beyond 70.\r\n");
    return;
   }
-  if (vict->real_abils.intel + 2 > 70 && GET_BONUS(vict, BONUS_DULL) > 0) {
+  if (char_stat_get(vict, "intelligence") + 2 > 70 && GET_BONUS(vict, BONUS_DULL) > 0) {
    send_to_char(ch, "They can't handle having their intelligence increased beyond 70.\r\n");
    return;
   }
      decCurKI(ch, getMaxKI(ch) / 40);
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+  char_stat_mod(ch, "practices", -100);
         reveal_hiding(ch, 0);
   act("@CYou focus your energy into your fingers before stabbing your claws into $N and bestowing the power of Future Sight upon $M. Shortly after $E passes out.@n", TRUE, ch, 0, vict, TO_CHAR);
   act("@C$n focuses $s energy into $s fingers before stabbing $s claws into YOUR neck and bestowing the power of Future Sight upon you! Soon after you pass out!@n", TRUE, ch, 0, vict, TO_VICT);
   act("@C$n focuses $s energy into $s fingers before stabbing $s claws into $N's neck and bestowing the power of Future Sight upon $M! Soon after $E passes out!@n", TRUE, ch, 0, vict, TO_NOTVICT);
   SET_BIT_AR(AFF_FLAGS(vict), AFF_FUTURE);
-  vict->real_abils.cha += 5;
-  vict->real_abils.intel += 2;
+  char_stat_mod(vict, "speed", 5);
+  char_stat_mod(vict, "intelligence", 2);
   GET_POS(vict) = POS_SLEEPING;
   save_char(vict);
  }
  else {
-  if (ch->real_abils.cha + 5 > 70 && GET_BONUS(ch, BONUS_SLOW) > 0) {
+  if (char_stat_get(ch, "speed") + 5 > 70 && GET_BONUS(ch, BONUS_SLOW) > 0) {
    send_to_char(ch, "You can't handle having your speed increased beyond 70.\r\n");
    return;
   }
-  if (ch->real_abils.intel + 2 > 70 && GET_BONUS(ch, BONUS_DULL) > 0) {
+  if (char_stat_get(ch, "intelligence") + 2 > 70 && GET_BONUS(ch, BONUS_DULL) > 0) {
    send_to_char(ch, "You can't handle having your intelligence increased beyond 70.\r\n");
    return;
   }
      decCurKI(ch, getMaxKI(ch) / 40);
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 100;
+  char_stat_mod(ch, "practices", -100);
         reveal_hiding(ch, 0);
   act("@CYou focus your energy into your mind and awaken your latent Future Sight powers!@n", TRUE, ch, 0, vict, TO_CHAR);
   act("@C$n focuses $s energy while closing $s eyes for a moment.@n", TRUE, ch, 0, vict, TO_VICT);
   act("@C$n focuses $s energy while closing $s eyes for a moment.@n", TRUE, ch, 0, vict, TO_NOTVICT);
   SET_BIT_AR(AFF_FLAGS(ch), AFF_FUTURE);
-  ch->real_abils.cha += 5;
-  ch->real_abils.intel += 2;
+  char_stat_mod(ch, "speed", 5);
+  char_stat_mod(ch, "intelligence", 2);
   GET_POS(vict) = POS_SLEEPING;
   save_char(ch);
  }
@@ -2211,7 +2212,7 @@ ACMD(do_suppress)
         reveal_hiding(ch, 0);
    act("@GYou stop suppressing your current powerlevel!@n", TRUE, ch, 0, 0, TO_CHAR);
    act("@G$n smiles as a rush of power erupts around $s body briefly.@n", TRUE, ch, 0, 0, TO_ROOM);
-   GET_SUPPRESS(ch) = 0;
+   char_stat_set(ch, "suppression", 0);
    return;
   } else {
    send_to_char(ch, "You are not suppressing!\r\n");
@@ -2239,7 +2240,7 @@ ACMD(do_suppress)
      act("@GYou suppress your current powerlevel!@n", TRUE, ch, 0, 0, TO_CHAR);
      act("@G$n seems to concentrate for a moment.@n", TRUE, ch, 0, 0, TO_ROOM);
  }
-    GET_SUPPRESS(ch) = num;
+    char_stat_set(ch, "suppression", num);
     return;
 }
 
@@ -2456,11 +2457,11 @@ ACMD(do_pose)
  int prob = GET_SKILL(ch, SKILL_POSE);
  int perc = rand_number(1, 70);
 
-  if (ch->real_abils.str + 8 > 70 && GET_BONUS(ch, BONUS_WIMP) > 0) {
+  if (char_stat_get(ch, "strength") + 8 > 70 && GET_BONUS(ch, BONUS_WIMP) > 0) {
    send_to_char(ch, "You can't handle having your strength increased beyond 70.\r\n");
    return;
   }
-  if (ch->real_abils.dex + 8 > 70 && GET_BONUS(ch, BONUS_CLUMSY) > 0) {
+  if (char_stat_get(ch, "agility") + 8 > 70 && GET_BONUS(ch, BONUS_CLUMSY) > 0) {
    send_to_char(ch, "You can't handle having your agility increased beyond 70.\r\n");
    return;
   }
@@ -2538,9 +2539,9 @@ ACMD(do_fury) {
          decCurLFPercentFloored(ch, 2, -1);
     }
    }
-   GET_FURY(ch) = 0;
+   char_stat_set(ch, "fury", 0);
   } else if (!strcasecmp(arg, "attack")) {
-   GET_FURY(ch) = 50;
+   char_stat_set(ch, "fury", 50);
   } else {
    send_to_char(ch, "Syntax: fury (attack) <--- this will not use up your LF to restore PL.\n        fury <--- fury by itself will do both LF to PL restore and attack boost.\r\n");
    return;
@@ -3842,7 +3843,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
    act("$n holds out $s hand and creates $p out of thin air!", TRUE, ch, obj, 0, TO_ROOM);
       decCurKI(ch, cost);
     decCurHealthPercentFloored(ch, 1, 1);
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 10;   
+   char_stat_mod(ch, "practices", -10);
    return;
   }
  }
@@ -3880,7 +3881,7 @@ kachin ? "create kachin\r\n" : "",  boost ? "create elixir\r\n" : "");
       decCurKI(ch, cost);
       decCurHealth(ch, cost2);
        decCurSTPercentFloored(ch, 1, 1);
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= 50;
+   char_stat_mod(ch, "practices", -50);
    return;
   }
  }
@@ -4182,7 +4183,7 @@ ACMD(do_upgrade)
    return;
   }
   else {
-   GET_UP(ch) -= cost;
+   char_stat_mod(ch, "upgrades", -cost);
    send_to_char(ch, "You upgrade your system and gain %s %s!", add_commas(bonus), arg);
       gainBasePLTransformed(ch, bonus, true);
   }
@@ -4226,7 +4227,7 @@ ACMD(do_upgrade)
    return;
   }
   else {
-   GET_UP(ch) -= cost;
+   char_stat_mod(ch, "upgrades", -cost);
    send_to_char(ch, "You upgrade your system and gain %s %s!", add_commas(bonus), arg);
       gainBaseKITransformed(ch, bonus, true);
   }
@@ -4270,7 +4271,7 @@ ACMD(do_upgrade)
    return;
   }
   else {
-   GET_UP(ch) -= cost;
+   char_stat_mod(ch, "upgrades", -cost);
    send_to_char(ch, "You upgrade your system and gain %s %s!", add_commas(bonus), arg);
       gainBaseSTTransformed(ch, bonus, true);
   }
@@ -4375,25 +4376,25 @@ ACMD(do_ingest)
     else if (rand_number(1, 3) == 3) {
      send_to_char(ch, "%s changes your height.\r\n", GET_NAME(vict));
      if (GET_PC_HEIGHT(ch) > GET_PC_HEIGHT(vict)) {
-      GET_HEIGHT(ch) -= ((GET_PC_HEIGHT(ch) - GET_PC_HEIGHT(vict)) / 2);
+       char_stat_mod(ch, "height", -((GET_PC_HEIGHT(ch) - GET_PC_HEIGHT(vict)) / 2));
      }
      else if (GET_PC_HEIGHT(ch) < GET_PC_HEIGHT(vict)) {
-      GET_HEIGHT(ch) += ((GET_PC_HEIGHT(vict) - GET_PC_HEIGHT(ch)) / 2);
+       char_stat_mod(ch, "height", ((GET_PC_HEIGHT(vict) - GET_PC_HEIGHT(ch)) / 2));
      }
      else {
-      GET_HEIGHT(ch) = GET_PC_HEIGHT(vict);
+       char_stat_set(ch, "height", GET_PC_HEIGHT(vict));
      }
     }
     else if (rand_number(1, 3) == 3) {
      send_to_char(ch, "%s changes your weight.\r\n", GET_NAME(vict));
      if (GET_PC_WEIGHT(ch) > GET_PC_WEIGHT(vict)) {
-      GET_WEIGHT(ch) -= ((GET_PC_WEIGHT(ch) - GET_PC_WEIGHT(vict)) / 2);
+       char_stat_mod(ch, "weight", -((GET_PC_WEIGHT(ch) - GET_PC_WEIGHT(vict)) / 2));
      }
      else if (GET_PC_WEIGHT(ch) < GET_PC_WEIGHT(vict)) {
-      GET_WEIGHT(ch) += ((GET_PC_WEIGHT(vict) - GET_PC_WEIGHT(ch)) / 2);
+       char_stat_mod(ch, "weight", ((GET_PC_WEIGHT(vict) - GET_PC_WEIGHT(ch)) / 2));
      }
      else {
-      GET_WEIGHT(ch) = GET_PC_WEIGHT(vict);
+       char_stat_set(ch, "weight", GET_PC_WEIGHT(vict));
      }
     }
     else {
@@ -5248,18 +5249,18 @@ ACMD(do_focus)
     act("$n focuses ki into $s mind, awakening it to cosmic wisdom!", TRUE, ch, 0, 0, TO_ROOM);
     if (IS_JINTO(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && GET_PRACTICES(ch, GET_CLASS(ch)) >= 15 && rand_number(1, 4) >= 3) {
      int64_t gain = 0;
-     GET_PRACTICES(ch, GET_CLASS(ch)) -= 15;
+     char_stat_mod(ch, "practices", -15);
      if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 100) {
       gain = level_exp(ch, GET_LEVEL(ch) + 1) * 0.15;
-      GET_EXP(ch) += gain;
+      char_stat_mod(ch, "experience", gain);
       send_to_char(ch, "@GYou gain @g%s@G experience due to your excellence with this skill.@n\r\n", add_commas(gain));
      } else if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 60) {
       gain = level_exp(ch, GET_LEVEL(ch) + 1) * 0.10;
-      GET_EXP(ch) += gain;
+      char_stat_mod(ch, "experience", gain);
       send_to_char(ch, "@GYou gain @g%s@G experience due to your excellence with this skill.@n\r\n", add_commas(gain));
      } else if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 40) {
       gain = level_exp(ch, GET_LEVEL(ch) + 1) * 0.05;
-      GET_EXP(ch) += gain;
+      char_stat_mod(ch, "experience", gain);
       send_to_char(ch, "@GYou gain @g%s@G experience due to your excellence with this skill.@n\r\n", add_commas(gain));
      }
     }
@@ -5315,18 +5316,18 @@ ACMD(do_focus)
      act("$n focuses ki into $N's mind, awakening it to cosmic wisdom!", TRUE, ch, 0, vict, TO_NOTVICT);
     if (IS_JINTO(ch) && level_exp(vict, GET_LEVEL(vict) + 1) - GET_EXP(vict) > 0 && GET_PRACTICES(ch, GET_CLASS(ch)) >= 15 && rand_number(1, 4) >= 3) {
      int64_t gain = 0;
-     GET_PRACTICES(ch, GET_CLASS(ch)) -= 15;
+     char_stat_mod(ch, "practices", -15);
      if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 100) {
       gain = level_exp(vict, GET_LEVEL(vict) + 1) * 0.15;
-      GET_EXP(vict) += gain;
+      char_stat_mod(vict, "experience", gain);
       send_to_char(vict, "@GYou gain @g%s@G experience due to the level of enlightenment you have received!@n\r\n", add_commas(gain));
      } else if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 60) {
       gain = level_exp(vict, GET_LEVEL(vict) + 1) * 0.10;
-      GET_EXP(vict) += gain;
+      char_stat_mod(vict, "experience", gain);
       send_to_char(vict, "@GYou gain @g%s@G experience due to the level of enlightenment you have received!@n\r\n", add_commas(gain));
      } else if (GET_SKILL(ch, SKILL_ENLIGHTEN) >= 40) {
       gain = level_exp(vict, GET_LEVEL(vict) + 1) * 0.05;
-      GET_EXP(vict) += gain;
+      char_stat_mod(vict, "experience", gain);
       send_to_char(vict, "@GYou gain @g%s@G experience due to the level of enlightenment you have received!@n\r\n", add_commas(gain));
      }
     }
@@ -5421,7 +5422,7 @@ ACMD(do_focus)
      act("$n focuses ki into $N's mind, making it work faster!", TRUE, ch, 0, vict, TO_NOTVICT);
      if ((vict->master == ch || ch->master == vict || ch->master == vict->master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
       if (IS_KAI(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && rand_number(1, 3) == 3) {
-       GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * 0.05;
+        char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * 0.05);
       }
      }
      return;
@@ -5515,7 +5516,7 @@ ACMD(do_focus)
      act("$n focuses ki into $N's limbs, making them more flexible!", TRUE, ch, 0, vict, TO_NOTVICT);
      if ((vict->master == ch || ch->master == vict || ch->master == vict->master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
       if (IS_KAI(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && rand_number(1, 3) == 3) {
-       GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * 0.05;
+        char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * 0.05);
       }
      }
      return;
@@ -5615,7 +5616,7 @@ ACMD(do_focus)
      act("$n focuses ki while chanting spiritual words. $n then places a hand on $N's head, blessing them!", TRUE, ch, 0, vict, TO_NOTVICT);
      if ((vict->master == ch || ch->master == vict || ch->master == vict->master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
       if (IS_KAI(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && rand_number(1, 3) == 3) {
-       GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * 0.05;
+        char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * 0.05);
       }
      }
      if (AFF_FLAGGED(vict, AFF_CURSE)) {
@@ -6910,7 +6911,7 @@ ACMD(do_heal)
    if (vict->master == ch || ch->master == vict || ch->master == vict->master) {
     if (IS_NAIL(ch) && IS_NAMEK(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 && GET_HIT(vict) <=
                                                                                                      getEffMaxPL(vict) * 0.85 && rand_number(1, 3) == 3) {
-     GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) * 0.005;
+      char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) * 0.005);
     }
    }
 
@@ -8053,8 +8054,8 @@ ACMD(do_meditate)
    send_to_char(ch, "You can not have any more slots through this process.\r\n");
   } else {
    send_to_char(ch, "During your meditation you manage to expand your mind and get the feeling you could learn some new skills.\r\n");
-   GET_SLOTS(ch) += 1;
-   GET_PRACTICES(ch, GET_CLASS(ch)) -= cost;
+    char_stat_mod(ch, "skill_slots", 1);
+   char_stat_mod(ch, "practices", -cost);
    return;
   }
   return;
@@ -8845,7 +8846,7 @@ void base_update(void)
 		if (cash == TRUE && GET_BANK_GOLD(d->character) > 0) {
 			inc = GET_BANK_INTEREST(d->character);
 			GET_LINTEREST(d->character) = LASTINTEREST;
-			GET_BANK_GOLD(d->character) += inc;
+			char_stat_mod(d->character, "money_bank", inc);
 			send_to_char(d->character, "@cBank Interest@D: @Y%s@n\r\n", add_commas(inc));
 		}
 		if (!IS_NPC(d->character)) {
@@ -9864,8 +9865,8 @@ ACMD(do_steal)
       send_to_char(ch, "You can't hold that much more zenni on your person!\r\n");
       return;
      }
-     GET_GOLD(vict) -= gold;
-     GET_GOLD(ch) += gold;
+     char_stat_mod(vict, "money", -gold);
+     char_stat_mod(ch, "money", gold);
      if (!IS_NPC(vict)) {
       SET_BIT_AR(PLR_FLAGS(vict), PLR_STOLEN);
       mudlog(NRM, MAX(ADMLVL_GRGOD, GET_INVIS_LEV(ch)), TRUE, "THEFT: %s has stolen %s zenni@n from %s", GET_NAME(ch), add_commas(gold), GET_NAME(vict));
@@ -10371,7 +10372,7 @@ ACMD(do_split)
       send_to_char(ch, "You don't seem to have that much gold to split.\r\n");
       return;
     }
-    GET_GOLD(ch) -= amount;
+    char_stat_mod(ch, "money", -amount);
     k = (ch->master ? ch->master : ch);
 
     if (AFF_FLAGGED(k, AFF_GROUP) && (char_room_get(k) == char_room_get(ch)))
@@ -10393,7 +10394,7 @@ ACMD(do_split)
       return;
     }
 
-    GET_GOLD(ch) += share;
+    char_stat_mod(ch, "money", share);
 
     /* Abusing signed/unsigned to make sizeof work. */
     len = snprintf(buf, sizeof(buf), "%s splits %d zenni; you receive %d.\r\n",
@@ -10404,7 +10405,7 @@ ACMD(do_split)
     }
     if (AFF_FLAGGED(k, AFF_GROUP) && char_room_get(k) == char_room_get(ch) &&
 		!IS_NPC(k) && k != ch) {
-      GET_GOLD(k) += share;
+      char_stat_mod(k, "money", share);
       send_to_char(k, "%s", buf);
     }
 
@@ -10414,7 +10415,7 @@ ACMD(do_split)
 	  (char_room_get(f->follower) == char_room_get(ch)) &&
 	  f->follower != ch) {
 
-	GET_GOLD(f->follower) += share;
+	char_stat_mod(f->follower, "money", share);
 	send_to_char(f->follower, "%s", buf);
       }
     }
@@ -10424,7 +10425,7 @@ ACMD(do_split)
     if (rest) {
       send_to_char(ch, "%d zenni %s not splitable, so you keep the money.\r\n",
 		rest, (rest == 1) ? "was" : "were");
-      GET_GOLD(ch) += rest;
+      char_stat_mod(ch, "money", rest);
     }
   } else {
     send_to_char(ch, "How much zenni do you wish to split with your group?\r\n");
@@ -11778,7 +11779,7 @@ ACMD(do_clan) {
     }
     else {
      bank = atoi(arg2);
-     GET_GOLD(ch) -= bank;
+     char_stat_mod(ch, "money", -bank);
      clanBANKADD(GET_CLAN(ch), ch, bank);
      send_to_char(ch, "You have deposited %s into the clan bank.\r\n", add_commas(bank));
     }
@@ -11956,7 +11957,7 @@ ACMD(do_clan) {
      bank = atoi(arg2);
      if (clanBANKSUB(GET_CLAN(ch), ch, bank)) {
       send_to_char(ch, "You have withdrawn %s from the clan bank.\r\n", add_commas(bank));
-      GET_GOLD(ch) += bank;
+      char_stat_mod(ch, "money", bank);
      }
      else {
       send_to_char(ch, "There isn't that much in the clan's bank!\r\n");

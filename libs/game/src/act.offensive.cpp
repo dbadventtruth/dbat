@@ -8488,7 +8488,7 @@ ACMD(do_attack)
     send_to_char(ch, "You do not have enough zenni. You need %d zenni per shot for that level of gun.\r\n", guncost);
     return;
    } else {
-    GET_GOLD(ch) -= guncost;
+     char_stat_mod(ch, "money", -guncost);
    }
  } else if (wielded == 2 && gun == TRUE) {
    if (wlvl == 5) {
@@ -8504,7 +8504,7 @@ ACMD(do_attack)
     send_to_char(ch, "You do not have enough zenni. You need %d zenni per shot for that level of gun.\r\n", guncost);
     return;
    } else {
-    GET_GOLD(ch) -= guncost;
+     char_stat_mod(ch, "money", -guncost);
    }
  }
 
@@ -9746,7 +9746,7 @@ ACMD(do_attack2)
    send_to_char(ch, "You do not have enough zenni. You need 1 zenni per shot.\r\n");
    return;
   } else {
-   GET_GOLD(ch) -= 1;
+    char_stat_mod(ch, "money", -1);
   }
  }
 

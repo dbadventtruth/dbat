@@ -873,7 +873,7 @@ static void shopping_buy(char *arg, struct char_data *ch, struct char_data *keep
     charged = buy_price(obj, shop, keeper, ch);
     goldamt += charged;
     if (!ADM_FLAGGED(ch, ADM_MONEY))
-      GET_GOLD(ch) -= charged;
+      char_stat_mod(ch, "money", -charged);
     else {
      send_to_imm("IMM PURCHASE: %s has purchased %s for free.", GET_NAME(ch), obj->short_description);
      log_imm_action("IMM PURCHASE: %s has purchased %s for free.", GET_NAME(ch), obj->short_description);
@@ -901,7 +901,7 @@ static void shopping_buy(char *arg, struct char_data *ch, struct char_data *keep
     do_tell(keeper, buf, cmd_tell, 0);
   }
   if (!ADM_FLAGGED(ch, ADM_MONEY))
-    GET_GOLD(keeper) += goldamt;
+    char_stat_mod(keeper, "money", goldamt);
 
   strlcpy(tempstr, times_message(ch->carrying, 0, bought), sizeof(tempstr));
 
@@ -916,7 +916,7 @@ static void shopping_buy(char *arg, struct char_data *ch, struct char_data *keep
   if (SHOP_USES_BANK(shop))
     if (GET_GOLD(keeper) > MAX_OUTSIDE_BANK) {
       SHOP_BANK(shop) += (GET_GOLD(keeper) - MAX_OUTSIDE_BANK);
-      GET_GOLD(keeper) = MAX_OUTSIDE_BANK;
+      char_stat_set(keeper, "money", MAX_OUTSIDE_BANK);
     }
 }
 
@@ -1070,7 +1070,7 @@ static void shopping_sell(char *arg, struct char_data *ch, struct char_data *kee
     int charged = sell_price(obj, shop, keeper, ch);
 
     goldamt += charged;
-    GET_GOLD(keeper) -= charged;
+    char_stat_mod(keeper, "money", -charged);
 
     sold++;
     obj_from_char(obj);
@@ -1100,18 +1100,18 @@ static void shopping_sell(char *arg, struct char_data *ch, struct char_data *kee
   send_to_char(ch, "The shopkeeper gives you %s zenni.\r\n", add_commas(goldamt));
   if (GET_GOLD(ch) + goldamt > GOLD_CARRY(ch)) {
    goldamt = (GET_GOLD(ch) + goldamt) - GOLD_CARRY(ch);
-   GET_GOLD(ch) = GOLD_CARRY(ch);
-   GET_BANK_GOLD(ch) += goldamt;
+   char_stat_set(ch, "money", GOLD_CARRY(ch));
+   char_stat_mod(ch, "money_bank", goldamt);
    send_to_char(ch, "You couldn't hold all of the money. The rest was deposited for you.\r\n");
   }
   else {
-   GET_GOLD(ch) += goldamt;
+   char_stat_mod(ch, "money", goldamt);
   }
 
   if (GET_GOLD(keeper) < MIN_OUTSIDE_BANK) {
     goldamt = MIN(MAX_OUTSIDE_BANK - GET_GOLD(keeper), shop->bankAccount);
     shop->bankAccount -= goldamt;
-    GET_GOLD(keeper) += goldamt;
+    char_stat_mod(keeper, "money", goldamt);
   }
 }
 

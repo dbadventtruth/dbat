@@ -192,8 +192,7 @@ static void dragon_level(struct char_data *ch)
   level = rand_number(40, 60);
  }
 
- ch->race_level = 0;
- ch->race_level = level + rand_number(5, 20);
+  char_stat_mod(ch, "level", rand_number(5, 20));
 }
 
 static void mob_stats(struct char_data *mob)
@@ -204,94 +203,94 @@ static void mob_stats(struct char_data *mob)
    finish = 20;
 
   if (!IS_HUMANOID(mob)) {
-   mob->real_abils.str = rand_number(start, finish);
-   mob->real_abils.intel = rand_number(start, finish) - 30;
-   mob->real_abils.wis = rand_number(start, finish) - 30;
-   mob->real_abils.dex = rand_number(start + 5, finish);
-   mob->real_abils.con = rand_number(start + 5, finish);
-   mob->real_abils.cha = rand_number(start, finish);
+   char_stat_set(mob, "strength", rand_number(start, finish));
+   char_stat_set(mob, "intelligence", rand_number(start, finish) - 30);
+   char_stat_set(mob, "wisdom", rand_number(start, finish) - 30);
+   char_stat_set(mob, "agility", rand_number(start + 5, finish));
+   char_stat_set(mob, "constitution", rand_number(start + 5, finish));
+   char_stat_set(mob, "speed", rand_number(start, finish));
   } else {
    if (IS_SAIYAN(mob)) {
-    mob->real_abils.str = rand_number(start + 10, finish);
-    mob->real_abils.intel = rand_number(start, finish - 10);
-    mob->real_abils.wis = rand_number(start, finish - 5);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start + 5, finish);
-    mob->real_abils.cha = rand_number(start + 5, finish);
+    char_stat_set(mob, "strength", rand_number(start + 10, finish));
+    char_stat_set(mob, "intelligence", rand_number(start, finish - 10));
+    char_stat_set(mob, "wisdom", rand_number(start, finish - 5));
+    char_stat_set(mob, "agility", rand_number(start, finish));
+    char_stat_set(mob, "constitution", rand_number(start + 5, finish));
+    char_stat_set(mob, "speed", rand_number(start + 5, finish));
    } else if (IS_KONATSU(mob)) {
-    mob->real_abils.str = rand_number(start, finish - 10);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start + 10, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stat_set(mob, "strength", rand_number(start, finish - 10));
+    char_stat_set(mob, "intelligence", rand_number(start, finish));
+    char_stat_set(mob, "wisdom", rand_number(start, finish));
+    char_stat_set(mob, "agility", rand_number(start + 10, finish));
+    char_stat_set(mob, "constitution", rand_number(start, finish));
+    char_stat_set(mob, "speed", rand_number(start, finish));
    } else if (IS_ANDROID(mob)) {
-    mob->real_abils.str = rand_number(start, finish);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish - 10);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stat_set(mob, "strength", rand_number(start, finish));
+    char_stat_set(mob, "intelligence", rand_number(start, finish));
+    char_stat_set(mob, "wisdom", rand_number(start, finish - 10));
+    char_stat_set(mob, "agility", rand_number(start, finish));
+    char_stat_set(mob, "constitution", rand_number(start, finish));
+    char_stat_set(mob, "speed", rand_number(start, finish));
    } else if (IS_MAJIN(mob)) {
-    mob->real_abils.str = rand_number(start, finish);
-    mob->real_abils.intel = rand_number(start, finish - 10);
-    mob->real_abils.wis = rand_number(start, finish - 5);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start + 15, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stat_set(mob, "strength", rand_number(start, finish));
+    char_stat_set(mob, "intelligence", rand_number(start, finish - 10));
+    char_stat_set(mob, "wisdom", rand_number(start, finish - 5));
+    char_stat_set(mob, "agility", rand_number(start, finish));
+    char_stat_set(mob, "constitution", rand_number(start + 15, finish));
+    char_stat_set(mob, "speed", rand_number(start, finish));
    } else if (IS_TRUFFLE(mob)) {
-    mob->real_abils.str = rand_number(start, finish - 10);
-    mob->real_abils.intel = rand_number(start + 15, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stat_set(mob, "strength", rand_number(start, finish - 10));
+    char_stat_set(mob, "intelligence", rand_number(start + 15, finish));
+    char_stat_set(mob, "wisdom", rand_number(start, finish));
+    char_stat_set(mob, "agility", rand_number(start, finish));
+    char_stat_set(mob, "constitution", rand_number(start, finish));
+    char_stat_set(mob, "speed", rand_number(start, finish));
    } else if (IS_ICER(mob)) {
-    mob->real_abils.str = rand_number(start + 5, finish);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start + 10, finish);
+    char_stat_set(mob, "strength", rand_number(start + 5, finish));
+    char_stat_set(mob, "intelligence", rand_number(start, finish));
+    char_stat_set(mob, "wisdom", rand_number(start, finish));
+    char_stat_set(mob, "agility", rand_number(start, finish));
+    char_stat_set(mob, "constitution", rand_number(start, finish));
+    char_stat_set(mob, "speed", rand_number(start + 10, finish));
    } else {
-    mob->real_abils.str = rand_number(start, finish);
-    mob->real_abils.intel = rand_number(start, finish);
-    mob->real_abils.wis = rand_number(start, finish);
-    mob->real_abils.dex = rand_number(start, finish);
-    mob->real_abils.con = rand_number(start, finish);
-    mob->real_abils.cha = rand_number(start, finish);
+    char_stat_set(mob, "strength", rand_number(start, finish));
+    char_stat_set(mob, "intelligence", rand_number(start, finish));
+    char_stat_set(mob, "wisdom", rand_number(start, finish));
+    char_stat_set(mob, "agility", rand_number(start, finish));
+    char_stat_set(mob, "constitution", rand_number(start, finish));
+    char_stat_set(mob, "speed", rand_number(start, finish));
    }
   }
 
-  if (mob->real_abils.str > 100)
-   mob->real_abils.str = 100;
-  else if (mob->real_abils.str < 5)
-   mob->real_abils.str = rand_number(5, 8);
+  if (char_stat_get(mob, "strength") > 100)
+   char_stat_set(mob, "strength", 100);
+  else if (char_stat_get(mob, "strength") < 5)
+   char_stat_set(mob, "strength", rand_number(5, 8));
 
-  if (mob->real_abils.intel > 100)
-   mob->real_abils.intel = 100;
-  else if (mob->real_abils.intel < 5)
-   mob->real_abils.intel = rand_number(5, 8);
+  if (char_stat_get(mob, "intelligence") > 100)
+   char_stat_set(mob, "intelligence", 100);
+  else if (char_stat_get(mob, "intelligence") < 5)
+   char_stat_set(mob, "intelligence", rand_number(5, 8));
 
-  if (mob->real_abils.wis > 100)
-   mob->real_abils.wis = 100;
-  else if (mob->real_abils.wis < 5)
-   mob->real_abils.wis = rand_number(5, 8);
+  if (char_stat_get(mob, "wisdom") > 100)
+   char_stat_set(mob, "wisdom", 100);
+  else if (char_stat_get(mob, "wisdom") < 5)
+   char_stat_set(mob, "wisdom", rand_number(5, 8));
 
-  if (mob->real_abils.con > 100)
-   mob->real_abils.con = 100;
-  else if (mob->real_abils.con < 5)
-   mob->real_abils.con = rand_number(5, 8);
+  if (char_stat_get(mob, "constitution") > 100)
+   char_stat_set(mob, "constitution", 100);
+  else if (char_stat_get(mob, "constitution") < 5)
+   char_stat_set(mob, "constitution", rand_number(5, 8));
 
-  if (mob->real_abils.cha > 100)
-   mob->real_abils.cha = 100;
-  else if (mob->real_abils.cha < 5)
-   mob->real_abils.cha = rand_number(5, 8);
+  if (char_stat_get(mob, "speed") > 100)
+   char_stat_set(mob, "speed", 100);
+  else if (char_stat_get(mob, "speed") < 5)
+   char_stat_set(mob, "speed", rand_number(5, 8));
 
-  if (mob->real_abils.dex > 100)
-   mob->real_abils.dex = 100;
-  else if (mob->real_abils.dex < 5)
-   mob->real_abils.dex = rand_number(5, 8);
+  if (char_stat_get(mob, "agility") > 100)
+   char_stat_set(mob, "agility", 100);
+  else if (char_stat_get(mob, "agility") < 5)
+   char_stat_set(mob, "agility", rand_number(5, 8));
 }
 
 /* Convert CWG-SunTzu armor objects to new armor types */
@@ -1759,15 +1758,13 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr)
     return 0;
   }
  
-  GET_HITDICE(ch) = t[0];
-  GET_LEVEL_ADJ(ch) = 0;
-  GET_CLASS_LEVEL(ch) = 0;
-  GET_ARMOR(ch) = 10 * (10 - t[2]);
+  char_stat_set(ch, "level", t[0]);
+  char_stat_set(ch, "armor", 10 * (10 - t[2]));
  
   /* max hit = 0 is a flag that H, M, V is xdy+z */
-  ch->basepl = t[3];
-  ch->baseki = t[4];
-  ch->basest = t[5];
+  char_stat_set(ch, "powerlevel", t[3]);
+  char_stat_set(ch, "ki", t[4]);
+  char_stat_set(ch, "stamina", t[5]);
   ch->health = 1.0;
   ch->energy = 1.0;
   ch->stamina = 1.0;
@@ -1867,7 +1864,7 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
 
   CASE("Str") {
     RANGE(0, 200);
-    ch->real_abils.str = num_arg;
+    char_stat_set(ch, "strength", num_arg);
   }
 
   CASE("StrAdd") {
@@ -1877,27 +1874,27 @@ static void interpret_espec(const char *keyword, const char *value, struct char_
 
   CASE("Int") {
     RANGE(0, 200);
-    ch->real_abils.intel = num_arg;
+    char_stat_set(ch, "intelligence", num_arg);
   }
 
   CASE("Wis") {
     RANGE(0, 200);
-    ch->real_abils.wis = num_arg;
+    char_stat_set(ch, "wisdom", num_arg);
   }
 
   CASE("Dex") {
     RANGE(0, 200);
-    ch->real_abils.dex = num_arg;
+    char_stat_set(ch, "agility", num_arg);
   }
 
   CASE("Con") {
     RANGE(0, 200);
-    ch->real_abils.con = num_arg;
+    char_stat_set(ch, "constitution", num_arg);
   }
 
   CASE("Cha") {
     RANGE(0, 200);
-    ch->real_abils.cha = num_arg;
+    char_stat_set(ch, "speed", num_arg);
   }
  
   CASE("Hit") {
@@ -2042,7 +2039,7 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch)
     AFF_FLAGS(ch)[2] = 0;
     AFF_FLAGS(ch)[3] = 0;
 
-    GET_ALIGNMENT(ch) = atoi(f3);
+    char_stat_set(ch, "alignment", atoi(f3));
     
 	/* Make some basic checks. */
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_CHARM);
@@ -2083,7 +2080,7 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch)
     AFF_FLAGS(ch)[2] = asciiflag_conv(f7);
     AFF_FLAGS(ch)[3] = asciiflag_conv(f8);
 
-    GET_ALIGNMENT(ch) = t[2];
+    char_stat_set(ch, "alignment", t[2]);
 
   } else {
     log("SYSERR: Format error after string section of mob #%d\n"
@@ -2129,8 +2126,6 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch)
     letter = fread_letter(mob_f);
     ungetc(letter, mob_f);
   }
-
-  ch->aff_abils = ch->real_abils;
 
   for (j = 0; j < NUM_WEARS; j++)
     ch->equipment[j] = NULL;
@@ -3148,47 +3143,47 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 
   GET_LPLAY(mob) = time(0);
  bool autoset = false;
-  if (mob->basepl <= 1) {
+  if (char_stat_get(mob, "powerlevel") <= 1) {
       autoset = true;
-      mob->basepl = GET_LEVEL(mob) * mult;
+      char_stat_set(mob, "powerlevel", GET_LEVEL(mob) * mult);
    if (GET_LEVEL(mob) > 140) {
-       mob->basepl *= 8;
+       char_stat_set(mob, "powerlevel", char_stat_get(mob, "powerlevel") * 8);
    } else if (GET_LEVEL(mob) > 130) {
-       mob->basepl *= 6;
+       char_stat_set(mob, "powerlevel", char_stat_get(mob, "powerlevel") * 6);
    } else if (GET_LEVEL(mob) > 120) {
-       mob->basepl *= 3;
+       char_stat_set(mob, "powerlevel", char_stat_get(mob, "powerlevel") * 3);
    } else if (GET_LEVEL(mob) > 110) {
-       mob->basepl *= 2;
+       char_stat_set(mob, "powerlevel", char_stat_get(mob, "powerlevel") * 2);
    }
   }
   if (autoset) {
-      mob->baseki = GET_LEVEL(mob) * mult;
+      char_stat_set(mob, "ki", GET_LEVEL(mob) * mult);
    if (GET_LEVEL(mob) > 140) {
-       mob->baseki *= 8;
+       char_stat_set(mob, "ki", char_stat_get(mob, "ki") * 8);
    } else if (GET_LEVEL(mob) > 130) {
-       mob->baseki *= 6;
+       char_stat_set(mob, "ki", char_stat_get(mob, "ki") * 6);
    } else if (GET_LEVEL(mob) > 120) {
-       mob->baseki *= 3;
+       char_stat_set(mob, "ki", char_stat_get(mob, "ki") * 3);
    } else if (GET_LEVEL(mob) > 110) {
-       mob->baseki *= 2;
+       char_stat_set(mob, "ki", char_stat_get(mob, "ki") * 2);
    }
   }
   if (autoset) {
-      mob->basest = GET_LEVEL(mob) * mult;
+      char_stat_set(mob, "stamina", GET_LEVEL(mob) * mult);
    if (GET_LEVEL(mob) > 140) {
-       mob->basest *= 8;
+       char_stat_set(mob, "stamina", char_stat_get(mob, "stamina") * 8);
    } else if (GET_LEVEL(mob) > 130) {
-       mob->basest *= 6;
+       char_stat_set(mob, "stamina", char_stat_get(mob, "stamina") * 6);
    } else if (GET_LEVEL(mob) > 120) {
-       mob->basest *= 3;
+       char_stat_set(mob, "stamina", char_stat_get(mob, "stamina") * 3);
    } else if (GET_LEVEL(mob) > 110) {
-       mob->basest *= 2;
+       char_stat_set(mob, "stamina", char_stat_get(mob, "stamina") * 2);
    }
   }
   if (GET_MOB_VNUM(mob) == 2245) {
-   mob->basepl = rand_number(1, 4);
-   mob->baseki = rand_number(1, 4);
-   mob->basest = rand_number(1, 4);
+   char_stat_set(mob, "powerlevel", rand_number(1, 4));
+   char_stat_set(mob, "ki", rand_number(1, 4));
+   char_stat_set(mob, "stamina", rand_number(1, 4));
   }
 
   int base = 0;
@@ -3366,81 +3361,81 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   MOB_COOLDOWN(mob) = 0;
   if (GET_GOLD(mob) <= 0 && !MOB_FLAGGED(mob, MOB_DUMMY)) {
    if (GET_LEVEL(mob) < 4) {
-    GET_GOLD(mob) = GET_LEVEL(mob) * rand_number(1, 2);
+    char_stat_set(mob, "money", GET_LEVEL(mob) * rand_number(1, 2));
    } else if (GET_LEVEL(mob) < 10) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(1, 2)) - 1;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(1, 2)) - 1);
    } else if (GET_LEVEL(mob) < 20) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(1, 3)) - 2;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(1, 3)) - 2);
    } else if (GET_LEVEL(mob) < 30) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(1, 3)) - 4;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(1, 3)) - 4);
    } else if (GET_LEVEL(mob) < 40) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(1, 3)) - 6;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(1, 3)) - 6);
    } else if (GET_LEVEL(mob) < 50) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(2, 3)) - 25;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(2, 3)) - 25);
    } else if (GET_LEVEL(mob) < 60) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(2, 3)) - 40;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(2, 3)) - 40);
    } else if (GET_LEVEL(mob) < 70) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(2, 3)) - 50;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(2, 3)) - 50);
    } else if (GET_LEVEL(mob) < 80) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(2, 4)) - 60;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(2, 4)) - 60);
    } else if (GET_LEVEL(mob) < 90) {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(2, 4)) - 70;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(2, 4)) - 70);
    } else {
-    GET_GOLD(mob) = (GET_LEVEL(mob) * rand_number(3, 4)) - 85;
+    char_stat_set(mob, "money", (GET_LEVEL(mob) * rand_number(3, 4)) - 85);
    }
    if (!IS_HUMANOID(mob)) {
-    GET_GOLD(mob) = GET_GOLD(mob) * 0.5;
+    char_stat_set(mob, "money", GET_GOLD(mob) * 0.5);
     if (GET_GOLD(mob) <= 0)
-     GET_GOLD(mob) = 1;
+     char_stat_set(mob, "money", 1);
    }
   }
   if (GET_EXP(mob) <= 0 && !MOB_FLAGGED(mob, MOB_DUMMY)) {
-   GET_EXP(mob) = GET_LEVEL(mob) * base;
-   GET_EXP(mob) = GET_EXP(mob) * .9;
-   GET_EXP(mob) += GET_LEVEL(mob) / 2;
-   GET_EXP(mob) += GET_LEVEL(mob) / 3;
+   char_stat_set(mob, "experience", GET_LEVEL(mob) * base);
+   char_stat_set(mob, "experience", GET_EXP(mob) * .9);
+   char_stat_mod(mob, "experience", GET_LEVEL(mob) / 2);
+   char_stat_mod(mob, "experience", GET_LEVEL(mob) / 3);
    if (IS_DRAGON(mob)) {
-    GET_EXP(mob) *= 1.4;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 1.4);
    } else if (IS_ANDROID(mob)) {
-    GET_EXP(mob) *= 1.25;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 1.25);
    } else if (IS_SAIYAN(mob)) {
-    GET_EXP(mob) *= 1.1;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 1.1);
    } else if (IS_BIO(mob)) {
-    GET_EXP(mob) *= 1.2;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 1.2);
    } else if (IS_MAJIN(mob)) {
-    GET_EXP(mob) *= 1.25;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 1.25);
    } else if (IS_DEMON(mob)) {
-    GET_EXP(mob) *= 1.1;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 1.1);
    } else if (GET_CLASS(mob) == CLASS_SHADOWDANCER) {
-    GET_EXP(mob) *= 2;
+    char_stat_set(mob, "experience", GET_EXP(mob) * 2);
    }
    if (GET_CLASS(mob) == CLASS_NPC_COMMONER && IS_HUMANOID(mob) && !IS_DRAGON(mob)) {
     if (!IS_ANDROID(mob) && !IS_SAIYAN(mob) && !IS_BIO(mob) && !IS_MAJIN(mob)) {
-     GET_EXP(mob) *= 0.75;
+     char_stat_set(mob, "experience", GET_EXP(mob) * 0.75);
     }
    }
 
    if (GET_LEVEL(mob) > 90) {
-    GET_EXP(mob) = GET_EXP(mob) * .7;
+    char_stat_set(mob, "experience", GET_EXP(mob) * .7);
    }
    else if (GET_LEVEL(mob) > 80) {
-    GET_EXP(mob) = GET_EXP(mob) * .75;
+    char_stat_set(mob, "experience", GET_EXP(mob) * .75);
    }
    else if (GET_LEVEL(mob) > 70) {
-    GET_EXP(mob) = GET_EXP(mob) * .8;
+    char_stat_set(mob, "experience", GET_EXP(mob) * .8);
    }
    else if (GET_LEVEL(mob) > 60) {
-    GET_EXP(mob) = GET_EXP(mob) * .85;
+    char_stat_set(mob, "experience", GET_EXP(mob) * .85);
    }
    else if (GET_LEVEL(mob) > 40) {
-    GET_EXP(mob) = GET_EXP(mob) * .9;
+    char_stat_set(mob, "experience", GET_EXP(mob) * .9);
    }
    else if (GET_LEVEL(mob) > 30) {
-    GET_EXP(mob) = GET_EXP(mob) * .95;
+    char_stat_set(mob, "experience", GET_EXP(mob) * .95);
    }
   
    if (GET_EXP(mob) > 20000000) {
-    GET_EXP(mob) = 20000000;
+    char_stat_set(mob, "experience", 20000000);
    }
   }
 
@@ -4732,7 +4727,7 @@ void clear_char(struct char_data *ch)
 
   ch->size = SIZE_UNDEFINED;
 
-  GET_ARMOR(ch) = 0;		/* Basic Armor */
+  char_stat_set(ch, "armor", 0);		/* Basic Armor */
 
 }
 
@@ -4765,9 +4760,9 @@ void init_char(struct char_data *ch)
     admin_set(ch, ADMLVL_IMPL);
 
     /* The implementor never goes through do_start(). */
-    ch->baseki = 1000;
-    ch->basepl = 1000;
-    ch->basest = 1000;
+    char_stat_set(ch, "ki", 1000);
+    char_stat_set(ch, "powerlevel", 1000);
+    char_stat_set(ch, "stamina", 1000);
   }
 
   /*ch->time.birth = time(0) - birth_age(ch);*/
@@ -4782,8 +4777,23 @@ void init_char(struct char_data *ch)
   else
     log("SYSERR: init_char: Character '%s' not found in player table.", GET_NAME(ch));
 
-  for (i = 0; i < 3; i++)
-    GET_COND(ch, i) = (GET_ADMLEVEL(ch) == ADMLVL_IMPL ? -1 : 48);
+  for (i = 0; i < 3; i++) {
+    const char *cond_name;
+    switch (i) {
+    case DRUNK:
+      cond_name = "drunk";
+      break;
+    case HUNGER:
+      cond_name = "hunger";
+      break;
+    case THIRST:
+      cond_name = "thirst";
+      break;
+    default:
+      continue;
+    }
+    char_stat_set(ch, cond_name, (GET_ADMLEVEL(ch) == ADMLVL_IMPL ? -1 : 48));
+  }
 
   GET_LOADROOM(ch) = NOWHERE;
   SPEAKING(ch) = SKILL_LANG_COMMON;

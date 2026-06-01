@@ -127,7 +127,7 @@ void handle_ingest_learn(struct char_data *ch, struct char_data *vict)
 		{
 			SET_SKILL(ch, i, GET_SKILL_BASE(ch, i) + rand_number(10, 25));
 			send_to_char(ch, "@YYou learned @y%s@Y from ingesting your target!@n\r\n", spell_info[i].name);
-			GET_SLOTS(ch) += 1;
+			char_stat_mod(ch, "skill_slots", 1);
 			GET_INGESTLEARNED(ch) = 1;
 
 		}
@@ -219,7 +219,7 @@ ACMD(do_teach)
   act(toother, TRUE, ch, 0, vict, TO_NOTVICT);
   SET_SKILL(vict, skill, GET_SKILL_BASE(vict, skill) + 1);
   if (free == FALSE) {
-   GET_PRACTICES(vict, GET_CLASS(vict)) -= cost;
+   char_stat_mod(vict, "practices", -cost);
   } else {
    send_to_char(ch, "@GYou teach your lesson so well that it cost them nothing to learn from you!@n\r\n");
    send_to_char(vict, "@GYour teacher taught you the lesson so well that it cost you nothing!@n\r\n");
@@ -856,7 +856,7 @@ void handle_grand(struct char_data *keeper, struct guild_data *guild, struct cha
    send_to_char(ch, "@YYou have ranked up in your Grand Mastery of the skill, @C%s@Y.\r\n", spell_info[skill_num].name);
   }
   SET_SKILL(ch, skill_num, GET_SKILL_BASE(ch, skill_num) + 1);
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 1000;
+  char_stat_mod(ch, "practices", -1000);
  }
 
 }
@@ -975,7 +975,7 @@ void handle_practice(struct char_data *keeper, struct guild_data *guild, struct 
           else
            send_to_char(ch, "You practice the basics of %s\r\n", sensei_style[GET_CLASS(ch)]);
           SET_SKILL(ch, skill_num, GET_SKILL_BASE(ch, skill_num) + rand_number(10, 25));
-          GET_PRACTICES(ch, GET_CLASS(ch)) -= pointcost;
+          char_stat_mod(ch, "practices", -pointcost);
           if (GET_FORGETING(ch) != 0 && GET_SKILL_BASE(ch, GET_FORGETING(ch)) < 30) {
            GET_FORGET_COUNT(ch) += 1;
            if (GET_FORGET_COUNT(ch) >= 5) {
@@ -999,7 +999,7 @@ void handle_practice(struct char_data *keeper, struct guild_data *guild, struct 
           else
            send_to_char(ch, "You practice the basics of %s. (%d)\r\n", sensei_style[GET_CLASS(ch)], GET_SKILL_BASE(ch, skill_num) + 1);
          SET_SKILL(ch, skill_num, GET_SKILL_BASE(ch, skill_num) + 1);
-         GET_PRACTICES(ch, GET_CLASS(ch)) -= pointcost;
+         char_stat_mod(ch, "practices", -pointcost);
          if (GET_SKILL_BASE(ch, skill_num) >= 100) {
           send_to_char(ch, "You learned a lot by mastering that skill.\r\n");
           if (IS_KONATSU(ch) && skill_num == SKILL_PARRY) {
@@ -1103,7 +1103,7 @@ void handle_exp(struct char_data *keeper, struct guild_data *guild, struct char_
   act("@c$n@W spends time training you in $s fighting style.@n", TRUE, keeper, 0, ch, TO_VICT);
   act("@c$n@W spends time training @C$N@W in $s fighting style.@n", TRUE, keeper, 0, ch, TO_NOTVICT);
   send_to_char(ch, "@wExperience Gained: @C%s@n\r\n", add_commas(amt));
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 25;
+  char_stat_mod(ch, "practices", -25);
   if (IS_SAIYAN(ch) || IS_HALFBREED(ch)) {
    amt = amt + (amt * .30);
   }
@@ -1165,9 +1165,9 @@ void handle_study(struct char_data *keeper, struct guild_data *guild, struct cha
  if (fail == TRUE)
   return;
 
- GET_EXP(ch) -= expcost;
- GET_GOLD(ch) -= goldcost;
- GET_PRACTICES(ch, GET_CLASS(ch)) += 25;
+ char_stat_mod(ch, "experience", -expcost);
+ char_stat_mod(ch, "money", -goldcost);
+ char_stat_mod(ch, "practices", 25);
  
  act("@c$N@W spends time lecturing you on various subjects.@n", TRUE, ch, 0, keeper, TO_CHAR);
  act("@c$N@W spends time lecturing @C$n@W on various subjects.@n", TRUE, ch, 0, keeper, TO_ROOM);

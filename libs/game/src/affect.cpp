@@ -7,120 +7,11 @@
 
 void aff_apply_modify(struct char_data *ch, int loc, int mod, int spec, char *msg)
 {
-  switch (loc) {
-  case APPLY_NONE:
-    break;
-
-  case APPLY_STR:
-    GET_STR(ch) += mod;
-    break;
-  case APPLY_DEX:
-    GET_DEX(ch) += mod;
-    break;
-  case APPLY_INT:
-    GET_INT(ch) += mod;
-    break;
-  case APPLY_WIS:
-    GET_WIS(ch) += mod;
-    break;
-  case APPLY_CON:
-    GET_CON(ch) += mod;
-    break;
-  case APPLY_CHA:
-    GET_CHA(ch) += mod;
-    break;
-
-  case APPLY_CLASS:
-  case APPLY_LEVEL:
-    break;
-
-  case APPLY_AGE:
-    ch->time.birth -= (mod * SECS_PER_MUD_YEAR);
-    break;
-
-  case APPLY_CHAR_WEIGHT:
-    GET_WEIGHT(ch) += mod;
-    break;
-
-  case APPLY_CHAR_HEIGHT:
-    GET_HEIGHT(ch) += mod;
-    break;
-
-  case APPLY_MANA:
-  case APPLY_KI:
-    ch->max_ki += mod;
-    break;
-
-  case APPLY_HIT:
-    ch->max_hit += mod;
-    break;
-
-  case APPLY_MOVE:
-    ch->max_move += mod;
-    break;
-
-  case APPLY_GOLD:
-  case APPLY_EXP:
-    break;
-
-  case APPLY_AC:
-    GET_ARMOR(ch) += mod;
-    break;
-
-  case APPLY_ACCURACY:
-  case APPLY_DAMAGE:
-  case APPLY_REGEN:
-  case APPLY_TRAIN:
-    break;
-
-  case APPLY_LIFEMAX:
-    ch->lifebonus += mod;
-    break;
-  case APPLY_UNUSED3:
-  case APPLY_UNUSED4:
-  case APPLY_RACE:
-  case APPLY_TURN_LEVEL:
-  case APPLY_SPELL_LVL_0:
-  case APPLY_SPELL_LVL_1:
-  case APPLY_SPELL_LVL_2:
-  case APPLY_SPELL_LVL_3:
-  case APPLY_SPELL_LVL_4:
-  case APPLY_SPELL_LVL_5:
-  case APPLY_SPELL_LVL_6:
-  case APPLY_SPELL_LVL_7:
-  case APPLY_SPELL_LVL_8:
-  case APPLY_SPELL_LVL_9:
-  case APPLY_FORTITUDE:
-  case APPLY_REFLEX:
-  case APPLY_WILL:
-    break;
-
-  case APPLY_SKILL:
-    break;
-
-  case APPLY_FEAT:
-    break;
-
-  case APPLY_ALLSAVES:
-    break;
-
-  case APPLY_ALL_STATS:
-    GET_STR(ch) += mod;
-    GET_INT(ch) += mod;
-    GET_WIS(ch) += mod;
-    GET_DEX(ch) += mod;
-    GET_CON(ch) += mod;
-    GET_CHA(ch) += mod;
-    break;
-
-  case APPLY_RESISTANCE:
-    break;
-
-  default:
-    log("SYSERR: Unknown apply adjust %d attempt (%s, affect_modify).", loc, __FILE__);
-    break;
-
-  } /* switch */
+  (void)ch;
+  (void)loc;
+  (void)mod;
+  (void)spec;
+  (void)msg;
 }
 
 
@@ -190,8 +81,6 @@ void affect_total(struct char_data *ch)
   for (af = ch->affected; af; af = af->next)
     affect_modify(ch, af->location, af->modifier, af->specific, af->bitvector, FALSE);
 
-  ch->aff_abils = ch->real_abils;
-
   for (i = 0; i < NUM_WEARS; i++) {
     if (GET_EQ(ch, i)) {
       if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_ARMOR) {
@@ -211,36 +100,6 @@ void affect_total(struct char_data *ch)
 
   for (af = ch->affected; af; af = af->next)
     affect_modify(ch, af->location, af->modifier, af->specific, af->bitvector, TRUE);
-
-  /* Make certain values are between 0..100, not < 0 and not > 100! */
-
-   if (GET_BONUS(ch, BONUS_WIMP) > 0) {
-    GET_STR(ch) = MAX(0, MIN(GET_STR(ch), 70));
-   } else {
-    GET_STR(ch) = MAX(0, MIN(GET_STR(ch), 100));
-   } if (GET_BONUS(ch, BONUS_DULL) > 0) {
-    GET_INT(ch) = MAX(0, MIN(GET_INT(ch), 70));
-   } else {
-    GET_INT(ch) = MAX(0, MIN(GET_INT(ch), 100));
-   } if (GET_BONUS(ch, BONUS_FOOLISH) > 0) {
-    GET_WIS(ch) = MAX(0, MIN(GET_WIS(ch), 70));
-   } else {
-    GET_WIS(ch) = MAX(0, MIN(GET_WIS(ch), 100));
-   } if (GET_BONUS(ch, BONUS_SLOW) > 0) {
-    GET_CHA(ch) = MAX(0, MIN(GET_CHA(ch), 70));
-   } else {
-    GET_CHA(ch) = MAX(0, MIN(GET_CHA(ch), 100));
-   } if (GET_BONUS(ch, BONUS_CLUMSY) > 0) {
-    GET_DEX(ch) = MAX(0, MIN(GET_DEX(ch), 70));
-   } else {
-    GET_DEX(ch) = MAX(0, MIN(GET_DEX(ch), 100));
-   } if (GET_BONUS(ch, BONUS_FRAIL) > 0) {
-    GET_CON(ch) = MAX(0, MIN(GET_CON(ch), 70));
-   } else {
-    GET_CON(ch) = MAX(0, MIN(GET_CON(ch), 100));
-   }
-
-
 
 }
 

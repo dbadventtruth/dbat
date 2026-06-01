@@ -1129,11 +1129,11 @@ void check_auction(void)
 			 send_to_char(ch_buying, "You couldn't hold all the zenni, so some of it was deposited for you.\r\n");
 			 int diff = 0;
 			 diff = (GET_GOLD(ch_selling) + curbid) - GOLD_CARRY(ch_selling);
-			 GET_GOLD(ch_selling) = GOLD_CARRY(ch_selling);
-			 GET_BANK_GOLD(ch_selling) += diff;
+			 char_stat_set(ch_selling, "money", GOLD_CARRY(ch_selling));
+			 char_stat_mod(ch_selling, "money_bank", diff);
                         }
 			else if (GET_GOLD(ch_selling) + curbid <= GOLD_CARRY(ch_selling)) {
-			 GET_GOLD(ch_selling) += curbid;
+			 char_stat_mod(ch_selling, "money", curbid);
 			}
 			/* Reset auctioning values */
 			obj_selling = NULL;
@@ -1957,7 +1957,7 @@ void stop_auction(int type, struct char_data * ch)
 	
 	
 	if (!(ch_buying == NULL))
-		GET_GOLD(ch_buying) += curbid;
+		char_stat_mod(ch_buying, "money", curbid);
 		
 	obj_selling = NULL;
 	ch_selling	= NULL;
@@ -1991,7 +1991,7 @@ static void auc_stat(struct char_data *ch, struct obj_data *obj)
 		/* auctioneer tells the character the auction details */
 		sprintf(buf, auctioneer[AUC_STAT], curbid);
 		act(buf, TRUE, ch_selling, obj, ch, TO_VICT | TO_SLEEP);
-		GET_GOLD(ch) -= 500;	
+		char_stat_mod(ch, "money", -500);
 
 		/*call_magic(ch, NULL, obj_selling, SPELL_IDENTIFY, 30, CAST_SPELL);*/
 	}
@@ -2451,12 +2451,12 @@ static void get_check_money(struct char_data *ch, struct obj_data *obj)
     diff = (GET_GOLD(ch) + value) - GOLD_CARRY(ch);
     obj = create_money(diff);
     obj_to_room(obj, char_room_get(ch));
-    GET_GOLD(ch) = GOLD_CARRY(ch);
+    char_stat_set(ch, "money", GOLD_CARRY(ch));
     return;
   }
 
 
-  GET_GOLD(ch) += value;
+  char_stat_mod(ch, "money", value);
     extract_obj(obj);
 
   if (value == 1) {
@@ -2802,7 +2802,7 @@ static void perform_drop_gold(struct char_data *ch, int amount,
 
       send_to_char(ch, "You drop some zenni which disappears in a puff of smoke!\r\n");
     }
-    GET_GOLD(ch) -= amount;
+    char_stat_mod(ch, "money", -amount);
   }
 }
 
@@ -3191,8 +3191,8 @@ static void perform_give_gold(struct char_data *ch, struct char_data *vict,
   act(buf, TRUE, ch, 0, vict, TO_NOTVICT);
 
   if (IS_NPC(ch) || !ADM_FLAGGED(ch, ADM_MONEY))
-    GET_GOLD(ch) -= amount;
-  GET_GOLD(vict) += amount;
+    char_stat_mod(ch, "money", -amount);
+  char_stat_mod(vict, "money", amount);
 
   bribe_mtrigger(vict, ch, amount);
 }
@@ -3383,7 +3383,7 @@ ACMD(do_drink)
   if (IS_NPC(ch)) {
    return;
   }
-  if (IS_ANDROID(ch) || GET_COND(ch, THIRST) < 0) {
+  if (IS_ANDROID(ch) || char_stat_get(ch, "thirst") < 0) {
     send_to_char(ch, "You need not drink!\r\n");
     return;
   }
@@ -3391,11 +3391,11 @@ ACMD(do_drink)
     send_to_char(ch, "You are inside a healing tank!\r\n");
     return;
   }
-  if (GET_COND(ch, HUNGER) <= 1 && GET_COND(ch, THIRST) >= 2 && !IS_NAMEK(ch) && GET_GENOME(ch, 0) != 3 && GET_GENOME(ch, 1) != 3) {
+  if (char_stat_get(ch, "hunger") <= 1 && char_stat_get(ch, "thirst") >= 2 && !IS_NAMEK(ch) && GET_GENOME(ch, 0) != 3 && GET_GENOME(ch, 1) != 3) {
     send_to_char(ch, "You need to eat first!\r\n");
     return;
   }
-  wasthirsty = GET_COND(ch, THIRST);
+  wasthirsty = char_stat_get(ch, "thirst");
   if (!*arg && !IS_NPC(ch)) {
     char buf[MAX_STRING_LENGTH];
     switch (room_sector_type_get(char_room_get(ch))) {
@@ -3412,7 +3412,7 @@ ACMD(do_drink)
 
          send_to_char(ch, "You feel your ki return to full strength.\r\n");
         }
-        if (GET_COND(ch, THIRST) >= 48)
+        if (char_stat_get(ch, "thirst") >= 48)
           send_to_char(ch, "You don't feel thirsty anymore.\r\n");
         return;
       default:
@@ -3431,7 +3431,7 @@ ACMD(do_drink)
              send_to_char(ch, "You feel your ki has rejuvenated.\r\n");
          }
         }
-        if (GET_COND(ch, THIRST) >= 48)
+        if (char_stat_get(ch, "thirst") >= 48)
           send_to_char(ch, "You don't feel thirsty anymore.\r\n");
        }
       return;;
@@ -3474,13 +3474,13 @@ ACMD(do_drink)
     send_to_char(ch, "Seems like it doesn't work, maybe it is fake...\r\n");
     return;
   }
-  if (IS_NPC(ch)) {     /* Cannot use GET_COND() on mobs. */
+  if (IS_NPC(ch)) {
     act("$n@w drinks from $p.", TRUE, ch, temp, 0, TO_ROOM);
     obj_from_char(temp);
     extract_obj(temp);
     return;
   }
-  if ((GET_COND(ch, DRUNK) > 10) && (GET_COND(ch, THIRST) > 0)) {
+  if ((char_stat_get(ch, "drunk") > 10) && (char_stat_get(ch, "thirst") > 0)) {
     /* The pig is drunk */
     send_to_char(ch, "You can't seem to get close enough to your mouth.\r\n");
     act("$n tries to drink but misses $s mouth!", TRUE, ch, 0, 0, TO_ROOM);
@@ -3505,7 +3505,7 @@ ACMD(do_drink)
       act(temp->action_description, TRUE, ch, temp, 0, TO_CHAR);
 
     /* if (drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][DRUNK] > 0)
-      amount = (25 - GET_COND(ch, THIRST)) / drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][DRUNK];
+      amount = (25 - char_stat_get(ch, "thirst")) / drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][DRUNK];
     else
       amount = rand_number(3, 10);*/
 
@@ -3551,10 +3551,10 @@ ACMD(do_drink)
     }
    }
 
-  if (GET_COND(ch, DRUNK) > 10)
+  if (char_stat_get(ch, "drunk") > 10)
     send_to_char(ch, "You feel drunk.\r\n");
 
-  if (GET_COND(ch, THIRST) >= 48)
+  if (char_stat_get(ch, "thirst") >= 48)
     send_to_char(ch, "You don't feel thirsty anymore.\r\n");
 
   if (GET_OBJ_VAL(temp, VAL_DRINKCON_POISON) && (!IS_MUTANT(ch) || (GET_GENOME(ch, 0) != 7 && GET_GENOME(ch, 1) != 7))) {	/* The crap was poisoned 
@@ -3591,10 +3591,10 @@ ACMD(do_eat)
 
   one_argument(argument, arg);
 
-  if (IS_NPC(ch)) /* Cannot use GET_COND() on mobs. */
+  if (IS_NPC(ch))
     return;
 
-  if (IS_ANDROID(ch) || GET_COND(ch, HUNGER) < 0)
+  if (IS_ANDROID(ch) || char_stat_get(ch, "hunger") < 0)
   {
     send_to_char(ch, "You need not eat!\r\n");
     return;
@@ -3619,7 +3619,7 @@ ACMD(do_eat)
     send_to_char(ch, "You don't seem to have %s %s.\r\n", AN(arg), arg);
     return;
   }
-  if (GET_COND(ch, THIRST) <= 1 && GET_COND(ch, HUNGER) >= 2)
+  if (char_stat_get(ch, "thirst") <= 1 && char_stat_get(ch, "hunger") >= 2)
   {
     send_to_char(ch, "You need to drink first!\r\n");
     return;
@@ -3677,7 +3677,7 @@ ACMD(do_eat)
       return;
   }
 
-  if (GET_COND(ch, HUNGER) >= 48) {
+  if (char_stat_get(ch, "hunger") >= 48) {
     if(IS_MAJIN(ch)) {
       send_to_char(ch, "You are full, but there's always room for candy!\r\n");
     } else {
@@ -3705,7 +3705,7 @@ ACMD(do_eat)
   }
 
   // available hunger
-  int foob = 48 - GET_COND(ch, HUNGER);
+  int foob = 48 - char_stat_get(ch, "hunger");
   int maxfval = MAX(1, GET_OBJ_VAL(food, VAL_FOOD_MAXFOODVAL));
   // amount that can be eaten - tasting only consumes 1 point, eating consumes as much as possible
   // VAL_FOOD_FOODVAL is the amount of nutrition remaining, while value 1 is the max possible it once had.
@@ -3729,11 +3729,11 @@ ACMD(do_eat)
       int psbonus = (int)((double)(maxfval + GET_OBJ_VAL(food, VAL_FOOD_PSBONUS)) * percent_eaten);
       int expbonus = (int)((double)GET_OBJ_VAL(food, VAL_FOOD_EXPBONUS) * ((GET_LEVEL(ch) * 0.4) + 1) * percent_eaten);
       gain_exp(ch, expbonus);
-      GET_PRACTICES(ch, GET_CLASS(ch)) += psbonus;
+      char_stat_mod(ch, "practices", psbonus);
       send_to_char(ch, "That was exceptionally delicious! @D[@mPS@D: @C+%d@D] [@gEXP@D: @G+%s@D]@n\r\n", psbonus, add_commas(expbonus));
       if (!GET_OBJ_VAL(food, VAL_FOOD_POISON) && GET_HIT(ch) < (getEffMaxPL(ch)) && subcmd != SCMD_TASTE)
       {
-        if (GET_WEIGHT(food) < 6)
+        if (obj_weight_get(food) < 6)
         {
           incCurHealthPercent(ch, .05);
         }
@@ -3750,7 +3750,7 @@ ACMD(do_eat)
       }
     }
 
-    if (GET_COND(ch, HUNGER) >= 48) {
+    if (char_stat_get(ch, "hunger") >= 48) {
       if(IS_MAJIN(ch)) {
         send_to_char(ch, "You are full, but there's always room for candy!\r\n");
       } else {
@@ -4523,30 +4523,30 @@ ACMD(do_sac)
   switch (rand_number(0, 5)) { 
     case 0: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nYou receive one zenni for your humility.\r\n", GET_OBJ_SHORT(j));
-      GET_GOLD(ch) += 1; 
+      char_stat_mod(ch, "money", 1);
     break; 
     case 1: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nThe Gods ignore your sacrifice.\r\n", GET_OBJ_SHORT(j));
     break; 
     case 2: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nZizazat gives you %d experience points.\r\n", GET_OBJ_SHORT(j), (2*GET_OBJ_COST(j)));
-      GET_EXP(ch) += (2*GET_OBJ_COST(j)); 
+      char_stat_mod(ch, "experience", (2*GET_OBJ_COST(j)));
     break; 
     case 3: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nYou receive %d experience points.\r\n", GET_OBJ_SHORT(j), GET_OBJ_COST(j));
-      GET_EXP(ch) += GET_OBJ_COST(j); 
+      char_stat_mod(ch, "experience", GET_OBJ_COST(j));
     break; 
     case 4: 
       send_to_char(ch, "Your sacrifice to the Gods is rewarded with %d zenni.\r\n", GET_OBJ_COST(j)); 
-      GET_GOLD(ch) += GET_OBJ_COST(j); 
+      char_stat_mod(ch, "money", GET_OBJ_COST(j));
     break; 
     case 5: 
       send_to_char(ch, "Your sacrifice to the Gods is rewarded with %d zenni\r\n", (2*GET_OBJ_COST(j))); 
-      GET_GOLD(ch) += (2*GET_OBJ_COST(j)); 
+      char_stat_mod(ch, "money", (2*GET_OBJ_COST(j)));
     break; 
   default: 
       send_to_char(ch, "You sacrifice %s to the Gods.\r\nYou receive one zenni for your humility.\r\n", GET_OBJ_SHORT(j));
-      GET_GOLD(ch) += 1; 
+      char_stat_mod(ch, "money", 1);
     break; 
   } 
   } else {

@@ -119,19 +119,19 @@ void resurrect(char_data *ch, int mode) {
         int losschance = axion_dice(0);
         send_to_char(ch, "@RThe the strain of this type of revival has caused you to be in a weakened state for a few hours (Game time)! Strength, constitution, wisdom, intelligence, speed, and agility have been reduced by a fifth for the duration.@n\r\n");
         int str = -8, intel = -8, wis = -8, spd = -8, con = -8, agl = -8;
-        str = -1 * (ch->real_abils.str / 5);
-        intel = -1 * (ch->real_abils.intel / 5);
-        wis = -1 * (ch->real_abils.wis / 5);
-        spd = -1 * (ch->real_abils.cha / 5);
-        con = -1 * (ch->real_abils.con / 5);
-        agl = -1 * (ch->real_abils.dex / 5);
+        str = -1 * (char_stat_get(ch, "strength") / 5);
+        intel = -1 * (char_stat_get(ch, "intelligence") / 5);
+        wis = -1 * (char_stat_get(ch, "wisdom") / 5);
+        spd = -1 * (char_stat_get(ch, "speed") / 5);
+        con = -1 * (char_stat_get(ch, "constitution") / 5);
+        agl = -1 * (char_stat_get(ch, "agility") / 5);
         assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, dur, str, con, intel, agl, wis, spd);
         if (losschance >= 100) {
             int psloss = rand_number(100, 300);
-            GET_PRACTICES(ch, GET_CLASS(ch)) -= psloss;
+            char_stat_mod(ch, "practices", -psloss);
             send_to_char(ch, "@R...and a loss of @r%d@R PS!@n", psloss);
             if (GET_PRACTICES(ch, GET_CLASS(ch)) < 0) {
-                GET_PRACTICES(ch, GET_CLASS(ch)) = 0;
+                char_stat_set(ch, "practices", 0);
             }
         }
     }
@@ -213,8 +213,9 @@ bool can_tolerate_gravity(char_data *ch, int grav) {
 }
 
 int calcTier(char_data *ch) {
-    int tier = ch->level / 10;
-    if((ch->level % 10) == 0)
+    int64_t level = char_stat_get(ch, "level");
+    int tier = level / 10;
+    if((level % 10) == 0)
         tier--;
     tier = MAX(tier, 0);
     tier = MIN(tier, 9);
@@ -224,7 +225,7 @@ int calcTier(char_data *ch) {
 int64_t calc_soft_cap(char_data *ch) {
     int tier = calcTier(ch);
     auto softmap = get_race(ch->race)->getSoftMap(ch);
-    return ch->level * softmap[tier];
+    return char_stat_get(ch, "level") * softmap[tier];
 }
 
 bool is_soft_cap(char_data *ch, int64_t type) {
@@ -235,7 +236,7 @@ bool is_soft_cap_mult(char_data *ch, int64_t type, long double mult) {
     if(IS_NPC(ch))
         return true;
 
-    if(ch->level >= 100) {
+    if(char_stat_get(ch, "level") >= 100) {
         return false;
     }
     int64_t cur_cap = calc_soft_cap(ch) * mult;
@@ -417,7 +418,8 @@ int64_t getMaxPLTrans(char_data *ch) {
     } else {
         total = getEffBasePL(ch) * form.mult;
     }
-    total += ch->max_hit;
+    auto bonus = char_legacy_modifier(ch, APPLY_HIT, -1);
+    total += bonus;
     return total;
 }
 
@@ -434,8 +436,9 @@ int64_t getMaxPL(char_data *ch) {
 
 int64_t getCurPL(char_data *ch) {
     double health = clampHealth(ch->health);
-    if(ch->suppression > 0){
-        return (int64_t)(getEffMaxPL(ch) * MIN(health, (double)ch->suppression/100));
+    int64_t suppression = char_stat_get(ch, "suppression");
+    if(suppression > 0){
+        return (int64_t)(getEffMaxPL(ch) * MIN(health, (double)suppression/100));
     } else {
         return (int64_t)(getEffMaxPL(ch) * health);
     }
@@ -451,7 +454,7 @@ int64_t getEffBasePL(char_data *ch) {
 }
 
 int64_t getBasePL(char_data *ch) {
-    return ch->basepl;
+    return char_stat_get(ch, "powerlevel");
 }
 
 double getCurPLPercent(char_data *ch) {
@@ -482,7 +485,8 @@ int64_t getMaxKI(char_data *ch) {
     } else {
         total = getEffBaseKI(ch);
     }
-    total += ch->max_ki;
+    auto bonus = char_legacy_modifier(ch, APPLY_KI, -1) + char_legacy_modifier(ch, APPLY_MANA, -1);
+    total += bonus;
     return total;
 }
 
@@ -496,7 +500,7 @@ int64_t getEffBaseKI(char_data *ch) {
 }
 
 int64_t getBaseKI(char_data *ch) {
-    return ch->baseki;
+    return char_stat_get(ch, "ki");
 }
 
 double getCurKIPercent(char_data *ch) {
@@ -604,7 +608,8 @@ int64_t getMaxST(char_data *ch) {
     } else {
         total = getEffBaseST(ch);
     }
-    total += ch->max_move;
+    auto bonus = char_legacy_modifier(ch, APPLY_MOVE, -1);
+    total += bonus;
     return total;
 }
 
@@ -618,7 +623,7 @@ int64_t getEffBaseST(char_data *ch) {
 }
 
 int64_t getBaseST(char_data *ch) {
-    return ch->basest;
+    return char_stat_get(ch, "stamina");
 }
 
 double getCurSTPercent(char_data *ch) {
@@ -713,7 +718,14 @@ int64_t getCurLF(char_data *ch) {
     return (int64_t)(getMaxLF(ch) * clampHealth(ch->life));
 }
 
+#define GET_BLESSBONUS(ch) (AFF_FLAGGED(ch, AFF_BLESS) ? (GET_BLESSLVL(ch) >= 100 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.1 : GET_BLESSLVL(ch) >= 60 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.05 : GET_BLESSLVL(ch) >= 40 ? ((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.02 : 0) : 0) 
+#define GET_POSELF(ch)    (!IS_NPC(ch) ? is_affected(ch, AFF_SPECIAL_POSE) ? GET_SKILL(ch, SKILL_POSE) >= 100 ? 0.15 : GET_SKILL(ch, SKILL_POSE) >= 60 ? 0.1 : GET_SKILL(ch, SKILL_POSE) >= 40 ? 0.05 : 0 : 0 : 0)
+#define GET_POSEBONUS(ch) (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * GET_POSELF(ch))
+#define GET_LIFEBONUS(ch) (IS_ARLIAN(ch) ? ((GET_MAX_MANA(ch) * 0.01) * (GET_MOLT_LEVEL(ch) / 100)) + ((GET_MAX_MOVE(ch) * 0.01) * (GET_MOLT_LEVEL(ch) / 100)) : 0)
+#define GET_LIFEBONUSES(ch) (lifebonus > 0 ? (GET_LIFEBONUS(ch) + GET_BLESSBONUS(ch) + GET_POSEBONUS(ch)) * ((lifebonus + 100) * 0.01) : (GET_LIFEBONUS(ch) + GET_BLESSBONUS(ch) + GET_POSEBONUS(ch)))
+
 int64_t getMaxLF(char_data *ch) {
+    auto lifebonus = char_legacy_modifier(ch, APPLY_LIFEMAX, -1);
     return (IS_DEMON(ch) ? (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.75) + GET_LIFEBONUSES(ch) : (IS_KONATSU(ch) ? (((GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5)) * 0.85) + GET_LIFEBONUSES(ch) : (GET_MAX_MANA(ch) * 0.5) + (GET_MAX_MOVE(ch) * 0.5) + GET_LIFEBONUSES(ch)));
 }
 
@@ -912,8 +924,8 @@ void restoreLimbs(char_data *ch) {
 }
 
 int64_t gainBasePLTransformed(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basepl += amt;
-    return ch->basepl;
+    char_stat_mod(ch, "powerlevel", amt);
+    return char_stat_get(ch, "powerlevel");
 }
 
 int64_t gainBasePL(char_data *ch, int64_t amt) {
@@ -921,8 +933,8 @@ int64_t gainBasePL(char_data *ch, int64_t amt) {
 }
 
 int64_t gainBaseSTTransformed(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basest += amt;
-    return ch->basest;
+    char_stat_mod(ch, "stamina", amt);
+    return char_stat_get(ch, "stamina");
 }
 
 int64_t gainBaseST(char_data *ch, int64_t amt) {
@@ -930,8 +942,8 @@ int64_t gainBaseST(char_data *ch, int64_t amt) {
 }
 
 int64_t gainBaseKITransformed(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->baseki += amt;
-    return ch->baseki;
+    char_stat_mod(ch, "ki", amt);
+    return char_stat_get(ch, "ki");
 }
 
 int64_t gainBaseKI(char_data *ch, int64_t amt) {
@@ -949,8 +961,8 @@ void gainBaseAll(char_data *ch, int64_t amt) {
 }
 
 int64_t loseBasePLTransformed(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basepl = MAX(1L, ch->basepl-amt);
-    return ch->basepl;
+    char_stat_set(ch, "powerlevel", MAX(1L, char_stat_get(ch, "powerlevel") - amt));
+    return char_stat_get(ch, "powerlevel");
 }
 
 int64_t loseBasePL(char_data *ch, int64_t amt) {
@@ -958,8 +970,8 @@ int64_t loseBasePL(char_data *ch, int64_t amt) {
 }
 
 int64_t loseBaseSTTransformed(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->basest = MAX(1L, ch->basest-amt);
-    return ch->basest;
+    char_stat_set(ch, "stamina", MAX(1L, char_stat_get(ch, "stamina") - amt));
+    return char_stat_get(ch, "stamina");
 }
 
 int64_t loseBaseST(char_data *ch, int64_t amt) {
@@ -967,8 +979,8 @@ int64_t loseBaseST(char_data *ch, int64_t amt) {
 }
 
 int64_t loseBaseKITransformed(char_data *ch, int64_t amt, bool trans_mult) {
-    ch->baseki = MAX(1L, ch->baseki-amt);
-    return ch->baseki;
+    char_stat_set(ch, "ki", MAX(1L, char_stat_get(ch, "ki") - amt));
+    return char_stat_get(ch, "ki");
 }
 
 int64_t loseBaseKI(char_data *ch, int64_t amt) {
@@ -986,7 +998,7 @@ void loseBaseAll(char_data *ch, int64_t amt) {
 }
 
 int64_t gainBasePLPercentTransformed(char_data *ch, double amt, bool trans_mult) {
-    return gainBasePLTransformed(ch, ch->basepl * amt, trans_mult);
+    return gainBasePLTransformed(ch, char_stat_get(ch, "powerlevel") * amt, trans_mult);
 }
 
 int64_t gainBasePLPercent(char_data *ch, double amt) {
@@ -994,7 +1006,7 @@ int64_t gainBasePLPercent(char_data *ch, double amt) {
 }
 
 int64_t gainBaseKIPercentTransformed(char_data *ch, double amt, bool trans_mult) {
-    return gainBaseKITransformed(ch, ch->baseki * amt, trans_mult);
+    return gainBaseKITransformed(ch, char_stat_get(ch, "ki") * amt, trans_mult);
 }
 
 int64_t gainBaseKIPercent(char_data *ch, double amt) {
@@ -1002,7 +1014,7 @@ int64_t gainBaseKIPercent(char_data *ch, double amt) {
 }
 
 int64_t gainBaseSTPercentTransformed(char_data *ch, double amt, bool trans_mult) {
-    return gainBaseSTTransformed(ch, ch->basest * amt, trans_mult);
+    return gainBaseSTTransformed(ch, char_stat_get(ch, "stamina") * amt, trans_mult);
 }
 
 int64_t gainBaseSTPercent(char_data *ch, double amt) {
@@ -1010,7 +1022,7 @@ int64_t gainBaseSTPercent(char_data *ch, double amt) {
 }
 
 int64_t loseBasePLPercentTransformed(char_data *ch, double amt, bool trans_mult) {
-    return loseBasePLTransformed(ch, ch->basepl * amt, trans_mult);
+    return loseBasePLTransformed(ch, char_stat_get(ch, "powerlevel") * amt, trans_mult);
 }
 
 int64_t loseBasePLPercent(char_data *ch, double amt) {
@@ -1018,7 +1030,7 @@ int64_t loseBasePLPercent(char_data *ch, double amt) {
 }
 
 int64_t loseBaseKIPercentTransformed(char_data *ch, double amt, bool trans_mult) {
-    return loseBaseKITransformed(ch, ch->baseki * amt, trans_mult);
+    return loseBaseKITransformed(ch, char_stat_get(ch, "ki") * amt, trans_mult);
 }
 
 int64_t loseBaseKIPercent(char_data *ch, double amt) {
@@ -1026,7 +1038,7 @@ int64_t loseBaseKIPercent(char_data *ch, double amt) {
 }
 
 int64_t loseBaseSTPercentTransformed(char_data *ch, double amt, bool trans_mult) {
-    return loseBaseSTTransformed(ch, ch->basest * amt, trans_mult);
+    return loseBaseSTTransformed(ch, char_stat_get(ch, "stamina") * amt, trans_mult);
 }
 
 int64_t loseBaseSTPercent(char_data *ch, double amt) {
@@ -1092,7 +1104,7 @@ bool isWeightedPL(char_data *ch) {
 }
 
 void apply_kaioken(char_data *ch, int times, bool announce) {
-    GET_KAIOKEN(ch) = times;
+    char_stat_set(ch, "kaioken", times);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_POWERUP);
 
     if(announce) {
@@ -1106,7 +1118,7 @@ void remove_kaioken(char_data *ch, int8_t announce) {
     if(!kaio) {
         return;
     }
-    GET_KAIOKEN(ch) = 0;
+    char_stat_set(ch, "kaioken", 0);
 
     switch(announce) {
         case 1:
@@ -3108,7 +3120,7 @@ void handle_evolution(struct char_data *ch, int64_t dmg)
  else if (GET_LEVEL(ch) >= 10)
   moltgain += GET_LEVEL(ch) * 50;
 
- GET_MOLT_EXP(ch) += moltgain;
+  char_stat_mod(ch, "molt_experience", moltgain);
  
  if (AFF_FLAGGED(ch, AFF_SPIRIT)) {
   send_to_char(ch, "You are dead and all evolution experience is reduced. Gains are divided by 100 or reduced to a minimum of 1.\r\n");
@@ -3117,8 +3129,8 @@ void handle_evolution(struct char_data *ch, int64_t dmg)
 
  if (GET_MOLT_EXP(ch) > molt_threshold(ch)) {
   if (GET_MOLT_LEVEL(ch) <= GET_LEVEL(ch) * 2 || GET_LEVEL(ch) >= 100) {
-   GET_MOLT_EXP(ch) = 0;
-   GET_MOLT_LEVEL(ch) += 1;
+    char_stat_set(ch, "molt_experience", 0);
+    char_stat_mod(ch, "molt_level", 1);
    double rand1 = 0.02;
    double rand2 = 0.03;
    if (rand_number(1, 4) == 3) {
@@ -3133,9 +3145,9 @@ void handle_evolution(struct char_data *ch, int64_t dmg)
    armorgain = armor_evolve(ch);
    gainBasePL(ch, plgain);
    gainBaseST(ch, stamgain);
-   GET_ARMOR(ch) += armorgain;
+    char_stat_mod(ch, "armor", armorgain);
    if (GET_ARMOR(ch) > 50000) {
-    GET_ARMOR(ch) = 50000;
+     char_stat_set(ch, "armor", 50000);
    }
    act("@gYour @De@Wx@wo@Ds@Wk@we@Dl@We@wt@Do@Wn@g begins to crack. You quickly shed it and reveal a stronger version that was growing beneath it! At the same time you feel your adrenal sacs to be more efficient@n", TRUE, ch, 0, 0, TO_CHAR);
    act("@G$n's@g @De@Wx@wo@Ds@Wk@we@Dl@We@wt@Do@Wn@g begins to crack. Suddenly $e sheds the damaged @De@Wx@wo@Ds@Wk@we@Dl@We@wt@Do@Wn and reveals a stronger version that had been growing underneath!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -3804,7 +3816,7 @@ void improve_skill(struct char_data *ch, int skill, int num)
        SET_SKILL(ch, skill, GET_SKILL_BASE(ch, skill) + 5);
       }
       if (GET_LEVEL(ch) < 100) {
-       GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) / 20;
+        char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) / 20);
       } else {
        gain_exp(ch, 5000000);
       }
@@ -3998,8 +4010,9 @@ void admin_set(struct char_data *ch, int value)
       SET_BIT_AR(PRF_FLAGS(ch), PRF_AUTOEXIT);
     }
     if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
-      for (i = 0; i < 3; i++)
-        GET_COND(ch, i) = (char) -1;
+      char_stat_set(ch, "drunk", -1);
+      char_stat_set(ch, "hunger", -1);
+      char_stat_set(ch, "thirst", -1);
       SET_BIT_AR(PRF_FLAGS(ch), PRF_HOLYLIGHT);
     }
     return;
@@ -4042,14 +4055,14 @@ int roll_stats(struct char_data *ch, int type, int bonus)
   int powerlevel = 0, ki = 1, stamina = 2;
 
   if (type == powerlevel) {
-   base_num = ch->real_abils.str * 3;
-   max_num = ch->real_abils.str * 5;
+   base_num = char_stat_get(ch, "strength") * 3;
+   max_num = char_stat_get(ch, "strength") * 5;
   } else if (type == ki) {
-   base_num = ch->real_abils.intel * 3;
-   max_num = ch->real_abils.intel * 5;
+   base_num = char_stat_get(ch, "intelligence") * 3;
+   max_num = char_stat_get(ch, "intelligence") * 5;
   } else if (type == stamina) {
-   base_num = ch->real_abils.con * 3;
-   max_num = ch->real_abils.con * 5;
+   base_num = char_stat_get(ch, "constitution") * 3;
+   max_num = char_stat_get(ch, "constitution") * 5;
   }
 
  pool = rand_number(base_num, max_num) + bonus;
@@ -4574,8 +4587,8 @@ int chance_to_hit(struct char_data *ch)
  if (IS_NPC(ch))
   return (num);
 
- if (GET_COND(ch, DRUNK) > 4) {
-  num += GET_COND(ch, DRUNK);
+ if (char_stat_get(ch, "drunk") > 4) {
+  num += char_stat_get(ch, "drunk");
  }
 
  return (num);

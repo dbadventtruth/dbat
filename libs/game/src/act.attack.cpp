@@ -2994,7 +2994,7 @@ ACMD(do_selfd)
   dmg += (getBasePL(ch)) * 0.6;
   dmg += (getBaseST(ch));
   decCurHealthPercentFloored(ch, 1, 1);
-  GET_SUPPRESS(ch) = 0;
+  char_stat_set(ch, "suppression", 0);
   act("@RYou EXPLODE! The explosion concentrates on @r$N@R, engulfing $M in a sphere of deadly energy!@n", TRUE, ch, 0, tch, TO_CHAR);
   act("@R$n EXPLODES! The explosion concentrates on YOU, engulfing your body in a sphere of deadly energy!@n", TRUE, ch, 0, tch, TO_VICT);
   act("@R$n EXPLODES! The explosion concentrates on @r$N@R, engulfing $M in a sphere of deadly energy!@n", TRUE, ch, 0, tch, TO_NOTVICT);
@@ -3025,7 +3025,7 @@ ACMD(do_selfd)
   dmg += (getBaseST(ch));
   dmg *= 1.5;
    decCurHealthPercentFloored(ch, 1, 1);
-  GET_SUPPRESS(ch) = 0;
+  char_stat_set(ch, "suppression", 0);
   act("@RYou EXPLODE! The explosion expands outward burning up all surroundings for a large distance. The explosion takes on the shape of a large energy dome with you at its center!@n", TRUE, ch, 0, 0, TO_CHAR);
   act("@R$n EXPLODES! The explosion expands outward burning up all surroundings for a large distance. The explosion takes on the shape of a large energy dome with $n at its center!@n", TRUE, ch, 0, 0, TO_ROOM);
   for (tch = char_room_get(ch)->people; tch; tch = next_v) {
@@ -4161,25 +4161,25 @@ ACMD(do_breaker)
    int64_t theft = 0;
    if (GET_LEVEL(ch) - 30 > GET_LEVEL(vict)) {
     theft = 1;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    } else if (GET_LEVEL(ch) - 20 > GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 1000;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    } else if (GET_LEVEL(ch) - 10 > GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 100;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    } else if (GET_LEVEL(ch) >= GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 50;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    } else if (GET_LEVEL(ch) + 10 >= GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 500;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    } else if (GET_LEVEL(ch) + 20 >= GET_LEVEL(vict)) {
     theft = GET_EXP(vict) / 1000;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    } else {
     theft = GET_EXP(vict) / 2000;
-    GET_EXP(vict) -= theft;
+    char_stat_mod(vict, "experience", -theft);
    }
    int hitspot = 1;
    hitspot = roll_hitloc(ch, vict, skill);
@@ -4232,7 +4232,7 @@ ACMD(do_breaker)
 
      if (level_exp(ch, GET_LEVEL(ch) + 1) - (GET_EXP(ch)) > 0 || GET_LEVEL(ch) >= 100) {
        send_to_char(ch, "The returning Eldritch energy blesses you with some experience. @D[@G%s@D]@n\r\n", add_commas(theft));
-       GET_EXP(ch) += theft * 2;
+       char_stat_mod(ch, "experience", theft * 2);
      }
      
      pcost(ch, attperc, 0);

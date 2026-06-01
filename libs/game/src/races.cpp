@@ -105,12 +105,6 @@ void racial_ability_modifiers(struct char_data *ch) {
     } else {
         chrace = GET_RACE(ch);
     }
-
-    /*ch->real_abils.str += racial_ability_mods[chrace][0];
-    ch->real_abils.con += racial_ability_mods[chrace][1];
-    ch->real_abils.intel += racial_ability_mods[chrace][2];
-    ch->real_abils.wis += racial_ability_mods[chrace][3];
-    ch->real_abils.dex += racial_ability_mods[chrace][4];*/
 }
 
 
@@ -190,10 +184,10 @@ void set_height_and_weight_by_race(struct char_data *ch) {
     }
 
     mod = dice(2, hw_info[race].heightdie);
-    GET_HEIGHT(ch) = hw_info[race].height[sex] + mod;
+    char_stat_set(ch, "height", hw_info[race].height[sex] + mod);
     mod *= hw_info[race].weightfac;
     mod /= 100;
-    GET_WEIGHT(ch) = hw_info[race].weight[sex] + mod;
+    char_stat_set(ch, "weight", hw_info[race].weight[sex] + mod);
 }
 
 
@@ -884,7 +878,7 @@ namespace dbat::race {
                                  ps_cost);
                     return false;
                 } else {
-                    GET_PRACTICES(ch, GET_CLASS(ch)) -= 50;
+                    char_stat_mod(ch, "practices", -50);
                     GET_TRANSCOST(ch, tier) = TRUE;
                     send_to_char(ch, "You pay %i PS to permanently unlock this transformation!\r\n", ps_cost);
                 }
@@ -1854,4 +1848,3 @@ dbat::race::Race* get_race(int race_id) {
     }
     return nullptr;
 }
-

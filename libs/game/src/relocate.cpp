@@ -429,7 +429,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos)
   obj->worn_on = pos;
 
   if (GET_OBJ_TYPE(obj) == ITEM_ARMOR)
-    GET_ARMOR(ch) += apply_ac(ch, pos);
+    char_stat_mod(ch, "armor", apply_ac(ch, pos));
 
   if (char_room_get(ch)) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
@@ -464,7 +464,7 @@ struct obj_data *unequip_char(struct char_data *ch, int pos)
   obj->worn_on = -1;
 
   if (GET_OBJ_TYPE(obj) == ITEM_ARMOR)
-    GET_ARMOR(ch) -= apply_ac(ch, pos);
+    char_stat_mod(ch, "armor", -apply_ac(ch, pos));
 
   if (char_room_get(ch)) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)

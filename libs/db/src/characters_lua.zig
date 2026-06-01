@@ -464,12 +464,12 @@ fn luaCharacterStatMod(lua: *Lua) i32 {
 }
 
 fn luaCharacterDerivedBase(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_der_get_base(checkCharacter(lua), string(lua, 2)));
+    lua.pushInteger(cdb.char_der_base_get(checkCharacter(lua), string(lua, 2)));
     return 1;
 }
 
 fn luaCharacterDerivedTotal(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_der_get_total(checkCharacter(lua), string(lua, 2)));
+    lua.pushInteger(cdb.char_der_total_get(checkCharacter(lua), string(lua, 2)));
     return 1;
 }
 

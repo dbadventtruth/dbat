@@ -33,27 +33,27 @@ int parse_stats(struct descriptor_data *d, char *arg)
         return 1;
     break;
     case STAT_GET_STR:
-      ch->real_abils.str = stats_assign_stat(ch->real_abils.str, arg, d);
+      char_stat_set(ch, "strength", stats_assign_stat(char_stat_get(ch, "strength"), arg, d));
       stats_disp_menu(d);
     break;
     case STAT_GET_INT:
-      ch->real_abils.intel = stats_assign_stat(ch->real_abils.intel, arg, d);
+      char_stat_set(ch, "intelligence", stats_assign_stat(char_stat_get(ch, "intelligence"), arg, d));
       stats_disp_menu(d);
     break;
     case STAT_GET_WIS:
-      ch->real_abils.wis = stats_assign_stat(ch->real_abils.wis, arg, d);
+      char_stat_set(ch, "wisdom", stats_assign_stat(char_stat_get(ch, "wisdom"), arg, d));
       stats_disp_menu(d);
     break;
     case STAT_GET_DEX:
-      ch->real_abils.dex = stats_assign_stat(ch->real_abils.dex, arg, d);
+      char_stat_set(ch, "agility", stats_assign_stat(char_stat_get(ch, "agility"), arg, d));
       stats_disp_menu(d);
     break;
     case STAT_GET_CON:
-      ch->real_abils.con = stats_assign_stat(ch->real_abils.con, arg, d);
+      char_stat_set(ch, "constitution", stats_assign_stat(char_stat_get(ch, "constitution"), arg, d));
       stats_disp_menu(d);
     break;
     case STAT_GET_CHA:
-      ch->real_abils.cha = stats_assign_stat(ch->real_abils.cha, arg, d);
+      char_stat_set(ch, "speed", stats_assign_stat(char_stat_get(ch, "speed"), arg, d));
       stats_disp_menu(d);
     break;
     default:
@@ -80,12 +80,12 @@ int stats_disp_menu(struct descriptor_data *d)
     " <| @BQ@W) @CQuit@W                   |>\r\n"
     "-<[@y===========================@W]>-@n\r\n"
     "\r\n", OLC_VAL(d),
-    d->character->real_abils.str,
-    d->character->real_abils.dex,
-    d->character->real_abils.con,
-    d->character->real_abils.intel,
-    d->character->real_abils.wis,
-    d->character->real_abils.cha);
+    char_stat_get(d->character, "strength"),
+    char_stat_get(d->character, "agility"),
+    char_stat_get(d->character, "constitution"),
+    char_stat_get(d->character, "intelligence"),
+    char_stat_get(d->character, "wisdom"),
+    char_stat_get(d->character, "speed"));
 
   send_to_char(d->character, "Enter Letter to Change: ");
 
@@ -165,4 +165,3 @@ int stats_assign_stat(int abil, char *arg, struct descriptor_data *d)
 
   return abil;
 }
-

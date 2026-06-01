@@ -863,8 +863,8 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
     send_to_char(victim, "A warm feeling floods your body.\r\n");
     break;
   case SPELL_SENSU:
-    if (GET_COND(victim, HUNGER) > -1) {
-     GET_COND(victim, HUNGER) = 48;
+    if (char_stat_get(victim, "hunger") > -1) {
+     char_stat_set(victim, "hunger", 48);
     }
     restore(victim, true);
     break;
@@ -1095,11 +1095,6 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
     to_room = "$n glows briefly with a silvery light.";
     break;
   case SPELL_DAZE:
-    if (GET_HITDICE(victim) < 5)
-      af[0].bitvector = AFF_NEXTNOACTION;
-      accum_duration = FALSE;
-      to_vict = "You are struck dumb by a flash of bright light!";
-      to_room = "$n is struck dumb by a flash of bright light!";
     break;
   case SPELL_SUMMON_MONSTER_I:
   case SPELL_SUMMON_MONSTER_II:
@@ -1165,4 +1160,3 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
   if (to_room != NULL)
     act(to_room, TRUE, victim, 0, ch, TO_ROOM);
 }
-

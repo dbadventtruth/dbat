@@ -139,8 +139,8 @@ fn serializeRentInfo(allocator: std.mem.Allocator, rentcode: c_int, cost: c_int,
     try rent.object.put(allocator, "code", .{ .integer = rentcode });
     try rent.object.put(allocator, "time", .{ .integer = @intCast(time(null)) });
     try rent.object.put(allocator, "cost", .{ .integer = cost });
-    try rent.object.put(allocator, "gold", .{ .integer = ch.gold });
-    try rent.object.put(allocator, "bank", .{ .integer = ch.bank_gold });
+    try rent.object.put(allocator, "gold", .{ .integer = cdb.char_stat_get(ch, "money") });
+    try rent.object.put(allocator, "bank", .{ .integer = cdb.char_stat_get(ch, "money_bank") });
     try rent.object.put(allocator, "items", .{ .integer = 0 });
     return rent;
 }

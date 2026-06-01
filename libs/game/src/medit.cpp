@@ -250,6 +250,8 @@ void medit_setup_existing(struct descriptor_data *d, mob_vnum mob_num)
  */
 void init_mobile(struct char_data *mob)
 {
+  int ability;
+
   clear_char(mob);
 
   //GET_HIT(mob) = 0;
@@ -257,12 +259,17 @@ void init_mobile(struct char_data *mob)
   GET_SEX(mob) = SEX_MALE;
   mob->chclass = CLASS_NPC_COMMONER;
 
-  GET_WEIGHT(mob) = rand_number(100, 200);
-  GET_HEIGHT(mob) = rand_number(100, 200);
+  char_stat_set(mob, "weight", rand_number(100, 200));
+  char_stat_set(mob, "height", rand_number(100, 200));
 
-  mob->real_abils.str = mob->real_abils.intel = mob->real_abils.wis = rand_number(8, 16);
-  mob->real_abils.dex = mob->real_abils.con = mob->real_abils.cha = rand_number(8, 16);
-  mob->aff_abils = mob->real_abils;
+  ability = rand_number(8, 16);
+  char_stat_set(mob, "strength", ability);
+  char_stat_set(mob, "intelligence", ability);
+  char_stat_set(mob, "wisdom", ability);
+  ability = rand_number(8, 16);
+  char_stat_set(mob, "agility", ability);
+  char_stat_set(mob, "constitution", ability);
+  char_stat_set(mob, "speed", ability);
 
   SET_BIT_AR(MOB_FLAGS(mob), MOB_ISNPC);
 }
@@ -472,7 +479,7 @@ void medit_disp_menu(struct descriptor_data *d)
   "@gF@n) Armor Class: [@c%4d@n],  @gG@n) Exp:      [@c%" I64T "@n],  @gH@n) Gold:  [@c%8d@n]\r\n",
 
 	  OLC_NUM(d), genders[(int)GET_SEX(mob)], GET_ALIAS(mob),
-	  GET_SDESC(mob), GET_LDESC(mob), GET_DDESC(mob), GET_HITDICE(mob),
+	  GET_SDESC(mob), GET_LDESC(mob), GET_DDESC(mob), GET_LEVEL(mob),
 	  GET_ALIGNMENT(mob), 0, 0,
 	  0, 0, GET_HIT(mob), (getCurKI(mob)),
                   (getCurST(mob)), GET_ARMOR(mob), GET_EXP(mob), GET_GOLD(mob)
@@ -842,21 +849,21 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_AC:
-    GET_ARMOR(OLC_MOB(d)) = LIMIT(i, 10, 200000);
+    char_stat_set(OLC_MOB(d), "armor", LIMIT(i, 10, 200000));
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
     break;
 
   case MEDIT_EXP:
-    GET_EXP(OLC_MOB(d)) = LIMIT(i, 0, MAX_MOB_EXP);
+    char_stat_set(OLC_MOB(d), "experience", LIMIT(i, 0, MAX_MOB_EXP));
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
     break;
 
   case MEDIT_GOLD:
-    GET_GOLD(OLC_MOB(d)) = LIMIT(i, 0, MAX_MOB_GOLD);
+    char_stat_set(OLC_MOB(d), "money", LIMIT(i, 0, MAX_MOB_GOLD));
     break;
 
   case MEDIT_POS:
@@ -871,12 +878,11 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_LEVEL:
-    GET_HITDICE(OLC_MOB(d)) = LIMIT(i, 1, 150);
     /* Try to add some baseline defaults based on level choice. */
     break;
 
   case MEDIT_ALIGNMENT:
-    GET_ALIGNMENT(OLC_MOB(d)) = LIMIT(i, -1000, 1000);
+    char_stat_set(OLC_MOB(d), "alignment", LIMIT(i, -1000, 1000));
     break;
 
   case MEDIT_CLASS:

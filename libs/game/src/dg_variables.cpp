@@ -588,7 +588,7 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "align")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-             GET_ALIGNMENT(c) = MAX(-1000, MIN(addition, 1000));
+              char_stat_set(c, "alignment", MAX(-1000, MIN(addition, 1000)));
             }
         	snprintf(str, slen, "%d", GET_ALIGNMENT(c));
           }
@@ -597,7 +597,7 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "bank")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_BANK_GOLD(c) += addition;
+              char_stat_mod(c, "money_bank", addition);
             }
             snprintf(str, slen, "%d", GET_GOLD(c));
           }
@@ -632,9 +632,9 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int addition = atoi(subfield);
               int max = 100;
-              GET_CON(c) += addition;
-              if (GET_CON(c) > max) GET_CON(c) = max;
-              if (GET_CON(c) < 3) GET_CON(c) = 3;
+              char_stat_mod(c, "constitution", addition);
+              if (GET_CON(c) > max) char_stat_set(c, "constitution", max);
+              if (GET_CON(c) < 3) char_stat_set(c, "constitution", 3);
             }
             snprintf(str, slen, "%d", GET_CON(c));
           }
@@ -642,9 +642,9 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int addition = atoi(subfield);
               int max = 100;
-              GET_CHA(c) += addition;
-              if (GET_CHA(c) > max) GET_CHA(c) = max;
-              if (GET_CHA(c) < 3) GET_CHA(c) = 3;
+              char_stat_mod(c, "speed", addition);
+              if (GET_CHA(c) > max) char_stat_set(c, "speed", max);
+              if (GET_CHA(c) < 3) char_stat_set(c, "speed", 3);
             }
             snprintf(str, slen, "%d", GET_CHA(c));
           }
@@ -663,9 +663,9 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int addition = atoi(subfield);
               int max = 100;
-              GET_DEX(c) += addition;
-              if (GET_DEX(c) > max) GET_DEX(c) = max;
-              if (GET_DEX(c) < 3) GET_DEX(c) = 3;
+              char_stat_mod(c, "agility", addition);
+              if (GET_DEX(c) > max) char_stat_set(c, "agility", max);
+              if (GET_DEX(c) < 3) char_stat_set(c, "agility", 3);
             }
             snprintf(str, slen, "%d", GET_DEX(c));
           }
@@ -678,9 +678,9 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "drunk")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-            GET_COND(c, DRUNK) = MAX(-1, MIN(addition, 24));
+              char_stat_set(c, "drunk", MAX(-1, MIN(addition, 24)));
             }
-            snprintf(str, slen, "%d", GET_COND(c, DRUNK));
+            snprintf(str, slen, "%d", (int)char_stat_get(c, "drunk"));
           }
           break;
         case 'e':
@@ -736,7 +736,7 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "gold")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_GOLD(c) += addition;
+              char_stat_mod(c, "money", addition);
             }
             snprintf(str, slen, "%d", GET_GOLD(c));
           }
@@ -773,9 +773,9 @@ in the vault (vnum: 453) now and then. you can just use
           else if (!strcasecmp(field, "hunger")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_COND(c, HUNGER) = MAX(-1, MIN(addition, 24));
+              char_stat_set(c, "hunger", MAX(-1, MIN(addition, 24)));
             }
-            snprintf(str, slen, "%d", GET_COND(c, HUNGER));
+            snprintf(str, slen, "%d", (int)char_stat_get(c, "hunger"));
           }
           break;
         case 'i':
@@ -839,9 +839,9 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int addition = atoi(subfield);
               int max = 100;
-              GET_INT(c) += addition;
-              if (GET_INT(c) > max) GET_INT(c) = max;
-              if (GET_INT(c) < 3) GET_INT(c) = 3;
+              char_stat_mod(c, "intelligence", addition);
+              if (GET_INT(c) > max) char_stat_set(c, "intelligence", max);
+              if (GET_INT(c) < 3) char_stat_set(c, "intelligence", 3);
             }
             snprintf(str, slen, "%d", GET_INT(c));
           }
@@ -940,7 +940,7 @@ in the vault (vnum: 453) now and then. you can just use
             }
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_PRACTICES(c, GET_CLASS(c)) = MAX(0, GET_PRACTICES(c, GET_CLASS(c)) + addition);
+              char_stat_set(c, "practices", MAX(0, GET_PRACTICES(c, GET_CLASS(c)) + addition));
             }
             snprintf(str, slen, "%d", GET_PRACTICES(c, GET_CLASS(c)));
           }
@@ -998,9 +998,9 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int addition = atoi(subfield);
               int max = 100;
-              GET_STR(c) += addition;
-              if (GET_STR(c) > max) GET_STR(c) = max;
-              if (GET_STR(c) < 3) GET_STR(c) = 3;
+              char_stat_mod(c, "strength", addition);
+              if (GET_STR(c) > max) char_stat_set(c, "strength", max);
+              if (GET_STR(c) < 3) char_stat_set(c, "strength", 3);
             }
             snprintf(str, slen, "%d", GET_STR(c));
           }
@@ -1048,9 +1048,9 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "thirst")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_COND(c, THIRST) = MAX(-1, MIN(addition, 24));
+              char_stat_set(c, "thirst", MAX(-1, MIN(addition, 24)));
             }
-            snprintf(str, slen, "%d", GET_COND(c, THIRST));
+            snprintf(str, slen, "%d", (int)char_stat_get(c, "thirst"));
           }
           else if (!strcasecmp(field, "tnl")) {
             snprintf(str, slen, "%d", level_exp(c, GET_LEVEL(c) + 1));
@@ -1092,9 +1092,9 @@ in the vault (vnum: 453) now and then. you can just use
             if (subfield && *subfield) {
               int addition = atoi(subfield);
               int max = 100;
-              GET_WIS(c) += addition;
-              if (GET_WIS(c) > max) GET_WIS(c) = max;
-              if (GET_WIS(c) < 3) GET_WIS(c) = 3;
+              char_stat_mod(c, "wisdom", addition);
+              if (GET_WIS(c) > max) char_stat_set(c, "wisdom", max);
+              if (GET_WIS(c) < 3) char_stat_set(c, "wisdom", 3);
             }
             snprintf(str, slen, "%d", GET_WIS(c));
           }
@@ -1103,7 +1103,7 @@ in the vault (vnum: 453) now and then. you can just use
           if (!strcasecmp(field, "zenni")) {
             if (subfield && *subfield) {
               int addition = atoi(subfield);
-              GET_GOLD(c) += addition;
+              char_stat_mod(c, "money", addition);
             }
             snprintf(str, slen, "%d", GET_GOLD(c));
           }

@@ -91,6 +91,7 @@ void mob_proto_free(struct mob_proto_data *mob)
     return;
   mob_proto_free_strings(mob);
   free_trig_proto_list(mob->proto_script);
+  mob_proto_zig_free(mob);
   free(mob);
 }
 
@@ -119,6 +120,7 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from)
   char *old_long_descr = to->long_descr;
   char *old_description = to->description;
   struct trig_proto_list *old_proto_script = to->proto_script;
+  void *old_zigdata = to->zigdata;
 
   memset(to, 0, sizeof(*to));
 
@@ -128,6 +130,7 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from)
   to->long_descr = old_long_descr;
   to->description = old_description;
   to->proto_script = old_proto_script;
+  to->zigdata = old_zigdata;
 
   mob_proto_free_strings(to);
   free_trig_proto_list(to->proto_script);
@@ -138,19 +141,6 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from)
   to->sex = from->sex;
   to->race = from->race;
   to->chclass = from->chclass;
-  to->alignment = from->alignment;
-  to->weight = from->weight;
-  to->height = from->height;
-  to->level = from->level;
-  to->race_level = from->race_level;
-  to->level_adj = from->level_adj;
-  to->gold = from->gold;
-  to->exp = from->exp;
-  to->basepl = from->basepl;
-  to->baseki = from->baseki;
-  to->basest = from->basest;
-  to->armor = from->armor;
-  to->real_abils = from->real_abils;
   to->mob_specials = from->mob_specials;
   to->position = from->position;
   to->speaking = from->speaking;
@@ -162,6 +152,7 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from)
   to->long_descr = from->long_descr ? strdup(from->long_descr) : NULL;
   to->description = from->description ? strdup(from->description) : NULL;
   to->proto_script = copy_trig_proto_list(from->proto_script);
+  char_stats_copy_to_mob_proto(from, to);
   return TRUE;
 }
 
@@ -173,6 +164,7 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from)
   struct char_data *next_affect = to->next_affect;
 
   free_mobile_strings(to);
+  char_zig_free(to);
   if (to->proto_script)
     free_proto_script(to, MOB_TRIGGER);
 
@@ -188,19 +180,6 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from)
   to->sex = from->sex;
   to->race = from->race;
   to->chclass = from->chclass;
-  to->alignment = from->alignment;
-  to->weight = from->weight;
-  to->height = from->height;
-  to->level = from->level;
-  to->race_level = from->race_level;
-  to->level_adj = from->level_adj;
-  to->gold = from->gold;
-  to->exp = from->exp;
-  to->basepl = from->basepl;
-  to->baseki = from->baseki;
-  to->basest = from->basest;
-  to->armor = from->armor;
-  to->real_abils = from->real_abils;
   to->mob_specials = from->mob_specials;
   to->position = from->position;
   to->speaking = from->speaking;
@@ -212,6 +191,7 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from)
   to->long_descr = from->long_descr ? strdup(from->long_descr) : NULL;
   to->description = from->description ? strdup(from->description) : NULL;
   to->proto_script = copy_trig_proto_list(from->proto_script);
+  mob_proto_stats_copy_to_char(from, to);
   return TRUE;
 }
 
@@ -552,7 +532,7 @@ int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto, FILE *fd)
                 fbuf1, fbuf2, fbuf3, fbuf4,
                 abuf1, abuf2, abuf3, abuf4,
 		GET_ALIGNMENT(mob),
-		GET_HITDICE(mob), 0, 10 - (GET_ARMOR(mob) / 10),
+		0, 0, 10 - (GET_ARMOR(mob) / 10),
                 0, (getCurKI(mob)), (getCurST(mob)), 0, 0,
 		0
   );

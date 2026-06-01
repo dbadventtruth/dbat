@@ -470,7 +470,7 @@ void mobile_activity(void)
           next_obj = sobj->next_content;
           if (sobj != NULL && (!shop || !shop_producing(sobj, shop)))
           {
-            GET_GOLD(ch) += GET_OBJ_COST(sobj);
+            char_stat_mod(ch, "money", GET_OBJ_COST(sobj));
             extract_obj(sobj);
           }
         }

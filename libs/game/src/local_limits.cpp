@@ -942,23 +942,23 @@ static void update_flags(struct char_data *ch)
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 2) == 2)
     {
-      ch->real_abils.intel -= 1;
-      ch->real_abils.wis -= 1;
+      char_stat_mod(ch, "intelligence", -1);
+      char_stat_mod(ch, "wisdom", -1);
       send_to_char(ch, "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (ch->real_abils.wis < 4)
-        ch->real_abils.wis = 4;
-      if (ch->real_abils.intel < 4)
-        ch->real_abils.intel = 4;
+      if (char_stat_get(ch, "wisdom") < 4)
+        char_stat_set(ch, "wisdom", 4);
+      if (char_stat_get(ch, "intelligence") < 4)
+        char_stat_set(ch, "intelligence", 4);
     }
     else if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 20) == 1)
     {
-      ch->real_abils.intel -= 1;
-      ch->real_abils.wis -= 1;
+      char_stat_mod(ch, "intelligence", -1);
+      char_stat_mod(ch, "wisdom", -1);
       send_to_char(ch, "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (ch->real_abils.wis < 4)
-        ch->real_abils.wis = 4;
-      if (ch->real_abils.intel < 4)
-        ch->real_abils.intel = 4;
+      if (char_stat_get(ch, "wisdom") < 4)
+        char_stat_set(ch, "wisdom", 4);
+      if (char_stat_get(ch, "intelligence") < 4)
+        char_stat_set(ch, "intelligence", 4);
     }
   }
   if (AFF_FLAGGED(ch, AFF_SHOCKED) && rand_number(1, 4) == 4)
@@ -1059,13 +1059,13 @@ void gain_level(struct char_data *ch, int whichclass)
     whichclass = GET_CLASS(ch);
   if (GET_LEVEL(ch) < 100 && GET_EXP(ch) >= level_exp(ch, GET_LEVEL(ch) + 1))
   {
-    GET_CLASS_LEVEL(ch) += 1;
+    char_stat_mod(ch, "level", 1);
     // GET_CLASS(ch) = whichclass; /* Now tracks latest class instead of highest */
     advance_level(ch, whichclass);
     mudlog(BRF, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s advanced level to level %d.",
            GET_NAME(ch), GET_LEVEL(ch));
     send_to_char(ch, "You rise a level!\r\n");
-    GET_EXP(ch) -= level_exp(ch, GET_LEVEL(ch));
+    char_stat_mod(ch, "experience", -level_exp(ch, GET_LEVEL(ch)));
     /*set_title(ch, NULL);*/
     write_aliases(ch);
     save_char(ch);
@@ -1131,7 +1131,7 @@ void gain_exp(struct char_data *ch, int64_t gain)
 
   if (IS_NPC(ch))
   {
-    GET_EXP(ch) += gain;
+    char_stat_mod(ch, "experience", gain);
     return;
   }
 
@@ -1179,7 +1179,7 @@ void gain_exp(struct char_data *ch, int64_t gain)
       }
       else
       {
-        GET_EXP(ch) += gain;
+        char_stat_mod(ch, "experience", gain);
       }
     }
     if (GET_LEVEL(ch) < 100 && GET_EXP(ch) >= level_exp(ch, GET_LEVEL(ch) + 1))
@@ -1247,9 +1247,9 @@ void gain_exp(struct char_data *ch, int64_t gain)
   else if (gain < 0)
   {
     gain = MAX(-CONFIG_MAX_EXP_LOSS, gain); /* Cap max exp lost per death */
-    GET_EXP(ch) += gain;
+    char_stat_mod(ch, "experience", gain);
     if (GET_EXP(ch) < 0)
-      GET_EXP(ch) = 0;
+      char_stat_set(ch, "experience", 0);
   }
 }
 
@@ -1260,15 +1260,15 @@ void gain_exp_regardless(struct char_data *ch, int gain)
 
   gain = (gain * CONFIG_EXP_MULTIPLIER);
 
-  GET_EXP(ch) += gain;
+  char_stat_mod(ch, "experience", gain);
   if (GET_EXP(ch) < 0)
-    GET_EXP(ch) = 0;
+    char_stat_set(ch, "experience", 0);
 
   if (!IS_NPC(ch))
   {
     while (GET_LEVEL(ch) < CONFIG_LEVEL_CAP - 1 && GET_EXP(ch) >= level_exp(ch, GET_LEVEL(ch) + 1))
     {
-      GET_CLASS_LEVEL(ch) += 1;
+      char_stat_mod(ch, "level", 1);
       num_levels++;
       advance_level(ch, GET_CLASS(ch));
       is_altered = TRUE;
@@ -1290,7 +1290,23 @@ void gain_exp_regardless(struct char_data *ch, int gain)
 
 void gain_condition(struct char_data *ch, int condition, int value)
 {
+  const char *condition_name;
   bool intoxicated;
+
+  switch (condition)
+  {
+  case DRUNK:
+    condition_name = "drunk";
+    break;
+  case HUNGER:
+    condition_name = "hunger";
+    break;
+  case THIRST:
+    condition_name = "thirst";
+    break;
+  default:
+    return;
+  }
 
   if (IS_NPC(ch))
     return;
@@ -1300,7 +1316,7 @@ void gain_condition(struct char_data *ch, int condition, int value)
     return;
   }
 
-  if (GET_COND(ch, condition) < 0)
+  if (char_stat_get(ch, condition_name) < 0)
   { /* No change */
     return;
   }
@@ -1313,15 +1329,15 @@ void gain_condition(struct char_data *ch, int condition, int value)
   if (PLR_FLAGGED(ch, PLR_WRITING))
     return;
 
-  intoxicated = (GET_COND(ch, DRUNK) > 0);
+  intoxicated = (char_stat_get(ch, "drunk") > 0);
   if (value > 0)
   {
-    if (GET_COND(ch, condition) >= 0)
+    if (char_stat_get(ch, condition_name) >= 0)
     {
-      if (GET_COND(ch, condition) + value > 48)
+      if (char_stat_get(ch, condition_name) + value > 48)
       {
-        int prior = GET_COND(ch, condition);
-        GET_COND(ch, condition) = 48;
+        int prior = char_stat_get(ch, condition_name);
+        char_stat_set(ch, condition_name, 48);
         if (condition != DRUNK && prior >= 48 && !IS_MAJIN(ch))
         {
           int ocond = condition;
@@ -1333,28 +1349,28 @@ void gain_condition(struct char_data *ch, int condition, int value)
       }
       else
       {
-        GET_COND(ch, condition) += value;
+        char_stat_mod(ch, condition_name, value);
       }
     }
   } 
   else
   {
-    if (GET_COND(ch, condition) >= 0)
+    if (char_stat_get(ch, condition_name) >= 0)
     {
-      if (GET_COND(ch, condition) + value < 0)
+      if (char_stat_get(ch, condition_name) + value < 0)
       {
-        GET_COND(ch, condition) = 0;
+        char_stat_set(ch, condition_name, 0);
       }
       else
       {
-        GET_COND(ch, condition) += value;
+        char_stat_mod(ch, condition_name, value);
       }
     }
   }
   switch (condition)
   {
   case HUNGER:
-    switch (GET_COND(ch, condition))
+    switch (char_stat_get(ch, condition_name))
     {
     case 0:
       //send_to_char(ch, "@RYou are feeling ravenous!@n\r\n");
@@ -1379,7 +1395,7 @@ void gain_condition(struct char_data *ch, int condition, int value)
     }
     break;
   case THIRST:
-    switch (GET_COND(ch, condition))
+    switch (char_stat_get(ch, condition_name))
     {
     case 0:
       //send_to_char(ch, "@RYou are dehydrated!@n\r\n");
@@ -1406,7 +1422,7 @@ void gain_condition(struct char_data *ch, int condition, int value)
   case DRUNK:
     if (intoxicated)
     {
-      if (GET_COND(ch, DRUNK) <= 0)
+      if (char_stat_get(ch, "drunk") <= 0)
       {
         send_to_char(ch, "You are now sober.\r\n");
       }
@@ -1464,7 +1480,7 @@ static void check_idling(struct char_data *ch)
         if (GET_LEVEL(ch) == 1)
         {
           GET_LOADROOM(ch) = room_vnum_check(100);
-          GET_EXP(ch) = 0;
+          char_stat_set(ch, "experience", 0);
         }
         else
         {
@@ -1677,25 +1693,25 @@ static void heal_limb(struct char_data *ch)
     {
       if (axion_dice(-10) > GET_CON(ch))
       {
-        ch->real_abils.str -= 1;
-        ch->real_abils.dex -= 1;
-        ch->real_abils.cha -= 1;
+        char_stat_mod(ch, "strength", -1);
+        char_stat_mod(ch, "agility", -1);
+        char_stat_mod(ch, "speed", -1);
         send_to_char(ch, "@RYou lose 1 Strength, Agility, and Speed!\r\n");
-        if (ch->real_abils.str < 4)
+        if (char_stat_get(ch, "strength") < 4)
         {
-          ch->real_abils.str = 4;
+          char_stat_set(ch, "strength", 4);
         }
-        if (ch->real_abils.con < 4)
+        if (char_stat_get(ch, "constitution") < 4)
         {
-          ch->real_abils.con = 4;
+          char_stat_set(ch, "constitution", 4);
         }
-        if (ch->real_abils.dex < 4)
+        if (char_stat_get(ch, "agility") < 4)
         {
-          ch->real_abils.dex = 4;
+          char_stat_set(ch, "agility", 4);
         }
-        if (ch->real_abils.cha < 4)
+        if (char_stat_get(ch, "speed") < 4)
         {
-          ch->real_abils.cha = 4;
+          char_stat_set(ch, "speed", 4);
         }
         save_char(ch);
       }

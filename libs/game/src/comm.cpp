@@ -1440,7 +1440,7 @@ char *make_prompt(struct descriptor_data *d)
           len += count;
       }
       if (PRF_FLAGGED(d->character, PRF_DISHUTH) && len < sizeof(prompt)) {
-        int hun = GET_COND(d->character, HUNGER), thir = GET_COND(d->character, THIRST);
+        int hun = char_stat_get(d->character, "hunger"), thir = char_stat_get(d->character, "thirst");
         count = snprintf(prompt + len, sizeof(prompt) - len, "\n@D[@mHung@y:");
          if (count >= 0)
           len += count;

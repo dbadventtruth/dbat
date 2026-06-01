@@ -123,7 +123,7 @@ ACMD(do_evolve)
     plgain = rand_number(plgain, plgain * .5);
    }
    gainBasePL(ch, plgain);
-   GET_MOLT_EXP(ch) -= plcost;
+    char_stat_mod(ch, "molt_experience", -plcost);
    send_to_char(ch, "Your body evolves to make better use of the way it is now, and you feel that your body has strengthened. @D[@RPL@D: @Y+%s@D]@n\r\n", add_commas(plgain));
   }
  } else if (!strcasecmp(arg, "ki")) {
@@ -142,7 +142,7 @@ ACMD(do_evolve)
     kigain = rand_number(kigain, kigain * .5);
    }
    gainBaseKI(ch, kigain);
-   GET_MOLT_EXP(ch) -= kicost;
+    char_stat_mod(ch, "molt_experience", -kicost);
    send_to_char(ch, "Your body evolves to make better use of the way it is now, and you feel that your spirit has strengthened. @D[@CKi@D: @Y+%s@D]@n\r\n", add_commas(kigain));
   }
  } else if (!strcasecmp(arg, "stamina") || !strcasecmp(arg, "st")) {
@@ -161,7 +161,7 @@ ACMD(do_evolve)
     stgain = rand_number(stgain, stgain * .5);
    }
    gainBaseST(ch, stgain);
-   GET_MOLT_EXP(ch) -= stcost;
+    char_stat_mod(ch, "molt_experience", -stcost);
    send_to_char(ch, "Your body evolves to make better use of the way it is now, and you feel that your body has more stamina. @D[@GST@D: @Y+%s@D]@n\r\n", add_commas(stgain));
   }
  }
@@ -5105,8 +5105,8 @@ ACMD(do_score)
  send_to_char(ch, "  @cO@D-----------------------------@D[ @cStatistics @D]-----------------------------@cO@n\n");
  send_to_char(ch, "      @D<@wCharacter Level@D: @w%-3d@D> <@wRPP@D: @w%-3d@D>\n", GET_LEVEL(ch), GET_RP(ch));
  send_to_char(ch, "      @D<@wSpeed Index@D: @w%-15s@D> <@wArmor Index@D: @w%-15s@D>@n\n", add_commas(GET_SPEEDI(ch)), add_commas(GET_ARMOR(ch)));
- send_to_char(ch, "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d (%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n", ch->real_abils.str, GET_STR(ch), ch->real_abils.dex, GET_DEX(ch), ch->real_abils.cha, GET_CHA(ch));
- send_to_char(ch, "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d (%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n", ch->real_abils.con, GET_CON(ch), ch->real_abils.intel, GET_INT(ch), ch->real_abils.wis, GET_WIS(ch));
+ send_to_char(ch, "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d (%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n", (int)char_stat_get(ch, "strength"), GET_STR(ch), (int)char_stat_get(ch, "agility"), GET_DEX(ch), (int)char_stat_get(ch, "speed"), GET_CHA(ch));
+ send_to_char(ch, "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d (%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n", (int)char_stat_get(ch, "constitution"), GET_CON(ch), (int)char_stat_get(ch, "intelligence"), GET_INT(ch), (int)char_stat_get(ch, "wisdom"), GET_WIS(ch));
  }
  if (view == full || view == other) {
  send_to_char(ch, "  @cO@D-----------------------------@D[   @cOther    @D]-----------------------------@cO@n\n");
@@ -5456,64 +5456,64 @@ ACMD(do_status)
         send_to_char(ch, "\r\n");
 
         send_to_char(ch, "         @D-----------------@YHunger@D/@yThirst@D-----------------@n\r\n");
-        if (GET_COND(ch, HUNGER) >= 48) {
+        if (char_stat_get(ch, "hunger") >= 48) {
             send_to_char(ch, "         You are full.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 40) {
+        else if (char_stat_get(ch, "hunger") >= 40) {
             send_to_char(ch, "         You are nearly full.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 30) {
+        else if (char_stat_get(ch, "hunger") >= 30) {
             send_to_char(ch, "         You are not hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 21) {
+        else if (char_stat_get(ch, "hunger") >= 21) {
             send_to_char(ch, "         You wouldn't mind a snack.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 15) {
+        else if (char_stat_get(ch, "hunger") >= 15) {
             send_to_char(ch, "         You are slightly hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 10) {
+        else if (char_stat_get(ch, "hunger") >= 10) {
             send_to_char(ch, "         You are partially hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 5) {
+        else if (char_stat_get(ch, "hunger") >= 5) {
             send_to_char(ch, "         You are really hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 2) {
+        else if (char_stat_get(ch, "hunger") >= 2) {
             send_to_char(ch, "         You are extremely hungry.\r\n");
         }
-        else if (GET_COND(ch, HUNGER) >= 0) {
+        else if (char_stat_get(ch, "hunger") >= 0) {
             send_to_char(ch, "         You are starving!\r\n");
         }
-        else if (GET_COND(ch, HUNGER) < 0) {
+        else if (char_stat_get(ch, "hunger") < 0) {
             send_to_char(ch, "         You need not eat.\r\n");
         }
-        if (GET_COND(ch, THIRST) >= 48) {
+        if (char_stat_get(ch, "thirst") >= 48) {
             send_to_char(ch, "         You are not thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 40) {
+        else if (char_stat_get(ch, "thirst") >= 40) {
             send_to_char(ch, "         You are nearly quenched.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 30) {
+        else if (char_stat_get(ch, "thirst") >= 30) {
             send_to_char(ch, "         You are not thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 21) {
+        else if (char_stat_get(ch, "thirst") >= 21) {
             send_to_char(ch, "         You wouldn't mind a drink.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 15) {
+        else if (char_stat_get(ch, "thirst") >= 15) {
             send_to_char(ch, "         You are slightly thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 10) {
+        else if (char_stat_get(ch, "thirst") >= 10) {
             send_to_char(ch, "         You are partially thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 5) {
+        else if (char_stat_get(ch, "thirst") >= 5) {
             send_to_char(ch, "         You are really thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 2) {
+        else if (char_stat_get(ch, "thirst") >= 2) {
             send_to_char(ch, "         You are extremely thirsty.\r\n");
         }
-        else if (GET_COND(ch, THIRST) >= 0) {
+        else if (char_stat_get(ch, "thirst") >= 0) {
             send_to_char(ch, "         You are dehydrated!\r\n");
         }
-        else if (GET_COND(ch, THIRST) < 0) {
+        else if (char_stat_get(ch, "thirst") < 0) {
             send_to_char(ch, "         You need not drink.\r\n");
         }
         send_to_char(ch, "         @D--------------------@D[@GInfo@D]---------------------@n\r\n");
@@ -5874,13 +5874,13 @@ ACMD(do_status)
         if (is_affected(ch, AFF_HYDROZAP)) {
             send_to_char(ch, "You are effected by Kanso Suru.\r\n");
         }
-        if (GET_COND(ch, DRUNK) > 15)
+        if (char_stat_get(ch, "drunk") > 15)
             send_to_char(ch, "You are extremely drunk.\r\n");
-        else if (GET_COND(ch, DRUNK) > 10)
+        else if (char_stat_get(ch, "drunk") > 10)
             send_to_char(ch, "You are pretty drunk.\r\n");
-        else if (GET_COND(ch, DRUNK) > 4)
+        else if (char_stat_get(ch, "drunk") > 4)
             send_to_char(ch, "You are drunk.\r\n");
-        else if (GET_COND(ch, DRUNK) > 0)
+        else if (char_stat_get(ch, "drunk") > 0)
             send_to_char(ch, "You have an alcoholic buzz.\r\n");
 
         if (ch->affected) {

@@ -295,7 +295,7 @@ static void generate_multiform(struct char_data *ch, int count)
         clone->chclass = ch->chclass;
 
         // Not sure if these are actually used...
-        clone->alignment = ch->alignment;
+        char_stat_set(clone, "alignment", char_stat_get(ch, "alignment"));
 
         // Make the physical appearance match!
         clone->sex = ch->sex;
@@ -307,19 +307,19 @@ static void generate_multiform(struct char_data *ch, int count)
         clone->distfea = ch->distfea;
         clone->aura = ch->aura;
 
-        clone->weight = ch->weight;
-        clone->height = ch->height;
+        char_stat_set(clone, "weight", char_stat_get(ch, "weight"));
+        char_stat_set(clone, "height", char_stat_get(ch, "height"));
         clone->size = ch->size;
-        clone->level = ch->level;
+        char_stat_set(clone, "level", char_stat_get(ch, "level"));
         clone->time = ch->time;
 
         clone->tail_growth = ch->tail_growth;
         ch->transclass = ch->transclass;
 
         // Copying these values, but it shouldn't matter because clones no longer work this way.
-        clone->basepl = ch->basepl;
-        clone->baseki = ch->baseki;
-        clone->basest = ch->basest;
+        char_stat_set(clone, "powerlevel", char_stat_get(ch, "powerlevel"));
+        char_stat_set(clone, "ki", char_stat_get(ch, "ki"));
+        char_stat_set(clone, "stamina", char_stat_get(ch, "stamina"));
 
         // Bioandroid Genome copy...
         clone->genome[0] = ch->genome[0];
@@ -331,7 +331,7 @@ static void generate_multiform(struct char_data *ch, int count)
             clone->limb_condition[l] = ch->limb_condition[l];
         }
 
-        GET_CLASS_LEVEL(clone) = GET_CLASS_LEVEL(ch);
+        char_stat_set(clone, "level", GET_CLASS_LEVEL(ch));
         GET_CLONES(ch) += 1;
 
         GET_ORIGINAL(clone) = ch;
@@ -1150,11 +1150,11 @@ ACMD(do_lifeforce)
   return;
  } else if (setting <= 0) {
   send_to_char(ch, "Your will just isn't in the fight, huh?\nYou will not use up life force to maintain your PL period.\r\n");
-  GET_LIFEPERC(ch) = 0;
+  char_stat_set(ch, "life_percent", 0);
   return;
  } else {
   send_to_char(ch, "Your life force will automatically kick in at %d%s of your optimal PL.\r\n", setting, "%");
-  GET_LIFEPERC(ch) = setting;
+  char_stat_set(ch, "life_percent", setting);
   return;
  }
 }
@@ -2014,7 +2014,7 @@ ACMD(do_runic)
    act("@BYou dip your brush into the ink and infuse your ki skillfully into it. You pull the brush out and paint the @D'@CGebo@D'@B rune on your skin! The rune flashes out of existence immediately!@n", TRUE, ch, 0, 0, TO_CHAR);
    act("@b$n@B dips $s brush into a bottle of ink and at the same time the ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B rune on $s skin. The rune flashes out of existence immediately!@n", TRUE, ch, 0, 0, TO_ROOM);
    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-   GET_PRACTICES(vict, GET_CLASS(vict)) += 125;
+   char_stat_mod(vict, "practices", 125);
    send_to_char(vict, "@GYou feel like you've just gained a lot of knowledge. Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
    GET_OBJ_VAL(bottle, 6) -= inkcost;
    if (GET_OBJ_VAL(bottle, 6) <= 0) {
@@ -2028,7 +2028,7 @@ ACMD(do_runic)
    act("@b$n@B dips $s brush into a bottle of ink and at the same time the ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B rune on @RYOUR@B skin. The rune flashes out of existence immediately!@n", TRUE, ch, 0, vict, TO_VICT);
    act("@b$n@B dips $s brush into a bottle of ink and at the same time the ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B rune on @b$N's@B skin. The rune flashes out of existence immediately!@n", TRUE, ch, 0, vict, TO_NOTVICT);
    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-   GET_PRACTICES(vict, GET_CLASS(vict)) += 125;
+   char_stat_mod(vict, "practices", 125);
    send_to_char(vict, "@GYou feel like you've just gained a lot of knowledge. Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
    GET_OBJ_VAL(bottle, 6) -= inkcost;
    if (GET_OBJ_VAL(bottle, 6) <= 0) {
@@ -2100,13 +2100,13 @@ ACMD(do_scry)
   gainBaseST(vict, (getBaseST(vict) * .01) * boost);
 
   send_to_char(vict, "Your Powerlevel, Ki, and Stamina have improved drastically! On top of that your Intelligence and Wisdom have improved permanantly!\r\n");
-  vict->real_abils.intel += 2;
-  vict->real_abils.wis += 2;
-  GET_PRACTICES(ch, GET_CLASS(ch)) -= 2000;
+  char_stat_mod(vict, "intelligence", 2);
+  char_stat_mod(vict, "wisdom", 2);
+  char_stat_mod(ch, "practices", -2000);
   if (GET_LEVEL(ch) < 100) {
    send_to_char(ch, "@D[@mPractice Sessions@D:@R -2000@D]@n\r\n");
    if (level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0) {
-    GET_EXP(ch) += level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch);
+    char_stat_mod(ch, "experience", level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch));
     send_to_char(ch, "The remaining experience needed for your next level up has been gained!@n\r\n");
    } else {
     send_to_char(ch, "Due to already having enough experience to level up you gain no expereince.\r\n");
@@ -2864,14 +2864,14 @@ ACMD(do_kanso)
      decCurKI(ch, cost);
 
   /* Handle the thirst aspect */
-   if (GET_COND(vict, THIRST) - dam >= 0)
-    GET_COND(vict, THIRST) -= dam;
+   if (char_stat_get(vict, "thirst") - dam >= 0)
+    char_stat_mod(vict, "thirst", -dam);
    else
-    GET_COND(vict, THIRST) = 0;
-   if (GET_COND(ch, THIRST) + dam <= 48)
-    GET_COND(ch, THIRST) += dam;
+    char_stat_set(vict, "thirst", 0);
+   if (char_stat_get(ch, "thirst") + dam <= 48)
+    char_stat_mod(ch, "thirst", dam);
    else
-    GET_COND(ch, THIRST) = 48;
+    char_stat_set(ch, "thirst", 48);
 
   /* Heal the user */
   incCurHealth(ch, (getEffMaxPL(ch) * .01) * dam);
@@ -3497,7 +3497,7 @@ ACMD(do_silk)
      weaved->affected[0].modifier = armor;
      GET_OBJ_COST(weaved) *= price;
      GET_OBJ_VAL(weaved, 0) = olevel;
-     weaved->level = olevel;
+      obj_level_set(weaved, olevel);
      if (str > 0) {
       weaved->affected[1].location = 1;
       weaved->affected[1].modifier = str;
@@ -3557,7 +3557,7 @@ ACMD(do_silk)
      weaved->affected[0].modifier = armor;
      GET_OBJ_COST(weaved) *= price;
      GET_OBJ_VAL(weaved, 0) = olevel;
-     weaved->level = olevel;
+      obj_level_set(weaved, olevel);
      if (str > 0) {
       weaved->affected[1].location = 1;
       weaved->affected[1].modifier = str;
@@ -3617,7 +3617,7 @@ ACMD(do_silk)
      weaved->affected[0].modifier = armor;
      GET_OBJ_COST(weaved) *= price;
      GET_OBJ_VAL(weaved, 0) = olevel;
-     weaved->level = olevel;
+      obj_level_set(weaved, olevel);
      if (str > 0) {
       weaved->affected[1].location = 1;
       weaved->affected[1].modifier = str;

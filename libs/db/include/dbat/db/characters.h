@@ -104,21 +104,6 @@ struct mob_proto_data
    int8_t sex;                          /* NPC sex                            */
    int race;                            /* NPC race                           */
    int chclass;                         /* NPC class                          */
-   int alignment;                       /* +-1000 for alignment               */
-   uint8_t weight;                      /* Default weight                     */
-   uint8_t height;                      /* Default height                     */
-
-   int level;                           /* Class level                        */
-   int race_level;                      /* Race / hit dice level              */
-   int level_adj;                       /* Level adjustment                   */
-   int gold;                            /* Default carried gold               */
-   int64_t exp;                         /* Default experience                 */
-   int64_t basepl;                      /* Base powerlevel                    */
-   int64_t baseki;                      /* Base ki                            */
-   int64_t basest;                      /* Base stamina                       */
-   int armor;                           /* Internally stored *10              */
-
-   struct abil_data real_abils;         /* Prototype abilities                */
    struct mob_special_data mob_specials;/* NPC defaults                       */
 
    int8_t position;                     /* Load position                      */
@@ -128,6 +113,7 @@ struct mob_proto_data
    bitvector_t affected_by[AF_ARRAY_MAX]; /* Permanent affect flags            */
 
    struct trig_proto_list *proto_script;/* Prototype trigger list             */
+   void *zigdata;                       /* Zig stat storage                   */
 };
 
 struct char_data
@@ -159,11 +145,6 @@ struct char_data
    
    room_vnum hometown;                 /* PC Hometown / NPC spawn room         */
    struct time_data time;              /* PC's AGE in days			*/
-   uint8_t weight;                     /* PC / NPC's weight                    */
-   uint8_t height;                     /* PC / NPC's height                    */
-
-   int alignment; /* +-1000 for alignment good vs. evil	*/
-
    // appearance fields
    int8_t hairl;   /* PC hair length                       */
    int8_t hairs;   /* PC hair style                        */
@@ -176,8 +157,6 @@ struct char_data
    char *rdisplay;
    char *voice; /* PC's snet voice */
 
-   struct abil_data real_abils; /* Abilities without modifiers   */
-   struct abil_data aff_abils;  /* Abils with spells/stones/etc  */
    struct mob_special_data mob_specials;
    /* NPC specials				*/
 
@@ -237,7 +216,6 @@ struct char_data
    struct char_data *grappled;
 
    // Skill info
-   int skill_slots;
    int forgeting;
    int forgetcount;
    skill_data skills[SKILL_TABLE_SIZE];
@@ -251,20 +229,7 @@ struct char_data
 
    int group_kills;
 
-   // Money stuff
-   int gold;       /* Money carried			*/
-   int bank_gold;  /* Gold the char has in a bank account	*/
    time_t lastint; // last interest time
-
-   // advancement stuff
-   int level;  /* PC / NPC's level                     */
-   int64_t exp; /* The experience of the player		*/
-   int upgrade; // android upgrade points
-
-   // Base stats
-   int64_t basepl;
-   int64_t baseki;
-   int64_t basest;
 
    // used for temporaryt storage of bonuses
    int64_t max_mana; /* Max mana for PC/NPC			*/
@@ -277,9 +242,6 @@ struct char_data
    double energy;
    double stamina;
    double life;
-
-   // how much you're suppressed.
-   int64_t suppression;
 
    // charge systemm
    int64_t charge;
@@ -309,7 +271,6 @@ struct char_data
    // Saiyan and halfy stuff
    int tail_growth;
    int rage_meter;
-   short fury;
 
    // distance attention stuff
    room_vnum listenroom;
@@ -366,13 +327,8 @@ struct char_data
 
    // Death stuff
    int death_type;
-   int dcount;
    room_vnum droom;
    time_t deathtime;
-
-   // Arlian molt advancement
-   int64_t moltexp;
-   int moltlevel;
    
    // majinize
    int64_t majinizer;
@@ -380,12 +336,9 @@ struct char_data
 
    // misc combat stuff
    int speedboost;
-   int armor;    /* Internally stored *10		*/
-
    // transformation data
    int transclass;
    int transcost[6];
-   int kaioken; // current level of kaioken 0-20
 
    // Fishing stuff - accuracy_mod is fish_pole_bonus
    int fishstate;
@@ -398,8 +351,6 @@ struct char_data
    int linker;
 
    int throws;
-
-   int lifeperc;
 
    int mobcharge;
    int preference;
@@ -432,24 +383,12 @@ struct char_data
    room_vnum load_room;               /* Which room to place char in		*/
    bitvector_t pref[PR_ARRAY_MAX];    /* preference flags for PC's.		*/
    uint8_t bad_pws;                   /* number of bad password attemps	*/
-   int8_t conditions[NUM_CONDITIONS]; /* Drunk, full, thirsty			*/
-
-   // Only the character's own class in this array is used, to store PS/Practices.
-   int class_skill_points[NUM_CLASSES];   /* Skill points earned from a class	*/
    struct txt_block *comm_hist[NUM_HIST]; /* Player's communcations history     */
    int olc_zone;                          /* Zone where OLC is permitted		*/
    int speaking;                          /* Language currently speaking		*/
 
    char *color_choices[NUM_COLOR]; /* Choices for custom colors		*/
    int murder; /* Murder of PC's count                 */
-
-   // Attribute training
-   int trainstr;
-   int trainint;
-   int traincon;
-   int trainwis;
-   int trainagl;
-   int trainspd;
 
    // player characters can carry others.
    struct char_data *carrying_char;
@@ -458,9 +397,6 @@ struct char_data
    int racial_pref;
 
    // UNUSED STUFF BELOW HERE
-   int race_level;               /* PC / NPC's racial level / hit dice   */
-   int level_adj;                /* PC level adjustment                  */
-
    int64_t mana;
    int64_t hit;
    int64_t move;
@@ -529,11 +465,17 @@ void char_zig_free(struct char_data *ch);
 int64_t char_stat_get(struct char_data *ch, const char *stat);
 int64_t char_stat_set(struct char_data *ch, const char *stat, int64_t value);
 int64_t char_stat_mod(struct char_data *ch, const char *stat, int64_t mod);
+void char_stats_copy_to_mob_proto(struct char_data *ch, struct mob_proto_data *proto);
+void mob_proto_stats_copy_to_char(struct mob_proto_data *proto, struct char_data *ch);
+void mob_proto_zig_free(struct mob_proto_data *proto);
+int64_t mob_proto_stat_get(struct mob_proto_data *proto, const char *stat);
+int64_t mob_proto_stat_set(struct mob_proto_data *proto, const char *stat, int64_t value);
+int64_t mob_proto_stat_mod(struct mob_proto_data *proto, const char *stat, int64_t mod);
 
 int64_t char_legacy_modifier(struct char_data *ch, int location, int specific);
 
-int64_t char_der_get_base(struct char_data *ch, const char *stat);
-int64_t char_der_get_total(struct char_data *ch, const char *stat);
+int64_t char_der_base_get(struct char_data *ch, const char *stat);
+int64_t char_der_total_get(struct char_data *ch, const char *stat);
 void char_der_invalidate(struct char_data *ch);
 
 int64_t char_meter_get(struct char_data *ch, const char *meter);

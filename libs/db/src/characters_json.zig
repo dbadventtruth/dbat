@@ -29,18 +29,18 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
     var stats = jsonx.newObject(allocator);
     var meters = jsonx.newObject(allocator);
 
-    try putStat(&stats, allocator, "powerlevel", ch.basepl, false);
-    try putStat(&stats, allocator, "ki", ch.baseki, false);
-    try putStat(&stats, allocator, "stamina", ch.basest, false);
-    try putStat(&stats, allocator, "strength", ch.real_abils.str, false);
-    try putStat(&stats, allocator, "intelligence", ch.real_abils.intel, false);
-    try putStat(&stats, allocator, "wisdom", ch.real_abils.wis, false);
-    try putStat(&stats, allocator, "agility", ch.real_abils.dex, false);
-    try putStat(&stats, allocator, "constitution", ch.real_abils.con, false);
-    try putStat(&stats, allocator, "speed", ch.real_abils.cha, false);
-    try putStat(&stats, allocator, "height", ch.height, false);
-    try putStat(&stats, allocator, "weight", ch.weight, false);
-    try putStat(&stats, allocator, "alignment", ch.alignment, false);
+    try putCharStat(&stats, allocator, ch, "powerlevel", false);
+    try putCharStat(&stats, allocator, ch, "ki", false);
+    try putCharStat(&stats, allocator, ch, "stamina", false);
+    try putCharStat(&stats, allocator, ch, "strength", false);
+    try putCharStat(&stats, allocator, ch, "intelligence", false);
+    try putCharStat(&stats, allocator, ch, "wisdom", false);
+    try putCharStat(&stats, allocator, ch, "agility", false);
+    try putCharStat(&stats, allocator, ch, "constitution", false);
+    try putCharStat(&stats, allocator, ch, "speed", false);
+    try putCharStat(&stats, allocator, ch, "height", false);
+    try putCharStat(&stats, allocator, ch, "weight", false);
+    try putCharStat(&stats, allocator, ch, "alignment", false);
 
     try jsonx.putString(&object, allocator, "name", cdb.char_name_get(ch));
     try jsonx.putString(&object, allocator, "description", cdb.char_description_get(ch));
@@ -51,18 +51,18 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
     try jsonx.putInt(&object, allocator, "race", cdb.char_race_get(ch));
     try jsonx.putInt(&object, allocator, "size", cdb.char_size_get(ch));
     try jsonx.putInt(&object, allocator, "sex", cdb.char_sex_get(ch));
-    try jsonx.putInt(&object, allocator, "level", ch.level);
+    try putCharStat(&object, allocator, ch, "level", false);
     try jsonx.putInt(&object, allocator, "admin_level", cdb.char_admlevel_get(ch));
     try jsonx.putNonEmpty(&object, allocator, "admin_flags", try jsonx.serializeFlags(allocator, ch, 128, admFlagged));
-    try jsonx.putInt(&object, allocator, "height", ch.height);
-    try jsonx.putInt(&object, allocator, "weight", ch.weight);
+    try putCharStat(&object, allocator, ch, "height", false);
+    try putCharStat(&object, allocator, ch, "weight", false);
 
     if (mode != .npc_prototype) {
         // fields common to all instances, including players.
         try jsonx.putInt(&object, allocator, "id", cdb.char_id_get(ch));
-        try putStat(&stats, allocator, "money", ch.gold, true);
-        try putStat(&stats, allocator, "money_bank", ch.bank_gold, true);
-        try putStat(&stats, allocator, "experience", ch.exp, true);
+        try putCharStat(&stats, allocator, ch, "money", true);
+        try putCharStat(&stats, allocator, ch, "money_bank", true);
+        try putCharStat(&stats, allocator, ch, "experience", true);
         try putMeter(&meters, allocator, "powerlevel", ch.health);
         try putMeter(&meters, allocator, "ki", ch.energy);
         try putMeter(&meters, allocator, "stamina", ch.stamina);
@@ -75,17 +75,17 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "distinguishing_feature", ch.distfea);
         try jsonx.putInt(&object, allocator, "aura", ch.aura);
         try jsonx.putInt(&object, allocator, "position", ch.position);
-        try putStat(&stats, allocator, "skill_slots", ch.skill_slots, true);
-        try putStat(&stats, allocator, "suppression", ch.suppression, true);
-        try putStat(&stats, allocator, "fury", ch.fury, true);
-        try putStat(&stats, allocator, "kaioken", ch.kaioken, true);
-        try jsonx.putInt(&object, allocator, "suppression", ch.suppression);
+        try putCharStat(&stats, allocator, ch, "skill_slots", true);
+        try putCharStat(&stats, allocator, ch, "suppression", true);
+        try putCharStat(&stats, allocator, ch, "fury", true);
+        try putCharStat(&stats, allocator, ch, "kaioken", true);
+        try putCharStat(&object, allocator, ch, "suppression", false);
         try jsonx.putInt(&object, allocator, "tail_growth", ch.tail_growth);
         try jsonx.putInt(&object, allocator, "rage_meter", ch.rage_meter);
-        try jsonx.putInt(&object, allocator, "fury", ch.fury);
+        try jsonx.putInt(&object, allocator, "fury", cdb.char_stat_get(ch, "fury"));
         try jsonx.putInt(&object, allocator, "mimic", ch.mimic);
         try jsonx.putInt(&object, allocator, "altitude", ch.altitude);
-        try jsonx.putInt(&object, allocator, "kaioken", ch.kaioken);
+        try putCharStat(&object, allocator, ch, "kaioken", false);
         try jsonx.putInt(&object, allocator, "hometown", ch.hometown);
         try jsonx.putNonEmpty(&object, allocator, "bodyparts", try jsonx.serializeFlags(allocator, ch, cdb.NUM_AFF_FLAGS, bodypartFlagged));
         try jsonx.putNonEmpty(&object, allocator, "affected_by", try jsonx.serializeFlags(allocator, ch, cdb.NUM_AFF_FLAGS, affectedFlagged));
@@ -121,19 +121,16 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "racial_pref", ch.racial_pref);
         try jsonx.putInt(&object, allocator, "speaking", ch.speaking);
         try jsonx.putNonEmpty(&object, allocator, "pref_flags", try jsonx.serializeFlags(allocator, ch, 128, prefFlagged));
-        try jsonx.put(&object, allocator, "conditions", try serializeIntArray(allocator, ch.conditions[0..]));
-        try jsonx.put(&object, allocator, "class_practices", try serializeIntArray(allocator, ch.class_skill_points[0..]));
+        try putCharStat(&stats, allocator, ch, "drunk", true);
+        try putCharStat(&stats, allocator, ch, "hunger", true);
+        try putCharStat(&stats, allocator, ch, "thirst", true);
         try jsonx.put(&object, allocator, "color_choices", try serializeStringArray(allocator, ch.color_choices[0..]));
-        if (validClassIndex(ch.chclass)) {
-            const class_index: usize = @intCast(ch.chclass);
-            try putStat(&stats, allocator, "practices", ch.class_skill_points[class_index], true);
-        }
-        try putStat(&stats, allocator, "train_strength", ch.trainstr, true);
-        try putStat(&stats, allocator, "train_intelligence", ch.trainint, true);
-        try putStat(&stats, allocator, "train_constitution", ch.traincon, true);
-        try putStat(&stats, allocator, "train_wisdom", ch.trainwis, true);
-        try putStat(&stats, allocator, "train_agility", ch.trainagl, true);
-        try putStat(&stats, allocator, "train_speed", ch.trainspd, true);
+        try putCharStat(&stats, allocator, ch, "train_strength", true);
+        try putCharStat(&stats, allocator, ch, "train_intelligence", true);
+        try putCharStat(&stats, allocator, ch, "train_constitution", true);
+        try putCharStat(&stats, allocator, ch, "train_wisdom", true);
+        try putCharStat(&stats, allocator, ch, "train_agility", true);
+        try putCharStat(&stats, allocator, ch, "train_speed", true);
         try jsonx.putString(&object, allocator, "user", ch.loguser);
         try jsonx.putString(&object, allocator, "clan", ch.clan);
         try jsonx.putString(&object, allocator, "feature", ch.feature);
@@ -150,7 +147,7 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "sd_cooldown", ch.con_sdcooldown);
         try jsonx.putInt(&object, allocator, "gooptime", ch.gooptime);
         try jsonx.putInt(&object, allocator, "death_type", ch.death_type);
-        try putStat(&stats, allocator, "death_count", ch.dcount, true);
+        try putCharStat(&stats, allocator, ch, "death_count", true);
         try jsonx.putInt(&object, allocator, "droom", ch.droom);
         try jsonx.putInt(&object, allocator, "deathtime", ch.deathtime);
         try jsonx.putInt(&object, allocator, "reward_time", ch.rewtime);
@@ -164,8 +161,8 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "clank_rank", ch.crank);
         try jsonx.putInt(&object, allocator, "last_play", ch.lastpl);
         try jsonx.putInt(&object, allocator, "boosts", ch.boosts);
-        try putStat(&stats, allocator, "life_percent", ch.lifeperc, true);
-        try jsonx.putInt(&object, allocator, "life_percent", ch.lifeperc);
+        try putCharStat(&stats, allocator, ch, "life_percent", true);
+        try jsonx.putInt(&object, allocator, "life_percent", cdb.char_stat_get(ch, "life_percent"));
         try jsonx.putInt(&object, allocator, "damage_mod", ch.damage_mod);
         try jsonx.putInt(&object, allocator, "absorbs", ch.absorbs);
         try jsonx.putInt(&object, allocator, "ingest_learned", ch.ingestLearned);
@@ -175,10 +172,10 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "radar3", ch.radar3);
         try jsonx.putNonEmpty(&object, allocator, "player_flags", try jsonx.serializeFlags(allocator, ch, cdb.NUM_PLR_FLAGS, actFlagged));
         try jsonx.putNonEmpty(&object, allocator, "affects", try serializeAffects(allocator, ch.affected));
-        try putStat(&stats, allocator, "upgrades", ch.upgrade, true);
-        try putStat(&stats, allocator, "molt_experience", ch.moltexp, true);
-        try putStat(&stats, allocator, "molt_level", ch.moltlevel, true);
-        try putStat(&stats, allocator, "armor", ch.armor, true);
+        try putCharStat(&stats, allocator, ch, "upgrades", true);
+        try putCharStat(&stats, allocator, ch, "molt_experience", true);
+        try putCharStat(&stats, allocator, ch, "molt_level", true);
+        try putCharStat(&stats, allocator, ch, "armor", true);
         try jsonx.putNonEmpty(&object, allocator, "skills", try serializeSkills(allocator, ch));
         try jsonx.put(&object, allocator, "lboard", try serializeIntArray(allocator, ch.lboard[0..]));
         try jsonx.put(&object, allocator, "limbs", try serializeIntArray(allocator, ch.limb_condition[0..]));
@@ -218,25 +215,13 @@ fn mobProtoToCharacter(ch: *cdb.char_data, proto: *const cdb.mob_proto_data) voi
     ch.sex = proto.sex;
     ch.race = proto.race;
     ch.chclass = proto.chclass;
-    ch.alignment = proto.alignment;
-    ch.weight = proto.weight;
-    ch.height = proto.height;
-    ch.level = proto.level;
-    ch.race_level = proto.race_level;
-    ch.level_adj = proto.level_adj;
-    ch.gold = proto.gold;
-    ch.exp = proto.exp;
-    ch.basepl = proto.basepl;
-    ch.baseki = proto.baseki;
-    ch.basest = proto.basest;
-    ch.armor = proto.armor;
-    ch.real_abils = proto.real_abils;
     ch.mob_specials = proto.mob_specials;
     ch.position = proto.position;
     ch.speaking = proto.speaking;
     ch.act = proto.act;
     ch.affected_by = proto.affected_by;
     ch.proto_script = proto.proto_script;
+    cdb.mob_proto_stats_copy_to_char(@constCast(proto), ch);
 }
 
 fn characterToMobProto(proto: *cdb.mob_proto_data, ch: *const cdb.char_data) void {
@@ -250,25 +235,13 @@ fn characterToMobProto(proto: *cdb.mob_proto_data, ch: *const cdb.char_data) voi
     proto.sex = ch.sex;
     proto.race = ch.race;
     proto.chclass = ch.chclass;
-    proto.alignment = ch.alignment;
-    proto.weight = ch.weight;
-    proto.height = ch.height;
-    proto.level = ch.level;
-    proto.race_level = ch.race_level;
-    proto.level_adj = ch.level_adj;
-    proto.gold = ch.gold;
-    proto.exp = ch.exp;
-    proto.basepl = ch.basepl;
-    proto.baseki = ch.baseki;
-    proto.basest = ch.basest;
-    proto.armor = ch.armor;
-    proto.real_abils = ch.real_abils;
     proto.mob_specials = ch.mob_specials;
     proto.position = ch.position;
     proto.speaking = ch.speaking;
     proto.act = ch.act;
     proto.affected_by = ch.affected_by;
     proto.proto_script = ch.proto_script;
+    cdb.char_stats_copy_to_mob_proto(@constCast(ch), proto);
 }
 
 pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, value: JsonValue) !void {
@@ -286,15 +259,14 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
     if (try jsonx.intField(value, "size", c_int)) |v| cdb.char_size_set(ch, v);
     if (try jsonx.intField(value, "sex", c_int)) |v| cdb.char_sex_set(ch, v);
     if (try jsonx.intField(value, "admin_level", c_int)) |v| cdb.char_admlevel_set(ch, v);
-    if (try jsonx.intField(value, "level", c_int)) |v| ch.level = v;
+    if (try jsonx.intField(value, "level", c_int)) |v| _ = cdb.char_stat_set(ch, "level", v);
     if (jsonx.field(value, "admin_flags")) |flags| try jsonx.deserializeFlags(ch, flags, 128, admFlagSet);
-    if (try jsonx.intField(value, "height", u8)) |v| ch.height = v;
-    if (try jsonx.intField(value, "weight", u8)) |v| ch.weight = v;
+    if (try jsonx.intField(value, "height", u8)) |v| _ = cdb.char_stat_set(ch, "height", v);
+    if (try jsonx.intField(value, "weight", u8)) |v| _ = cdb.char_stat_set(ch, "weight", v);
     if (try jsonx.intField(value, "alignment", c_int)) |v| {
-        ch.alignment = v;
         _ = cdb.char_stat_set(ch, "alignment", v);
     }
-    if (jsonx.field(value, "stats")) |stats| try deserializeSharedStats(ch, stats);
+    if (jsonx.field(value, "stats")) |stats| try deserializeStats(ch, stats);
 
     if (options.mode != .npc_prototype) {
         // fields common to all instances, including players.
@@ -307,17 +279,14 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "distinguishing_feature", i8)) |v| ch.distfea = v;
         if (try jsonx.intField(value, "aura", c_int)) |v| ch.aura = v;
         if (try jsonx.intField(value, "position", i8)) |v| ch.position = v;
-        if (try jsonx.intField(value, "skill_slots", c_int)) |v| {
-            ch.skill_slots = v;
-            _ = cdb.char_stat_set(ch, "skill_slots", v);
-        }
-        if (try jsonx.intField(value, "suppression", i64)) |v| ch.suppression = v;
+        if (try jsonx.intField(value, "skill_slots", c_int)) |v| _ = cdb.char_stat_set(ch, "skill_slots", v);
+        if (try jsonx.intField(value, "suppression", i64)) |v| _ = cdb.char_stat_set(ch, "suppression", v);
         if (try jsonx.intField(value, "tail_growth", c_int)) |v| ch.tail_growth = v;
         if (try jsonx.intField(value, "rage_meter", c_int)) |v| ch.rage_meter = v;
-        if (try jsonx.intField(value, "fury", c_short)) |v| ch.fury = v;
+        if (try jsonx.intField(value, "fury", c_short)) |v| _ = cdb.char_stat_set(ch, "fury", v);
         if (try jsonx.intField(value, "mimic", c_int)) |v| ch.mimic = v;
         if (try jsonx.intField(value, "altitude", c_int)) |v| ch.altitude = v;
-        if (try jsonx.intField(value, "kaioken", c_int)) |v| ch.kaioken = v;
+        if (try jsonx.intField(value, "kaioken", c_int)) |v| _ = cdb.char_stat_set(ch, "kaioken", v);
         if (try jsonx.intField(value, "hometown", cdb.room_vnum)) |v| ch.hometown = v;
         if (jsonx.field(value, "bodyparts")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, bodypartFlagSet);
         if (jsonx.field(value, "affected_by")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, affectedFlagSet);
@@ -355,10 +324,9 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "racial_pref", c_int)) |v| ch.racial_pref = v;
         if (try jsonx.intField(value, "speaking", c_int)) |v| ch.speaking = v;
         if (jsonx.field(value, "pref_flags")) |flags| try jsonx.deserializeFlags(ch, flags, 128, prefFlagSet);
-        if (jsonx.field(value, "conditions")) |items| try deserializeIntArray(ch.conditions[0..], items);
-        if (jsonx.field(value, "class_practices")) |items| try deserializeIntArray(ch.class_skill_points[0..], items);
+        if (jsonx.field(value, "conditions")) |items| try deserializeLegacyConditions(ch, items);
         if (jsonx.field(value, "color_choices")) |items| try deserializeStringArray(options.c_allocator, ch.color_choices[0..], items);
-        if (jsonx.field(value, "stats")) |stats| try deserializePlayerStats(ch, stats);
+        if (jsonx.field(value, "stats")) |stats| try deserializeStats(ch, stats);
         try setPointerStringField(options.c_allocator, value, "user", &ch.loguser, setRawString);
         try setPointerStringField(options.c_allocator, value, "clan", &ch.clan, setRawString);
         try setPointerStringField(options.c_allocator, value, "feature", &ch.feature, setRawString);
@@ -375,10 +343,7 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "sd_cooldown", c_int)) |v| ch.con_sdcooldown = v;
         if (try jsonx.intField(value, "gooptime", c_int)) |v| ch.gooptime = v;
         if (try jsonx.intField(value, "death_type", c_int)) |v| ch.death_type = v;
-        if (try jsonx.intField(value, "dcount", c_int)) |v| {
-            ch.dcount = v;
-            _ = cdb.char_stat_set(ch, "death_count", v);
-        }
+        if (try jsonx.intField(value, "dcount", c_int)) |v| _ = cdb.char_stat_set(ch, "death_count", v);
         if (try jsonx.intField(value, "droom", cdb.room_vnum)) |v| ch.droom = v;
         if (try jsonx.intField(value, "deathtime", cdb.time_t)) |v| ch.deathtime = v;
         if (try jsonx.intField(value, "reward_time", cdb.time_t)) |v| ch.rewtime = v;
@@ -392,9 +357,9 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "clank_rank", c_int)) |v| ch.crank = v;
         if (try jsonx.intField(value, "last_play", cdb.time_t)) |v| ch.lastpl = v;
         if (try jsonx.intField(value, "boosts", c_int)) |v| ch.boosts = v;
-        if (try jsonx.intField(value, "life_percent", c_int)) |v| ch.lifeperc = v;
+        if (try jsonx.intField(value, "life_percent", c_int)) |v| _ = cdb.char_stat_set(ch, "life_percent", v);
         if (try jsonx.intField(value, "damage_mod", c_int)) |v| ch.damage_mod = v;
-        if (try jsonx.intField(value, "armor", c_int)) |v| ch.armor = v;
+        if (try jsonx.intField(value, "armor", c_int)) |v| _ = cdb.char_stat_set(ch, "armor", v);
         if (try jsonx.intField(value, "absorbs", c_int)) |v| ch.absorbs = v;
         if (try jsonx.intField(value, "ingest_learned", c_int)) |v| ch.ingestLearned = v;
         if (try jsonx.intField(value, "bless_level", c_int)) |v| ch.blesslvl = v;
@@ -435,143 +400,141 @@ fn putStat(object: *JsonValue, allocator: std.mem.Allocator, name: []const u8, v
     try jsonx.putInt(object, allocator, name, value);
 }
 
+fn putCharStat(object: *JsonValue, allocator: std.mem.Allocator, ch: *cdb.char_data, name: []const u8, omit_zero: bool) !void {
+    const z_name = try allocator.dupeZ(u8, name);
+    defer allocator.free(z_name);
+    try putStat(object, allocator, name, cdb.char_stat_get(ch, z_name), omit_zero);
+}
+
 fn putMeter(object: *JsonValue, allocator: std.mem.Allocator, name: []const u8, value: f64) !void {
     try jsonx.putFloat(object, allocator, name, value);
+}
+
+fn deserializeStats(ch: *cdb.char_data, stats: JsonValue) !void {
+    if (stats != .object) return error.ExpectedObject;
+    var it = stats.object.iterator();
+    while (it.next()) |entry| {
+        const value = switch (entry.value_ptr.*) {
+            .integer => |v| v,
+            else => return error.ExpectedInteger,
+        };
+        const z_name = try std.heap.c_allocator.dupeZ(u8, entry.key_ptr.*);
+        defer std.heap.c_allocator.free(z_name);
+        _ = cdb.char_stat_set(ch, z_name, value);
+    }
 }
 
 fn deserializeSharedStats(ch: *cdb.char_data, stats: JsonValue) !void {
     if (stats != .object) return error.ExpectedObject;
     if (try jsonx.intField(stats, "powerlevel", i64)) |v| {
-        ch.basepl = v;
         _ = cdb.char_stat_set(ch, "powerlevel", v);
     }
     if (try jsonx.intField(stats, "ki", i64)) |v| {
-        ch.baseki = v;
         _ = cdb.char_stat_set(ch, "ki", v);
     }
     if (try jsonx.intField(stats, "stamina", i64)) |v| {
-        ch.basest = v;
         _ = cdb.char_stat_set(ch, "stamina", v);
     }
     if (try jsonx.intField(stats, "strength", i8)) |v| {
-        ch.real_abils.str = v;
         _ = cdb.char_stat_set(ch, "strength", v);
     }
     if (try jsonx.intField(stats, "intelligence", i8)) |v| {
-        ch.real_abils.intel = v;
         _ = cdb.char_stat_set(ch, "intelligence", v);
     }
     if (try jsonx.intField(stats, "wisdom", i8)) |v| {
-        ch.real_abils.wis = v;
         _ = cdb.char_stat_set(ch, "wisdom", v);
     }
     if (try jsonx.intField(stats, "agility", i8)) |v| {
-        ch.real_abils.dex = v;
         _ = cdb.char_stat_set(ch, "agility", v);
     }
     if (try jsonx.intField(stats, "constitution", i8)) |v| {
-        ch.real_abils.con = v;
         _ = cdb.char_stat_set(ch, "constitution", v);
     }
     if (try jsonx.intField(stats, "speed", i8)) |v| {
-        ch.real_abils.cha = v;
         _ = cdb.char_stat_set(ch, "speed", v);
     }
     if (try jsonx.intField(stats, "height", u8)) |v| {
-        ch.height = v;
         _ = cdb.char_stat_set(ch, "height", v);
     }
     if (try jsonx.intField(stats, "weight", u8)) |v| {
-        ch.weight = v;
         _ = cdb.char_stat_set(ch, "weight", v);
     }
     if (try jsonx.intField(stats, "alignment", c_int)) |v| {
-        ch.alignment = v;
         _ = cdb.char_stat_set(ch, "alignment", v);
     }
     if (try jsonx.intField(stats, "money", c_int)) |v| {
-        ch.gold = v;
         _ = cdb.char_stat_set(ch, "money", v);
     }
     if (try jsonx.intField(stats, "money_bank", c_int)) |v| {
-        ch.bank_gold = v;
         _ = cdb.char_stat_set(ch, "money_bank", v);
     }
     if (try jsonx.intField(stats, "experience", i64)) |v| {
-        ch.exp = v;
         _ = cdb.char_stat_set(ch, "experience", v);
     }
     if (try jsonx.intField(stats, "suppression", i64)) |v| {
-        ch.suppression = v;
         _ = cdb.char_stat_set(ch, "suppression", v);
     }
     if (try jsonx.intField(stats, "fury", c_short)) |v| {
-        ch.fury = v;
         _ = cdb.char_stat_set(ch, "fury", v);
     }
     if (try jsonx.intField(stats, "kaioken", c_int)) |v| {
-        ch.kaioken = v;
         _ = cdb.char_stat_set(ch, "kaioken", v);
+    }
+}
+
+fn deserializeLegacyConditions(ch: *cdb.char_data, items: JsonValue) !void {
+    if (items != .array) return error.ExpectedArray;
+    if (items.array.items.len > cdb.NUM_CONDITIONS) return error.TooManyItems;
+    for (items.array.items, 0..) |item, i| {
+        if (item != .integer) return error.ExpectedInteger;
+        switch (i) {
+            cdb.DRUNK => _ = cdb.char_stat_set(ch, "drunk", item.integer),
+            cdb.HUNGER => _ = cdb.char_stat_set(ch, "hunger", item.integer),
+            cdb.THIRST => _ = cdb.char_stat_set(ch, "thirst", item.integer),
+            else => {},
+        }
     }
 }
 
 fn deserializePlayerStats(ch: *cdb.char_data, stats: JsonValue) !void {
     if (stats != .object) return error.ExpectedObject;
-    if (try jsonx.intField(stats, "practices", c_int)) |v| if (validClassIndex(ch.chclass)) {
-        const class_index: usize = @intCast(ch.chclass);
-        ch.class_skill_points[class_index] = v;
-        _ = cdb.char_stat_set(ch, "practices", v);
-    };
     if (try jsonx.intField(stats, "train_strength", c_int)) |v| {
-        ch.trainstr = v;
         _ = cdb.char_stat_set(ch, "train_strength", v);
     }
     if (try jsonx.intField(stats, "train_intelligence", c_int)) |v| {
-        ch.trainint = v;
         _ = cdb.char_stat_set(ch, "train_intelligence", v);
     }
     if (try jsonx.intField(stats, "train_constitution", c_int)) |v| {
-        ch.traincon = v;
         _ = cdb.char_stat_set(ch, "train_constitution", v);
     }
     if (try jsonx.intField(stats, "train_wisdom", c_int)) |v| {
-        ch.trainwis = v;
         _ = cdb.char_stat_set(ch, "train_wisdom", v);
     }
     if (try jsonx.intField(stats, "train_agility", c_int)) |v| {
-        ch.trainagl = v;
         _ = cdb.char_stat_set(ch, "train_agility", v);
     }
     if (try jsonx.intField(stats, "train_speed", c_int)) |v| {
-        ch.trainspd = v;
         _ = cdb.char_stat_set(ch, "train_speed", v);
     }
     if (try jsonx.intField(stats, "upgrades", c_int)) |v| {
-        ch.upgrade = v;
         _ = cdb.char_stat_set(ch, "upgrades", v);
     }
     if (try jsonx.intField(stats, "molt_experience", i64)) |v| {
-        ch.moltexp = v;
         _ = cdb.char_stat_set(ch, "molt_experience", v);
     }
     if (try jsonx.intField(stats, "molt_level", c_int)) |v| {
-        ch.moltlevel = v;
         _ = cdb.char_stat_set(ch, "molt_level", v);
     }
     if (try jsonx.intField(stats, "armor", c_int)) |v| {
-        ch.armor = v;
         _ = cdb.char_stat_set(ch, "armor", v);
     }
     if (try jsonx.intField(stats, "skill_slots", c_int)) |v| {
-        ch.skill_slots = v;
         _ = cdb.char_stat_set(ch, "skill_slots", v);
     }
     if (try jsonx.intField(stats, "death_count", c_int)) |v| {
-        ch.dcount = v;
         _ = cdb.char_stat_set(ch, "death_count", v);
     }
     if (try jsonx.intField(stats, "life_percent", c_int)) |v| {
-        ch.lifeperc = v;
         _ = cdb.char_stat_set(ch, "life_percent", v);
     }
 }
@@ -763,17 +726,13 @@ fn deserializeTime(ch: *cdb.char_data, value: JsonValue) !void {
 
 fn serializeLevels(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
     var object = jsonx.newObject(allocator);
-    try jsonx.putInt(&object, allocator, "class", ch.level);
-    try jsonx.putInt(&object, allocator, "race", ch.race_level);
-    try jsonx.putInt(&object, allocator, "adjustment", ch.level_adj);
+    try putCharStat(&object, allocator, ch, "level", false);
     return object;
 }
 
 fn deserializeLevels(ch: *cdb.char_data, value: JsonValue) !void {
     if (value != .object) return error.ExpectedObject;
-    if (try jsonx.intField(value, "class", c_int)) |v| ch.level = v;
-    if (try jsonx.intField(value, "race", c_int)) |v| ch.race_level = v;
-    if (try jsonx.intField(value, "adjustment", c_int)) |v| ch.level_adj = v;
+    if (try jsonx.intField(value, "level", c_int)) |v| _ = cdb.char_stat_set(ch, "level", v);
 }
 
 fn serializeAffects(allocator: std.mem.Allocator, head: ?*cdb.affected_type) !JsonValue {

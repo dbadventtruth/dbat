@@ -1790,7 +1790,7 @@ void huge_update()
          } else if (count >= 10) {
           loss = 0.25;
          }
-         GET_EXP(vict) -= GET_EXP(vict) * loss;
+          char_stat_mod(vict, "experience", -(GET_EXP(vict) * loss));
         }
        }
        act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
@@ -1964,7 +1964,7 @@ void huge_update()
          } else if (count >= 10) {
           loss = 0.25;
          }
-         GET_EXP(vict) -= GET_EXP(vict) * loss;
+          char_stat_mod(vict, "experience", -(GET_EXP(vict) * loss));
         }
        }
        act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
@@ -3913,8 +3913,8 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    dmg += (dmg * 0.01) * 20;
   }
 
-  if (!IS_NPC(vict) && GET_COND(vict, DRUNK) > 4) {
-   dmg -= (dmg * 0.001) * GET_COND(vict, DRUNK);
+  if (!IS_NPC(vict) && char_stat_get(vict, "drunk") > 4) {
+   dmg -= (dmg * 0.001) * char_stat_get(vict, "drunk");
   }
 
   if (AFF_FLAGGED(vict, AFF_EARMOR)) {
@@ -4099,9 +4099,9 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
    hurt_limb(ch, vict, chance, limb, dmg);
   }
    if (IS_NPC(vict) && dmg > getMaxHealth(vict) * .7 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
-   GET_EXP(vict) /= 2;
+    char_stat_set(vict, "experience", GET_EXP(vict) / 2);
   } else if (IS_NPC(vict) && dmg > getCurHealth(vict) && isFullHealth(vict) * .5 && GET_BONUS(ch, BONUS_SADISTIC) > 0) {
-   GET_EXP(vict) /= 2;
+    char_stat_set(vict, "experience", GET_EXP(vict) / 2);
   }
  
 
@@ -4232,7 +4232,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
   
     if (GET_HIT(vict) - dmg <= 0 && suppresso == FALSE) {
     decCurHealthPercentFloored(vict, 1, 0);
-    if (!IS_NPC(vict) && vict->lifeperc > 0 && (getCurLF(vict)) - (dmg - GET_HIT(vict)) >= 0) {
+    if (!IS_NPC(vict) && char_stat_get(vict, "life_percent") > 0 && (getCurLF(vict)) - (dmg - GET_HIT(vict)) >= 0) {
         act("@c$N@w barely clings to life!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@CYou barely cling to life!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$N@w barely clings to life!@n.", TRUE, ch, 0, vict, TO_NOTVICT);
@@ -4415,7 +4415,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict, st
 
    if (!is_sparring(ch) && IS_HALFBREED(vict) && GET_FURY(vict) < 100 && !PLR_FLAGGED(vict, PLR_FURY)) {
     send_to_char(vict, "@RYour fury increases a little bit!@n\r\n");
-    GET_FURY(vict) += 1;
+    char_stat_mod(vict, "fury", 1);
    }
 
    /* Ends GET_FURY increase for halfbreeds who got damaged */

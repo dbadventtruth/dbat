@@ -172,7 +172,6 @@ void cedit_creation(struct char_data *ch)
       break;
   }
   racial_body_parts(ch);
-  ch->aff_abils = ch->real_abils;
 }
 
 /*
@@ -223,28 +222,25 @@ void do_start(struct char_data *ch)
   int punch;
   struct obj_data *obj;
 
-  GET_CLASS_LEVEL(ch) = 1;
-  GET_HITDICE(ch) = 0;
-  GET_LEVEL_ADJ(ch) = 0;
-  ch->level = 1;
-  GET_EXP(ch) = 1;
+  char_stat_set(ch, "level", 1);
+  char_stat_set(ch, "experience", 1);
  
   if (IS_ANDROID(ch)) {
-   GET_COND(ch, HUNGER) = -1;
-   GET_COND(ch, THIRST) = -1;
-   GET_COND(ch, DRUNK) = -1;
+   char_stat_set(ch, "hunger", -1);
+   char_stat_set(ch, "thirst", -1);
+   char_stat_set(ch, "drunk", -1);
   } else if (IS_BIO(ch) && HAS_GENOME(ch, 3)) {
-   GET_COND(ch, HUNGER) = -1;
-   GET_COND(ch, DRUNK) = 0;
-   GET_COND(ch, THIRST) = 48;
-  }else if (IS_NAMEK(ch)) {
-   GET_COND(ch, HUNGER) = -1;
-   GET_COND(ch, DRUNK) = 0;
-   GET_COND(ch, THIRST) = 48;
+   char_stat_set(ch, "hunger", -1);
+   char_stat_set(ch, "drunk", 0);
+   char_stat_set(ch, "thirst", 48);
+   }else if (IS_NAMEK(ch)) {
+   char_stat_set(ch, "hunger", -1);
+   char_stat_set(ch, "drunk", 0);
+   char_stat_set(ch, "thirst", 48);
   } else {
-   GET_COND(ch, THIRST) = 48;
-   GET_COND(ch, HUNGER) = 48;
-   GET_COND(ch, DRUNK) = 0;
+   char_stat_set(ch, "thirst", 48);
+   char_stat_set(ch, "hunger", 48);
+   char_stat_set(ch, "drunk", 0);
   }
 
   SET_BIT_AR(PRF_FLAGS(ch), PRF_AUTOEXIT);
@@ -257,30 +253,30 @@ void do_start(struct char_data *ch)
   GET_LIMBCOND(ch, 4) = 100;
   SET_BIT_AR(PLR_FLAGS(ch), PLR_HEAD);
 
-  GET_SLOTS(ch) = 30;
+  char_stat_set(ch, "skill_slots", 30);
 
   if (GET_RACE(ch) == RACE_HUMAN) {
-   GET_SLOTS(ch) += 1;
+   char_stat_mod(ch, "skill_slots", 1);
   } else if (GET_RACE(ch) == RACE_SAIYAN) {
-   GET_SLOTS(ch) -= 1;
+   char_stat_mod(ch, "skill_slots", -1);
   } else if (GET_RACE(ch) == RACE_TRUFFLE) {
-   GET_SLOTS(ch) += 2;
+   char_stat_mod(ch, "skill_slots", 2);
   } else if (GET_RACE(ch) == RACE_HALFBREED) {
-   GET_SLOTS(ch) += 1;
+   char_stat_mod(ch, "skill_slots", 1);
   } else if (GET_RACE(ch) == RACE_MAJIN) {
-   GET_SLOTS(ch) -= 1;
+   char_stat_mod(ch, "skill_slots", -1);
   } else if (GET_RACE(ch) == RACE_KAI) {
-   GET_SLOTS(ch) += 4;
+   char_stat_mod(ch, "skill_slots", 4);
   }
   
 
   if (IS_TSUNA(ch) || IS_KABITO(ch) || IS_NAIL(ch))
-   GET_SLOTS(ch) += 5;
+   char_stat_mod(ch, "skill_slots", 5);
 
   if (GET_BONUS(ch, BONUS_GMEMORY))
-   GET_SLOTS(ch) += 2;
+   char_stat_mod(ch, "skill_slots", 2);
   if (GET_BONUS(ch, BONUS_BMEMORY))
-   GET_SLOTS(ch) -= 5;
+   char_stat_mod(ch, "skill_slots", -5);
 
  
   if (GET_RACE(ch) == RACE_SAIYAN || GET_RACE(ch) == RACE_HALFBREED) {
@@ -423,9 +419,8 @@ void do_start(struct char_data *ch)
   if (GET_ALIGNMENT(ch) <= -51) {
    set_title(ch, "The Villain");
   }
-  /* roll_real_abils(ch); */
   if (GET_GOLD(ch) <= 0) {
-  GET_GOLD(ch) = dice(3, 6) * 10;
+  char_stat_set(ch, "money", dice(3, 6) * 10);
   }
 
   /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
@@ -462,7 +457,7 @@ void do_start(struct char_data *ch)
 
   SPEAKING(ch) = SKILL_LANG_COMMON;
 
-  GET_LIFEPERC(ch) = 75;
+  char_stat_set(ch, "life_percent", 75);
 
   /* assign starting items etc...*/
   obj = read_object(17, VIRTUAL);
@@ -503,9 +498,9 @@ void do_start(struct char_data *ch)
   advance_level(ch, GET_CLASS(ch));
   /*mudlog(BRF, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s advanced to level %d", GET_NAME(ch), GET_LEVEL(ch));*/
 
-  ch->basepl = MAX(ch->basepl, 100L);
-  ch->baseki = MAX(ch->baseki, 100L);
-  ch->basest = MAX(ch->basest, 100L);
+  char_stat_set(ch, "powerlevel", MAX(char_stat_get(ch, "powerlevel"), 100L));
+  char_stat_set(ch, "ki", MAX(char_stat_get(ch, "ki"), 100L));
+  char_stat_set(ch, "stamina", MAX(char_stat_get(ch, "stamina"), 100L));
 
   if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_SENSEM)) {
    SET_SKILL(ch, SKILL_SENSE, 100);
@@ -514,41 +509,41 @@ void do_start(struct char_data *ch)
    gainBaseKI(ch, rand_number(400, 500));
   }
 
-     if (ch->real_abils.str > 20) {
-      ch->real_abils.str = 20;
+     if (char_stat_get(ch, "strength") > 20) {
+      char_stat_set(ch, "strength", 20);
      }
-     if (ch->real_abils.str < 8) {
-      ch->real_abils.str = 8;
+     if (char_stat_get(ch, "strength") < 8) {
+      char_stat_set(ch, "strength", 8);
      }
-     if (ch->real_abils.con > 20) {
-      ch->real_abils.con = 20;
+     if (char_stat_get(ch, "constitution") > 20) {
+      char_stat_set(ch, "constitution", 20);
      }
-     if (ch->real_abils.con < 8) {
-      ch->real_abils.con = 8;
+     if (char_stat_get(ch, "constitution") < 8) {
+      char_stat_set(ch, "constitution", 8);
      }
-     if (ch->real_abils.intel > 20) {
-      ch->real_abils.intel = 20;
+     if (char_stat_get(ch, "intelligence") > 20) {
+      char_stat_set(ch, "intelligence", 20);
      }
-     if (ch->real_abils.intel < 8) {
-      ch->real_abils.intel = 8;
+     if (char_stat_get(ch, "intelligence") < 8) {
+      char_stat_set(ch, "intelligence", 8);
      }
-     if (ch->real_abils.cha > 20) {
-      ch->real_abils.cha = 20;
+     if (char_stat_get(ch, "speed") > 20) {
+      char_stat_set(ch, "speed", 20);
      }
-     if (ch->real_abils.cha < 8) {
-      ch->real_abils.cha = 8;
+     if (char_stat_get(ch, "speed") < 8) {
+      char_stat_set(ch, "speed", 8);
      }
-     if (ch->real_abils.dex > 20) {
-      ch->real_abils.dex = 20;
+     if (char_stat_get(ch, "agility") > 20) {
+      char_stat_set(ch, "agility", 20);
      }
-     if (ch->real_abils.dex < 8) {
-      ch->real_abils.dex = 8;
+     if (char_stat_get(ch, "agility") < 8) {
+      char_stat_set(ch, "agility", 8);
      }
-     if (ch->real_abils.wis > 20) {
-      ch->real_abils.wis = 20;
+     if (char_stat_get(ch, "wisdom") > 20) {
+      char_stat_set(ch, "wisdom", 20);
      }
-     if (ch->real_abils.wis < 8) {
-      ch->real_abils.wis = 8;
+     if (char_stat_get(ch, "wisdom") < 8) {
+      char_stat_set(ch, "wisdom", 8);
      }
 
   GET_TRANSCLASS(ch) = rand_number(1, 3);
@@ -716,7 +711,7 @@ void advance_level(struct char_data *ch, int whichclass)
     log("Attempt to gain a second class without multiclass enabled for %s", GET_NAME(ch));
     whichclass = GET_CLASS(ch);
   }
-  ranks = ch->level;
+  ranks = char_stat_get(ch, "level");
 
   /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
   switch (ranks) {
@@ -1033,9 +1028,9 @@ void advance_level(struct char_data *ch, int whichclass)
     /* blah */
   } else {
       gainBasePL(ch, rand_number(1, 20));
-      ch->basepl = MAX(ch->basepl, 250L);
-      ch->baseki = MAX(ch->baseki, 250L);
-      ch->basest = MAX(ch->basest, 250L);
+      char_stat_set(ch, "powerlevel", MAX(char_stat_get(ch, "powerlevel"), 250L));
+      char_stat_set(ch, "ki", MAX(char_stat_get(ch, "ki"), 250L));
+      char_stat_set(ch, "stamina", MAX(char_stat_get(ch, "stamina"), 250L));
 
     add_prac = 5;
     if (PLR_FLAGGED(ch, PLR_SKILLP)) {
@@ -1074,7 +1069,7 @@ void advance_level(struct char_data *ch, int whichclass)
    add_mana *= 1.25;
    add_move *= 1.25;
   }
-  GET_PRACTICES(ch, whichclass) += add_prac;
+  char_stat_mod(ch, "practices", add_prac);
    gainBasePLTransformed(ch, add_hp, true);
    gainBaseKITransformed(ch, add_mana, true);
    gainBaseSTTransformed(ch, add_move, true);
@@ -1086,18 +1081,20 @@ void advance_level(struct char_data *ch, int whichclass)
  add_move = nmo;
 
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
-    for (i = 0; i < 3; i++)
-      GET_COND(ch, i) = (char) -1;
+    for (i = 0; i < 3; i++) {
+      const char *condition_name = (i == DRUNK) ? "drunk" : (i == HUNGER) ? "hunger" : "thirst";
+      char_stat_set(ch, condition_name, -1);
+    }
     SET_BIT_AR(PRF_FLAGS(ch), PRF_HOLYLIGHT);
   }
 
   sprintf(buf, "@D[@YGain@D: @RPl@D(@G%s@D) @gSt@D(@G%s@D) @CKi@D(@G%s@D) @bPS@D(@G%s@D)]", add_commas(add_hp), add_commas(add_move), add_commas(add_mana), add_commas(add_prac));
   if (GET_BONUS(ch, BONUS_GMEMORY) && (GET_LEVEL(ch) == 20 || GET_LEVEL(ch) == 40 || GET_LEVEL(ch) == 60 || GET_LEVEL(ch) == 80 || GET_LEVEL(ch) == 100)) {
-   GET_SLOTS(ch) += 1;
+   char_stat_mod(ch, "skill_slots", 1);
    send_to_char(ch, "@CYou feel like you could remember a new skill!@n\r\n");
   }
   if (IS_NAMEK(ch) && rand_number(1, 100) <= 5) {
-   GET_SLOTS(ch) += 1;
+   char_stat_mod(ch, "skill_slots", 1);
    send_to_char(ch, "@CYou feel as though you could learn another skill.@n\r\n");
   }
   if (IS_ICER(ch) && rand_number(1, 100) <= 25) {
@@ -1126,17 +1123,17 @@ void advance_level(struct char_data *ch, int whichclass)
    int raise = FALSE, stat_fail = 0;
    if (IS_KONATSU(ch)) {
     while (raise == FALSE) {
-     if (ch->real_abils.dex < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
-      if (ch->real_abils.dex < 45 || GET_BONUS(ch, BONUS_CLUMSY) <= 0) { 
-       ch->real_abils.dex += 1;
+     if (char_stat_get(ch, "agility") < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
+      if (char_stat_get(ch, "agility") < 45 || GET_BONUS(ch, BONUS_CLUMSY) <= 0) { 
+       char_stat_mod(ch, "agility", 1);
        send_to_char(ch, "@GYou feel your agility increase!@n\r\n");
        raise = TRUE;
       } else {
        stat_fail += 1;
       }
-     } else if (ch->real_abils.cha < 100 && raise == FALSE && stat_fail < 2) {
-      if (ch->real_abils.cha < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
-       ch->real_abils.cha += 1;
+     } else if (char_stat_get(ch, "speed") < 100 && raise == FALSE && stat_fail < 2) {
+      if (char_stat_get(ch, "speed") < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
+       char_stat_mod(ch, "speed", 1);
        send_to_char(ch, "@GYou feel your speed increase!@n\r\n");
        raise = TRUE;
       } else {
@@ -1151,17 +1148,17 @@ void advance_level(struct char_data *ch, int whichclass)
 
    else if (IS_MUTANT(ch)) {
     while (raise == FALSE) {
-     if (ch->real_abils.con < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
-      if (ch->real_abils.con < 45 || GET_BONUS(ch, BONUS_FRAIL) <= 0) { 
-       ch->real_abils.con += 1;
+     if (char_stat_get(ch, "constitution") < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
+      if (char_stat_get(ch, "constitution") < 45 || GET_BONUS(ch, BONUS_FRAIL) <= 0) { 
+       char_stat_mod(ch, "constitution", 1);
        send_to_char(ch, "@GYou feel your constitution increase!@n\r\n");
        raise = TRUE;
       } else {
        stat_fail += 1;
       }
-     } else if (ch->real_abils.cha < 100 && raise == FALSE && stat_fail < 2) {
-      if (ch->real_abils.cha < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
-       ch->real_abils.cha += 1;
+     } else if (char_stat_get(ch, "speed") < 100 && raise == FALSE && stat_fail < 2) {
+      if (char_stat_get(ch, "speed") < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
+       char_stat_mod(ch, "speed", 1);
        send_to_char(ch, "@GYou feel your speed increase!@n\r\n");
        raise = TRUE;
       } else {
@@ -1176,17 +1173,17 @@ void advance_level(struct char_data *ch, int whichclass)
 
    else if (IS_HOSHIJIN(ch)) {
     while (raise == FALSE) {
-     if (ch->real_abils.str < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
-      if (ch->real_abils.str < 45 || GET_BONUS(ch, BONUS_WIMP) <= 0) { 
-       ch->real_abils.str += 1;
+     if (char_stat_get(ch, "strength") < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
+      if (char_stat_get(ch, "strength") < 45 || GET_BONUS(ch, BONUS_WIMP) <= 0) { 
+       char_stat_mod(ch, "strength", 1);
        send_to_char(ch, "@GYou feel your strength increase!@n\r\n");
        raise = TRUE;
       } else {
        stat_fail += 1;
       }
-     } else if (ch->real_abils.dex < 100 && raise == FALSE && stat_fail < 2) {
-      if (ch->real_abils.dex < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
-       ch->real_abils.dex += 1;
+     } else if (char_stat_get(ch, "agility") < 100 && raise == FALSE && stat_fail < 2) {
+      if (char_stat_get(ch, "agility") < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
+       char_stat_mod(ch, "agility", 1);
        send_to_char(ch, "@GYou feel your agility increase!@n\r\n");
        raise = TRUE;
       } else {
@@ -1237,34 +1234,34 @@ void advance_level(struct char_data *ch, int whichclass)
     case 90:
     case 100:
      if (GET_BONUS(ch, BONUS_BRAWNY) > 0) {
-      ch->real_abils.str += 2;
+      char_stat_mod(ch, "strength", 2);
       send_to_char(ch, "@GYour muscles have grown stronger!@n\r\n");
      }
      if (GET_BONUS(ch, BONUS_SCHOLARLY) > 0) {
-      ch->real_abils.intel += 2;
+      char_stat_mod(ch, "intelligence", 2);
       send_to_char(ch, "@GYour mind has grown sharper!@n\r\n");
      }
      if (GET_BONUS(ch, BONUS_SAGE) > 0) {
-      ch->real_abils.wis += 2;
+      char_stat_mod(ch, "wisdom", 2);
       send_to_char(ch, "@GYour understanding about life has improved!@n\r\n");
      }
      if (GET_BONUS(ch, BONUS_AGILE) > 0) {
-      ch->real_abils.dex += 2;
+      char_stat_mod(ch, "agility", 2);
       send_to_char(ch, "@GYour body has grown more agile!@n\r\n");
      }
      if (GET_BONUS(ch, BONUS_QUICK) > 0) {
-      ch->real_abils.cha += 2;
+      char_stat_mod(ch, "speed", 2);
       send_to_char(ch, "@GYou feel like your speed has improved!@n\r\n");
      }
      if (GET_BONUS(ch, BONUS_STURDY) > 0) {
-      ch->real_abils.con += 2;
+      char_stat_mod(ch, "constitution", 2);
       send_to_char(ch, "@GYour body feels tougher now!@n\r\n");
      }
      break;
    }
 
   if (GET_LEVEL(ch) == 1) {
-   GET_ARMOR(ch) = 0;
+    char_stat_set(ch, "armor", 0);
   }
   if (GET_LEVEL(ch) == 2) {
    ERAPLAYERS += 1;
@@ -1688,7 +1685,7 @@ int8_t dex_mod_capped(const struct char_data *ch)
 {
   int8_t mod;
   struct obj_data *armor;
-  mod = ability_mod_value(GET_DEX(ch));
+  mod = ability_mod_value(char_der_total_get((struct char_data *)ch, "agility"));
   armor = GET_EQ(ch, WEAR_BODY);
   if (armor && GET_OBJ_TYPE(armor) == ITEM_ARMOR) {
     mod = MIN(mod, GET_OBJ_VAL(armor, VAL_ARMOR_MAXDEXMOD));

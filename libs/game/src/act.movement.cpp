@@ -1124,7 +1124,7 @@ ACMD(do_move)
    return;
   }
 
-  if (GET_COND(ch, DRUNK) > 4 && (rand_number(1, 9) + GET_COND(ch, DRUNK)) >= rand_number(14, 20)) {
+  if (char_stat_get(ch, "drunk") > 4 && (rand_number(1, 9) + char_stat_get(ch, "drunk")) >= rand_number(14, 20)) {
    send_to_char(ch, "You wobble around and then fall on your ass.\r\n");
    act("@C$n@W wobbles around before falling on $s ass@n.", TRUE, ch, 0, 0, TO_ROOM);
    GET_POS(ch) = POS_SITTING;

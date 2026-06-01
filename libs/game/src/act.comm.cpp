@@ -315,7 +315,7 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "knowledge")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s now has more knowledge!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           GET_PRACTICES(wch, GET_CLASS(wch)) += rand_number(2000, 5000);
+            char_stat_mod(wch, "practices", rand_number(2000, 5000));
            granted = TRUE;
            SELFISHMETER += 1;
 		   mudlog(NRM, ADMLVL_GOD, TRUE, "Shenron: %s has made a knowledge wish on %s.", GET_NAME(ch), GET_NAME(wch));;
@@ -326,9 +326,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "speed")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s is now faster!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.cha += 10;
-           if (wch->real_abils.cha > 100) {
-            wch->real_abils.cha = 100;
+           char_stat_mod(wch, "speed", 10);
+           if (char_stat_get(wch, "speed") > 100) {
+            char_stat_set(wch, "speed", 100);
            }
            save_char(wch);
            granted = TRUE;
@@ -341,7 +341,7 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "tough")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s is now tougher!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           GET_ARMOR(wch) += 5000;
+            char_stat_mod(wch, "armor", 5000);
            granted = TRUE;
            SELFISHMETER += 1;
 		   mudlog(NRM, ADMLVL_GOD, TRUE, "Shenron: %s has made a tough wish on %s.", GET_NAME(ch), GET_NAME(wch));
@@ -352,9 +352,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "strength")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s has more strength!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.str += 10;
-           if (wch->real_abils.str > 100) {
-            wch->real_abils.str = 100;
+           char_stat_mod(wch, "strength", 10);
+           if (char_stat_get(wch, "strength") > 100) {
+            char_stat_set(wch, "strength", 100);
            }
            save_char(wch);
            granted = TRUE;
@@ -367,9 +367,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "intelligence")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s is now smarter!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.intel += 10;
-           if (wch->real_abils.intel > 100) {
-            wch->real_abils.intel = 100;
+           char_stat_mod(wch, "intelligence", 10);
+           if (char_stat_get(wch, "intelligence") > 100) {
+            char_stat_set(wch, "intelligence", 100);
            }
            save_char(wch);
            granted = TRUE;
@@ -382,9 +382,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "wisdom")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s is now wiser!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           wch->real_abils.wis += 10;
-           if (wch->real_abils.wis > 100) {
-            wch->real_abils.wis = 100;
+           char_stat_mod(wch, "wisdom", 10);
+           if (char_stat_get(wch, "wisdom") > 100) {
+            char_stat_set(wch, "wisdom", 100);
            }
            granted = TRUE;
            SELFISHMETER += 1;
@@ -396,9 +396,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "agility")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s is now more agile!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-          wch->real_abils.dex += 10;
-          if (wch->real_abils.dex > 100) {
-           wch->real_abils.dex = 100;
+          char_stat_mod(wch, "agility", 10);
+          if (char_stat_get(wch, "agility") > 100) {
+           char_stat_set(wch, "agility", 100);
           }
            save_char(wch);
            granted = TRUE;
@@ -411,9 +411,9 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "constitution")) {
           if (wch != NULL) {
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s has more guts!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-          wch->real_abils.con += 10;
-          if (wch->real_abils.con > 100) {
-           wch->real_abils.con = 100;
+          char_stat_mod(wch, "constitution", 10);
+          if (char_stat_get(wch, "constitution") > 100) {
+           char_stat_set(wch, "constitution", 100);
           }
            save_char(wch);
            granted = TRUE;
@@ -428,7 +428,7 @@ ACMD(do_say)
           send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s has more skill!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
           int roll = rand_number(1, 3);
           send_to_char(wch, "@GYou suddenly feel like you could learn %d more skills!@n\r\n", roll);
-          GET_SLOTS(wch) += roll;
+          char_stat_mod(wch, "skill_slots", roll);
            save_char(wch);
            granted = TRUE;
            SELFISHMETER += 1;
@@ -488,7 +488,7 @@ ACMD(do_say)
          if (granted == FALSE && strstr(argument, "money")) {
           if (wch != NULL) {
            send_to_room(droom, "@wShenron says, '@CYour wish has been granted, %s now has become richer!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           GET_BANK_GOLD(wch) += 1000000;
+            char_stat_mod(wch, "money_bank", 1000000);
            granted = TRUE;
            SELFISHMETER += 1;
 		   mudlog(NRM, ADMLVL_GOD, TRUE, "Shenron: %s has made a money wish on %s.", GET_NAME(ch), GET_NAME(wch));
@@ -511,8 +511,8 @@ ACMD(do_say)
           if (wch != NULL) {
            send_to_room(droom, "@wShenron says, '@CYour wish cannot be granted, You might want to try something else instead, mortal!%s@w'@n\r\n");
            /*send_to_room(real_room(DRAGONR), "@wShenron says, '@CYour wish has been granted, %s now will never hunger or thirst again!%s@w'@n\r\n", GET_NAME(wch), WISH[0] ? "" : " Now make your second wish.");
-           GET_COND(ch, HUNGER) = -1;
-           GET_COND(ch, THIRST) = -1;
+            char_stat_set(ch, "hunger", -1);
+            char_stat_set(ch, "thirst", -1);
            granted = TRUE;
            SELFISHMETER += 1;
 		   mudlog(NRM, ADMLVL_GOD, TRUE, "Shenron: %s has made a vitality wish on %s.", GET_NAME(ch), GET_NAME(wch));*/
