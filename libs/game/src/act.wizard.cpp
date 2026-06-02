@@ -5527,5 +5527,17 @@ ACMD(do_boom)
 
 
 ACMD(do_lua) {
+  char arg[MAX_INPUT_LENGTH];
+
+  one_argument(argument, arg);
+  if (!strcmp(arg, "reload")) {
+    if (lua_reload()) {
+      send_to_char(ch, "Lua definitions reloaded.\r\n");
+    } else {
+      send_to_char(ch, "Lua definitions could not be reloaded. Close any active Lua REPL first.\r\n");
+    }
+    return;
+  }
+
   lua_repl_launch(ch->desc);
 }

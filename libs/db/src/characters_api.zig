@@ -13,20 +13,16 @@ pub const TransformData = struct {
 
     pub fn init(alloc: std.mem.Allocator, id: []const u8) !TransformData {
         return .{
-            .id = try alloc.dupe(u8, id),
+            .id = lua_api.internString(id),
             .numbers = std.StringHashMap(i64).init(alloc),
             .strings = std.StringHashMap([]const u8).init(alloc),
         };
     }
 
     pub fn deinit(self: *TransformData, alloc: std.mem.Allocator) void {
-        alloc.free(self.id);
-        var number_keys = self.numbers.keyIterator();
-        while (number_keys.next()) |key| alloc.free(key.*);
         self.numbers.deinit();
         var string_it = self.strings.iterator();
         while (string_it.next()) |entry| {
-            alloc.free(entry.key_ptr.*);
             alloc.free(entry.value_ptr.*);
         }
         self.strings.deinit();
@@ -72,7 +68,7 @@ pub const ConditionInstance = struct {
 
     pub fn init(alloc: std.mem.Allocator, id: []const u8) !ConditionInstance {
         return .{
-            .id = try alloc.dupe(u8, id),
+            .id = lua_api.internString(id),
             .sources = std.array_list.Managed(ConditionSource).init(alloc),
             .numbers = std.StringHashMap(i64).init(alloc),
             .strings = std.StringHashMap([]const u8).init(alloc),
@@ -80,15 +76,11 @@ pub const ConditionInstance = struct {
     }
 
     pub fn deinit(self: *ConditionInstance, alloc: std.mem.Allocator) void {
-        alloc.free(self.id);
         for (self.sources.items) |*source| source.deinit(alloc);
         self.sources.deinit();
-        var number_keys = self.numbers.keyIterator();
-        while (number_keys.next()) |key| alloc.free(key.*);
         self.numbers.deinit();
         var string_it = self.strings.iterator();
         while (string_it.next()) |entry| {
-            alloc.free(entry.key_ptr.*);
             alloc.free(entry.value_ptr.*);
         }
         self.strings.deinit();
@@ -244,19 +236,13 @@ pub const CharacterData = struct {
         self.modifiers.deinit();
         var transforms = self.transforms.iterator();
         while (transforms.next()) |entry| {
-            std.heap.page_allocator.free(entry.key_ptr.*);
             entry.value_ptr.deinit(std.heap.page_allocator);
         }
         self.transforms.deinit();
-        var meters = self.meters.keyIterator();
-        while (meters.next()) |key| std.heap.page_allocator.free(key.*);
         self.meters.deinit();
-        var skills = self.skills.keyIterator();
-        while (skills.next()) |key| std.heap.page_allocator.free(key.*);
         self.skills.deinit();
         var conditions = self.conditions.iterator();
         while (conditions.next()) |entry| {
-            std.heap.page_allocator.free(entry.key_ptr.*);
             entry.value_ptr.deinit(std.heap.page_allocator);
         }
         self.conditions.deinit();
@@ -775,11 +761,7 @@ pub export fn char_meter_set(ch: *cdb.char_data, meter: ?[*:0]const u8, value: i
         return clamped;
     }
 
-    const owned_name = std.heap.page_allocator.dupe(u8, name) catch return 0;
-    zigdata.meters.put(owned_name, clamped) catch {
-        std.heap.page_allocator.free(owned_name);
-        return 0;
-    };
+    zigdata.meters.put(lua_api.internString(name), clamped) catch return 0;
     syncLegacyMeter(ch, name, clamped);
     return clamped;
 }
@@ -946,14 +928,12 @@ pub export fn char_condition_add_with_variables(ch: *cdb.char_data, condition: ?
     const is_new = !zigdata.conditions.contains(name);
 
     if (is_new) {
-        const key = std.heap.page_allocator.dupeZ(u8, name) catch return false;
+        const key = lua_api.internString(name);
         var instance = ConditionInstance.init(std.heap.page_allocator, name) catch {
-            std.heap.page_allocator.free(key);
             return false;
         };
         zigdata.conditions.put(key, instance) catch {
             instance.deinit(std.heap.page_allocator);
-            std.heap.page_allocator.free(key);
             return false;
         };
     } else if (definition.stackable) {
@@ -1012,7 +992,6 @@ pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var removed = zigdata.conditions.fetchRemove(name) orelse return false;
-    std.heap.page_allocator.free(removed.key);
     removed.value.deinit(std.heap.page_allocator);
     conditionChanged(zigdata);
     lua_api.callConditionHook(ch, name, "on_remove");
@@ -1120,14 +1099,12 @@ pub export fn char_transform_add(ch: *cdb.char_data, transform: ?[*:0]const u8) 
     const zigdata = char_ensure_zigdata(ch) orelse return false;
     if (zigdata.transforms.contains(name)) return true;
 
-    const key = std.heap.page_allocator.dupeZ(u8, name) catch return false;
+    const key = lua_api.internString(name);
     var data = TransformData.init(std.heap.page_allocator, name) catch {
-        std.heap.page_allocator.free(key);
         return false;
     };
     zigdata.transforms.put(key, data) catch {
         data.deinit(std.heap.page_allocator);
-        std.heap.page_allocator.free(key);
         return false;
     };
     return true;
@@ -1138,7 +1115,6 @@ pub export fn char_transform_remove(ch: *cdb.char_data, transform: ?[*:0]const u
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var removed = zigdata.transforms.fetchRemove(name) orelse return false;
-    std.heap.page_allocator.free(removed.key);
     removed.value.deinit(std.heap.page_allocator);
     return true;
 }
@@ -1236,7 +1212,7 @@ fn putOwnedNumber(instance: *ConditionInstance, key: []const u8, value: i64) !vo
         existing.* = value;
         return;
     }
-    try instance.numbers.put(try std.heap.page_allocator.dupe(u8, key), value);
+    try instance.numbers.put(lua_api.internString(key), value);
 }
 
 fn putOwnedString(instance: *ConditionInstance, key: []const u8, value: []const u8) !void {
@@ -1245,7 +1221,7 @@ fn putOwnedString(instance: *ConditionInstance, key: []const u8, value: []const 
         existing.* = try std.heap.page_allocator.dupeZ(u8, value);
         return;
     }
-    try instance.strings.put(try std.heap.page_allocator.dupe(u8, key), try std.heap.page_allocator.dupeZ(u8, value));
+    try instance.strings.put(lua_api.internString(key), try std.heap.page_allocator.dupeZ(u8, value));
 }
 
 fn putOwnedTransformNumber(data: *TransformData, key: []const u8, value: i64) !void {
@@ -1253,7 +1229,7 @@ fn putOwnedTransformNumber(data: *TransformData, key: []const u8, value: i64) !v
         existing.* = value;
         return;
     }
-    try data.numbers.put(try std.heap.page_allocator.dupe(u8, key), value);
+    try data.numbers.put(lua_api.internString(key), value);
 }
 
 fn putOwnedTransformString(data: *TransformData, key: []const u8, value: []const u8) !void {
@@ -1262,7 +1238,7 @@ fn putOwnedTransformString(data: *TransformData, key: []const u8, value: []const
         existing.* = try std.heap.page_allocator.dupeZ(u8, value);
         return;
     }
-    try data.strings.put(try std.heap.page_allocator.dupe(u8, key), try std.heap.page_allocator.dupeZ(u8, value));
+    try data.strings.put(lua_api.internString(key), try std.heap.page_allocator.dupeZ(u8, value));
 }
 
 fn emitConditionModifiers(ch: *cdb.char_data, zigdata: *CharacterData) void {

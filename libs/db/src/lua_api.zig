@@ -85,6 +85,9 @@ var lua_state: ?*Lua = null;
 var initialized = false;
 var loaded_entries: usize = 0;
 var active_repl: ?*LuaRepl = null;
+var intern_arena: std.heap.ArenaAllocator = undefined;
+var interned_strings: std.StringHashMap([]const u8) = undefined;
+var interner_initialized = false;
 
 pub const StatDefinition = struct {
     default_value: i64 = 0,
@@ -132,6 +135,9 @@ pub const ConditionDefinition = struct {
 pub fn init(alloc: std.mem.Allocator, runtime_io: std.Io) !void {
     allocator = alloc;
     io = runtime_io;
+    intern_arena = std.heap.ArenaAllocator.init(alloc);
+    interned_strings = std.StringHashMap([]const u8).init(alloc);
+    interner_initialized = true;
     lua_state = try Lua.init(alloc);
     initialized = true;
 
@@ -148,6 +154,30 @@ pub fn deinit() void {
     lua_state = null;
     initialized = false;
     loaded_entries = 0;
+    interned_strings.deinit();
+    intern_arena.deinit();
+    interner_initialized = false;
+}
+
+pub fn internString(text: []const u8) []const u8 {
+    if (!interner_initialized or text.len == 0) return text;
+    if (interned_strings.get(text)) |existing| return existing;
+    const owned = intern_arena.allocator().dupe(u8, text) catch return text;
+    interned_strings.put(owned, owned) catch return owned;
+    return owned;
+}
+
+pub export fn lua_reload() bool {
+    if (!initialized or active_repl != null) return false;
+    lua_state.?.deinit();
+    lua_state = Lua.init(allocator) catch return false;
+    const lua = lua_state.?;
+    configureStandardLibraries(lua);
+    registerReplPrint(lua);
+    registerDbatModule(lua);
+    lua.doString(bootstrap) catch return false;
+    load_lua() catch return false;
+    return true;
 }
 
 pub fn state() *Lua {
