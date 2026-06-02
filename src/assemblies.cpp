@@ -5,7 +5,8 @@
  * -------------------------------------------------------------------- *
  * 1999 MAY 07 gdavis/azrael@laker.net Initial implementation.         *
  * ******************************************************************** */
-#include "assembly.h"
+#include "assembly_impl.h"
+#include "assembly_db.h"
 #include "consts/maximums.h"
 #include "consts/assemblytypes.h"
 #include "assemblies.h"
@@ -13,10 +14,22 @@
 #include "handler.h"
 #include "fileop.h"
 #include "db.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_db.h"
+#include "flags.h"
 
 #include "extract.h"
 #include "relocate.h"
 #include "search.h"
+#include "log.h"
+#include "interpreter.h"
+#include "character_api.h"
+#include "room_impl.h"
+
+#include <cstring>
 
 /* Local global variables. */
 static long           g_lNumAssemblies = 0;

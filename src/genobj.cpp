@@ -12,10 +12,23 @@
 
 #include "handler.h"
 #include "dg_olc.h"
+#include "dgscript_impl.h"
+#include "object_api.h"
+#include "object_db.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "relocate.h"
 #include "shop.h"
+#include "zone_impl.h"
+#include "extract.h"
+
+#include "consts/admlevel.h"
+#include "log.h"
+#include "db.h"
 
 #include <string.h>
 #include <stddef.h>
+#include <cstdlib>
 
 static_assert(sizeof(struct obj_proto_data) == offsetof(struct obj_data, in_room),
               "object prototype fields must stay prefix-compatible with object instances");

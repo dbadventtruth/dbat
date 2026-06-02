@@ -106,7 +106,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
         .link_libcpp = true,
-        .root_source_file = b.path("apps/server/src/main.zig"),
+        .root_source_file = b.path("apps/server/main.zig"),
         .imports = &.{
             .{ .name = "db", .module = mod_dbat_zig },
             .{ .name = "zlua", .module = zlua_module },
@@ -114,7 +114,7 @@ pub fn build(b: *std.Build) void {
     });
     circle_mod.addIncludePath(b.path("include"));
     circle_mod.addIncludePath(b.path("src"));
-    circle_mod.addCSourceFiles(.{ .files = &[_][]const u8{"apps/server/src/run.cpp"}, .flags = &[_][]const u8{ "-std=gnu++23", "-w", "-g", "-DPATH_MAX=4096" } });
+    circle_mod.addCSourceFiles(.{ .files = &[_][]const u8{"apps/server/run.cpp"}, .flags = &[_][]const u8{ "-std=gnu++23", "-w", "-g", "-DPATH_MAX=4096" } });
     circle_mod.linkLibrary(dbat);
 
     const exe = b.addExecutable(.{

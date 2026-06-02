@@ -53,6 +53,7 @@
 #include "races.h"
 #include "stringutils.h"
 #include "skills.h"
+#include "command_db.h"
 
 #include <string.h>
 #include <strings.h>
@@ -152,11 +153,7 @@ char *handbook = NULL;		/* handbook for new immortals	 */
 char *policies = NULL;		/* policies page		 */
 char *ihelp = NULL;		/* help screen (immortals)	 */
 
-struct help_index_element *help_table = NULL;	/* the help table	 */
-int top_of_helpt = 0;
 
-struct social_messg *soc_mess_list = NULL;      /* list of socials */
-int top_of_socialt = -1;                        /* number of socials */
 
 extern struct board_info *boards; /* our boards */
 
@@ -195,7 +192,6 @@ static void json_import_or_die(const char *label, int result);
 
 /* external functions */
 
-void free_alias(struct alias_data *a);
 void mag_assign_spells(void);
 void create_command_list(void);
 void sort_spells(void);

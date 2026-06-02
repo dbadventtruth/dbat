@@ -32,6 +32,27 @@
 #include "tedit.h"
 #include "vehicles.h"
 
+#include "consts/admlevel.h"
+#include "consts/positions.h"
+#include "consts/affflags.h"
+
+#include "character_macros.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "object_macros.h"
+#include "object_impl.h"
+#include "object_db.h"
+#include "room_impl.h"
+#include "flags.h"
+#include "consts/affflags.h"
+#include "consts/itemdata.h"
+#include "consts/playerflags.h"
+#include "consts/mobflags.h"
+#include "character_db.h"
+
+#include <cstring>
+#include <cctype>
+
 const struct command_info cmd_info[] = {
   { "RESERVED", "", 0, 0, 0, ADMLVL_NONE	, 0 },     /* this must be first -- for specprocs */
 

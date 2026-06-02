@@ -17,6 +17,24 @@
 #include "spec_assign.h"
 #include "iterate.hpp"
 
+#include "character_macros.h"
+#include "character_impl.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "log.h"
+#include "flags.h"
+#include "consts/playerflags.h"
+#include "consts/constates.h"
+#include "consts/admlevel.h"
+#include "consts/mobflags.h"
+#include "consts/itemdata.h"
+#include "config_db.h"
+#include "util_macros.h"
+#include "room_impl.h"
+
+#include <cstring>
+#include <cctype>
+
 /******************************************************************************/
 /** External Functions                                                       **/
 /******************************************************************************/

@@ -3,6 +3,10 @@
 #include "room_utils.h"
 
 #include "character_impl.h"
+#include "flags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
 #include "character_macros.h"
 #include "consts/mobflags.h"
 #include "object_impl.h"

@@ -1,4 +1,5 @@
 #include "command.h"
+#include "command_db.h"
 #include "command_impl.h"
 #include <stdlib.h>
 #include <string.h>

@@ -9,14 +9,45 @@
 **************************************************************************/
 
 #include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "flags.h"
+#include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "consts/triggers.h"
+#include "consts/constates.h"
+#include "consts/playerflags.h"
+#include "consts/pulse.h"
+#include "util_macros.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_api.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "zone_db.h"
+#include "weather_db.h"
+#include "search.h"
+#include "log.h"
 #include "act.wizard.h"
 #include "dg_event.h"
 #include "interpreter.h"
 #include "handler.h"
 #include "comm.h"
+#include "db.h"
 #include "fileop.h"
+#include "oasis.h"
 #include "iterate.hpp"
 
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+#include <strings.h>
 #include <unistd.h>
 #include <errno.h>
 

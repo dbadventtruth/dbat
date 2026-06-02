@@ -7,21 +7,45 @@
 *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
+#include <cstring>
+#include <cstdlib>
+#include <cctype>
+
 #include "config.h"
 #include "consts/maximums.h"
 #include "consts/bonus.h"
+#include "consts/applies.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/constates.h"
+#include "flags.h"
+#include "util_macros.h"
+#include "stringutils.h"
+#include "weather_db.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_api.h"
 
 #include "weather.h"
 #include "command.h"
-
-
 
 #include "act.comm.h"
 #include "dg_comm.h"
 #include "comm.h"
 #include "spells.h"
 #include "interpreter.h"
-#include "config.h"
+#include "db.h"
 #include "act.wizard.h"
 #include "act.informative.h"
 #include "dg_scripts.h"
@@ -32,10 +56,20 @@
 #include "relocate.h"
 #include "search.h"
 #include "act.social.h"
-#include "character_macros.h"
-#include "descriptor_impl.h"
+#include "config_db.h"
 
 #include <cstring>
+#include <cstdlib>
+#include <cctype>
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+#include "log.h"
+#include "consts/admlevel.h"
+#include "consts/playerflags.h"
+#include "consts/pulse.h"
+#include "consts/positions.h"
+#include "time_info.h"
 
 /* local functions */
 static void perform_tell(struct char_data *ch, struct char_data *vict, char *arg);

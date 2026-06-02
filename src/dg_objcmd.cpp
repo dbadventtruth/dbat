@@ -11,6 +11,21 @@
 #include "consts/maximums.h"
 #include "screen.h"
 #include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_api.h"
+#include "room_impl.h"
+#include "room_db.h"
+#include "room_api.h"
+#include "zone_db.h"
+#include "log.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "handler.h"
@@ -21,6 +36,9 @@
 
 #include "act.wizard.h"
 
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 #include <stdarg.h>
 #include <stdio.h>
 

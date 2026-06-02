@@ -17,6 +17,31 @@
 #include "fileop.h"
 #include "players.h"
 
+#include "object_impl.h"
+#include "object_macros.h"
+#include "flags.h"
+#include "consts/itemdata.h"
+#include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/roomflags.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "json.h"
+#include "util_macros.h"
+#include "character_macros.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "consts/admlevel.h"
+#include "consts/applies.h"
+#include "log.h"
+#include "relocate.h"
+#include "room_api.h"
+#include "util_macros.h"
+#include "stringutils.h"
+
+#include <cstdlib>
+#include <cstring>
+
 #include <errno.h>
 #include <cctype>
 

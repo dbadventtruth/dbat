@@ -2,7 +2,19 @@
 #include "object_utils.h"
 
 #include "db.h"
+#include "flags.h"
 #include "handler.h"
+#include "log.h"
+#include "object_api.h"
+#include "object_macros.h"
+#include "random.h"
+#include "room_api.h"
+#include "room_impl.h"
+#include "stringutils.h"
+#include "consts/directions.h"
+#include "consts/itemdata.h"
+
+#include <cstring>
 
 
 int wearable_obj(struct obj_data *obj)

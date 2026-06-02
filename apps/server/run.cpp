@@ -2,17 +2,23 @@
 // Created by basti on 10/22/2021.
 //
 
-#include "dbat/game/config.h"
-#include "dbat/game/comm.h"
-#include "dbat/game/utils.h"
-#include "dbat/game/mail.h"
-#include "dbat/game/boards.h"
-#include "dbat/game/act.informative.h"
-#include "dbat/game/act.social.h"
-#include "dbat/game/dg_scripts.h"
-#include "dbat/game/ban.h"
-#include "dbat/game/genolc.h"
+#include "config.h"
+#include "config_db.h"
+#include "db.h"
+#include "comm.h"
+#include "mail.h"
+#include "boards.h"
+#include "act.informative.h"
+#include "act.social.h"
+#include "dg_scripts.h"
+#include "ban.h"
+#include "genolc.h"
+#include "oasis.h"
+#include "log.h"
 
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 #include <unistd.h>
 
 extern "C" int run_circle(int argc, char **argv)

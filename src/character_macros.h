@@ -393,7 +393,6 @@ extern "C" {
 #define OOZARU_RACE(ch)         (IS_SAIYAN(ch) || IS_HALFBREED(ch))
 #define MOON_TIME               (time_info.hours >= 21 || time_info.hours <= 4)
 #define MOON_DATE               (time_info.day == 19 || time_info.day == 20 || time_info.day == 21)
-bool MOON_TIMECHECK();
 #define ETHER_STREAM(ch)        char_ether_stream(ch)
 #define HAS_MOON(ch)            char_has_moon(ch)
 #define HAS_ARMS(ch)            char_has_arms(ch)

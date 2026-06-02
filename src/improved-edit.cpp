@@ -10,6 +10,20 @@ improved-edit.c		Routines specific to the improved editor.
 #include "interpreter.h"
 #include "dg_olc.h"
 
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/maximums.h"
+#include "consts/constates.h"
+#include "consts/admlevel.h"
+#include "log.h"
+#include "flags.h"
+#include "util_macros.h"
+#include "stringutils.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+
 void send_editor_help(struct descriptor_data *d)
 {
   if (using_improved_editor)

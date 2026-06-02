@@ -7,7 +7,25 @@
 *  $Revision: 1.0.14 $                                                    *
 **************************************************************************/
 #include "consts/maximums.h"
+#include "consts/skills.h"
+#include "consts/triggers.h"
+#include "dgscript_impl.h"
 #include "dg_scripts.h"
+#include <cstring>
+#include <cstdlib>
+#include "flags.h"
+#include "log.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/admlevel.h"
+#include "consts/applies.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "character_utils.h"
+#include "object_impl.h"
+#include "room_impl.h"
+#include "skills.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "handler.h"

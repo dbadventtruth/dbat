@@ -13,14 +13,32 @@
 Written by Jeremy Elson (jelson@circlemud.org)
 
 *************************************************************************/
+#include <cstdlib>
+#include <cstring>
+
 #include "mail.h"
 
+#include "consts/admlevel.h"
+#include "consts/adminflags.h"
+#include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/constates.h"
+#include "flags.h"
+#include "log.h"
+#include "util_macros.h"
+#include "character_api.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "relocate.h"
+#include "extract.h"
 #include "player_impl.h"
 #include "player_db.h"
 #include "character_impl.h"
 #include "character_macros.h"
-#include "log.h"
-#include "util_macros.h"
 #include "comm.h"
 #include "db.h"
 #include "interpreter.h"
@@ -29,15 +47,7 @@ Written by Jeremy Elson (jelson@circlemud.org)
 #include "players.h"
 #include "players.h"
 #include "fileop.h"
-#include "consts/admlevel.h"
-#include "consts/adminflags.h"
-#include "consts/maximums.h"
-#include "consts/mobflags.h"
-#include "consts/playerflags.h"
-#include "flags.h"
 #include "stringutils.h"
-
-#include <cstdlib>
 #include <cstring>
 
 

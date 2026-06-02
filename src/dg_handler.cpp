@@ -14,16 +14,24 @@
 ***************************************************************************/
 
 #include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "dgscript_db.h"
+#include "flags.h"
+#include "character_impl.h"
+#include "object_impl.h"
+#include "room_impl.h"
 #include "db.h"
 #include "handler.h"
 #include "dg_event.h"
+#include "log.h"
 #include "stringutils.h"
+#include "util_macros.h"
 #include "character_utils.h"
 #include "object_utils.h"
 #include "room_utils.h"
-#include "db.h"
 #include "fileop.h"
 
+#include <strings.h>
 #include <stdlib.h>
 #include <linux/limits.h>
 #include <errno.h>

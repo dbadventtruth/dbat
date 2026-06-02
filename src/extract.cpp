@@ -1,4 +1,4 @@
-
+#include "extract.h"
 #include "act.wizard.h"
 #include "comm.h"
 #include "dg_scripts.h"
@@ -8,6 +8,40 @@
 #include "mobact.h"
 #include "objsave.h"
 #include "act.misc.h"
+
+#include "character_macros.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/playerflags.h"
+#include "consts/admlevel.h"
+#include "consts/triggers.h"
+#include "config_db.h"
+#include "flags.h"
+#include "log.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "room_utils.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_api.h"
+#include "character_db.h"
+#include "character_utils.h"
+#include "handler.h"
+#include "db.h"
+#include "relocate.h"
+#include "fight.h"
+#include "dg_scripts.h"
+#include "affect.h"
+#include "object_db.h"
+#include "util_macros.h"
+
+#include <cstdlib>
 
 int extractions_pending = 0;
 

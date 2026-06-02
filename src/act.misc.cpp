@@ -19,6 +19,14 @@
 #include "consts/attacks.h"
 #include "consts/playerflags.h"
 #include "consts/skills.h"
+#include "consts/applies.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/fightprefs.h"
+#include "consts/sex.h"
+#include "consts/roomflags.h"
+#include "consts/sectortypes.h"
+#include "consts/sizes.h"
 
 
 #include "random.h"
@@ -32,6 +40,8 @@
 
 #include "dg_comm.h"
 #include "act.wizard.h"
+#include "room_utils.h"
+#include "object_utils.h"
 #include "act.movement.h"
 #include "act.informative.h"
 
@@ -44,11 +54,33 @@
 #include "fight.h"
 #include "class.h"
 #include "races_plus.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
 #include "character_macros.h"
 #include "character_utils.h"
+#include "log.h"
+#include "races.h"
 #include "affect.h"
+#include "flags.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+#include "object_macros.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "descriptor_db.h"
+#include "consts/pulse.h"
+#include "room_db.h"
+#include "room_api.h"
+#include "util_macros.h"
+#include "stringutils.h"
 
 #include "search.hpp"
+
+#include <cstdlib>
 
 /* local functions  */
 static void generate_multiform(struct char_data *ch, int count);

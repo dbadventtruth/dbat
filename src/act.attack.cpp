@@ -27,6 +27,9 @@
 #include "spells.h"
 #include "fight.h"
 #include "consts/deathtype.h"
+#include "consts/pulse.h"
+#include "consts/sex.h"
+#include "consts/playerflags.h"
 #include "weather_db.h"
 #include "relocate.h"
 #include "extract.h"
@@ -34,8 +37,25 @@
 #include "class.h"
 #include "races_plus.h"
 #include "character_api.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
 #include "character_macros.h"
 #include "character_utils.h"
+#include "character_impl.h"
+#include "interpreter.h"
+#include <strings.h>
+#include <cstring>
+#include "stringutils.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "object_macros.h"
+#include "object_impl.h"
+#include "consts/fightprefs.h"
+
+
 
 ACMD(do_lightgrenade)
 {

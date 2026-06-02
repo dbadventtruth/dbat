@@ -13,8 +13,27 @@
 **************************************************************************/
 
 #include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "dgscript_db.h"
 #include "dg_olc.h"
 
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/playerflags.h"
+#include "consts/triggers.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "room_impl.h"
+#include "util_macros.h"
+#include "zone_impl.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "zone_db.h"
+#include "log.h"
 #include "comm.h"
 #include "db.h"
 #include "genolc.h"
@@ -24,6 +43,10 @@
 #include "act.wizard.h"
 #include "modify.h"
 #include "genzon.h"
+
+#include <cstdlib>
+#include <cctype>
+#include <cstring>
 
 /* local functions */
 static void trigedit_disp_menu(struct descriptor_data *d);

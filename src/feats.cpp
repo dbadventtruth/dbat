@@ -12,6 +12,14 @@
 #include "handler.h"
 #include "interpreter.h"
 
+#include "consts/maximums.h"
+#include "consts/skills.h"
+#include "consts/feats.h"
+#include "consts/magic.h"
+
+#include <cstdlib>
+#include <cstring>
+
 /* Local Functions */
 
 void feato(int featnum, char *name, int in_game, int can_learn, int can_stack);

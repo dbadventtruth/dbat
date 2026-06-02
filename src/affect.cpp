@@ -1,9 +1,25 @@
 #include "affect.h"
 #include "consts/applies.h"
+#include "consts/affflags.h"
+#include "consts/maximums.h"
 
 
 #include "spells.h"
 #include "feats.h"
+#include "character_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "races_plus.h"
+#include "character_db.h"
+#include "log.h"
+#include "affected_impl.h"
+#include "util_macros.h"
 
 void aff_apply_modify(struct char_data *ch, int loc, int mod, int spec, char *msg)
 {

@@ -3,6 +3,18 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
+#include <cstdlib>
+#include <cstring>
+
+#include "log.h"
+#include "consts/admlevel.h"
+#include "character_impl.h"
+#include "zone_db.h"
+#include "shop_db.h"
+#include "character_db.h"
+#include "shop_impl.h"
+#include "zone_impl.h"
+
 #include "shop.h"
 #include "guild.h"
 #include "genshp.h"
@@ -10,7 +22,6 @@
 #include "db.h"
 
 #include "genolc.h"
-#include "genshp.h"
 #include "genzon.h"
 
 /*

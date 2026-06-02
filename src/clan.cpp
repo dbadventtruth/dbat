@@ -35,9 +35,21 @@
 #include "comm.h"           // for send_to_char
 #include "interpreter.h"    // for ACMD()
 #include "improved-edit.h"
+#include "log.h"
+#include "stringutils.h"
 
+#include "character_macros.h"
+#include "character_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/admlevel.h"
+#include "consts/playerflags.h"
+#include "character_db.h"
+#include "util_macros.h"
 
-extern char *strlwr(char *s);
+#include <cstring>
+#include <cstdlib>
 
 /* Local variables */
 int num_clans = 0;

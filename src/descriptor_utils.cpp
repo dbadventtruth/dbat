@@ -1,8 +1,22 @@
-#include "descriptor.h"
+#include "descriptor_impl.h"
+#include "descriptor_utils.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
+#include "character_macros.h"
+#include "character_impl.h"
+
+#include <strings.h>
+
+#include <cstring>
 
 #include "db.h"
 #include "fileop.h"
 #include "comm.h"
+#include "log.h"
+#include "object_impl.h"
 
 void customWrite(struct char_data *ch, struct obj_data *obj)
 {

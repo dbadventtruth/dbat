@@ -4,6 +4,28 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
+#include <cstdlib>
+#include <cstring>
+
+#include "log.h"
+#include "flags.h"
+#include "consts/admlevel.h"
+#include "consts/triggers.h"
+#include "consts/exitflags.h"
+#include "consts/directions.h"
+#include "room_db.h"
+#include "object_db.h"
+#include "character_db.h"
+#include "relocate.h"
+#include "room_api.h"
+
+#include "room_impl.h"
+#include "object_impl.h"
+#include "character_impl.h"
+#include "zone_impl.h"
+#include "shop_impl.h"
+#include "room_macros.h"
+
 #include "shop.h"
 #include "dg_scripts.h"
 
@@ -13,9 +35,7 @@
 #include "handler.h"
 #include "comm.h"
 #include "genolc.h"
-#include "genwld.h"
 #include "genzon.h"
-#include "shop.h"
 #include "dg_olc.h"
 #include "iterate.hpp"
 

@@ -45,25 +45,43 @@ it.
 
 */
 #include "boards.h"
+#include "board_impl.h"
 
-#include "boards.h"
 #include "comm.h"
 #include "db.h"
-#include "boards.h"
 #include "interpreter.h"
 #include "handler.h"
 #include "improved-edit.h"
 #include "clan.h"
 #include "dg_comm.h"
 #include "config.h"
+#include "config_db.h"
 #include "xdir.h"
 #include "fileop.h"
 #include "log.h"
 #include "extract.h"
+#include "object_db.h"
+#include "character_macros.h"
+#include "character_impl.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/prefflags.h"
+#include "consts/itemdata.h"
+#include "consts/playerflags.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "util_macros.h"
+#include "weather_db.h"
+#include "descriptor_impl.h"
+#include "stringutils.h"
+#include "consts/constates.h"
 
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
+#include <cstring>
 
 struct board_info *bboards = NULL;  /* our global board structure */
 

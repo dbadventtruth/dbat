@@ -7,7 +7,7 @@
  * ******************************************************************** */
 
 #include "assedit.h"
-#include "assembly.h"
+#include "assembly_impl.h"
 #include "consts/maximums.h"
 
 
@@ -21,6 +21,25 @@
 #include "oasis.h"
 #include "assemblies.h"
 
+#include "character_macros.h"
+#include "character_impl.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "log.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/constates.h"
+#include "consts/admlevel.h"
+#include "consts/playerflags.h"
+#include "consts/maximums.h"
+#include "consts/assemblytypes.h"
+#include "object_db.h"
+#include "object_impl.h"
+#include "util_macros.h"
+
+#include <cstdlib>
+#include <cstring>
 
 /*-------------------------------------------------------------------*
  * Nasty internal macros to clean up the code.

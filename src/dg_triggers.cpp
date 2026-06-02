@@ -15,6 +15,26 @@
 
 
 #include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "consts/triggers.h"
+#include "consts/directions.h"
+#include "consts/positions.h"
+#include "consts/playerflags.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "character_utils.h"
+#include "character_db.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_db.h"
+#include "room_impl.h"
+#include "weather_db.h"
+#include "log.h"
+#include "random.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "handler.h"
@@ -24,6 +44,10 @@
 #include "act.movement.h"
 #include "spells.h"
 #include "genmob.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 
 /*
  *  General functions used by several triggers

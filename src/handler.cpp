@@ -14,6 +14,27 @@
 #include "comm.h"
 #include "interpreter.h"
 #include "shop.h"
+
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "flags.h"
+#include "consts/itemdata.h"
+#include "consts/triggers.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/applies.h"
+#include "descriptor_impl.h"
+#include "room_api.h"
+#include "dgscript_impl.h"
+#include "character_utils.h"
+#include "character_db.h"
+#include "object_utils.h"
+#include "relocate.h"
+#include "search.h"
+#include "room_impl.h"
 /* external vars */
 
 /* local functions */

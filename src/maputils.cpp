@@ -17,6 +17,7 @@
 #include "room_impl.h"
 #include "room_api.h"
 #include "room_db.h"
+#include "room_macros.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "db.h"

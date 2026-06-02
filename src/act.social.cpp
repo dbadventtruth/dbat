@@ -20,6 +20,27 @@
 #include "interpreter.h"
 #include "handler.h"
 #include "random.h"
+#include "character_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "room_impl.h"
+#include "descriptor_impl.h"
+#include "room_api.h"
+#include "consts/sex.h"
+#include "character_api.h"
+#include "consts/admlevel.h"
+
+#include <strings.h>
+#include <cstring>
+#include "config_db.h"
+#include "log.h"
+
+#include <cstdlib>
 
 /* local functions */
 char *fread_action(FILE *fl, int nr);

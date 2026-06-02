@@ -7,7 +7,7 @@
 *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
-#include "bans.h"
+#include "ban_impl.h"
 
 #include "ban.h"
 #include "comm.h"
@@ -16,10 +16,24 @@
 #include "db.h"
 #include "fileop.h"
 
+#include "character_macros.h"
+#include "character_impl.h"
+#include "log.h"
+#include "util_macros.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+
 #include <errno.h>
+#include <cstring>
+#include <cstdlib>
 
 /* local globals */
-struct ban_list_element *ban_list = NULL;
+
 
 /* local functions */
 static void _write_one_node(FILE *fp, struct ban_list_element *node);
@@ -232,7 +246,7 @@ ACMD(do_unban)
 #define MAX_INVALID_NAMES	200
 
 char *invalid_list[MAX_INVALID_NAMES];
-int num_invalid = 0;
+
 
 int Valid_Name(char *newname)
 {

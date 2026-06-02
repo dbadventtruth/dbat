@@ -13,6 +13,9 @@
 #include "consts/constates.h"
 #include "consts/playerflags.h"
 #include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "flags.h"
+#include "character_api.h"
 
 #include <ctime>
 #include <cstring>

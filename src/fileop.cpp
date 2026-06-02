@@ -9,6 +9,15 @@
 #include "config.h"
 #include "interpreter.h"
 
+#include "character_macros.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_utils.h"
+#include "descriptor_impl.h"
+#include "util_macros.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+
 #include <linux/limits.h>
 #include <errno.h>
 

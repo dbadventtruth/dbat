@@ -1,12 +1,24 @@
 #include "disabled.h"
+#include "disabled_db.h"
 
 #include "command.h"
 #include "fileop.h"
 #include "db.h"
 #include "interpreter.h"
 #include "act.informative.h"
+#include "comm.h"
+#include "character_macros.h"
+#include "log.h"
+#include "consts/admlevel.h"
+#include "consts/maximums.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "util_macros.h"
 
 #include <unistd.h>
+#include <cstring>
 
 /*
  * Code to disable or enable buggy commands on the run, saving

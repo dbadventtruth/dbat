@@ -10,10 +10,34 @@
 **************************************************************************/
 
 #include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "flags.h"
+#include "consts/maximums.h"
+#include "consts/directions.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "consts/roomflags.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "room_impl.h"
+#include "room_macros.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "zone_db.h"
+#include "log.h"
+#include "relocate.h"
+#include "extract.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "handler.h"
 #include "db.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 
 /*
  * Local functions

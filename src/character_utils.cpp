@@ -19,6 +19,7 @@
 #include "flags.h"
 #include "room_db.h"
 #include "room_impl.h"
+#include "zone_impl.h"
 #include "races_plus.h"
 #include "spells.h"
 #include "skills.h"
@@ -42,6 +43,21 @@
 #include "local_limits.h"
 
 #include "log.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+#include "consts/sex.h"
+#include "consts/admlevel.h"
+#include "consts/fightprefs.h"
+#include "consts/pulse.h"
+#include "time_info.h"
+#include "consts/sizes.h"
+#include "consts/exitflags.h"
+#include "consts/sectortypes.h"
+#include "weather_db.h"
+#include "room_macros.h"
+#include "room_utils.h"
 
 #include <string>
 

@@ -3,13 +3,28 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
+#include <cstdlib>
+#include <cstring>
+
+#include "log.h"
+#include "flags.h"
+#include "consts/admlevel.h"
+#include "guild_db.h"
+#include "zone_db.h"
+#include "character_db.h"
+
+#include "character_impl.h"
+#include "guild_impl.h"
+#include "shop_impl.h"
+#include "zone_impl.h"
+
 #include "guild.h"
 #include "shop.h"
 #include "gengld.h"
-#include "shop.h"
 #include "genolc.h"
 #include "genzon.h"
 
+#include "db.h"
 #include "gedit.h"
 
 /*

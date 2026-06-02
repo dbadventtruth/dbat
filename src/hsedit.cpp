@@ -6,6 +6,33 @@
 *  Copyright 2007 Stefan Cole (aka Jamdog)                               * 
 *  Used at AderonMUD (aderonmud.genesismuds.com 3200)                    * 
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+
+#include "log.h"
+#include "flags.h"
+#include "util_macros.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/roomflags.h"
+#include "consts/races.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "descriptor_db.h"
+#include "character_utils.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "zone_impl.h"
+#include "dgscript_impl.h"
+#include "room_db.h"
+#include "config_db.h"
+
 #include "hsedit.h"
 #include "config.h"
 #include "comm.h"

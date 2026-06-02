@@ -9,6 +9,11 @@
 #include "oasis_copy.h"
 #include "oasis.h"
 #include "character_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
 #include "character_macros.h"
 #include "descriptor_impl.h"
 #include "descriptor_db.h"
@@ -34,8 +39,17 @@
 #include "consts/mobflags.h"
 #include "log.h"
 #include "zone_db.h"
+#include "room_impl.h"
+#include "room_macros.h"
+#include "room_api.h"
+#include "character_utils.h"
+#include "consts/directions.h"
 
 #include <cstdlib>
+#include <cstring>
+
+#include "zone_impl.h"
+#include "character_api.h"
 
 /******************************************************************************/
 /** Internal Functions                                                       **/

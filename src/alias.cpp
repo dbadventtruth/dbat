@@ -22,6 +22,18 @@
 #include "stringutils.h"
 #include "db.h"
 #include "comm.h"
+#include "character_impl.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/positions.h"
+#include "consts/applies.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "command_impl.h"
+#include "command_db.h"
+#include "util_macros.h"
+#include "log.h"
 
 
 void write_aliases(struct char_data *ch)

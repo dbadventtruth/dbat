@@ -1,5 +1,5 @@
 #include "races_plus.h"
-
+#include "races.h"
 #include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"

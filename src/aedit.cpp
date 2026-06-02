@@ -5,12 +5,30 @@
  * for use with OasisOLC
  * ftpable from ftp.circlemud.org:/pub/CircleMUD/contrib/code
  */
+#include <cstdlib>
+#include <cstring>
+
 #include "aedit.h"
 #include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/constates.h"
+#include "consts/positions.h"
+#include "consts/admlevel.h"
+#include "flags.h"
+#include "util_macros.h"
+#include "log.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+
+#include <strings.h>
 #include "social.h"
 
-
 #include "config.h"
+#include "db.h"
 
 #include "act.informative.h"
 #include "act.social.h"
@@ -18,6 +36,7 @@
 #include "comm.h"
 #include "oasis.h"
 #include "genolc.h"
+#include "config_db.h"
 
 /*------------------------------------------------------------------------*\
   Utils and exported functions.

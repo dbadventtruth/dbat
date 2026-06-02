@@ -1,8 +1,8 @@
-#include "time.h"
+#include "time_info.h"
 #include "weather.h"
 #include "weather_db.h"
 #include "consts/pulse.h"
-
+#include <time.h>
 
 /* Calculate the REAL time passed over the last t2-t1 centuries (secs) */
 struct time_info_data *real_time_passed(time_t t2, time_t t1)

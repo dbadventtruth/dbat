@@ -8,6 +8,7 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
 #include "config.h"
+#include "config_db.h"
 #include "graph.h"
 
 #include "comm.h"
@@ -18,7 +19,38 @@
 #include "maputils.h"
 #include "vehicles.h"
 #include "act.informative.h"
+#include "room_impl.h"
+#include "room_macros.h"
+#include "room_api.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+#include "character_api.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "flags.h"
+#include "random.h"
+#include "search.h"
+#include "consts/mobflags.h"
+#include "consts/pulse.h"
+#include "consts/sex.h"
+#include "log.h"
+#include "object_api.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "consts/roomflags.h"
+#include "consts/exitflags.h"
+#include "consts/directions.h"
+#include "consts/playerflags.h"
+#include "consts/sectortypes.h"
+#include "consts/applies.h"
+#include "consts/races.h"
 
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 #include "iterate.hpp"
 
 /* local functions */

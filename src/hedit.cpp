@@ -27,6 +27,21 @@
 #include "act.informative.h"
 #include "act.social.h"
 
+#include "character_macros.h"
+#include "character_impl.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "log.h"
+#include "flags.h"
+#include "consts/constates.h"
+#include "consts/admlevel.h"
+
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "util_macros.h"
+
+#include <cstring>
+
 /* external functions */
 
 /* local functions */

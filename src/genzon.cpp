@@ -4,11 +4,27 @@
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
+
+#include "log.h"
+#include "flags.h"
+#include "consts/admlevel.h"
+#include "consts/maximums.h"
+#include "dgscript_impl.h"
+#include "zone_impl.h"
+#include "room_impl.h"
+#include "character_impl.h"
+#include "shop_impl.h"
+#include "object_impl.h"
+
 #include "genzon.h"
 
 #include "fileop.h"
 #include "genolc.h"
 #include "dg_scripts.h"
+#include "db.h"
 
 #include "iterate.hpp"
 

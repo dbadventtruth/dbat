@@ -13,6 +13,10 @@
 #include "stringutils.h"
 #include "db.h"
 #include "log.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "consts/constates.h"
+#include "consts/maximums.h"
 
 #include <stdlib.h>
 

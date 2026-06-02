@@ -14,7 +14,17 @@
 ************************************************************************ */
 #include "consts/maximums.h"
 
-
+#include "dgscript_impl.h"
+#include "dgscript_db.h"
+#include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/admlevel.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "room_impl.h"
+#include "log.h"
 #include "dg_scripts.h"
 #include "db.h"
 #include "handler.h"
@@ -22,7 +32,8 @@
 #include "comm.h"
 #include "fileop.h"
 
-#include <stdlib.h>
+#include <cstring>
+#include <cstdlib>
 
 /* local functions */
 void trig_data_init(trig_data *this_data);
