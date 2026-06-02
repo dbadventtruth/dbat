@@ -1,50 +1,50 @@
 /**************************************************************************
-*  File: dg_wldcmd.c                                                      *
-*  Usage: contains the command_interpreter for rooms,                     *
-*         room commands.                                                  *
-*                                                                         *
-*                                                                         *
-*  $Author: galion/Mark A. Heilpern/egreen/Welcor $                       *
-*  $Date: 2004/10/11 12:07:00$                                            *
-*  $Revision: 1.0.14 $                                                    *
-**************************************************************************/
+ *  File: dg_wldcmd.c                                                      *
+ *  Usage: contains the command_interpreter for rooms,                     *
+ *         room commands.                                                  *
+ *                                                                         *
+ *                                                                         *
+ *  $Author: galion/Mark A. Heilpern/egreen/Welcor $                       *
+ *  $Date: 2004/10/11 12:07:00$                                            *
+ *  $Revision: 1.0.14 $                                                    *
+ **************************************************************************/
 
-#include "dg_scripts.h"
-#include "dgscript_impl.h"
-#include "flags.h"
-#include "consts/maximums.h"
-#include "consts/directions.h"
-#include "consts/mobflags.h"
-#include "consts/admlevel.h"
-#include "consts/roomflags.h"
+#include "character_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
-#include "character_api.h"
+#include "comm.h"
+#include "consts/admlevel.h"
+#include "consts/directions.h"
+#include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/roomflags.h"
+#include "db.h"
+#include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "extract.h"
+#include "flags.h"
+#include "handler.h"
+#include "interpreter.h"
+#include "log.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
-#include "room_macros.h"
+#include "relocate.h"
 #include "room_api.h"
 #include "room_db.h"
+#include "room_impl.h"
+#include "room_macros.h"
 #include "zone_db.h"
-#include "log.h"
-#include "relocate.h"
-#include "extract.h"
-#include "comm.h"
-#include "interpreter.h"
-#include "handler.h"
-#include "db.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
-#include <cctype>
 
 /*
  * Local functions
  */
 
-#define WCMD(name)  \
-    void (name)(room_data *room, char *argument, int cmd, int subcmd)
+#define WCMD(name)                                                             \
+  void(name)(room_data * room, char *argument, int cmd, int subcmd)
 
 void wld_log(room_data *room, const char *format, ...);
 void act_to_room(char *str, room_data *room);
@@ -63,24 +63,18 @@ WCMD(do_wat);
 WCMD(do_weffect);
 void wld_command_interpreter(room_data *room, char *argument);
 
-
 struct wld_command_info {
-    char *command;
-    void (*command_pointer)
-           (room_data *room, char *argument, int cmd, int subcmd);
-    int        subcmd;
+  char *command;
+  void (*command_pointer)(room_data *room, char *argument, int cmd, int subcmd);
+  int subcmd;
 };
 
-
 /* do_wsend */
-#define SCMD_WSEND        0
-#define SCMD_WECHOAROUND  1
-
-
+#define SCMD_WSEND 0
+#define SCMD_WECHOAROUND 1
 
 /* attaches room vnum to msg and sends it to script_log */
-void wld_log(room_data *room, const char *format, ...)
-{
+void wld_log(room_data *room, const char *format, ...) {
   va_list args;
   char output[MAX_STRING_LENGTH];
 
@@ -92,28 +86,24 @@ void wld_log(room_data *room, const char *format, ...)
 }
 
 /* sends str to room */
-void act_to_room(char *str, room_data *room)
-{
-    /* no one is in the room */
-    if (!room->people)
-        return;
+void act_to_room(char *str, room_data *room) {
+  /* no one is in the room */
+  if (!room->people)
+    return;
 
-    /*
-     * since you can't use act(..., TO_ROOM) for an room, send it
-     * TO_ROOM and TO_CHAR for some char in the room.
-     * (just dont use $n or you might get strange results)
-     */
-    act(str, FALSE, room->people, 0, 0, TO_ROOM);
-    act(str, FALSE, room->people, 0, 0, TO_CHAR);
+  /*
+   * since you can't use act(..., TO_ROOM) for an room, send it
+   * TO_ROOM and TO_CHAR for some char in the room.
+   * (just dont use $n or you might get strange results)
+   */
+  act(str, FALSE, room->people, 0, 0, TO_ROOM);
+  act(str, FALSE, room->people, 0, 0, TO_CHAR);
 }
-
-
 
 /* World commands */
 
 /* changes gravity, light, or lava levels of a room. */
-WCMD(do_weffect)
-{
+WCMD(do_weffect) {
   char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
   int num = 0;
   room_rnum nr;
@@ -121,13 +111,13 @@ WCMD(do_weffect)
   two_arguments(argument, arg, arg2);
 
   if (!*arg) {
-   wld_log(room, "weffect called without type argument");
-   return;
+    wld_log(room, "weffect called without type argument");
+    return;
   }
- 
+
   if (!*arg2) {
-   wld_log(room, "weffect called without setting argument");
-   return;
+    wld_log(room, "weffect called without setting argument");
+    return;
   }
 
   num = atoi(arg2);
@@ -136,335 +126,301 @@ WCMD(do_weffect)
   struct room_data *rm = room_by_id(nr);
 
   if (!strcasecmp(arg, "gravity")) { /* Set gravity */
-   if (num < 0 || num > 10000) {
-    wld_log(room, "weffect setting out of bounds, 0 - 10000 only.");
-    return;
-   } else {
-    room_gravity_set(rm, num);
-   }
-  } else if (!strcasecmp(arg, "light")) {
-   if (rm == NULL) {
-    wld_log(room, "weffect target is NOWHERE.");
-    return;
-   } else {
-    room_flag_toggle(rm, ROOM_INDOORS);
-   }
-  } else if (!strcasecmp(arg, "lava")) {
-   if (rm == NULL) {
-    wld_log(room, "weffect target is NOWHERE.");
-    return;
-   } else {
-    if (room_geffect_get(rm) != 0) {
-     room_geffect_set(rm, 5);
+    if (num < 0 || num > 10000) {
+      wld_log(room, "weffect setting out of bounds, 0 - 10000 only.");
+      return;
     } else {
-     wld_log(room, "weffect target already has lava.");
-     return;
+      room_gravity_set(rm, num);
     }
-   }
+  } else if (!strcasecmp(arg, "light")) {
+    if (rm == NULL) {
+      wld_log(room, "weffect target is NOWHERE.");
+      return;
+    } else {
+      room_flag_toggle(rm, ROOM_INDOORS);
+    }
+  } else if (!strcasecmp(arg, "lava")) {
+    if (rm == NULL) {
+      wld_log(room, "weffect target is NOWHERE.");
+      return;
+    } else {
+      if (room_geffect_get(rm) != 0) {
+        room_geffect_set(rm, 5);
+      } else {
+        wld_log(room, "weffect target already has lava.");
+        return;
+      }
+    }
   }
-
 }
 
 /* prints the argument to all the rooms aroud the room */
-WCMD(do_wasound)
-{
-    int  door;
+WCMD(do_wasound) {
+  int door;
 
-    skip_spaces(&argument);
+  skip_spaces(&argument);
 
-    if (!*argument) {
-        wld_log(room, "wasound called with no argument");
-        return;
-    }
+  if (!*argument) {
+    wld_log(room, "wasound called with no argument");
+    return;
+  }
 
-    for (door = 0; door < NUM_OF_DIRS; door++) {
-        auto ex = R_EXIT(room, door);
-        if(!ex) continue;
-        auto dest = exit_dest_get(ex);
-        if(!dest) continue;
-        act_to_room(argument, dest);
-    }
+  for (door = 0; door < NUM_OF_DIRS; door++) {
+    auto ex = R_EXIT(room, door);
+    if (!ex)
+      continue;
+    auto dest = exit_dest_get(ex);
+    if (!dest)
+      continue;
+    act_to_room(argument, dest);
+  }
 }
 
+WCMD(do_wecho) {
+  skip_spaces(&argument);
 
-WCMD(do_wecho)
-{
-    skip_spaces(&argument);
+  if (!*argument)
+    wld_log(room, "wecho called with no args");
 
-    if (!*argument)
-        wld_log(room, "wecho called with no args");
-
-    else
-        act_to_room(argument, room);
+  else
+    act_to_room(argument, room);
 }
 
+WCMD(do_wsend) {
+  char buf[MAX_INPUT_LENGTH], *msg;
+  char_data *ch;
 
-WCMD(do_wsend)
-{
-    char buf[MAX_INPUT_LENGTH], *msg;
-    char_data *ch;
+  msg = any_one_arg(argument, buf);
 
-    msg = any_one_arg(argument, buf);
+  if (!*buf) {
+    wld_log(room, "wsend called with no args");
+    return;
+  }
 
-    if (!*buf)
-    {
-        wld_log(room, "wsend called with no args");
-        return;
-    }
+  skip_spaces(&msg);
 
-    skip_spaces(&msg);
+  if (!*msg) {
+    wld_log(room, "wsend called without a message");
+    return;
+  }
 
-    if (!*msg)
-    {
-        wld_log(room, "wsend called without a message");
-        return;
-    }
+  if ((ch = get_char_by_room(room, buf))) {
+    if (subcmd == SCMD_WSEND)
+      sub_write(msg, ch, TRUE, TO_CHAR);
+    else if (subcmd == SCMD_WECHOAROUND)
+      sub_write(msg, ch, TRUE, TO_ROOM);
+  }
 
-    if ((ch = get_char_by_room(room, buf)))
-    {
-        if (subcmd == SCMD_WSEND)
-            sub_write(msg, ch, TRUE, TO_CHAR);
-        else if (subcmd == SCMD_WECHOAROUND)
-            sub_write(msg, ch, TRUE, TO_ROOM);
-    }
-
-    else
-        wld_log(room, "no target found for wsend");
+  else
+    wld_log(room, "no target found for wsend");
 }
 
-WCMD(do_wzoneecho)
-{
-    struct zone_data *zone = NULL;
-    char room_num[MAX_INPUT_LENGTH], buf[MAX_INPUT_LENGTH], *msg;
+WCMD(do_wzoneecho) {
+  struct zone_data *zone = NULL;
+  char room_num[MAX_INPUT_LENGTH], buf[MAX_INPUT_LENGTH], *msg;
 
-    msg = any_one_arg(argument, room_num);
-    skip_spaces(&msg);
+  msg = any_one_arg(argument, room_num);
+  skip_spaces(&msg);
 
-    if (!*room_num || !*msg)
-        wld_log(room, "wzoneecho called with too few args");
+  if (!*room_num || !*msg)
+    wld_log(room, "wzoneecho called with too few args");
 
-    else if (!(zone = zone_by_id(virtual_zone_by_thing(atoi(room_num)))))
-        wld_log(room, "wzoneecho called for nonexistant zone");
+  else if (!(zone = zone_by_id(virtual_zone_by_thing(atoi(room_num)))))
+    wld_log(room, "wzoneecho called for nonexistant zone");
 
-    else {
-        sprintf(buf, "%s\r\n", msg);
-        send_to_zone(buf, zone);
-    }
+  else {
+    sprintf(buf, "%s\r\n", msg);
+    send_to_zone(buf, zone);
+  }
 }
 
 /* prints the message to everyone in the range of numbers */
 /* Thx to Jamie Nelson of 4D for this contribution */
-WCMD(do_wrecho)
-{
-    char start[MAX_INPUT_LENGTH], finish[MAX_INPUT_LENGTH], *msg;
+WCMD(do_wrecho) {
+  char start[MAX_INPUT_LENGTH], finish[MAX_INPUT_LENGTH], *msg;
 
-    msg = two_arguments(argument, start, finish);
+  msg = two_arguments(argument, start, finish);
 
-    skip_spaces(&msg);
+  skip_spaces(&msg);
 
-    if (!*msg || !*start || !*finish || !is_number(start) || !is_number(finish))
-      wld_log(room, "wrecho: too few args");
-    else
-      send_to_range(atoi(start), atoi(finish), "%s\r\n", msg);
-
+  if (!*msg || !*start || !*finish || !is_number(start) || !is_number(finish))
+    wld_log(room, "wrecho: too few args");
+  else
+    send_to_range(atoi(start), atoi(finish), "%s\r\n", msg);
 }
 
-WCMD(do_wdoor)
-{
-    char target[MAX_INPUT_LENGTH], direction[MAX_INPUT_LENGTH];
-    char field[MAX_INPUT_LENGTH], *value;
-    room_data *rm;
-    struct room_direction_data *newexit;
-    int dir, fd;
-    room_vnum to_room;
+WCMD(do_wdoor) {
+  char target[MAX_INPUT_LENGTH], direction[MAX_INPUT_LENGTH];
+  char field[MAX_INPUT_LENGTH], *value;
+  room_data *rm;
+  struct room_direction_data *newexit;
+  int dir, fd;
+  room_vnum to_room;
 
-    const char *door_field[] = {
-        "purge",
-        "description",
-        "flags",
-        "key",
-        "name",
-        "room",
-        "\n"
-    };
+  const char *door_field[] = {"purge", "description", "flags", "key",
+                              "name",  "room",        "\n"};
 
+  argument = two_arguments(argument, target, direction);
+  value = one_argument(argument, field);
+  skip_spaces(&value);
 
-    argument = two_arguments(argument, target, direction);
-    value = one_argument(argument, field);
-    skip_spaces(&value);
+  if (!*target || !*direction || !*field) {
+    wld_log(room, "wdoor called with too few args");
+    return;
+  }
+  if ((rm = get_room(target)) == NULL) {
+    wld_log(room, "wdoor: invalid target");
+    return;
+  }
+  if (atoi(direction) >= 0 && atoi(direction) <= 11) {
+    dir = atoi(direction);
+  } else if (atoi(direction) < 0 && atoi(direction) > 11) {
+    wld_log(room, "wdoor: invalid direction");
+    return;
+  }
+  /*if ((dir = search_block(direction, dirs, FALSE)) < 0 && (dir =
+  search_block(direction, abbr_dirs, FALSE)) < 0) { wld_log(room, "wdoor:
+  invalid direction %d %s", dir, direction); return;
+  }*/
 
-    if (!*target || !*direction || !*field) {
-        wld_log(room, "wdoor called with too few args");
-        return;
+  if ((fd = search_block(field, door_field, FALSE)) == -1) {
+    wld_log(room, "wdoor: invalid field");
+    return;
+  }
+
+  newexit = rm->dir_option[dir];
+
+  /* purge exit */
+  if (fd == 0) {
+    if (newexit) {
+      if (newexit->general_description)
+        free(newexit->general_description);
+      if (newexit->keyword)
+        free(newexit->keyword);
+      free(newexit);
+      rm->dir_option[dir] = NULL;
     }
-    if ((rm = get_room(target)) == NULL) {
-        wld_log(room, "wdoor: invalid target");
-        return;
-    }
-    if (atoi(direction) >= 0 && atoi(direction) <= 11) {
-      dir = atoi(direction);
-    }
-    else if (atoi(direction) < 0 && atoi(direction) > 11) {
-        wld_log(room, "wdoor: invalid direction");
-        return;
-    }
-    /*if ((dir = search_block(direction, dirs, FALSE)) < 0 && (dir = search_block(direction, abbr_dirs, FALSE)) < 0) {
-        wld_log(room, "wdoor: invalid direction %d %s", dir, direction);
-        return;
-    }*/
+  }
 
-    if ((fd = search_block(field, door_field, FALSE)) == -1) {
-        wld_log(room, "wdoor: invalid field");
-        return;
-    }
-
-    newexit = rm->dir_option[dir];
-
-    /* purge exit */
-    if (fd == 0) {
-        if (newexit) {
-            if (newexit->general_description)
-                free(newexit->general_description);
-            if (newexit->keyword)
-                free(newexit->keyword);
-            free(newexit);
-            rm->dir_option[dir] = NULL;
-        }
+  else {
+    if (!newexit) {
+      CREATE(newexit, struct room_direction_data, 1);
+      rm->dir_option[dir] = newexit;
     }
 
-    else {
-        if (!newexit) {
-            CREATE(newexit, struct room_direction_data, 1);
-            rm->dir_option[dir] = newexit;
-        }
-
-        switch (fd) {
-        case 1:  /* description */
-            if (newexit->general_description)
-                free(newexit->general_description);
-            CREATE(newexit->general_description, char, strlen(value) + 3);
-            strcpy(newexit->general_description, value);
-            strcat(newexit->general_description, "\r\n");
-            break;
-        case 2:  /* flags       */
-            newexit->exit_info = (int16_t)asciiflag_conv(value);
-            break;
-        case 3:  /* key         */
-            newexit->key = atoi(value);
-            break;
-        case 4:  /* name        */
-            if (newexit->keyword)
-                free(newexit->keyword);
-            CREATE(newexit->keyword, char, strlen(value) + 1);
-            strcpy(newexit->keyword, value);
-            break;
-        case 5:  /* room        */
-            if ((to_room = room_vnum_check(atoi(value))) != NOWHERE)
-                newexit->to_room = to_room;
-            else
-                wld_log(room, "wdoor: invalid door target");
-            break;
-        }
+    switch (fd) {
+    case 1: /* description */
+      if (newexit->general_description)
+        free(newexit->general_description);
+      CREATE(newexit->general_description, char, strlen(value) + 3);
+      strcpy(newexit->general_description, value);
+      strcat(newexit->general_description, "\r\n");
+      break;
+    case 2: /* flags       */
+      newexit->exit_info = (int16_t)asciiflag_conv(value);
+      break;
+    case 3: /* key         */
+      newexit->key = atoi(value);
+      break;
+    case 4: /* name        */
+      if (newexit->keyword)
+        free(newexit->keyword);
+      CREATE(newexit->keyword, char, strlen(value) + 1);
+      strcpy(newexit->keyword, value);
+      break;
+    case 5: /* room        */
+      if ((to_room = room_vnum_check(atoi(value))) != NOWHERE)
+        newexit->to_room = to_room;
+      else
+        wld_log(room, "wdoor: invalid door target");
+      break;
     }
+  }
 }
 
+WCMD(do_wteleport) {
+  char_data *ch, *next_ch;
+  room_rnum nr;
+  char arg1[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
 
-WCMD(do_wteleport)
-{
-    char_data *ch, *next_ch;
-    room_rnum nr;
-    char arg1[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
+  two_arguments(argument, arg1, arg2);
 
-    two_arguments(argument, arg1, arg2);
+  if (!*arg1 || !*arg2) {
+    wld_log(room, "wteleport called with too few args");
+    return;
+  }
 
-    if (!*arg1 || !*arg2) {
-        wld_log(room, "wteleport called with too few args");
-        return;
+  nr = atoi(arg2);
+  struct room_data *target = room_by_id(nr);
+
+  if (target == NULL)
+    wld_log(room, "wteleport target is an invalid room");
+
+  else if (!strcasecmp(arg1, "all")) {
+    if (nr == room->number) {
+      wld_log(room, "wteleport all target is itself");
+      return;
     }
 
-    nr = atoi(arg2);
-    struct room_data *target = room_by_id(nr);
+    for (ch = room->people; ch; ch = next_ch) {
+      next_ch = ch->next_in_room;
+      if (!valid_dg_target(ch, DG_ALLOW_GODS))
+        continue;
+      char_from_room(ch);
+      char_to_room(ch, target);
+      enter_wtrigger(char_room_get(ch), ch, -1);
+    }
+  }
 
-    if (target == NULL)
-        wld_log(room, "wteleport target is an invalid room");
-
-    else if (!strcasecmp(arg1, "all")) {
-        if (nr == room->number) {
-            wld_log(room, "wteleport all target is itself");
-            return;
-        }
-
-        for (ch = room->people; ch; ch = next_ch)
-        {
-            next_ch = ch->next_in_room;
-            if (!valid_dg_target(ch, DG_ALLOW_GODS))
-              continue;
-            char_from_room(ch);
-            char_to_room(ch, target);
-            enter_wtrigger(char_room_get(ch), ch, -1);
-        }
+  else {
+    if ((ch = get_char_by_room(room, arg1))) {
+      if (valid_dg_target(ch, DG_ALLOW_GODS)) {
+        char_from_room(ch);
+        char_to_room(ch, target);
+        enter_wtrigger(char_room_get(ch), ch, -1);
+      }
     }
 
     else
-    {
-        if ((ch = get_char_by_room(room, arg1))) {
-          if (valid_dg_target(ch, DG_ALLOW_GODS)) {
-            char_from_room(ch);
-            char_to_room(ch, target);
-            enter_wtrigger(char_room_get(ch), ch, -1);
-          }
-        }
-
-        else
-            wld_log(room, "wteleport: no target found");
-    }
+      wld_log(room, "wteleport: no target found");
+  }
 }
 
+WCMD(do_wforce) {
+  char_data *ch, *next_ch;
+  char arg1[MAX_INPUT_LENGTH], *line;
 
-WCMD(do_wforce)
-{
-    char_data *ch, *next_ch;
-    char arg1[MAX_INPUT_LENGTH], *line;
+  line = one_argument(argument, arg1);
 
-    line = one_argument(argument, arg1);
+  if (!*arg1 || !*line) {
+    wld_log(room, "wforce called with too few args");
+    return;
+  }
 
-    if (!*arg1 || !*line) {
-        wld_log(room, "wforce called with too few args");
-        return;
+  if (!strcasecmp(arg1, "all")) {
+    for (ch = room->people; ch; ch = next_ch) {
+      next_ch = ch->next_in_room;
+
+      if (valid_dg_target(ch, 0)) {
+        command_interpreter(ch, line);
+      }
     }
+  }
 
-    if (!strcasecmp(arg1, "all"))
-    {
-        for (ch = room->people; ch; ch = next_ch)
-        {
-            next_ch = ch->next_in_room;
-
-            if (valid_dg_target(ch, 0))
-            {
-                command_interpreter(ch, line);
-            }
-        }
+  else {
+    if ((ch = get_char_by_room(room, arg1))) {
+      if (valid_dg_target(ch, 0)) {
+        command_interpreter(ch, line);
+      }
     }
 
     else
-    {
-        if ((ch = get_char_by_room(room, arg1)))
-        {
-            if (valid_dg_target(ch, 0))
-            {
-                command_interpreter(ch, line);
-            }
-        }
-
-        else
-            wld_log(room, "wforce: no target found");
-    }
+      wld_log(room, "wforce: no target found");
+  }
 }
-
 
 /* purge all objects an npcs in room, or specified object or mob */
-WCMD(do_wpurge)
-{
+WCMD(do_wpurge) {
   char arg[MAX_INPUT_LENGTH];
   char_data *ch, *next_ch;
   obj_data *obj, *next_obj;
@@ -473,13 +429,13 @@ WCMD(do_wpurge)
 
   if (!*arg) {
     /* purge all */
-    for (ch = room->people; ch; ch = next_ch ) {
+    for (ch = room->people; ch; ch = next_ch) {
       next_ch = ch->next_in_room;
       if (IS_NPC(ch))
         extract_char(ch);
     }
 
-    for (obj = room->contents; obj; obj = next_obj ) {
+    for (obj = room->contents; obj; obj = next_obj) {
       next_obj = obj->next_content;
       extract_obj(obj);
     }
@@ -514,98 +470,98 @@ WCMD(do_wpurge)
   extract_char(ch);
 }
 
-
 /* loads a mobile or object into the room */
-WCMD(do_wload)
-{
-    char arg1[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-    int number = 0;
-    char_data *mob;
-    obj_data *object;
-    char *target;
-    char_data *tch;
-    obj_data *cnt;
-    int pos;
+WCMD(do_wload) {
+  char arg1[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
+  int number = 0;
+  char_data *mob;
+  obj_data *object;
+  char *target;
+  char_data *tch;
+  obj_data *cnt;
+  int pos;
 
-    target = two_arguments(argument, arg1, arg2);
+  target = two_arguments(argument, arg1, arg2);
 
-    if (!*arg1 || !*arg2 || !is_number(arg2) || ((number = atoi(arg2)) < 0)) {
-        wld_log(room, "wload: bad syntax");
+  if (!*arg1 || !*arg2 || !is_number(arg2) || ((number = atoi(arg2)) < 0)) {
+    wld_log(room, "wload: bad syntax");
+    return;
+  }
+
+  /* load mob to target room - Jamie Nelson, April 13 2004 */
+  if (is_abbrev(arg1, "mob")) {
+    struct room_data *rnum;
+    if (!target || !*target) {
+      rnum = room_by_id(room->number);
+    } else {
+      if (!isdigit(*target) || (rnum = room_by_id(atoi(target))) == NULL) {
+        wld_log(room,
+                "wload: room target vnum doesn't exist (loading mob vnum %d to "
+                "room %s)",
+                number, target);
         return;
+      }
     }
-
-    /* load mob to target room - Jamie Nelson, April 13 2004 */
-    if (is_abbrev(arg1, "mob")) {
-      struct room_data *rnum;
-      if (!target || !*target) {
-        rnum = room_by_id(room->number);
-      } else {
-        if (!isdigit(*target) || (rnum = room_by_id(atoi(target))) == NULL) {
-          wld_log(room, "wload: room target vnum doesn't exist (loading mob vnum %d to room %s)", number, target);
-          return;
-        }
-      }
-      if ((mob = read_mobile(number, VIRTUAL)) == NULL) {
-        wld_log(room, "mload: bad mob vnum");
-        return;
-      }
-      char_to_room(mob, rnum);
-      if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
-        char buf[MAX_INPUT_LENGTH];
-        sprintf(buf, "%c%d", UID_CHAR, GET_ID(mob));
-        add_var(&(SCRIPT(room)->global_vars), "lastloaded", buf, 0);
-      }
-      load_mtrigger(mob);
+    if ((mob = read_mobile(number, VIRTUAL)) == NULL) {
+      wld_log(room, "mload: bad mob vnum");
+      return;
     }
+    char_to_room(mob, rnum);
+    if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
+      char buf[MAX_INPUT_LENGTH];
+      sprintf(buf, "%c%d", UID_CHAR, GET_ID(mob));
+      add_var(&(SCRIPT(room)->global_vars), "lastloaded", buf, 0);
+    }
+    load_mtrigger(mob);
+  }
 
-    else if (is_abbrev(arg1, "obj")) {
-      if ((object = read_object(number, VIRTUAL)) == NULL) {
-          wld_log(room, "wload: bad object vnum");
-          return;
-      }
-      /* special handling to make objects able to load on a person/in a container/worn etc. */
-      if (!target || !*target) {
-        add_unique_id(object);
-        obj_to_room(object, room);
-        if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
-          char buf[MAX_INPUT_LENGTH];
-          sprintf(buf, "%c%d", UID_CHAR, GET_ID(object));
-          add_var(&(SCRIPT(room)->global_vars), "lastloaded", buf, 0);
-        }
-        load_otrigger(object);
-        return;
-      }
-
-      two_arguments(target, arg1, arg2); /* recycling ... */
-      tch = get_char_in_room(room, arg1);
-      if (tch) {
-        if (arg2 != NULL && *arg2 &&
-            (pos = find_eq_pos_script(arg2)) >= 0 &&
-            !GET_EQ(tch, pos) &&
-            can_wear_on_pos(object, pos)) {
-          equip_char(tch, object, pos);
-          load_otrigger(object);
-          return;
-        }
-        obj_to_char(object, tch);
-        load_otrigger(object);
-        return;
-      }
-      cnt = get_obj_in_room(room, arg1);
-      if (cnt && GET_OBJ_TYPE(cnt) == ITEM_CONTAINER) {
-      	obj_to_obj(object, cnt);
-        load_otrigger(object);
-      	return;
-      }
-      /* neither char nor container found - just dump it in room */
+  else if (is_abbrev(arg1, "obj")) {
+    if ((object = read_object(number, VIRTUAL)) == NULL) {
+      wld_log(room, "wload: bad object vnum");
+      return;
+    }
+    /* special handling to make objects able to load on a person/in a
+     * container/worn etc. */
+    if (!target || !*target) {
       add_unique_id(object);
       obj_to_room(object, room);
+      if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
+        char buf[MAX_INPUT_LENGTH];
+        sprintf(buf, "%c%d", UID_CHAR, GET_ID(object));
+        add_var(&(SCRIPT(room)->global_vars), "lastloaded", buf, 0);
+      }
       load_otrigger(object);
       return;
     }
 
-    else
-        wld_log(room, "wload: bad type");
+    two_arguments(target, arg1, arg2); /* recycling ... */
+    tch = get_char_in_room(room, arg1);
+    if (tch) {
+      if (arg2 != NULL && *arg2 && (pos = find_eq_pos_script(arg2)) >= 0 &&
+          !GET_EQ(tch, pos) && can_wear_on_pos(object, pos)) {
+        equip_char(tch, object, pos);
+        load_otrigger(object);
+        return;
+      }
+      obj_to_char(object, tch);
+      load_otrigger(object);
+      return;
+    }
+    cnt = get_obj_in_room(room, arg1);
+    if (cnt && GET_OBJ_TYPE(cnt) == ITEM_CONTAINER) {
+      obj_to_obj(object, cnt);
+      load_otrigger(object);
+      return;
+    }
+    /* neither char nor container found - just dump it in room */
+    add_unique_id(object);
+    obj_to_room(object, room);
+    load_otrigger(object);
+    return;
+  }
+
+  else
+    wld_log(room, "wload: bad type");
 }
 
 WCMD(do_wdamage) {
@@ -632,8 +588,7 @@ WCMD(do_wdamage) {
   script_damage(ch, dam);
 }
 
-WCMD(do_wat)
-{
+WCMD(do_wat) {
   struct room_data *loc = NULL;
   struct char_data *ch;
   char arg[MAX_INPUT_LENGTH], *command;
@@ -667,52 +622,48 @@ WCMD(do_wat)
 }
 
 const struct wld_command_info wld_cmd_info[] = {
-    { "RESERVED", 0, 0 },/* this must be first -- for specprocs */
+    {"RESERVED", 0, 0}, /* this must be first -- for specprocs */
 
-    { "wasound "    , do_wasound   , 0 },
-    { "wdoor "      , do_wdoor     , 0 },
-    { "wecho "      , do_wecho     , 0 },
-    { "wechoaround ", do_wsend     , SCMD_WECHOAROUND },
-    { "wforce "     , do_wforce    , 0 },
-    { "wload "      , do_wload     , 0 },
-    { "wpurge "     , do_wpurge    , 0 },
-    { "wrecho "     , do_wrecho    , 0 },
-    { "wsend "      , do_wsend     , SCMD_WSEND },
-    { "wteleport "  , do_wteleport , 0 },
-    { "wzoneecho "  , do_wzoneecho , 0 },
-    { "wdamage "    , do_wdamage,    0 },
-    { "wat "        , do_wat,        0 },
-    { "weffect "    , do_weffect,    0 },
-    { "\n", 0, 0 }        /* this must be last */
+    {"wasound ", do_wasound, 0},
+    {"wdoor ", do_wdoor, 0},
+    {"wecho ", do_wecho, 0},
+    {"wechoaround ", do_wsend, SCMD_WECHOAROUND},
+    {"wforce ", do_wforce, 0},
+    {"wload ", do_wload, 0},
+    {"wpurge ", do_wpurge, 0},
+    {"wrecho ", do_wrecho, 0},
+    {"wsend ", do_wsend, SCMD_WSEND},
+    {"wteleport ", do_wteleport, 0},
+    {"wzoneecho ", do_wzoneecho, 0},
+    {"wdamage ", do_wdamage, 0},
+    {"wat ", do_wat, 0},
+    {"weffect ", do_weffect, 0},
+    {"\n", 0, 0} /* this must be last */
 };
-
 
 /*
  *  This is the command interpreter used by rooms, called by script_driver.
  */
-void wld_command_interpreter(room_data *room, char *argument)
-{
-    int cmd, length;
-    char *line, arg[MAX_INPUT_LENGTH];
+void wld_command_interpreter(room_data *room, char *argument) {
+  int cmd, length;
+  char *line, arg[MAX_INPUT_LENGTH];
 
-    skip_spaces(&argument);
+  skip_spaces(&argument);
 
-    /* just drop to next line for hitting CR */
-    if (!*argument)
-        return;
+  /* just drop to next line for hitting CR */
+  if (!*argument)
+    return;
 
-    line = any_one_arg(argument, arg);
+  line = any_one_arg(argument, arg);
 
+  /* find the command */
+  for (length = strlen(arg), cmd = 0; *wld_cmd_info[cmd].command != '\n'; cmd++)
+    if (!strncmp(wld_cmd_info[cmd].command, arg, length))
+      break;
 
-    /* find the command */
-    for (length = strlen(arg), cmd = 0;
-         *wld_cmd_info[cmd].command != '\n'; cmd++)
-        if (!strncmp(wld_cmd_info[cmd].command, arg, length))
-            break;
-
-    if (*wld_cmd_info[cmd].command == '\n')
-        wld_log(room, "Unknown world cmd: '%s'", argument);
-    else
-      ((*wld_cmd_info[cmd].command_pointer)
-       (room, line, cmd, wld_cmd_info[cmd].subcmd));
+  if (*wld_cmd_info[cmd].command == '\n')
+    wld_log(room, "Unknown world cmd: '%s'", argument);
+  else
+    ((*wld_cmd_info[cmd].command_pointer)(room, line, cmd,
+                                          wld_cmd_info[cmd].subcmd));
 }

@@ -1,39 +1,26 @@
 /* ************************************************************************
-*   File: magic.c                                       Part of CircleMUD *
-*  Usage: low-level functions for magic; spell template code              *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
-#include "consts/aligns.h"
-#include "config.h"
+ *   File: magic.c                                       Part of CircleMUD *
+ *  Usage: low-level functions for magic; spell template code              *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 #include "magic.h"
+#include "config.h"
+#include "consts/aligns.h"
 
+#include "affect.h"
 #include "affected_impl.h"
-#include "character_impl.h"
 #include "character_api.h"
 #include "character_db.h"
+#include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
-#include "object_impl.h"
-#include "object_api.h"
-#include "object_macros.h"
-#include "object_utils.h"
-#include "room_impl.h"
-#include "room_api.h"
-#include "room_macros.h"
-#include "room_db.h"
+#include "class.h"
+#include "comm.h"
 #include "config_db.h"
-#include "extract.h"
-#include "flags.h"
-#include "log.h"
-#include "random.h"
-#include "relocate.h"
-#include "search.h"
-#include "skills.h"
-#include "util_macros.h"
 #include "consts/affflags.h"
 #include "consts/applies.h"
 #include "consts/itemdata.h"
@@ -45,26 +32,40 @@
 #include "consts/races.h"
 #include "consts/roomflags.h"
 #include "consts/sex.h"
-#include "comm.h"
-#include "spells.h"
-#include "handler.h"
 #include "db.h"
-#include "interpreter.h"
 #include "dg_scripts.h"
+#include "extract.h"
 #include "feats.h"
-#include "mobact.h"
 #include "fight.h"
-#include "affect.h"
-#include "class.h"
+#include "flags.h"
+#include "handler.h"
+#include "interpreter.h"
+#include "log.h"
+#include "mobact.h"
+#include "object_api.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_utils.h"
 #include "races_plus.h"
+#include "random.h"
+#include "relocate.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "room_macros.h"
+#include "search.h"
+#include "skills.h"
+#include "spells.h"
+#include "util_macros.h"
 
 /* local functions */
-int mag_materials(struct char_data *ch, int item0, int item1, int item2, int extract, int verbose);
-void perform_mag_groups(int level, struct char_data *ch, struct char_data *tch, int spellnum);
+int mag_materials(struct char_data *ch, int item0, int item1, int item2,
+                  int extract, int verbose);
+void perform_mag_groups(int level, struct char_data *ch, struct char_data *tch,
+                        int spellnum);
 
 /* affect_update: called from comm.c (causes spells to wear off) */
-void affect_update(void)
-{
+void affect_update(void) {
   struct affected_type *af, *next;
   struct char_data *i;
 
@@ -72,22 +73,22 @@ void affect_update(void)
     for (af = i->affected; af; af = next) {
       next = af->next;
       if (af->duration >= 1)
-	af->duration--;
+        af->duration--;
       else if (af->duration == 0) {
-	if (af->type > 0)
-	  if (!af->next || (af->next->type != af->type) || (af->next->duration > 0)) {
-	    if (spell_info[af->type].wear_off_msg)
-	      send_to_char(i, "%s\r\n", spell_info[af->type].wear_off_msg);
+        if (af->type > 0)
+          if (!af->next || (af->next->type != af->type) ||
+              (af->next->duration > 0)) {
+            if (spell_info[af->type].wear_off_msg)
+              send_to_char(i, "%s\r\n", spell_info[af->type].wear_off_msg);
             if (GET_SPEEDBOOST(i) > 0 && af->type == SPELL_HAYASA) {
-             GET_SPEEDBOOST(i) = 0;
+              GET_SPEEDBOOST(i) = 0;
             }
           }
-	affect_remove(i, af);
+        affect_remove(i, af);
       }
     }
   }
 }
-
 
 /*
  *  mag_materials:
@@ -98,8 +99,7 @@ void affect_update(void)
  * heal spell which requires a rare herb or some such.)
  */
 int mag_materials(struct char_data *ch, int item0, int item1, int item2,
-		      int extract, int verbose)
-{
+                  int extract, int verbose) {
   struct obj_data *tobj;
   struct obj_data *obj0 = NULL, *obj1 = NULL, *obj2 = NULL;
 
@@ -119,14 +119,14 @@ int mag_materials(struct char_data *ch, int item0, int item1, int item2,
     if (verbose) {
       switch (rand_number(0, 2)) {
       case 0:
-	send_to_char(ch, "A wart sprouts on your nose.\r\n");
-	break;
+        send_to_char(ch, "A wart sprouts on your nose.\r\n");
+        break;
       case 1:
-	send_to_char(ch, "Your hair falls out in clumps.\r\n");
-	break;
+        send_to_char(ch, "Your hair falls out in clumps.\r\n");
+        break;
       case 2:
-	send_to_char(ch, "A huge corn develops on your big toe.\r\n");
-	break;
+        send_to_char(ch, "A huge corn develops on your big toe.\r\n");
+        break;
       }
     }
     return (FALSE);
@@ -146,13 +146,10 @@ int mag_materials(struct char_data *ch, int item0, int item1, int item2,
   return (TRUE);
 }
 
-
-
-int mag_newsaves(struct char_data *ch, struct char_data *victim, int spellnum, int level, int cast_stat)
-{
+int mag_newsaves(struct char_data *ch, struct char_data *victim, int spellnum,
+                 int level, int cast_stat) {
   return FALSE;
 }
-
 
 /*
  * Every spell that does damage comes through here.  This calculates the
@@ -162,11 +159,9 @@ int mag_newsaves(struct char_data *ch, struct char_data *victim, int spellnum, i
  * -1 = dead, otherwise the amount of damage done.
  */
 int mag_damage(int level, struct char_data *ch, struct char_data *victim,
-		     int spellnum)
-{
+               int spellnum) {
   return 0;
 }
-
 
 /*
  * Every spell that does an affect comes through here.  This determines
@@ -176,16 +171,14 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
  * affect_join(vict, aff, add_dur, avg_dur, add_mod, avg_mod)
  */
 
-#define MAX_SPELL_AFFECTS 5	/* change if more needed */
+#define MAX_SPELL_AFFECTS 5 /* change if more needed */
 
 void mag_affects(int level, struct char_data *ch, struct char_data *victim,
-		      int spellnum)
-{
+                 int spellnum) {
   struct affected_type af[MAX_SPELL_AFFECTS];
   bool accum_affect = FALSE, accum_duration = FALSE;
   const char *to_vict = NULL, *to_room = NULL;
   int i;
-
 
   if (victim == NULL || ch == NULL)
     return;
@@ -198,7 +191,8 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
   }
 
   if (mag_newsaves(ch, victim, spellnum, level, GET_INT(ch))) {
-    if (IS_SET(spell_info[spellnum].save_flags, MAGSAVE_PARTIAL | MAGSAVE_NONE)) {
+    if (IS_SET(spell_info[spellnum].save_flags,
+               MAGSAVE_PARTIAL | MAGSAVE_NONE)) {
       send_to_char(victim, "@g*save*@y You avoid any lasting affects.@n\r\n");
       return;
     }
@@ -236,7 +230,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_BLINDNESS:
-    if (MOB_FLAGGED(victim,MOB_NOBLIND)) {
+    if (MOB_FLAGGED(victim, MOB_NOBLIND)) {
       send_to_char(ch, "You fail.\r\n");
       return;
     }
@@ -341,7 +335,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_POISON:
-	
+
     af[0].location = APPLY_STR;
     af[0].duration = level;
     af[0].modifier = -2;
@@ -382,7 +376,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     }
     break;
 
- case SPELL_HAYASA:
+  case SPELL_HAYASA:
     if (!CONFIG_PK_ALLOWED && !IS_NPC(ch) && !IS_NPC(victim))
       return;
     if (MOB_FLAGGED(victim, MOB_NOSLEEP))
@@ -426,7 +420,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     accum_duration = FALSE;
     to_vict = "Your skin hardens into stone!";
     break;
-
   }
 
   /*
@@ -437,22 +430,23 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
   if (IS_NPC(victim) && !affected_by_spell(victim, spellnum))
     for (i = 0; i < MAX_SPELL_AFFECTS; i++)
       if (AFF_FLAGGED(victim, af[i].bitvector)) {
-	send_to_char(ch, "%s", CONFIG_NOEFFECT);
-	return;
+        send_to_char(ch, "%s", CONFIG_NOEFFECT);
+        return;
       }
 
   /*
    * If the victim is already affected by this spell, and the spell does
    * not have an accumulative effect, then fail the spell.
    */
-  if (affected_by_spell(victim,spellnum) && !(accum_duration||accum_affect)) {
+  if (affected_by_spell(victim, spellnum) &&
+      !(accum_duration || accum_affect)) {
     send_to_char(ch, "%s", CONFIG_NOEFFECT);
     return;
   }
 
   for (i = 0; i < MAX_SPELL_AFFECTS; i++)
     if (af[i].bitvector || (af[i].location != APPLY_NONE))
-      affect_join(victim, af+i, accum_duration, FALSE, accum_affect, FALSE);
+      affect_join(victim, af + i, accum_duration, FALSE, accum_affect, FALSE);
 
   if (to_vict != NULL)
     act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
@@ -460,16 +454,14 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     act(to_room, TRUE, victim, 0, ch, TO_ROOM);
 }
 
-
 /*
  * This function is used to provide services to mag_groups.  This function
  * is the one you should change to add new group spells.
  */
-void perform_mag_groups(int level, struct char_data *ch,
-			struct char_data *tch, int spellnum)
-{
+void perform_mag_groups(int level, struct char_data *ch, struct char_data *tch,
+                        int spellnum) {
   switch (spellnum) {
-    case SPELL_MASS_HEAL:
+  case SPELL_MASS_HEAL:
     mag_points(level, ch, tch, SPELL_HEAL);
     break;
   case SPELL_GROUP_ARMOR:
@@ -480,7 +472,6 @@ void perform_mag_groups(int level, struct char_data *ch,
     break;
   }
 }
-
 
 /*
  * Every spell that affects the group should run through here
@@ -493,8 +484,7 @@ void perform_mag_groups(int level, struct char_data *ch,
  * To add new group spells, you shouldn't have to change anything in
  * mag_groups -- just add a new case to perform_mag_groups.
  */
-void mag_groups(int level, struct char_data *ch, int spellnum)
-{
+void mag_groups(int level, struct char_data *ch, int spellnum) {
   struct char_data *tch, *k;
   struct follow_type *f, *f_next;
 
@@ -524,14 +514,12 @@ void mag_groups(int level, struct char_data *ch, int spellnum)
   perform_mag_groups(level, ch, ch, spellnum);
 }
 
-
 /*
  * mass spells affect every creature in the room except the caster.
  *
  * No spells of this class currently implemented.
  */
-void mag_masses(int level, struct char_data *ch, int spellnum)
-{
+void mag_masses(int level, struct char_data *ch, int spellnum) {
   struct char_data *tch, *tch_next;
 
   for (tch = char_room_get(ch)->people; tch; tch = tch_next) {
@@ -539,11 +527,9 @@ void mag_masses(int level, struct char_data *ch, int spellnum)
     if (tch == ch)
       continue;
 
-    switch (spellnum) {
-    }
+    switch (spellnum) {}
   }
 }
-
 
 /*
  * Every spell that affects an area (room) runs through here.  These are
@@ -553,8 +539,7 @@ void mag_masses(int level, struct char_data *ch, int spellnum)
  *
  *  area spells have limited targets within the room.
  */
-void mag_areas(int level, struct char_data *ch, int spellnum)
-{
+void mag_areas(int level, struct char_data *ch, int spellnum) {
   struct char_data *tch, *next_tch;
   const char *to_char = NULL, *to_room = NULL;
 
@@ -568,7 +553,7 @@ void mag_areas(int level, struct char_data *ch, int spellnum)
   switch (spellnum) {
   case SPELL_EARTHQUAKE:
     to_char = "You gesture and the earth begins to shake all around you!";
-    to_room ="$n gracefully gestures and the earth begins to shake violently!";
+    to_room = "$n gracefully gestures and the earth begins to shake violently!";
     break;
   }
 
@@ -576,7 +561,6 @@ void mag_areas(int level, struct char_data *ch, int spellnum)
     act(to_char, FALSE, ch, 0, 0, TO_CHAR);
   if (to_room != NULL)
     act(to_room, FALSE, ch, 0, 0, TO_ROOM);
-  
 
   for (tch = char_room_get(ch)->people; tch; tch = next_tch) {
     next_tch = tch->next_in_room;
@@ -602,150 +586,146 @@ void mag_areas(int level, struct char_data *ch, int spellnum)
   }
 }
 
-
 /*
  *  Every spell which summons/gates/conjours a mob comes through here.
  */
 
-mob_vnum monsum_list_lg_1[] = { 300, 301, 302, NOBODY };
-mob_vnum monsum_list_ng_1[] = { 300, 301, 302, 303, 304, NOBODY };
-mob_vnum monsum_list_cg_1[] = { 302, 303, 304, NOBODY };
-mob_vnum monsum_list_ln_1[] = { 300, 301, 305, 306, NOBODY };
-mob_vnum monsum_list_nn_1[] = { 302, 307, 308, NOBODY };
-mob_vnum monsum_list_cn_1[] = { 303, 304, 309, 310, 311, NOBODY };
-mob_vnum monsum_list_le_1[] = { 305, 306, 307, 308, NOBODY };
-mob_vnum monsum_list_ne_1[] = { 305, 306, 307, 308, 309, 310, 311, NOBODY };
-mob_vnum monsum_list_ce_1[] = { 307, 308, 309, 310, 311, NOBODY };
+mob_vnum monsum_list_lg_1[] = {300, 301, 302, NOBODY};
+mob_vnum monsum_list_ng_1[] = {300, 301, 302, 303, 304, NOBODY};
+mob_vnum monsum_list_cg_1[] = {302, 303, 304, NOBODY};
+mob_vnum monsum_list_ln_1[] = {300, 301, 305, 306, NOBODY};
+mob_vnum monsum_list_nn_1[] = {302, 307, 308, NOBODY};
+mob_vnum monsum_list_cn_1[] = {303, 304, 309, 310, 311, NOBODY};
+mob_vnum monsum_list_le_1[] = {305, 306, 307, 308, NOBODY};
+mob_vnum monsum_list_ne_1[] = {305, 306, 307, 308, 309, 310, 311, NOBODY};
+mob_vnum monsum_list_ce_1[] = {307, 308, 309, 310, 311, NOBODY};
 
-mob_vnum monsum_list_lg_2[] = { 312, 313, 314, NOBODY };
-mob_vnum monsum_list_ng_2[] = { 312, 313, 314, NOBODY };
-mob_vnum monsum_list_cg_2[] = { 312, 313, 314, 315, NOBODY };
-mob_vnum monsum_list_ln_2[] = { 312, 317, NOBODY };
-mob_vnum monsum_list_nn_2[] = { 315, 316, 317, NOBODY };
-mob_vnum monsum_list_cn_2[] = { 313, 316, 318, NOBODY };
-mob_vnum monsum_list_le_2[] = { 316, 317, NOBODY };
-mob_vnum monsum_list_ne_2[] = { 318, 319, NOBODY };
-mob_vnum monsum_list_ce_2[] = { 320, 321, NOBODY };
+mob_vnum monsum_list_lg_2[] = {312, 313, 314, NOBODY};
+mob_vnum monsum_list_ng_2[] = {312, 313, 314, NOBODY};
+mob_vnum monsum_list_cg_2[] = {312, 313, 314, 315, NOBODY};
+mob_vnum monsum_list_ln_2[] = {312, 317, NOBODY};
+mob_vnum monsum_list_nn_2[] = {315, 316, 317, NOBODY};
+mob_vnum monsum_list_cn_2[] = {313, 316, 318, NOBODY};
+mob_vnum monsum_list_le_2[] = {316, 317, NOBODY};
+mob_vnum monsum_list_ne_2[] = {318, 319, NOBODY};
+mob_vnum monsum_list_ce_2[] = {320, 321, NOBODY};
 
-mob_vnum monsum_list_lg_3[] = { NOBODY };
-mob_vnum monsum_list_ng_3[] = { NOBODY };
-mob_vnum monsum_list_cg_3[] = { NOBODY };
-mob_vnum monsum_list_ln_3[] = { NOBODY };
-mob_vnum monsum_list_nn_3[] = { NOBODY };
-mob_vnum monsum_list_cn_3[] = { NOBODY };
-mob_vnum monsum_list_le_3[] = { NOBODY };
-mob_vnum monsum_list_ne_3[] = { NOBODY };
-mob_vnum monsum_list_ce_3[] = { NOBODY };
+mob_vnum monsum_list_lg_3[] = {NOBODY};
+mob_vnum monsum_list_ng_3[] = {NOBODY};
+mob_vnum monsum_list_cg_3[] = {NOBODY};
+mob_vnum monsum_list_ln_3[] = {NOBODY};
+mob_vnum monsum_list_nn_3[] = {NOBODY};
+mob_vnum monsum_list_cn_3[] = {NOBODY};
+mob_vnum monsum_list_le_3[] = {NOBODY};
+mob_vnum monsum_list_ne_3[] = {NOBODY};
+mob_vnum monsum_list_ce_3[] = {NOBODY};
 
-mob_vnum monsum_list_lg_4[] = { NOBODY };
-mob_vnum monsum_list_ng_4[] = { NOBODY };
-mob_vnum monsum_list_cg_4[] = { NOBODY };
-mob_vnum monsum_list_ln_4[] = { NOBODY };
-mob_vnum monsum_list_nn_4[] = { NOBODY };
-mob_vnum monsum_list_cn_4[] = { NOBODY };
-mob_vnum monsum_list_le_4[] = { NOBODY };
-mob_vnum monsum_list_ne_4[] = { NOBODY };
-mob_vnum monsum_list_ce_4[] = { NOBODY };
+mob_vnum monsum_list_lg_4[] = {NOBODY};
+mob_vnum monsum_list_ng_4[] = {NOBODY};
+mob_vnum monsum_list_cg_4[] = {NOBODY};
+mob_vnum monsum_list_ln_4[] = {NOBODY};
+mob_vnum monsum_list_nn_4[] = {NOBODY};
+mob_vnum monsum_list_cn_4[] = {NOBODY};
+mob_vnum monsum_list_le_4[] = {NOBODY};
+mob_vnum monsum_list_ne_4[] = {NOBODY};
+mob_vnum monsum_list_ce_4[] = {NOBODY};
 
-mob_vnum monsum_list_lg_5[] = { NOBODY };
-mob_vnum monsum_list_ng_5[] = { NOBODY };
-mob_vnum monsum_list_cg_5[] = { NOBODY };
-mob_vnum monsum_list_ln_5[] = { NOBODY };
-mob_vnum monsum_list_nn_5[] = { NOBODY };
-mob_vnum monsum_list_cn_5[] = { NOBODY };
-mob_vnum monsum_list_le_5[] = { NOBODY };
-mob_vnum monsum_list_ne_5[] = { NOBODY };
-mob_vnum monsum_list_ce_5[] = { NOBODY };
+mob_vnum monsum_list_lg_5[] = {NOBODY};
+mob_vnum monsum_list_ng_5[] = {NOBODY};
+mob_vnum monsum_list_cg_5[] = {NOBODY};
+mob_vnum monsum_list_ln_5[] = {NOBODY};
+mob_vnum monsum_list_nn_5[] = {NOBODY};
+mob_vnum monsum_list_cn_5[] = {NOBODY};
+mob_vnum monsum_list_le_5[] = {NOBODY};
+mob_vnum monsum_list_ne_5[] = {NOBODY};
+mob_vnum monsum_list_ce_5[] = {NOBODY};
 
-mob_vnum monsum_list_lg_6[] = { NOBODY };
-mob_vnum monsum_list_ng_6[] = { NOBODY };
-mob_vnum monsum_list_cg_6[] = { NOBODY };
-mob_vnum monsum_list_ln_6[] = { NOBODY };
-mob_vnum monsum_list_nn_6[] = { NOBODY };
-mob_vnum monsum_list_cn_6[] = { NOBODY };
-mob_vnum monsum_list_le_6[] = { NOBODY };
-mob_vnum monsum_list_ne_6[] = { NOBODY };
-mob_vnum monsum_list_ce_6[] = { NOBODY };
+mob_vnum monsum_list_lg_6[] = {NOBODY};
+mob_vnum monsum_list_ng_6[] = {NOBODY};
+mob_vnum monsum_list_cg_6[] = {NOBODY};
+mob_vnum monsum_list_ln_6[] = {NOBODY};
+mob_vnum monsum_list_nn_6[] = {NOBODY};
+mob_vnum monsum_list_cn_6[] = {NOBODY};
+mob_vnum monsum_list_le_6[] = {NOBODY};
+mob_vnum monsum_list_ne_6[] = {NOBODY};
+mob_vnum monsum_list_ce_6[] = {NOBODY};
 
-mob_vnum monsum_list_lg_7[] = { NOBODY };
-mob_vnum monsum_list_ng_7[] = { NOBODY };
-mob_vnum monsum_list_cg_7[] = { NOBODY };
-mob_vnum monsum_list_ln_7[] = { NOBODY };
-mob_vnum monsum_list_nn_7[] = { NOBODY };
-mob_vnum monsum_list_cn_7[] = { NOBODY };
-mob_vnum monsum_list_le_7[] = { NOBODY };
-mob_vnum monsum_list_ne_7[] = { NOBODY };
-mob_vnum monsum_list_ce_7[] = { NOBODY };
+mob_vnum monsum_list_lg_7[] = {NOBODY};
+mob_vnum monsum_list_ng_7[] = {NOBODY};
+mob_vnum monsum_list_cg_7[] = {NOBODY};
+mob_vnum monsum_list_ln_7[] = {NOBODY};
+mob_vnum monsum_list_nn_7[] = {NOBODY};
+mob_vnum monsum_list_cn_7[] = {NOBODY};
+mob_vnum monsum_list_le_7[] = {NOBODY};
+mob_vnum monsum_list_ne_7[] = {NOBODY};
+mob_vnum monsum_list_ce_7[] = {NOBODY};
 
-mob_vnum monsum_list_lg_8[] = { NOBODY };
-mob_vnum monsum_list_ng_8[] = { NOBODY };
-mob_vnum monsum_list_cg_8[] = { NOBODY };
-mob_vnum monsum_list_ln_8[] = { NOBODY };
-mob_vnum monsum_list_nn_8[] = { NOBODY };
-mob_vnum monsum_list_cn_8[] = { NOBODY };
-mob_vnum monsum_list_le_8[] = { NOBODY };
-mob_vnum monsum_list_ne_8[] = { NOBODY };
-mob_vnum monsum_list_ce_8[] = { NOBODY };
+mob_vnum monsum_list_lg_8[] = {NOBODY};
+mob_vnum monsum_list_ng_8[] = {NOBODY};
+mob_vnum monsum_list_cg_8[] = {NOBODY};
+mob_vnum monsum_list_ln_8[] = {NOBODY};
+mob_vnum monsum_list_nn_8[] = {NOBODY};
+mob_vnum monsum_list_cn_8[] = {NOBODY};
+mob_vnum monsum_list_le_8[] = {NOBODY};
+mob_vnum monsum_list_ne_8[] = {NOBODY};
+mob_vnum monsum_list_ce_8[] = {NOBODY};
 
-mob_vnum monsum_list_lg_9[] = { NOBODY };
-mob_vnum monsum_list_ng_9[] = { NOBODY };
-mob_vnum monsum_list_cg_9[] = { NOBODY };
-mob_vnum monsum_list_ln_9[] = { NOBODY };
-mob_vnum monsum_list_nn_9[] = { NOBODY };
-mob_vnum monsum_list_cn_9[] = { NOBODY };
-mob_vnum monsum_list_le_9[] = { NOBODY };
-mob_vnum monsum_list_ne_9[] = { NOBODY };
-mob_vnum monsum_list_ce_9[] = { NOBODY };
+mob_vnum monsum_list_lg_9[] = {NOBODY};
+mob_vnum monsum_list_ng_9[] = {NOBODY};
+mob_vnum monsum_list_cg_9[] = {NOBODY};
+mob_vnum monsum_list_ln_9[] = {NOBODY};
+mob_vnum monsum_list_nn_9[] = {NOBODY};
+mob_vnum monsum_list_cn_9[] = {NOBODY};
+mob_vnum monsum_list_le_9[] = {NOBODY};
+mob_vnum monsum_list_ne_9[] = {NOBODY};
+mob_vnum monsum_list_ce_9[] = {NOBODY};
 
 mob_vnum *monsum_list[9][9] = {
-  { monsum_list_lg_1, monsum_list_ng_1, monsum_list_cg_1,
-    monsum_list_ln_1, monsum_list_nn_1, monsum_list_cn_1,
-    monsum_list_le_1, monsum_list_ne_1, monsum_list_ce_1 },
-  { monsum_list_lg_2, monsum_list_ng_2, monsum_list_cg_2,
-    monsum_list_ln_2, monsum_list_nn_2, monsum_list_cn_2,
-    monsum_list_le_2, monsum_list_ne_2, monsum_list_ce_2 },
-  { monsum_list_lg_3, monsum_list_ng_3, monsum_list_cg_3,
-    monsum_list_ln_3, monsum_list_nn_3, monsum_list_cn_3,
-    monsum_list_le_3, monsum_list_ne_3, monsum_list_ce_3 },
-  { monsum_list_lg_4, monsum_list_ng_4, monsum_list_cg_4,
-    monsum_list_ln_4, monsum_list_nn_4, monsum_list_cn_4,
-    monsum_list_le_4, monsum_list_ne_4, monsum_list_ce_4 },
-  { monsum_list_lg_5, monsum_list_ng_5, monsum_list_cg_5,
-    monsum_list_ln_5, monsum_list_nn_5, monsum_list_cn_5,
-    monsum_list_le_5, monsum_list_ne_5, monsum_list_ce_5 },
-  { monsum_list_lg_6, monsum_list_ng_6, monsum_list_cg_6,
-    monsum_list_ln_6, monsum_list_nn_6, monsum_list_cn_6,
-    monsum_list_le_6, monsum_list_ne_6, monsum_list_ce_6 },
-  { monsum_list_lg_7, monsum_list_ng_7, monsum_list_cg_7,
-    monsum_list_ln_7, monsum_list_nn_7, monsum_list_cn_7,
-    monsum_list_le_7, monsum_list_ne_7, monsum_list_ce_7 },
-  { monsum_list_lg_8, monsum_list_ng_8, monsum_list_cg_8,
-    monsum_list_ln_8, monsum_list_nn_8, monsum_list_cn_8,
-    monsum_list_le_8, monsum_list_ne_8, monsum_list_ce_8 },
-  { monsum_list_lg_9, monsum_list_ng_9, monsum_list_cg_9,
-    monsum_list_ln_9, monsum_list_nn_9, monsum_list_cn_9,
-    monsum_list_le_9, monsum_list_ne_9, monsum_list_ce_9 }
-};
+    {monsum_list_lg_1, monsum_list_ng_1, monsum_list_cg_1, monsum_list_ln_1,
+     monsum_list_nn_1, monsum_list_cn_1, monsum_list_le_1, monsum_list_ne_1,
+     monsum_list_ce_1},
+    {monsum_list_lg_2, monsum_list_ng_2, monsum_list_cg_2, monsum_list_ln_2,
+     monsum_list_nn_2, monsum_list_cn_2, monsum_list_le_2, monsum_list_ne_2,
+     monsum_list_ce_2},
+    {monsum_list_lg_3, monsum_list_ng_3, monsum_list_cg_3, monsum_list_ln_3,
+     monsum_list_nn_3, monsum_list_cn_3, monsum_list_le_3, monsum_list_ne_3,
+     monsum_list_ce_3},
+    {monsum_list_lg_4, monsum_list_ng_4, monsum_list_cg_4, monsum_list_ln_4,
+     monsum_list_nn_4, monsum_list_cn_4, monsum_list_le_4, monsum_list_ne_4,
+     monsum_list_ce_4},
+    {monsum_list_lg_5, monsum_list_ng_5, monsum_list_cg_5, monsum_list_ln_5,
+     monsum_list_nn_5, monsum_list_cn_5, monsum_list_le_5, monsum_list_ne_5,
+     monsum_list_ce_5},
+    {monsum_list_lg_6, monsum_list_ng_6, monsum_list_cg_6, monsum_list_ln_6,
+     monsum_list_nn_6, monsum_list_cn_6, monsum_list_le_6, monsum_list_ne_6,
+     monsum_list_ce_6},
+    {monsum_list_lg_7, monsum_list_ng_7, monsum_list_cg_7, monsum_list_ln_7,
+     monsum_list_nn_7, monsum_list_cn_7, monsum_list_le_7, monsum_list_ne_7,
+     monsum_list_ce_7},
+    {monsum_list_lg_8, monsum_list_ng_8, monsum_list_cg_8, monsum_list_ln_8,
+     monsum_list_nn_8, monsum_list_cn_8, monsum_list_le_8, monsum_list_ne_8,
+     monsum_list_ce_8},
+    {monsum_list_lg_9, monsum_list_ng_9, monsum_list_cg_9, monsum_list_ln_9,
+     monsum_list_nn_9, monsum_list_cn_9, monsum_list_le_9, monsum_list_ne_9,
+     monsum_list_ce_9}};
 
 /*
  * These use act(), don't put the \r\n.
  */
-const char *mag_summon_msgs[] = {
-  "\r\n",
-  "$n animates a corpse!",
-  "$n summons extraplanar assistance!"
-};
+const char *mag_summon_msgs[] = {"\r\n", "$n animates a corpse!",
+                                 "$n summons extraplanar assistance!"};
 
 /* Defined mobiles. */
-#define MOB_ELEMENTAL_BASE	20	/* Only one for now. */
-#define MOB_ZOMBIE		11
-#define MOB_AERIALSERVANT	19
+#define MOB_ELEMENTAL_BASE 20 /* Only one for now. */
+#define MOB_ZOMBIE 11
+#define MOB_AERIALSERVANT 19
 
-void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spellnum, char *arg)
-{
+void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
+                 int spellnum, char *arg) {
   struct char_data *mob = NULL;
   struct obj_data *tobj, *next_obj;
-  int msg = 0, num = 1, handle_corpse = FALSE, affs = 0, affvs = 0, assist = 0, i, j, count;
+  int msg = 0, num = 1, handle_corpse = FALSE, affs = 0, affvs = 0, assist = 0,
+      i, j, count;
   char *buf = NULL;
   char buf2[MAX_INPUT_LENGTH];
   int lev;
@@ -806,7 +786,8 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spel
           break;
       }
       if (mob_num == NOBODY) {
-        send_to_char(ch, "That's not a name for a monster you can summon. Summoning something else.\r\n");
+        send_to_char(ch, "That's not a name for a monster you can summon. "
+                         "Summoning something else.\r\n");
       } else {
         log("lev=%d, i=%d, ngen=%d", lev, i, lev - i);
         switch (lev - i) {
@@ -824,7 +805,8 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spel
     }
     if (mob_num == NOBODY) {
       num = 1;
-      for (count = 0; monsum_list[lev - 1][j][count] != NOBODY; count++);
+      for (count = 0; monsum_list[lev - 1][j][count] != NOBODY; count++)
+        ;
       if (!count) {
         log("No monsums for spell level %d align %s", lev, alignments[j]);
         return;
@@ -844,7 +826,8 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spel
   }
   for (i = 0; i < num; i++) {
     if (!(mob = read_mobile(mob_num, VIRTUAL))) {
-      send_to_char(ch, "You don't quite remember how to summon that creature.\r\n");
+      send_to_char(ch,
+                   "You don't quite remember how to summon that creature.\r\n");
       return;
     }
     char_to_room(mob, char_room_get(ch));
@@ -873,10 +856,8 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj, int spel
   }
 }
 
-
 void mag_points(int level, struct char_data *ch, struct char_data *victim,
-		     int spellnum)
-{
+                int spellnum) {
   int healing = 0;
   int tmp;
 
@@ -898,7 +879,7 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
     break;
   case SPELL_SENSU:
     if (char_stat_get(victim, "hunger") > -1) {
-     char_stat_set(victim, "hunger", 48);
+      char_stat_set(victim, "hunger", 48);
     }
     restore(victim, true);
     break;
@@ -918,10 +899,8 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
   update_pos(victim);
 }
 
-
 void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
-		        int spellnum)
-{
+                   int spellnum) {
   int spell = 0, msg_not_affected = TRUE;
   const char *to_vict = NULL, *to_room = NULL;
 
@@ -965,56 +944,54 @@ void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
     act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
   if (to_room != NULL)
     act(to_room, TRUE, victim, 0, ch, TO_ROOM);
-
 }
 
-
 void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
-		         int spellnum)
-{
+                    int spellnum) {
   const char *to_char = NULL, *to_room = NULL;
 
   if (obj == NULL)
     return;
 
   switch (spellnum) {
-    case SPELL_BLESS:
-      if (!OBJ_FLAGGED(obj, ITEM_BLESS) &&
-	  (GET_OBJ_WEIGHT(obj) <= 5 * level)) {
-	SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_BLESS);
-	to_char = "$p glows briefly.";
-      }
-      break;
-    case SPELL_INVISIBLE:
-      if (!OBJ_FLAGGED(obj, ITEM_NOINVIS | ITEM_INVISIBLE)) {
-        SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_INVISIBLE);
-        to_char = "$p vanishes.";
-      }
-      break;
-    case SPELL_POISON:
-      if (((GET_OBJ_TYPE(obj) == ITEM_DRINKCON) ||
+  case SPELL_BLESS:
+    if (!OBJ_FLAGGED(obj, ITEM_BLESS) && (GET_OBJ_WEIGHT(obj) <= 5 * level)) {
+      SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_BLESS);
+      to_char = "$p glows briefly.";
+    }
+    break;
+  case SPELL_INVISIBLE:
+    if (!OBJ_FLAGGED(obj, ITEM_NOINVIS | ITEM_INVISIBLE)) {
+      SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_INVISIBLE);
+      to_char = "$p vanishes.";
+    }
+    break;
+  case SPELL_POISON:
+    if (((GET_OBJ_TYPE(obj) == ITEM_DRINKCON) ||
          (GET_OBJ_TYPE(obj) == ITEM_FOUNTAIN) ||
-         (GET_OBJ_TYPE(obj) == ITEM_FOOD)) && !GET_OBJ_VAL(obj, VAL_FOOD_POISON)) {
+         (GET_OBJ_TYPE(obj) == ITEM_FOOD)) &&
+        !GET_OBJ_VAL(obj, VAL_FOOD_POISON)) {
       GET_OBJ_VAL(obj, VAL_FOOD_POISON) = 1;
       to_char = "$p steams briefly.";
-      }
-      break;
-    case SPELL_REMOVE_CURSE:
-      if (OBJ_FLAGGED(obj, ITEM_NODROP)) {
-        REMOVE_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_NODROP);
-        if (GET_OBJ_TYPE(obj) == ITEM_WEAPON)
-          GET_OBJ_VAL(obj, VAL_WEAPON_DAMSIZE)++;
-        to_char = "$p briefly glows blue.";
-      }
-      break;
-    case SPELL_NEUTRALIZE_POISON:
-      if (((GET_OBJ_TYPE(obj) == ITEM_DRINKCON) ||
+    }
+    break;
+  case SPELL_REMOVE_CURSE:
+    if (OBJ_FLAGGED(obj, ITEM_NODROP)) {
+      REMOVE_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_NODROP);
+      if (GET_OBJ_TYPE(obj) == ITEM_WEAPON)
+        GET_OBJ_VAL(obj, VAL_WEAPON_DAMSIZE)++;
+      to_char = "$p briefly glows blue.";
+    }
+    break;
+  case SPELL_NEUTRALIZE_POISON:
+    if (((GET_OBJ_TYPE(obj) == ITEM_DRINKCON) ||
          (GET_OBJ_TYPE(obj) == ITEM_FOUNTAIN) ||
-         (GET_OBJ_TYPE(obj) == ITEM_FOOD)) && GET_OBJ_VAL(obj, VAL_FOOD_POISON)) {
-        GET_OBJ_VAL(obj, VAL_FOOD_POISON) = 0;
-        to_char = "$p steams briefly.";
-      }
-      break;
+         (GET_OBJ_TYPE(obj) == ITEM_FOOD)) &&
+        GET_OBJ_VAL(obj, VAL_FOOD_POISON)) {
+      GET_OBJ_VAL(obj, VAL_FOOD_POISON) = 0;
+      to_char = "$p steams briefly.";
+    }
+    break;
   }
 
   if (to_char == NULL)
@@ -1026,13 +1003,9 @@ void mag_alter_objs(int level, struct char_data *ch, struct obj_data *obj,
     act(to_room, TRUE, ch, obj, 0, TO_ROOM);
   else if (to_char != NULL)
     act(to_char, TRUE, ch, obj, 0, TO_ROOM);
-
 }
 
-
-
-void mag_creations(int level, struct char_data *ch, int spellnum)
-{
+void mag_creations(int level, struct char_data *ch, int spellnum) {
   struct obj_data *tobj;
   obj_vnum z;
 
@@ -1051,8 +1024,8 @@ void mag_creations(int level, struct char_data *ch, int spellnum)
 
   if (!(tobj = read_object(z, VIRTUAL))) {
     send_to_char(ch, "I seem to have goofed.\r\n");
-    log("SYSERR: spell_creations, spell %d, obj %d: obj not found",
-	    spellnum, z);
+    log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum,
+        z);
     return;
   }
   add_unique_id(tobj);
@@ -1063,13 +1036,11 @@ void mag_creations(int level, struct char_data *ch, int spellnum)
 }
 
 void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
-                      int spellnum)
-{
+                  int spellnum) {
   struct affected_type af[MAX_SPELL_AFFECTS];
   bool accum_affect = FALSE, accum_duration = FALSE;
   const char *to_vict = NULL, *to_room = NULL;
   int i;
-
 
   if (victim == NULL || ch == NULL)
     return;
@@ -1082,15 +1053,16 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
   }
 
   if (mag_newsaves(ch, victim, spellnum, level, GET_INT(ch))) {
-    if (IS_SET(spell_info[spellnum].save_flags, MAGSAVE_PARTIAL | MAGSAVE_NONE)) {
+    if (IS_SET(spell_info[spellnum].save_flags,
+               MAGSAVE_PARTIAL | MAGSAVE_NONE)) {
       send_to_char(victim, "@g*save*@y You avoid any lasting affects.@n\r\n");
       return;
-    } 
+    }
   }
 
   switch (spellnum) {
   case SPELL_PARALYZE:
-    af[0].duration = level/2;
+    af[0].duration = level / 2;
     af[0].bitvector = AFF_PARALYZE;
     accum_duration = FALSE;
     to_vict = "You feel your limbs freeze!";
@@ -1147,7 +1119,7 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_FLARE:
-    if (MOB_FLAGGED(victim,MOB_NOBLIND)) {
+    if (MOB_FLAGGED(victim, MOB_NOBLIND)) {
       send_to_char(ch, "You fail.\r\n");
       return;
     }
@@ -1161,12 +1133,11 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_FIRE_SHIELD:
-    af[0].duration = level*5;
+    af[0].duration = level * 5;
     af[0].bitvector = AFF_FIRE_SHIELD;
     to_room = "$n is engulfed in a firey shield!";
     to_vict = "You are engulfed in a firey shield!";
     break;
-
   }
 
   /*
@@ -1184,7 +1155,8 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
    * If the victim is already affected by this spell, and the spell does
    * not have an accumulative effect, then fail the spell.
    */
-  if (affected_by_spell(victim,spellnum) && !(accum_duration||accum_affect)) {
+  if (affected_by_spell(victim, spellnum) &&
+      !(accum_duration || accum_affect)) {
     send_to_char(ch, "%s", CONFIG_NOEFFECT);
     return;
   }

@@ -1,7 +1,6 @@
 #pragma once
 #include "consts/types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,7 +10,6 @@ void npc_steal(struct char_data *ch, struct char_data *victim);
 int num_players_in_room(room_vnum room);
 bool check_mob_in_room(mob_vnum mob, room_vnum room);
 bool check_obj_in_room(obj_vnum obj, room_vnum room);
-
 
 // specials
 SPECIAL(guild);
@@ -40,7 +38,6 @@ SPECIAL(cleric_ao);
 SPECIAL(dziak);
 SPECIAL(azimer);
 SPECIAL(lyrzaxyn);
-
 
 #ifdef __cplusplus
 }

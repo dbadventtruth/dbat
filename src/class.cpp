@@ -1,12 +1,12 @@
 /* ************************************************************************
-*   File: class.c                                       Part of CircleMUD *
-*  Usage: Source file for class-specific code                             *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
+ *   File: class.c                                       Part of CircleMUD *
+ *  Usage: Source file for class-specific code                             *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 
 /*
  * This file attempts to concentrate most of the code which must be changed
@@ -14,48 +14,48 @@
  * you should go through this entire file from beginning to end and add
  * the appropriate new special cases for your new class.
  */
-#include "consts/maximums.h"
-#include "consts/prefflags.h"
-#include "consts/playerflags.h"
-#include "consts/skills.h"
-#include "consts/races.h"
-#include "flags.h"
-#include "consts/mobflags.h"
+#include "character_utils.h"
+#include "config_db.h"
 #include "consts/admlevel.h"
 #include "consts/applies.h"
-#include "log.h"
-#include "character_utils.h"
-#include "local_limits.h"
 #include "consts/fightprefs.h"
+#include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/prefflags.h"
+#include "consts/races.h"
+#include "consts/sizes.h"
+#include "consts/skills.h"
+#include "consts/weapons.h"
 #include "descriptor_impl.h"
-#include "util_macros.h"
-#include "config_db.h"
+#include "flags.h"
+#include "local_limits.h"
+#include "log.h"
+#include "object_impl.h"
 #include "object_macros.h"
 #include "stringutils.h"
-#include "object_impl.h"
-#include "consts/weapons.h"
-#include "consts/sizes.h"
+#include "util_macros.h"
 
 #include "class.h"
 
-#include "character_impl.h"
+#include "act.other.h"
+#include "act.wizard.h"
 #include "character_api.h"
+#include "character_impl.h"
 #include "character_macros.h"
+#include "comm.h"
+#include "config.h"
 #include "config_db.h"
 #include "db.h"
-#include "comm.h"
-#include "spells.h"
-#include "interpreter.h"
-#include "handler.h"
-#include "feats.h"
-#include "oasis.h"
-#include "act.wizard.h"
 #include "dg_comm.h"
-#include "config.h"
-#include "act.other.h"
+#include "feats.h"
+#include "handler.h"
+#include "interpreter.h"
+#include "oasis.h"
+#include "races.h"
 #include "random.h"
 #include "relocate.h"
-#include "races.h"
+#include "spells.h"
 
 #include "races_plus.h"
 #include "sensei.h"
@@ -81,7 +81,7 @@
  * guild, then you don't have to change that file, only here.
  */
 
-/* 
+/*
  * These tables hold the various level configuration setting;
  * experience points, base hit values, character saving throws.
  * They are read from a configuration file (normally etc/levels)
@@ -89,112 +89,93 @@
  * the end of this file reads in the actual values.
  */
 
-const char *config_sect[NUM_CONFIG_SECTIONS+1] = {
-  "version",
-  "experience",
-  "vernum",
-  "fortitude",
-  "reflex",
-  "will",
-  "basehit",
-  "\n"
-};
+const char *config_sect[NUM_CONFIG_SECTIONS + 1] = {
+    "version", "experience", "vernum",  "fortitude",
+    "reflex",  "will",       "basehit", "\n"};
 
-#define CONFIG_LEVEL_VERSION	0
-#define CONFIG_LEVEL_EXPERIENCE	1
-#define CONFIG_LEVEL_VERNUM	2
-#define CONFIG_LEVEL_FORTITUDE	3
-#define CONFIG_LEVEL_REFLEX	4
-#define CONFIG_LEVEL_WILL	5
-#define CONFIG_LEVEL_BASEHIT	6
+#define CONFIG_LEVEL_VERSION 0
+#define CONFIG_LEVEL_EXPERIENCE 1
+#define CONFIG_LEVEL_VERNUM 2
+#define CONFIG_LEVEL_FORTITUDE 3
+#define CONFIG_LEVEL_REFLEX 4
+#define CONFIG_LEVEL_WILL 5
+#define CONFIG_LEVEL_BASEHIT 6
 
 static char level_version[READ_SIZE];
 static int level_vernum = 0;
-static int save_classes[SAVING_WILL+1][NUM_CLASSES];
+static int save_classes[SAVING_WILL + 1][NUM_CLASSES];
 static int basehit_classes[NUM_CLASSES];
 
 #define SAVE_MANUAL 0
 #define SAVE_LOW 1
 #define SAVE_HIGH 2
 
-static const char *save_type_names[] = {
-  "manual",
-  "low",
-  "high"
-};
+static const char *save_type_names[] = {"manual", "low", "high"};
 
 #define BASEHIT_MANUAL 0
-#define BASEHIT_LOW     1
-#define BASEHIT_MEDIUM  2
-#define BASEHIT_HIGH    3
+#define BASEHIT_LOW 1
+#define BASEHIT_MEDIUM 2
+#define BASEHIT_HIGH 3
 
-static const char *basehit_type_names[] = {
-  "manual",
-  "low",
-  "medium",
-  "high"
-};
+static const char *basehit_type_names[] = {"manual", "low", "medium", "high"};
 
 /* Class Template Attribute values were created so all default PC classes would
    total 80 before racial modifiers. Non defaults add up to 60. */
 static const int class_template[NUM_BASIC_CLASSES][6] = {
-/* 		      S,  D,  C,  I,  W,  C */
-/* Wizard 	*/ { 10, 13, 13, 18, 16, 10 },
-/* Cleric 	*/ { 13, 10, 13, 10, 18, 16 },
-/* Rogue 	*/ { 13, 18, 13, 16, 10, 10 },
-/* Fighter 	*/ { 18, 13, 16, 10, 13, 10 },
-/* Monk 	*/ { 13, 16, 13, 10, 18, 10 },
-/* Paladin 	*/ { 18, 10, 13, 10, 16, 13 },
-/* Sorcerer 	*/ { 10, 13, 13, 18, 16, 10 },
-/* Druid 	*/ { 13, 10, 13, 10, 18, 16 },
-/* Bard 	*/ { 13, 18, 13, 16, 10, 10 },
-/* Ranger 	*/ { 13, 13, 13, 10, 16, 10 },
-/* Barbarian 	*/ { 13, 12, 18, 10, 12, 10 }
-};
+    /* 		      S,  D,  C,  I,  W,  C */
+    /* Wizard 	*/ {10, 13, 13, 18, 16, 10},
+    /* Cleric 	*/ {13, 10, 13, 10, 18, 16},
+    /* Rogue 	*/ {13, 18, 13, 16, 10, 10},
+    /* Fighter 	*/ {18, 13, 16, 10, 13, 10},
+    /* Monk 	*/ {13, 16, 13, 10, 18, 10},
+    /* Paladin 	*/ {18, 10, 13, 10, 16, 13},
+    /* Sorcerer 	*/ {10, 13, 13, 18, 16, 10},
+    /* Druid 	*/ {13, 10, 13, 10, 18, 16},
+    /* Bard 	*/ {13, 18, 13, 16, 10, 10},
+    /* Ranger 	*/ {13, 13, 13, 10, 16, 10},
+    /* Barbarian 	*/ {13, 12, 18, 10, 12, 10}};
 
 /* Race Template Attribute values were created so all default PC races would
    total 80 before racial modifiers. Non defaults add up to 60. */
 static const int race_template[NUM_RACES][6] = {
-/* 		      S,  D,  C,  I,  W,  C */
-/* Human 	*/ { 13, 13, 13, 13, 13, 13 },
-/* Saiyan  	*/ { 16, 12, 14, 10, 12, 12 },
-/* Icer 	*/ { 14, 14, 12, 12, 12, 12 },
-/* Konatsu 	*/ { 10, 16, 10, 13, 14, 14 },
-/* Namek 	*/ { 14, 12, 13, 12, 14, 12 },
-/* Mutant 	*/ { 12, 12, 15, 13, 13, 13 },
-/* Kanassan 	*/ { 10, 14, 10, 15, 13, 10 },
-/* Halfbreed 	*/ { 14, 13, 14, 12, 13, 12 },
-/* Bio  	*/ { 15, 10, 15, 12, 12, 10 },
-/* Android 	*/ { 14, 14, 14, 12, 10, 12 },
-/* Demon 	*/ { 14, 13, 14, 10, 12, 10 },
-/* Majin 	*/ { 15, 10, 15, 10, 12, 14 },
-/* Kai  	*/ { 11, 14, 10, 14, 14, 11 },
-/* Truffle 	*/ { 10, 14, 10, 16, 16, 12 },
-/* Goblin 	*/ { 13, 13, 13, 13, 13, 13 },
-/* Insect 	*/ { 10, 10, 10, 10, 10, 10 },
-/* Orc  	*/ { 10, 10, 10, 10, 10, 10 },
-/* Snake  	*/ { 10, 10, 10, 10, 10, 10 },
-/* Troll  	*/ { 10, 10, 10, 10, 10, 10 },
-/* Minotaur  	*/ { 10, 10, 10, 10, 10, 10 },
-/* Arlian  	*/ { 13, 13, 13, 12, 12, 14 },
-/* Lizardfolk  	*/ { 10, 10, 10, 10, 10, 10 },
-/* Warhost  	*/ { 10, 10, 10, 10, 10, 10 },
-/* Faerie 	*/ { 10, 10, 10, 10, 10, 10 }
-};
+    /* 		      S,  D,  C,  I,  W,  C */
+    /* Human 	*/ {13, 13, 13, 13, 13, 13},
+    /* Saiyan  	*/ {16, 12, 14, 10, 12, 12},
+    /* Icer 	*/ {14, 14, 12, 12, 12, 12},
+    /* Konatsu 	*/ {10, 16, 10, 13, 14, 14},
+    /* Namek 	*/ {14, 12, 13, 12, 14, 12},
+    /* Mutant 	*/ {12, 12, 15, 13, 13, 13},
+    /* Kanassan 	*/ {10, 14, 10, 15, 13, 10},
+    /* Halfbreed 	*/ {14, 13, 14, 12, 13, 12},
+    /* Bio  	*/ {15, 10, 15, 12, 12, 10},
+    /* Android 	*/ {14, 14, 14, 12, 10, 12},
+    /* Demon 	*/ {14, 13, 14, 10, 12, 10},
+    /* Majin 	*/ {15, 10, 15, 10, 12, 14},
+    /* Kai  	*/ {11, 14, 10, 14, 14, 11},
+    /* Truffle 	*/ {10, 14, 10, 16, 16, 12},
+    /* Goblin 	*/ {13, 13, 13, 13, 13, 13},
+    /* Insect 	*/ {10, 10, 10, 10, 10, 10},
+    /* Orc  	*/ {10, 10, 10, 10, 10, 10},
+    /* Snake  	*/ {10, 10, 10, 10, 10, 10},
+    /* Troll  	*/ {10, 10, 10, 10, 10, 10},
+    /* Minotaur  	*/ {10, 10, 10, 10, 10, 10},
+    /* Arlian  	*/ {13, 13, 13, 12, 12, 14},
+    /* Lizardfolk  	*/ {10, 10, 10, 10, 10, 10},
+    /* Warhost  	*/ {10, 10, 10, 10, 10, 10},
+    /* Faerie 	*/ {10, 10, 10, 10, 10, 10}};
 
-void cedit_creation(struct char_data *ch)
-{
+void cedit_creation(struct char_data *ch) {
   switch (CONFIG_CREATION_METHOD) {
-    case CEDIT_CREATION_METHOD_3: /* Points Pool */
-      break;
-    case CEDIT_CREATION_METHOD_4: /* Racial based template */
-      break;
-    case CEDIT_CREATION_METHOD_5: /* Class based template */
-      break;
-    case CEDIT_CREATION_METHOD_2: /* Random rolls, player can adjust */
-    case CEDIT_CREATION_METHOD_1: /* Standard random roll, system assigned */
-    default:
-      break;
+  case CEDIT_CREATION_METHOD_3: /* Points Pool */
+    break;
+  case CEDIT_CREATION_METHOD_4: /* Racial based template */
+    break;
+  case CEDIT_CREATION_METHOD_5: /* Class based template */
+    break;
+  case CEDIT_CREATION_METHOD_2: /* Random rolls, player can adjust */
+  case CEDIT_CREATION_METHOD_1: /* Standard random roll, system assigned */
+  default:
+    break;
   }
   racial_body_parts(ch);
 }
@@ -208,64 +189,62 @@ void cedit_creation(struct char_data *ch)
 
 /* Taken from the SRD under OGL, see ../doc/srd.txt for information */
 const int class_hit_die_size[NUM_CLASSES] = {
-/* Wi */ 4,
-/* Cl */ 8,
-/* Ro */ 6,
-/* Fi */ 10,
-/* Mo */ 8,
-/* Pa */ 10,
-/* So */ 4,
-/* Dr */ 8,
-/* Ba */ 6,
-/* Ra */ 8,
-/* Ba */ 12,
-/* AA */ 8,
-/* AT */ 4,
-/* AM */ 4,
-/* AS */ 6,
-/* BG */ 10,
-/* DD */ 12,
-/* Du */ 10,
-/* Dw */ 12,
-/* EK */ 6,
-/* HE */ 8,
-/* HW */ 8,
-/* LM */ 4,
-/* MT */ 4,
-/* SD */ 8,
-/* TH */ 4,
-/* Ex */ 6,
-/* Ad */ 6,
-/* Co */ 4,
-/* Ar */ 8,
-/* Wa */ 8
-};
+    /* Wi */ 4,
+    /* Cl */ 8,
+    /* Ro */ 6,
+    /* Fi */ 10,
+    /* Mo */ 8,
+    /* Pa */ 10,
+    /* So */ 4,
+    /* Dr */ 8,
+    /* Ba */ 6,
+    /* Ra */ 8,
+    /* Ba */ 12,
+    /* AA */ 8,
+    /* AT */ 4,
+    /* AM */ 4,
+    /* AS */ 6,
+    /* BG */ 10,
+    /* DD */ 12,
+    /* Du */ 10,
+    /* Dw */ 12,
+    /* EK */ 6,
+    /* HE */ 8,
+    /* HW */ 8,
+    /* LM */ 4,
+    /* MT */ 4,
+    /* SD */ 8,
+    /* TH */ 4,
+    /* Ex */ 6,
+    /* Ad */ 6,
+    /* Co */ 4,
+    /* Ar */ 8,
+    /* Wa */ 8};
 
 /* Some initializations for characters, including initial skills */
-void do_start(struct char_data *ch)
-{
+void do_start(struct char_data *ch) {
   int punch;
   struct obj_data *obj;
 
   char_stat_set(ch, "level", 1);
   char_stat_set(ch, "experience", 1);
- 
+
   if (IS_ANDROID(ch)) {
-   char_stat_set(ch, "hunger", -1);
-   char_stat_set(ch, "thirst", -1);
-   char_stat_set(ch, "drunk", -1);
+    char_stat_set(ch, "hunger", -1);
+    char_stat_set(ch, "thirst", -1);
+    char_stat_set(ch, "drunk", -1);
   } else if (IS_BIO(ch) && HAS_GENOME(ch, 3)) {
-   char_stat_set(ch, "hunger", -1);
-   char_stat_set(ch, "drunk", 0);
-   char_stat_set(ch, "thirst", 48);
-   }else if (IS_NAMEK(ch)) {
-   char_stat_set(ch, "hunger", -1);
-   char_stat_set(ch, "drunk", 0);
-   char_stat_set(ch, "thirst", 48);
+    char_stat_set(ch, "hunger", -1);
+    char_stat_set(ch, "drunk", 0);
+    char_stat_set(ch, "thirst", 48);
+  } else if (IS_NAMEK(ch)) {
+    char_stat_set(ch, "hunger", -1);
+    char_stat_set(ch, "drunk", 0);
+    char_stat_set(ch, "thirst", 48);
   } else {
-   char_stat_set(ch, "thirst", 48);
-   char_stat_set(ch, "hunger", 48);
-   char_stat_set(ch, "drunk", 0);
+    char_stat_set(ch, "thirst", 48);
+    char_stat_set(ch, "hunger", 48);
+    char_stat_set(ch, "drunk", 0);
   }
 
   SET_BIT_AR(PRF_FLAGS(ch), PRF_AUTOEXIT);
@@ -281,171 +260,166 @@ void do_start(struct char_data *ch)
   char_stat_set(ch, "skill_slots", 30);
 
   if (GET_RACE(ch) == RACE_HUMAN) {
-   char_stat_mod(ch, "skill_slots", 1);
+    char_stat_mod(ch, "skill_slots", 1);
   } else if (GET_RACE(ch) == RACE_SAIYAN) {
-   char_stat_mod(ch, "skill_slots", -1);
+    char_stat_mod(ch, "skill_slots", -1);
   } else if (GET_RACE(ch) == RACE_TRUFFLE) {
-   char_stat_mod(ch, "skill_slots", 2);
+    char_stat_mod(ch, "skill_slots", 2);
   } else if (GET_RACE(ch) == RACE_HALFBREED) {
-   char_stat_mod(ch, "skill_slots", 1);
+    char_stat_mod(ch, "skill_slots", 1);
   } else if (GET_RACE(ch) == RACE_MAJIN) {
-   char_stat_mod(ch, "skill_slots", -1);
+    char_stat_mod(ch, "skill_slots", -1);
   } else if (GET_RACE(ch) == RACE_KAI) {
-   char_stat_mod(ch, "skill_slots", 4);
+    char_stat_mod(ch, "skill_slots", 4);
   }
-  
 
   if (IS_TSUNA(ch) || IS_KABITO(ch) || IS_NAIL(ch))
-   char_stat_mod(ch, "skill_slots", 5);
+    char_stat_mod(ch, "skill_slots", 5);
 
   if (GET_BONUS(ch, BONUS_GMEMORY))
-   char_stat_mod(ch, "skill_slots", 2);
+    char_stat_mod(ch, "skill_slots", 2);
   if (GET_BONUS(ch, BONUS_BMEMORY))
-   char_stat_mod(ch, "skill_slots", -5);
+    char_stat_mod(ch, "skill_slots", -5);
 
- 
   if (GET_RACE(ch) == RACE_SAIYAN || GET_RACE(ch) == RACE_HALFBREED) {
-    if (GET_RACE(ch) != RACE_HALFBREED || (GET_RACE(ch) == RACE_HALFBREED && RACIAL_PREF(ch) != 1)) {
-     SET_BIT_AR(PLR_FLAGS(ch), PLR_STAIL);
+    if (GET_RACE(ch) != RACE_HALFBREED ||
+        (GET_RACE(ch) == RACE_HALFBREED && RACIAL_PREF(ch) != 1)) {
+      SET_BIT_AR(PLR_FLAGS(ch), PLR_STAIL);
     }
   }
   if (GET_RACE(ch) == RACE_ICER || GET_RACE(ch) == RACE_BIO) {
-     SET_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);
+    SET_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);
   }
   if (GET_RACE(ch) == RACE_MAJIN) {
-		GET_ABSORBS(ch) = 0;
-		GET_INGESTLEARNED(ch) = 0;
-		
-	}
+    GET_ABSORBS(ch) = 0;
+    GET_INGESTLEARNED(ch) = 0;
+  }
   if (GET_RACE(ch) == RACE_BIO) {
-   GET_ABSORBS(ch) = 3;
+    GET_ABSORBS(ch) = 3;
   }
   SET_BIT_AR(PRF_FLAGS(ch), PRF_VIEWORDER);
-    SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPMOVE);
-    SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPKI);
-    SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPEXP);
-    SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPTNL);
+  SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPMOVE);
+  SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPKI);
+  SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPEXP);
+  SET_BIT_AR(PRF_FLAGS(ch), PRF_DISPTNL);
 
   if (!PLR_FLAGGED(ch, PLR_FORGET)) {
-   if (ch->choice == 1) {
-    punch = rand_number(30, 40);
-    SET_SKILL(ch, SKILL_BLOCK, punch);
-   }
-   if (ch->choice == 2) {
-    punch = rand_number(10, 20);
-    SET_SKILL(ch, SKILL_PUNCH, punch);
-   }
-   if (ch->choice == 3) {
-    punch = rand_number(30, 40);
-    SET_SKILL(ch, SKILL_KICK, punch);
-   }
-   if (ch->choice == 4) {
-    punch = rand_number(20, 30);
-    SET_SKILL(ch, SKILL_SLAM, punch);
-   }
-   if (ch->choice == 5) {
-    punch = rand_number(20, 30);
-    SET_SKILL(ch, SKILL_FOCUS, punch);
-   }
-   if (IS_HUMAN(ch)) {
-    punch = rand_number(5, 15);
-    SET_SKILL(ch, SKILL_BUILD, punch);
-   }
-   if (IS_TRUFFLE(ch)) {
-    punch = rand_number(15, 25);
-    SET_SKILL(ch, SKILL_BUILD, punch);
-   }
-   if (IS_KONATSU(ch)) {
-    punch = rand_number(50, 60);
-    SET_SKILL(ch, SKILL_SWORD, punch);
-    punch = rand_number(10, 30);
-    SET_SKILL(ch, SKILL_MOVE_SILENTLY, punch);
-    punch = rand_number(10, 30);
-    SET_SKILL(ch, SKILL_HIDE, punch);
-   }
-   if (IS_TAPION(ch) || IS_GINYU(ch) || IS_DABURA(ch) || IS_KURZAK(ch)) {
-    punch = rand_number(30, 40);
-    if (IS_KURZAK(ch) || IS_TAPION(ch)) {
-     punch += rand_number(5, 10);
+    if (ch->choice == 1) {
+      punch = rand_number(30, 40);
+      SET_SKILL(ch, SKILL_BLOCK, punch);
     }
-    SET_SKILL(ch, SKILL_THROW, punch);
-   }
-   if (IS_KAI(ch) || IS_KANASSAN(ch)) {
-    punch = rand_number(40, 60);
-    SET_SKILL(ch, SKILL_FOCUS, punch);
-   }
-   if (IS_KANASSAN(ch)) {
-    punch = rand_number(40, 60);
-    SET_SKILL(ch, SKILL_CONCENTRATION, punch);
-   }
-   if (IS_KAI(ch)) {
-    punch = rand_number(30, 50);
-    SET_SKILL(ch, SKILL_HEAL, punch);
-   }
-   if (IS_DEMON(ch)) {
-    punch = rand_number(50, 60);
-    SET_SKILL(ch, SKILL_SPEAR, punch);
-    SET_SKILL(ch, SKILL_HONOO, punch);
-   }
+    if (ch->choice == 2) {
+      punch = rand_number(10, 20);
+      SET_SKILL(ch, SKILL_PUNCH, punch);
+    }
+    if (ch->choice == 3) {
+      punch = rand_number(30, 40);
+      SET_SKILL(ch, SKILL_KICK, punch);
+    }
+    if (ch->choice == 4) {
+      punch = rand_number(20, 30);
+      SET_SKILL(ch, SKILL_SLAM, punch);
+    }
+    if (ch->choice == 5) {
+      punch = rand_number(20, 30);
+      SET_SKILL(ch, SKILL_FOCUS, punch);
+    }
+    if (IS_HUMAN(ch)) {
+      punch = rand_number(5, 15);
+      SET_SKILL(ch, SKILL_BUILD, punch);
+    }
+    if (IS_TRUFFLE(ch)) {
+      punch = rand_number(15, 25);
+      SET_SKILL(ch, SKILL_BUILD, punch);
+    }
+    if (IS_KONATSU(ch)) {
+      punch = rand_number(50, 60);
+      SET_SKILL(ch, SKILL_SWORD, punch);
+      punch = rand_number(10, 30);
+      SET_SKILL(ch, SKILL_MOVE_SILENTLY, punch);
+      punch = rand_number(10, 30);
+      SET_SKILL(ch, SKILL_HIDE, punch);
+    }
+    if (IS_TAPION(ch) || IS_GINYU(ch) || IS_DABURA(ch) || IS_KURZAK(ch)) {
+      punch = rand_number(30, 40);
+      if (IS_KURZAK(ch) || IS_TAPION(ch)) {
+        punch += rand_number(5, 10);
+      }
+      SET_SKILL(ch, SKILL_THROW, punch);
+    }
+    if (IS_KAI(ch) || IS_KANASSAN(ch)) {
+      punch = rand_number(40, 60);
+      SET_SKILL(ch, SKILL_FOCUS, punch);
+    }
+    if (IS_KANASSAN(ch)) {
+      punch = rand_number(40, 60);
+      SET_SKILL(ch, SKILL_CONCENTRATION, punch);
+    }
+    if (IS_KAI(ch)) {
+      punch = rand_number(30, 50);
+      SET_SKILL(ch, SKILL_HEAL, punch);
+    }
+    if (IS_DEMON(ch)) {
+      punch = rand_number(50, 60);
+      SET_SKILL(ch, SKILL_SPEAR, punch);
+      SET_SKILL(ch, SKILL_HONOO, punch);
+    }
 
-   punch = 0;
-   punch = rand_number(50, 70);
-   SET_SKILL(ch, SKILL_PUNCH, GET_SKILL_BASE(ch, SKILL_PUNCH) + punch);
+    punch = 0;
+    punch = rand_number(50, 70);
+    SET_SKILL(ch, SKILL_PUNCH, GET_SKILL_BASE(ch, SKILL_PUNCH) + punch);
   } /* End CC skills */
-   else {
-   REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FORGET);
+  else {
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FORGET);
   }
 
-   if (IS_KAI(ch) || IS_KANASSAN(ch)) {
+  if (IS_KAI(ch) || IS_KANASSAN(ch)) {
     punch = rand_number(15, 30);
     SET_SKILL(ch, SKILL_TELEPATHY, punch);
-   }
+  }
 
- 
-
-   if (IS_MAJIN(ch) || IS_NAMEK(ch) || IS_BIO(ch)) {
+  if (IS_MAJIN(ch) || IS_NAMEK(ch) || IS_BIO(ch)) {
     punch = rand_number(10, 16);
     SET_SKILL(ch, SKILL_REGENERATE, punch);
-   }
-   if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_ABSORB)) {
+  }
+  if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_ABSORB)) {
     punch = rand_number(25, 35);
     SET_SKILL(ch, SKILL_ABSORB, punch);
-   }
-   if (IS_BIO(ch)) {
+  }
+  if (IS_BIO(ch)) {
     punch = rand_number(15, 25);
     SET_SKILL(ch, SKILL_ABSORB, punch);
 
-      // Kai Genome bioandroids.
-    if(HAS_GENOME(ch, 7)) {
+    // Kai Genome bioandroids.
+    if (HAS_GENOME(ch, 7)) {
       SET_SKILL(ch, SKILL_TELEPATHY, 30);
       SET_SKILL(ch, SKILL_FOCUS, 30);
     }
-
-   }
-   if (IS_ARLIAN(ch)) {
+  }
+  if (IS_ARLIAN(ch)) {
     punch = rand_number(30, 50);
     SET_SKILL(ch, SKILL_SEISHOU, punch);
-   }
-   if (IS_ICER(ch)) {
+  }
+  if (IS_ICER(ch)) {
     punch = rand_number(20, 30);
     SET_SKILL(ch, SKILL_TAILWHIP, punch);
-   }
+  }
 
   if (GET_CLASS(ch) < 0 || GET_CLASS(ch) > NUM_CLASSES) {
     log("Unknown character class %d in do_start, resetting.", GET_CLASS(ch));
-    //GET_CLASS(ch) = 0;
+    // GET_CLASS(ch) = 0;
   }
   if (GET_ALIGNMENT(ch) < 51 && GET_ALIGNMENT(ch) > -51) {
-   set_title(ch, "the Warrior");
+    set_title(ch, "the Warrior");
   }
   if (GET_ALIGNMENT(ch) >= 51) {
-   set_title(ch, "the Hero");
+    set_title(ch, "the Hero");
   }
   if (GET_ALIGNMENT(ch) <= -51) {
-   set_title(ch, "The Villain");
+    set_title(ch, "The Villain");
   }
   if (GET_GOLD(ch) <= 0) {
-  char_stat_set(ch, "money", dice(3, 6) * 10);
+    char_stat_set(ch, "money", dice(3, 6) * 10);
   }
 
   /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
@@ -488,88 +462,90 @@ void do_start(struct char_data *ch)
   obj = read_object(17, VIRTUAL);
   obj_to_char(obj, ch);
   if (IS_HOSHIJIN(ch)) {
-   obj = read_object(3428, VIRTUAL);
-   obj_to_char(obj, ch);
+    obj = read_object(3428, VIRTUAL);
+    obj_to_char(obj, ch);
   }
   struct obj_data *obj2;
   obj2 = read_object(17998, VIRTUAL);
   obj_to_char(obj2, ch);
 
-      if (IS_TAPION(ch) || IS_GINYU(ch)) {
-       struct obj_data *throw_obj;
-          throw_obj = read_object(19050, VIRTUAL);
-       obj_to_char(throw_obj, ch);
-       if (rand_number(1, 2) == 2) {
-           throw_obj = NULL;
-           throw_obj = read_object(19050, VIRTUAL);
-        obj_to_char(throw_obj, ch);
-       }
-       if (rand_number(1, 2) == 2) {
-           throw_obj = NULL;
-           throw_obj = read_object(19050, VIRTUAL);
-        obj_to_char(throw_obj, ch);
-       }
+  if (IS_TAPION(ch) || IS_GINYU(ch)) {
+    struct obj_data *throw_obj;
+    throw_obj = read_object(19050, VIRTUAL);
+    obj_to_char(throw_obj, ch);
+    if (rand_number(1, 2) == 2) {
+      throw_obj = NULL;
+      throw_obj = read_object(19050, VIRTUAL);
+      obj_to_char(throw_obj, ch);
+    }
+    if (rand_number(1, 2) == 2) {
+      throw_obj = NULL;
+      throw_obj = read_object(19050, VIRTUAL);
+      obj_to_char(throw_obj, ch);
+    }
 
-      } else if (IS_DABURA(ch)) {
-       struct obj_data *throw_obj;
-          throw_obj = read_object(19055, VIRTUAL);
-       obj_to_char(throw_obj, ch);
-          throw_obj = NULL;
-          throw_obj = read_object(19055, VIRTUAL);
-       obj_to_char(throw_obj, ch);
-      }
+  } else if (IS_DABURA(ch)) {
+    struct obj_data *throw_obj;
+    throw_obj = read_object(19055, VIRTUAL);
+    obj_to_char(throw_obj, ch);
+    throw_obj = NULL;
+    throw_obj = read_object(19055, VIRTUAL);
+    obj_to_char(throw_obj, ch);
+  }
 
-  send_to_imm("New character created, %s, by user, %s.", GET_NAME(ch), GET_USER(ch));
+  send_to_imm("New character created, %s, by user, %s.", GET_NAME(ch),
+              GET_USER(ch));
   advance_level(ch, GET_CLASS(ch));
-  /*mudlog(BRF, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s advanced to level %d", GET_NAME(ch), GET_LEVEL(ch));*/
+  /*mudlog(BRF, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "%s advanced to
+   * level %d", GET_NAME(ch), GET_LEVEL(ch));*/
 
   char_stat_set(ch, "powerlevel", MAX(char_stat_get(ch, "powerlevel"), 100L));
   char_stat_set(ch, "ki", MAX(char_stat_get(ch, "ki"), 100L));
   char_stat_set(ch, "stamina", MAX(char_stat_get(ch, "stamina"), 100L));
 
   if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_SENSEM)) {
-   SET_SKILL(ch, SKILL_SENSE, 100);
-   gainBasePL(ch, rand_number(400, 500));
-   gainBaseST(ch, rand_number(400, 500));
-   gainBaseKI(ch, rand_number(400, 500));
+    SET_SKILL(ch, SKILL_SENSE, 100);
+    gainBasePL(ch, rand_number(400, 500));
+    gainBaseST(ch, rand_number(400, 500));
+    gainBaseKI(ch, rand_number(400, 500));
   }
 
-     if (char_stat_get(ch, "strength") > 20) {
-      char_stat_set(ch, "strength", 20);
-     }
-     if (char_stat_get(ch, "strength") < 8) {
-      char_stat_set(ch, "strength", 8);
-     }
-     if (char_stat_get(ch, "constitution") > 20) {
-      char_stat_set(ch, "constitution", 20);
-     }
-     if (char_stat_get(ch, "constitution") < 8) {
-      char_stat_set(ch, "constitution", 8);
-     }
-     if (char_stat_get(ch, "intelligence") > 20) {
-      char_stat_set(ch, "intelligence", 20);
-     }
-     if (char_stat_get(ch, "intelligence") < 8) {
-      char_stat_set(ch, "intelligence", 8);
-     }
-     if (char_stat_get(ch, "speed") > 20) {
-      char_stat_set(ch, "speed", 20);
-     }
-     if (char_stat_get(ch, "speed") < 8) {
-      char_stat_set(ch, "speed", 8);
-     }
-     if (char_stat_get(ch, "agility") > 20) {
-      char_stat_set(ch, "agility", 20);
-     }
-     if (char_stat_get(ch, "agility") < 8) {
-      char_stat_set(ch, "agility", 8);
-     }
-     if (char_stat_get(ch, "wisdom") > 20) {
-      char_stat_set(ch, "wisdom", 20);
-     }
-     if (char_stat_get(ch, "wisdom") < 8) {
-      char_stat_set(ch, "wisdom", 8);
-     }
+  if (char_stat_get(ch, "strength") > 20) {
+    char_stat_set(ch, "strength", 20);
+  }
+  if (char_stat_get(ch, "strength") < 8) {
+    char_stat_set(ch, "strength", 8);
+  }
+  if (char_stat_get(ch, "constitution") > 20) {
+    char_stat_set(ch, "constitution", 20);
+  }
+  if (char_stat_get(ch, "constitution") < 8) {
+    char_stat_set(ch, "constitution", 8);
+  }
+  if (char_stat_get(ch, "intelligence") > 20) {
+    char_stat_set(ch, "intelligence", 20);
+  }
+  if (char_stat_get(ch, "intelligence") < 8) {
+    char_stat_set(ch, "intelligence", 8);
+  }
+  if (char_stat_get(ch, "speed") > 20) {
+    char_stat_set(ch, "speed", 20);
+  }
+  if (char_stat_get(ch, "speed") < 8) {
+    char_stat_set(ch, "speed", 8);
+  }
+  if (char_stat_get(ch, "agility") > 20) {
+    char_stat_set(ch, "agility", 20);
+  }
+  if (char_stat_get(ch, "agility") < 8) {
+    char_stat_set(ch, "agility", 8);
+  }
+  if (char_stat_get(ch, "wisdom") > 20) {
+    char_stat_set(ch, "wisdom", 20);
+  }
+  if (char_stat_get(ch, "wisdom") < 8) {
+    char_stat_set(ch, "wisdom", 8);
+  }
 
   GET_TRANSCLASS(ch) = rand_number(1, 3);
 
@@ -577,8 +553,10 @@ void do_start(struct char_data *ch)
     SET_BIT_AR(PLR_FLAGS(ch), PLR_SITEOK);
 
   if (GET_RACE(ch) == RACE_SAIYAN && rand_number(1, 100) >= 95) {
-     SET_BIT_AR(PLR_FLAGS(ch), PLR_LSSJ);
-     write_to_output(ch->desc, "@GYou were one of the few born a Legendary Super Saiyan!@n\r\n");
+    SET_BIT_AR(PLR_FLAGS(ch), PLR_LSSJ);
+    write_to_output(
+        ch->desc,
+        "@GYou were one of the few born a Legendary Super Saiyan!@n\r\n");
   }
   restoreVitals(ch);
 
@@ -586,142 +564,98 @@ void do_start(struct char_data *ch)
   save_char(ch);
 }
 
+static const int free_start_feats_wizard[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                              FEAT_SCRIBE_SCROLL, 0};
 
-static const int free_start_feats_wizard[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_SCRIBE_SCROLL,
-  0
-};
-
-static const int free_start_feats_sorcerer[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  0
-};
-
+static const int free_start_feats_sorcerer[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                                0};
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
 static const int free_start_feats_cleric[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_HEAVY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_MEDIUM,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
+    FEAT_SIMPLE_WEAPON_PROFICIENCY, FEAT_ARMOR_PROFICIENCY_HEAVY,
+    FEAT_ARMOR_PROFICIENCY_LIGHT,   FEAT_ARMOR_PROFICIENCY_MEDIUM,
+    FEAT_ARMOR_PROFICIENCY_SHIELD,  0};
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-static const int free_start_feats_rogue[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  0
-};
+static const int free_start_feats_rogue[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                             FEAT_ARMOR_PROFICIENCY_LIGHT, 0};
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-static const int free_start_feats_fighter[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_MARTIAL_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_HEAVY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_MEDIUM,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
+static const int free_start_feats_fighter[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                               FEAT_MARTIAL_WEAPON_PROFICIENCY,
+                                               FEAT_ARMOR_PROFICIENCY_HEAVY,
+                                               FEAT_ARMOR_PROFICIENCY_LIGHT,
+                                               FEAT_ARMOR_PROFICIENCY_MEDIUM,
+                                               FEAT_ARMOR_PROFICIENCY_SHIELD,
+                                               0};
 
-static const int free_start_feats_paladin[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_MARTIAL_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_HEAVY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_MEDIUM,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
-
-
+static const int free_start_feats_paladin[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                               FEAT_MARTIAL_WEAPON_PROFICIENCY,
+                                               FEAT_ARMOR_PROFICIENCY_HEAVY,
+                                               FEAT_ARMOR_PROFICIENCY_LIGHT,
+                                               FEAT_ARMOR_PROFICIENCY_MEDIUM,
+                                               FEAT_ARMOR_PROFICIENCY_SHIELD,
+                                               0};
 
 static const int free_start_feats_barbarian[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_MARTIAL_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_MEDIUM,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
+    FEAT_SIMPLE_WEAPON_PROFICIENCY, FEAT_MARTIAL_WEAPON_PROFICIENCY,
+    FEAT_ARMOR_PROFICIENCY_LIGHT,   FEAT_ARMOR_PROFICIENCY_MEDIUM,
+    FEAT_ARMOR_PROFICIENCY_SHIELD,  0};
 
-static const int free_start_feats_bard[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
+static const int free_start_feats_bard[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                            FEAT_ARMOR_PROFICIENCY_LIGHT,
+                                            FEAT_ARMOR_PROFICIENCY_SHIELD, 0};
 
 static const int free_start_feats_ranger[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_MARTIAL_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
-
+    FEAT_SIMPLE_WEAPON_PROFICIENCY, FEAT_MARTIAL_WEAPON_PROFICIENCY,
+    FEAT_ARMOR_PROFICIENCY_LIGHT, FEAT_ARMOR_PROFICIENCY_SHIELD, 0};
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-static const int free_start_feats_monk[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_MARTIAL_WEAPON_PROFICIENCY,
-  FEAT_IMPROVED_GRAPPLE,
-  0
-};
+static const int free_start_feats_monk[] = {FEAT_SIMPLE_WEAPON_PROFICIENCY,
+                                            FEAT_MARTIAL_WEAPON_PROFICIENCY,
+                                            FEAT_IMPROVED_GRAPPLE, 0};
 
 static const int free_start_feats_druid[] = {
-  FEAT_SIMPLE_WEAPON_PROFICIENCY,
-  FEAT_ARMOR_PROFICIENCY_LIGHT,
-  FEAT_ARMOR_PROFICIENCY_MEDIUM,
-  FEAT_ARMOR_PROFICIENCY_SHIELD,
-  0
-};
+    FEAT_SIMPLE_WEAPON_PROFICIENCY, FEAT_ARMOR_PROFICIENCY_LIGHT,
+    FEAT_ARMOR_PROFICIENCY_MEDIUM, FEAT_ARMOR_PROFICIENCY_SHIELD, 0};
 
-static const int no_free_start_feats[] = {
- 0
-};
-
+static const int no_free_start_feats[] = {0};
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
 static const int *free_start_feats[] = {
- /* CLASS_ROSHI	*/ free_start_feats_wizard,
- /* CLASS_PICCOLO	*/ free_start_feats_cleric,
- /* CLASS_KRANE		*/ free_start_feats_rogue,
- /* CLASS_NAIL	*/ free_start_feats_fighter,
- /* CLASS_ANDSIX		*/ free_start_feats_monk,
- /* CLASS_GINYU	*/ free_start_feats_paladin,
- /* CLASS_FRIEZA      */ free_start_feats_sorcerer,
- /* CLASS_TAPION         */ free_start_feats_druid,
- /* CLASS_ANDSIX          */ free_start_feats_bard,
- /* CLASS_DABURA        */ free_start_feats_ranger,
- /* CLASS_KABITO     */ free_start_feats_barbarian,
- /* CLASS_ARCANE_AR	*/ no_free_start_feats,
- /* CLASS_ARCANE_TR	*/ no_free_start_feats,
- /* CLASS_ARCHMAGE	*/ free_start_feats_wizard,
- /* CLASS_ASSASSIN	*/ no_free_start_feats,
- /* CLASS_BLACKGUARD	*/ no_free_start_feats,
- /* CLASS_DRAGON_D 	*/ no_free_start_feats,
- /* CLASS_DUELIST       */ no_free_start_feats,
- /* CLASS_DWARVEN_DEF   */ no_free_start_feats,
- /* CLASS_ELDRITCH_KN   */ no_free_start_feats,
- /* CLASS_HIEROPHANT    */ no_free_start_feats,
- /* CLASS_HORIZON_WALK  */ no_free_start_feats,
- /* CLASS_LOREMASTER    */ no_free_start_feats,
- /* CLASS_MYSTIC_THEU   */ no_free_start_feats,
- /* CLASS_SHADOWDANCER  */ no_free_start_feats,
- /* CLASS_THAUMATURGIST */ no_free_start_feats
-};
+    /* CLASS_ROSHI	*/ free_start_feats_wizard,
+    /* CLASS_PICCOLO	*/ free_start_feats_cleric,
+    /* CLASS_KRANE		*/ free_start_feats_rogue,
+    /* CLASS_NAIL	*/ free_start_feats_fighter,
+    /* CLASS_ANDSIX		*/ free_start_feats_monk,
+    /* CLASS_GINYU	*/ free_start_feats_paladin,
+    /* CLASS_FRIEZA      */ free_start_feats_sorcerer,
+    /* CLASS_TAPION         */ free_start_feats_druid,
+    /* CLASS_ANDSIX          */ free_start_feats_bard,
+    /* CLASS_DABURA        */ free_start_feats_ranger,
+    /* CLASS_KABITO     */ free_start_feats_barbarian,
+    /* CLASS_ARCANE_AR	*/ no_free_start_feats,
+    /* CLASS_ARCANE_TR	*/ no_free_start_feats,
+    /* CLASS_ARCHMAGE	*/ free_start_feats_wizard,
+    /* CLASS_ASSASSIN	*/ no_free_start_feats,
+    /* CLASS_BLACKGUARD	*/ no_free_start_feats,
+    /* CLASS_DRAGON_D 	*/ no_free_start_feats,
+    /* CLASS_DUELIST       */ no_free_start_feats,
+    /* CLASS_DWARVEN_DEF   */ no_free_start_feats,
+    /* CLASS_ELDRITCH_KN   */ no_free_start_feats,
+    /* CLASS_HIEROPHANT    */ no_free_start_feats,
+    /* CLASS_HORIZON_WALK  */ no_free_start_feats,
+    /* CLASS_LOREMASTER    */ no_free_start_feats,
+    /* CLASS_MYSTIC_THEU   */ no_free_start_feats,
+    /* CLASS_SHADOWDANCER  */ no_free_start_feats,
+    /* CLASS_THAUMATURGIST */ no_free_start_feats};
 
 /*
  * This function controls the change to maxmove, maxmana, and maxhp for
  * each class every time they gain a level.
  */
- /* Rillao: transloc, add new transes here */
-void advance_level(struct char_data *ch, int whichclass)
-{
+/* Rillao: transloc, add new transes here */
+void advance_level(struct char_data *ch, int whichclass) {
   int64_t add_hp = 0, add_move = 0, add_mana = 0, add_ki = 0;
   int add_prac = 1, add_train, i, j = 0, ranks;
   int add_gen_feats = 0, add_class_feats = 0;
@@ -733,7 +667,8 @@ void advance_level(struct char_data *ch, int whichclass)
   }
 
   if (!CONFIG_ALLOW_MULTICLASS && whichclass != GET_CLASS(ch)) {
-    log("Attempt to gain a second class without multiclass enabled for %s", GET_NAME(ch));
+    log("Attempt to gain a second class without multiclass enabled for %s",
+        GET_NAME(ch));
     whichclass = GET_CLASS(ch);
   }
   ranks = char_stat_get(ch, "level");
@@ -792,8 +727,8 @@ void advance_level(struct char_data *ch, int whichclass)
       break;
     case CLASS_DWARVEN_DEFENDER:
     case CLASS_MYSTIC_THEURGE:
-     if (!(j % 6))
-       add_class_feats++;
+      if (!(j % 6))
+        add_class_feats++;
       break;
     default:
       if (!(j % 3))
@@ -821,218 +756,210 @@ void advance_level(struct char_data *ch, int whichclass)
 
   /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
   if (GET_LEVEL(ch) >= 1) {
-  double pl_percent = 10, ki_percent = 10, st_percent = 10, prac_reward = GET_WIS(ch);
-  
-  if (prac_reward < 10) {
-   prac_reward = 10;
-  }
+    double pl_percent = 10, ki_percent = 10, st_percent = 10,
+           prac_reward = GET_WIS(ch);
 
-  if (GET_LEVEL(ch) >= 91) {
-   pl_percent -= 7.2;
-   ki_percent -= 7.2;
-   st_percent -= 7.2;
-  } else if (GET_LEVEL(ch) >= 81) {
-   pl_percent -= 5.8;
-   ki_percent -= 5.8;
-   st_percent -= 5.8; 
-  } else if (GET_LEVEL(ch) >= 71) {
-   pl_percent -= 5;
-   ki_percent -= 5;
-   st_percent -= 5; 
-  } else if (GET_LEVEL(ch) >= 61) {
-   pl_percent -= 4;
-   ki_percent -= 4;
-   st_percent -= 4; 
-  } else if (GET_LEVEL(ch) >= 51) {
-   pl_percent -= 3;
-   ki_percent -= 3;
-   st_percent -= 3; 
-  } else if (GET_LEVEL(ch) >= 41) {
-   pl_percent -= 1.7;
-   ki_percent -= 1.7;
-   st_percent -= 1.7; 
-  } else if (GET_LEVEL(ch) >= 31) {
-   pl_percent -= 0.8;
-   ki_percent -= 0.8;
-   st_percent -= 0.8; 
-  } else if (GET_LEVEL(ch) >= 21) {
-   pl_percent -= 0.35;
-   ki_percent -= 0.35;
-   st_percent -= 0.35; 
-  } else if (GET_LEVEL(ch) >= 11) {
-   pl_percent -= 0.15;
-   ki_percent -= 0.15;
-   st_percent -= 0.15;
-  }
+    if (prac_reward < 10) {
+      prac_reward = 10;
+    }
 
-  switch (GET_RACE(ch)) {
+    if (GET_LEVEL(ch) >= 91) {
+      pl_percent -= 7.2;
+      ki_percent -= 7.2;
+      st_percent -= 7.2;
+    } else if (GET_LEVEL(ch) >= 81) {
+      pl_percent -= 5.8;
+      ki_percent -= 5.8;
+      st_percent -= 5.8;
+    } else if (GET_LEVEL(ch) >= 71) {
+      pl_percent -= 5;
+      ki_percent -= 5;
+      st_percent -= 5;
+    } else if (GET_LEVEL(ch) >= 61) {
+      pl_percent -= 4;
+      ki_percent -= 4;
+      st_percent -= 4;
+    } else if (GET_LEVEL(ch) >= 51) {
+      pl_percent -= 3;
+      ki_percent -= 3;
+      st_percent -= 3;
+    } else if (GET_LEVEL(ch) >= 41) {
+      pl_percent -= 1.7;
+      ki_percent -= 1.7;
+      st_percent -= 1.7;
+    } else if (GET_LEVEL(ch) >= 31) {
+      pl_percent -= 0.8;
+      ki_percent -= 0.8;
+      st_percent -= 0.8;
+    } else if (GET_LEVEL(ch) >= 21) {
+      pl_percent -= 0.35;
+      ki_percent -= 0.35;
+      st_percent -= 0.35;
+    } else if (GET_LEVEL(ch) >= 11) {
+      pl_percent -= 0.15;
+      ki_percent -= 0.15;
+      st_percent -= 0.15;
+    }
+
+    switch (GET_RACE(ch)) {
     case RACE_HUMAN:
-     ki_percent += 3;
-     break;
+      ki_percent += 3;
+      break;
     case RACE_SAIYAN:
     case RACE_MAJIN:
-     pl_percent += 3;
-     break;
+      pl_percent += 3;
+      break;
     case RACE_MUTANT:
-     st_percent += 3;
-     break;
+      st_percent += 3;
+      break;
     case RACE_HALFBREED:
-     pl_percent += 1.5;
-     ki_percent += 1.5;
-     prac_reward -= prac_reward * 0.4;
-     break;
+      pl_percent += 1.5;
+      ki_percent += 1.5;
+      prac_reward -= prac_reward * 0.4;
+      break;
     case RACE_TRUFFLE:
-     prac_reward += prac_reward * 0.5;
-     break;
-   }
+      prac_reward += prac_reward * 0.5;
+      break;
+    }
 
-   if (!IS_HUMAN(ch)) {
-    add_hp = ((getBasePL(ch)) * 0.01) * pl_percent;
-   } else if (IS_HUMAN(ch)) {
-    add_hp = (((getBasePL(ch)) * 0.01) * pl_percent) * 0.8;
-   }
-   add_mana = ((getBaseKI(ch)) * 0.01) * ki_percent;
-   add_move = ((getBaseST(ch)) * 0.01) * st_percent;
-   add_prac = prac_reward + GET_INT(ch);
+    if (!IS_HUMAN(ch)) {
+      add_hp = ((getBasePL(ch)) * 0.01) * pl_percent;
+    } else if (IS_HUMAN(ch)) {
+      add_hp = (((getBasePL(ch)) * 0.01) * pl_percent) * 0.8;
+    }
+    add_mana = ((getBaseKI(ch)) * 0.01) * ki_percent;
+    add_move = ((getBaseST(ch)) * 0.01) * st_percent;
+    add_prac = prac_reward + GET_INT(ch);
   }
   if (add_hp >= 300000 && add_hp < 600000) {
-   add_hp *= .75;
-   if (add_hp < 300000) {
-    add_hp = rand_number(300000, 330000);
-   }
-  }
-  else if (add_hp >= 600000 && add_hp < 1000000) {
-   add_hp *= .70;
-   if (add_hp < 600000) {
-    add_hp = rand_number(600000, 650000);
-   }
-  }
-  else if (add_hp >= 1000000 && add_hp < 2000000) {
-   add_hp *= .65;
-   if (add_hp < 1000000) {
-    add_hp = rand_number(1000000, 1250000);
-   }
-  }
-  else if (add_hp >= 2000000) {
-   add_hp *= .45;
-   if (add_hp < 2000000) {
-    add_hp = rand_number(2000000, 2250000);
-   }
+    add_hp *= .75;
+    if (add_hp < 300000) {
+      add_hp = rand_number(300000, 330000);
+    }
+  } else if (add_hp >= 600000 && add_hp < 1000000) {
+    add_hp *= .70;
+    if (add_hp < 600000) {
+      add_hp = rand_number(600000, 650000);
+    }
+  } else if (add_hp >= 1000000 && add_hp < 2000000) {
+    add_hp *= .65;
+    if (add_hp < 1000000) {
+      add_hp = rand_number(1000000, 1250000);
+    }
+  } else if (add_hp >= 2000000) {
+    add_hp *= .45;
+    if (add_hp < 2000000) {
+      add_hp = rand_number(2000000, 2250000);
+    }
   }
   if (add_hp >= 15000000) {
-   add_hp = 15000000;
+    add_hp = 15000000;
   }
   if (add_move >= 300000 && add_move < 600000) {
-   add_move *= .75;
-   if (add_move < 300000) {
-    add_move = rand_number(300000, 330000);
-   }
-  }
-  else if (add_move >= 600000 && add_move < 1000000) {
-   add_move *= .70;
-   if (add_move < 600000) {
-    add_move = rand_number(600000, 650000);
-   }
-  }
-  else if (add_move >= 1000000 && add_move < 2000000) {
-   add_move *= .65;
-   if (add_move < 1000000) {
-    add_move = rand_number(1000000, 1250000);
-   }
-  }
-  else if (add_move >= 2000000) {
-   add_move *= .45;
-   if (add_move < 2000000) {
-    add_move = rand_number(2000000, 2250000);
-   }
+    add_move *= .75;
+    if (add_move < 300000) {
+      add_move = rand_number(300000, 330000);
+    }
+  } else if (add_move >= 600000 && add_move < 1000000) {
+    add_move *= .70;
+    if (add_move < 600000) {
+      add_move = rand_number(600000, 650000);
+    }
+  } else if (add_move >= 1000000 && add_move < 2000000) {
+    add_move *= .65;
+    if (add_move < 1000000) {
+      add_move = rand_number(1000000, 1250000);
+    }
+  } else if (add_move >= 2000000) {
+    add_move *= .45;
+    if (add_move < 2000000) {
+      add_move = rand_number(2000000, 2250000);
+    }
   }
   if (add_move >= 15000000) {
-   add_move = 15000000;
+    add_move = 15000000;
   }
   if (add_mana >= 300000 && add_mana < 600000) {
-   add_mana *= .75;
-   if (add_mana < 300000) {
-    add_mana = rand_number(300000, 330000);
-   }
-  }
-  else if (add_mana >= 600000 && add_mana < 1000000) {
-   add_mana *= .70;
-   if (add_mana < 600000) {
-    add_mana = rand_number(600000, 650000);
-   }
-  }
-  else if (add_mana >= 1000000 && add_mana < 2000000) {
-   add_mana *= .65;
-   if (add_mana < 1000000) {
-    add_mana = rand_number(1000000, 1250000);
-   }
-  }
-  else if (add_mana >= 2000000) {
-   add_mana *= .45;
-   if (add_mana < 2000000) {
-    add_mana = rand_number(2000000, 2250000);
-   }
+    add_mana *= .75;
+    if (add_mana < 300000) {
+      add_mana = rand_number(300000, 330000);
+    }
+  } else if (add_mana >= 600000 && add_mana < 1000000) {
+    add_mana *= .70;
+    if (add_mana < 600000) {
+      add_mana = rand_number(600000, 650000);
+    }
+  } else if (add_mana >= 1000000 && add_mana < 2000000) {
+    add_mana *= .65;
+    if (add_mana < 1000000) {
+      add_mana = rand_number(1000000, 1250000);
+    }
+  } else if (add_mana >= 2000000) {
+    add_mana *= .45;
+    if (add_mana < 2000000) {
+      add_mana = rand_number(2000000, 2250000);
+    }
   }
   if (add_mana >= 15000000) {
-   add_mana = 15000000;
+    add_mana = 15000000;
   }
   switch (GET_LEVEL(ch)) {
-   case 5:
+  case 5:
     add_hp += rand_number(600, 1000);
     add_move += rand_number(600, 1000);
     add_mana += rand_number(600, 1000);
     break;
-   case 10:
+  case 10:
     add_hp += rand_number(5000, 8000);
     add_move += rand_number(5000, 8000);
     add_mana += rand_number(5000, 8000);
     break;
-   case 20:
+  case 20:
     add_hp += rand_number(15000, 18000);
     add_move += rand_number(15000, 18000);
     add_mana += rand_number(15000, 18000);
     break;
-   case 30:
+  case 30:
     add_hp += rand_number(20000, 30000);
     add_move += rand_number(20000, 30000);
     add_mana += rand_number(20000, 30000);
     break;
-   case 40:
+  case 40:
     add_hp += rand_number(50000, 60000);
     add_move += rand_number(50000, 60000);
     add_mana += rand_number(50000, 60000);
     break;
-   case 50:
+  case 50:
     add_hp += rand_number(60000, 70000);
     add_move += rand_number(60000, 70000);
     add_mana += rand_number(60000, 70000);
     break;
-   case 60:
+  case 60:
     add_hp += rand_number(80000, 100000);
     add_move += rand_number(80000, 100000);
     add_mana += rand_number(80000, 100000);
     break;
-   case 70:
+  case 70:
     add_hp += rand_number(100000, 150000);
     add_move += rand_number(100000, 150000);
     add_mana += rand_number(100000, 150000);
     break;
-   case 80:
+  case 80:
     add_hp += rand_number(150000, 200000);
     add_move += rand_number(150000, 200000);
     add_mana += rand_number(150000, 200000);
     break;
-   case 90:
+  case 90:
     add_hp += rand_number(150000, 200000);
     add_move += rand_number(150000, 200000);
     add_mana += rand_number(150000, 200000);
     break;
-   case 99:
+  case 99:
     add_hp += rand_number(1500000, 2000000);
     add_move += rand_number(1500000, 2000000);
     add_mana += rand_number(1500000, 2000000);
     break;
-   case 100:
+  case 100:
     add_hp += rand_number(5000000, 6000000);
     add_move += rand_number(5000000, 6000000);
     add_mana += rand_number(5000000, 6000000);
@@ -1052,174 +979,193 @@ void advance_level(struct char_data *ch, int whichclass)
   if (GET_LEVEL(ch) > 1) {
     /* blah */
   } else {
-      gainBasePL(ch, rand_number(1, 20));
-      char_stat_set(ch, "powerlevel", MAX(char_stat_get(ch, "powerlevel"), 250L));
-      char_stat_set(ch, "ki", MAX(char_stat_get(ch, "ki"), 250L));
-      char_stat_set(ch, "stamina", MAX(char_stat_get(ch, "stamina"), 250L));
+    gainBasePL(ch, rand_number(1, 20));
+    char_stat_set(ch, "powerlevel", MAX(char_stat_get(ch, "powerlevel"), 250L));
+    char_stat_set(ch, "ki", MAX(char_stat_get(ch, "ki"), 250L));
+    char_stat_set(ch, "stamina", MAX(char_stat_get(ch, "stamina"), 250L));
 
     add_prac = 5;
     if (PLR_FLAGGED(ch, PLR_SKILLP)) {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_SKILLP);
-    add_prac *= 5;
-    }
-    else {
-    add_prac *= 2;
+      REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_SKILLP);
+      add_prac *= 5;
+    } else {
+      add_prac *= 2;
     }
   }
 
   /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
   if (rand_number(1, 4) == 4) {
-  send_to_char(ch, "@D[@mPractice Session Bonus!@D]@n\r\n");
-  add_prac += rand_number(4, 12);
+    send_to_char(ch, "@D[@mPractice Session Bonus!@D]@n\r\n");
+    add_prac += rand_number(4, 12);
   }
 
   if ((IS_DEMON(ch) || IS_KANASSAN(ch)) && GET_LEVEL(ch) > 80) {
-   add_hp *= 2;
-   add_mana *= 2;
-   add_move *= 2;
-  }
-  else if ((IS_DEMON(ch) || IS_KANASSAN(ch)) && GET_LEVEL(ch) > 60) {
-   add_hp *= 1.75;
-   add_mana *= 1.75;
-   add_move *= 1.75;
-  }
-  else if ((IS_DEMON(ch) || IS_KANASSAN(ch)) && GET_LEVEL(ch) > 50) {
-   add_hp *= 1.5;
-   add_mana *= 1.5;
-   add_move *= 1.5;
+    add_hp *= 2;
+    add_mana *= 2;
+    add_move *= 2;
+  } else if ((IS_DEMON(ch) || IS_KANASSAN(ch)) && GET_LEVEL(ch) > 60) {
+    add_hp *= 1.75;
+    add_mana *= 1.75;
+    add_move *= 1.75;
+  } else if ((IS_DEMON(ch) || IS_KANASSAN(ch)) && GET_LEVEL(ch) > 50) {
+    add_hp *= 1.5;
+    add_mana *= 1.5;
+    add_move *= 1.5;
   }
   /* Rillao: transloc, add new transes here */
   else if ((IS_DEMON(ch) || IS_KANASSAN(ch)) && GET_LEVEL(ch) > 40) {
-   add_hp *= 1.25;
-   add_mana *= 1.25;
-   add_move *= 1.25;
+    add_hp *= 1.25;
+    add_mana *= 1.25;
+    add_move *= 1.25;
   }
   char_stat_mod(ch, "practices", add_prac);
-   gainBasePLTransformed(ch, add_hp, true);
-   gainBaseKITransformed(ch, add_mana, true);
-   gainBaseSTTransformed(ch, add_move, true);
+  gainBasePLTransformed(ch, add_hp, true);
+  gainBaseKITransformed(ch, add_mana, true);
+  gainBaseSTTransformed(ch, add_move, true);
   int nhp = add_hp;
   int nma = add_mana;
   int nmo = add_move;
- add_hp = nhp;
- add_mana = nma;
- add_move = nmo;
+  add_hp = nhp;
+  add_mana = nma;
+  add_move = nmo;
 
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
     for (i = 0; i < 3; i++) {
-      const char *condition_name = (i == DRUNK) ? "drunk" : (i == HUNGER) ? "hunger" : "thirst";
+      const char *condition_name = (i == DRUNK)    ? "drunk"
+                                   : (i == HUNGER) ? "hunger"
+                                                   : "thirst";
       char_stat_set(ch, condition_name, -1);
     }
     SET_BIT_AR(PRF_FLAGS(ch), PRF_HOLYLIGHT);
   }
 
-  sprintf(buf, "@D[@YGain@D: @RPl@D(@G%s@D) @gSt@D(@G%s@D) @CKi@D(@G%s@D) @bPS@D(@G%s@D)]", add_commas(add_hp), add_commas(add_move), add_commas(add_mana), add_commas(add_prac));
-  if (GET_BONUS(ch, BONUS_GMEMORY) && (GET_LEVEL(ch) == 20 || GET_LEVEL(ch) == 40 || GET_LEVEL(ch) == 60 || GET_LEVEL(ch) == 80 || GET_LEVEL(ch) == 100)) {
-   char_stat_mod(ch, "skill_slots", 1);
-   send_to_char(ch, "@CYou feel like you could remember a new skill!@n\r\n");
+  sprintf(buf,
+          "@D[@YGain@D: @RPl@D(@G%s@D) @gSt@D(@G%s@D) @CKi@D(@G%s@D) "
+          "@bPS@D(@G%s@D)]",
+          add_commas(add_hp), add_commas(add_move), add_commas(add_mana),
+          add_commas(add_prac));
+  if (GET_BONUS(ch, BONUS_GMEMORY) &&
+      (GET_LEVEL(ch) == 20 || GET_LEVEL(ch) == 40 || GET_LEVEL(ch) == 60 ||
+       GET_LEVEL(ch) == 80 || GET_LEVEL(ch) == 100)) {
+    char_stat_mod(ch, "skill_slots", 1);
+    send_to_char(ch, "@CYou feel like you could remember a new skill!@n\r\n");
   }
   if (IS_NAMEK(ch) && rand_number(1, 100) <= 5) {
-   char_stat_mod(ch, "skill_slots", 1);
-   send_to_char(ch, "@CYou feel as though you could learn another skill.@n\r\n");
+    char_stat_mod(ch, "skill_slots", 1);
+    send_to_char(ch,
+                 "@CYou feel as though you could learn another skill.@n\r\n");
   }
   if (IS_ICER(ch) && rand_number(1, 100) <= 25) {
-   bring_to_cap(ch);
-   send_to_char(ch, "@GYou feel your body obtain its current optimal strength!@n\r\n");
+    bring_to_cap(ch);
+    send_to_char(
+        ch, "@GYou feel your body obtain its current optimal strength!@n\r\n");
   }
 
   int gain_stat = FALSE;
 
   switch (GET_LEVEL(ch)) {
-   case 10:
-   case 20:
-   case 30:
-   case 40:
-   case 50:
-   case 60:
-   case 70:
-   case 80:
-   case 90:
-   case 100:
+  case 10:
+  case 20:
+  case 30:
+  case 40:
+  case 50:
+  case 60:
+  case 70:
+  case 80:
+  case 90:
+  case 100:
     gain_stat = TRUE;
     break;
   }
 
   if (gain_stat == TRUE) {
-   int raise = FALSE, stat_fail = 0;
-   if (IS_KONATSU(ch)) {
-    while (raise == FALSE) {
-     if (char_stat_get(ch, "agility") < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
-      if (char_stat_get(ch, "agility") < 45 || GET_BONUS(ch, BONUS_CLUMSY) <= 0) { 
-       char_stat_mod(ch, "agility", 1);
-       send_to_char(ch, "@GYou feel your agility increase!@n\r\n");
-       raise = TRUE;
-      } else {
-       stat_fail += 1;
-      }
-     } else if (char_stat_get(ch, "speed") < 100 && raise == FALSE && stat_fail < 2) {
-      if (char_stat_get(ch, "speed") < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
-       char_stat_mod(ch, "speed", 1);
-       send_to_char(ch, "@GYou feel your speed increase!@n\r\n");
-       raise = TRUE;
-      } else {
-       stat_fail += 2;
-      }
-     } else if (stat_fail == 3) {
-      send_to_char(ch, "@RBoth agility and speed are capped!@n");
-      raise = TRUE;
-     }
-    } // End while
-   } // End Konatsu
+    int raise = FALSE, stat_fail = 0;
+    if (IS_KONATSU(ch)) {
+      while (raise == FALSE) {
+        if (char_stat_get(ch, "agility") < 100 && rand_number(1, 2) == 2 &&
+            stat_fail != 1) {
+          if (char_stat_get(ch, "agility") < 45 ||
+              GET_BONUS(ch, BONUS_CLUMSY) <= 0) {
+            char_stat_mod(ch, "agility", 1);
+            send_to_char(ch, "@GYou feel your agility increase!@n\r\n");
+            raise = TRUE;
+          } else {
+            stat_fail += 1;
+          }
+        } else if (char_stat_get(ch, "speed") < 100 && raise == FALSE &&
+                   stat_fail < 2) {
+          if (char_stat_get(ch, "speed") < 45 ||
+              GET_BONUS(ch, BONUS_SLOW) > 0) {
+            char_stat_mod(ch, "speed", 1);
+            send_to_char(ch, "@GYou feel your speed increase!@n\r\n");
+            raise = TRUE;
+          } else {
+            stat_fail += 2;
+          }
+        } else if (stat_fail == 3) {
+          send_to_char(ch, "@RBoth agility and speed are capped!@n");
+          raise = TRUE;
+        }
+      } // End while
+    } // End Konatsu
 
-   else if (IS_MUTANT(ch)) {
-    while (raise == FALSE) {
-     if (char_stat_get(ch, "constitution") < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
-      if (char_stat_get(ch, "constitution") < 45 || GET_BONUS(ch, BONUS_FRAIL) <= 0) { 
-       char_stat_mod(ch, "constitution", 1);
-       send_to_char(ch, "@GYou feel your constitution increase!@n\r\n");
-       raise = TRUE;
-      } else {
-       stat_fail += 1;
-      }
-     } else if (char_stat_get(ch, "speed") < 100 && raise == FALSE && stat_fail < 2) {
-      if (char_stat_get(ch, "speed") < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
-       char_stat_mod(ch, "speed", 1);
-       send_to_char(ch, "@GYou feel your speed increase!@n\r\n");
-       raise = TRUE;
-      } else {
-       stat_fail += 2;
-      }
-     } else if (stat_fail == 3) {
-      send_to_char(ch, "@RBoth constitution and speed are capped!@n");
-      raise = TRUE;
-     }
-    } // End while
-   } // End Mutant
+    else if (IS_MUTANT(ch)) {
+      while (raise == FALSE) {
+        if (char_stat_get(ch, "constitution") < 100 && rand_number(1, 2) == 2 &&
+            stat_fail != 1) {
+          if (char_stat_get(ch, "constitution") < 45 ||
+              GET_BONUS(ch, BONUS_FRAIL) <= 0) {
+            char_stat_mod(ch, "constitution", 1);
+            send_to_char(ch, "@GYou feel your constitution increase!@n\r\n");
+            raise = TRUE;
+          } else {
+            stat_fail += 1;
+          }
+        } else if (char_stat_get(ch, "speed") < 100 && raise == FALSE &&
+                   stat_fail < 2) {
+          if (char_stat_get(ch, "speed") < 45 ||
+              GET_BONUS(ch, BONUS_SLOW) > 0) {
+            char_stat_mod(ch, "speed", 1);
+            send_to_char(ch, "@GYou feel your speed increase!@n\r\n");
+            raise = TRUE;
+          } else {
+            stat_fail += 2;
+          }
+        } else if (stat_fail == 3) {
+          send_to_char(ch, "@RBoth constitution and speed are capped!@n");
+          raise = TRUE;
+        }
+      } // End while
+    } // End Mutant
 
-   else if (IS_HOSHIJIN(ch)) {
-    while (raise == FALSE) {
-     if (char_stat_get(ch, "strength") < 100 && rand_number(1, 2) == 2 && stat_fail != 1) {
-      if (char_stat_get(ch, "strength") < 45 || GET_BONUS(ch, BONUS_WIMP) <= 0) { 
-       char_stat_mod(ch, "strength", 1);
-       send_to_char(ch, "@GYou feel your strength increase!@n\r\n");
-       raise = TRUE;
-      } else {
-       stat_fail += 1;
-      }
-     } else if (char_stat_get(ch, "agility") < 100 && raise == FALSE && stat_fail < 2) {
-      if (char_stat_get(ch, "agility") < 45 || GET_BONUS(ch, BONUS_SLOW) > 0) {
-       char_stat_mod(ch, "agility", 1);
-       send_to_char(ch, "@GYou feel your agility increase!@n\r\n");
-       raise = TRUE;
-      } else {
-       stat_fail += 2;
-      }
-     } else if (stat_fail == 3) {
-      send_to_char(ch, "@RBoth strength and agility are capped!@n");
-      raise = TRUE;
-     }
-    } // End while
-   } // End Mutant
+    else if (IS_HOSHIJIN(ch)) {
+      while (raise == FALSE) {
+        if (char_stat_get(ch, "strength") < 100 && rand_number(1, 2) == 2 &&
+            stat_fail != 1) {
+          if (char_stat_get(ch, "strength") < 45 ||
+              GET_BONUS(ch, BONUS_WIMP) <= 0) {
+            char_stat_mod(ch, "strength", 1);
+            send_to_char(ch, "@GYou feel your strength increase!@n\r\n");
+            raise = TRUE;
+          } else {
+            stat_fail += 1;
+          }
+        } else if (char_stat_get(ch, "agility") < 100 && raise == FALSE &&
+                   stat_fail < 2) {
+          if (char_stat_get(ch, "agility") < 45 ||
+              GET_BONUS(ch, BONUS_SLOW) > 0) {
+            char_stat_mod(ch, "agility", 1);
+            send_to_char(ch, "@GYou feel your agility increase!@n\r\n");
+            raise = TRUE;
+          } else {
+            stat_fail += 2;
+          }
+        } else if (stat_fail == 3) {
+          send_to_char(ch, "@RBoth strength and agility are capped!@n");
+          raise = TRUE;
+        }
+      } // End while
+    } // End Mutant
 
   } // End stat bonus on level gain
 
@@ -1227,69 +1173,69 @@ void advance_level(struct char_data *ch, int whichclass)
   send_to_char(ch, "%s", buf);
 
   if (GET_SKILL(ch, SKILL_POTENTIAL) && rand_number(1, 4) == 4) {
-   send_to_char(ch, "You can now perform another Potential Release.\r\n");
-   GET_BOOSTS(ch) += 1;   
+    send_to_char(ch, "You can now perform another Potential Release.\r\n");
+    GET_BOOSTS(ch) += 1;
   }
   if (IS_MAJIN(ch) && GET_LEVEL(ch) == 25) {
-   send_to_char(ch, "You can now perform another Majinization.\r\n");
-   GET_BOOSTS(ch) += 1;
+    send_to_char(ch, "You can now perform another Majinization.\r\n");
+    GET_BOOSTS(ch) += 1;
   }
   if (IS_MAJIN(ch) && GET_LEVEL(ch) == 50) {
-   send_to_char(ch, "You can now perform another Majinization.\r\n");
-   GET_BOOSTS(ch) += 1;
+    send_to_char(ch, "You can now perform another Majinization.\r\n");
+    GET_BOOSTS(ch) += 1;
   }
   if (IS_MAJIN(ch) && GET_LEVEL(ch) == 75) {
-   send_to_char(ch, "You can now perform another Majinization.\r\n");
-   GET_BOOSTS(ch) += 1;
+    send_to_char(ch, "You can now perform another Majinization.\r\n");
+    GET_BOOSTS(ch) += 1;
   }
   if (IS_MAJIN(ch) && GET_LEVEL(ch) == 100) {
-   send_to_char(ch, "You can now perform another Majinization.\r\n");
-   GET_BOOSTS(ch) += 1;
+    send_to_char(ch, "You can now perform another Majinization.\r\n");
+    GET_BOOSTS(ch) += 1;
   }
 
-   switch (GET_LEVEL(ch)) {
-    case 10:
-    case 20:
-    case 30:
-    case 40:
-    case 50:
-    case 60:
-    case 70:
-    case 80:
-    case 90:
-    case 100:
-     if (GET_BONUS(ch, BONUS_BRAWNY) > 0) {
+  switch (GET_LEVEL(ch)) {
+  case 10:
+  case 20:
+  case 30:
+  case 40:
+  case 50:
+  case 60:
+  case 70:
+  case 80:
+  case 90:
+  case 100:
+    if (GET_BONUS(ch, BONUS_BRAWNY) > 0) {
       char_stat_mod(ch, "strength", 2);
       send_to_char(ch, "@GYour muscles have grown stronger!@n\r\n");
-     }
-     if (GET_BONUS(ch, BONUS_SCHOLARLY) > 0) {
+    }
+    if (GET_BONUS(ch, BONUS_SCHOLARLY) > 0) {
       char_stat_mod(ch, "intelligence", 2);
       send_to_char(ch, "@GYour mind has grown sharper!@n\r\n");
-     }
-     if (GET_BONUS(ch, BONUS_SAGE) > 0) {
+    }
+    if (GET_BONUS(ch, BONUS_SAGE) > 0) {
       char_stat_mod(ch, "wisdom", 2);
       send_to_char(ch, "@GYour understanding about life has improved!@n\r\n");
-     }
-     if (GET_BONUS(ch, BONUS_AGILE) > 0) {
+    }
+    if (GET_BONUS(ch, BONUS_AGILE) > 0) {
       char_stat_mod(ch, "agility", 2);
       send_to_char(ch, "@GYour body has grown more agile!@n\r\n");
-     }
-     if (GET_BONUS(ch, BONUS_QUICK) > 0) {
+    }
+    if (GET_BONUS(ch, BONUS_QUICK) > 0) {
       char_stat_mod(ch, "speed", 2);
       send_to_char(ch, "@GYou feel like your speed has improved!@n\r\n");
-     }
-     if (GET_BONUS(ch, BONUS_STURDY) > 0) {
+    }
+    if (GET_BONUS(ch, BONUS_STURDY) > 0) {
       char_stat_mod(ch, "constitution", 2);
       send_to_char(ch, "@GYour body feels tougher now!@n\r\n");
-     }
-     break;
-   }
+    }
+    break;
+  }
 
   if (GET_LEVEL(ch) == 1) {
     char_stat_set(ch, "armor", 0);
   }
   if (GET_LEVEL(ch) == 2) {
-   ERAPLAYERS += 1;
+    ERAPLAYERS += 1;
   }
   snoop_check(ch);
   save_char(ch);
@@ -1299,8 +1245,7 @@ void advance_level(struct char_data *ch, int whichclass)
  * invalid_class is used by handler.c to determine if a piece of equipment is
  * usable by a particular class, based on the ITEM_ANTI_{class} bitvectors.
  */
-int invalid_class(struct char_data *ch, struct obj_data *obj)
-{
+int invalid_class(struct char_data *ch, struct obj_data *obj) {
   if (OBJ_FLAGGED(obj, ITEM_ANTI_WIZARD) && IS_ROSHI(ch))
     return TRUE;
 
@@ -1373,7 +1318,6 @@ int invalid_class(struct char_data *ch, struct obj_data *obj)
   return FALSE;
 }
 
-
 /*
  * SPELLS AND SKILLS.  This area defines which spells are assigned to
  * which classes, and the minimum level the character must be to use
@@ -1381,10 +1325,9 @@ int invalid_class(struct char_data *ch, struct obj_data *obj)
  */
 
 /* Function to return the exp required for each class/level */
-int64_t level_exp(struct char_data *ch, int level)
-{
+int64_t level_exp(struct char_data *ch, int level) {
   int req = 1;
- 
+
   switch (level) {
   case 0:
     req = 0;
@@ -1689,28 +1632,24 @@ int64_t level_exp(struct char_data *ch, int level)
   case 100:
     req = 800000000;
     break;
- }
+  }
 
- if (IS_KAI(ch)) {
-  req += req * 0.15;
- }
+  if (IS_KAI(ch)) {
+    req += req * 0.15;
+  }
 
- return (req);
-}
-
-
-/* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-int8_t ability_mod_value(int abil)
-{
-  return ((int)(abil / 2)) - 5;
+  return (req);
 }
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-int8_t dex_mod_capped(const struct char_data *ch)
-{
+int8_t ability_mod_value(int abil) { return ((int)(abil / 2)) - 5; }
+
+/* Derived from the SRD under OGL, see ../doc/srd.txt for information */
+int8_t dex_mod_capped(const struct char_data *ch) {
   int8_t mod;
   struct obj_data *armor;
-  mod = ability_mod_value(char_der_total_get((struct char_data *)ch, "agility"));
+  mod =
+      ability_mod_value(char_der_total_get((struct char_data *)ch, "agility"));
   armor = GET_EQ(ch, WEAR_BODY);
   if (armor && GET_OBJ_TYPE(armor) == ITEM_ARMOR) {
     mod = MIN(mod, GET_OBJ_VAL(armor, VAL_ARMOR_MAXDEXMOD));
@@ -1720,24 +1659,21 @@ int8_t dex_mod_capped(const struct char_data *ch)
 
 static int cabbr_ranktable[NUM_CLASSES];
 
-static int comp_rank(const void *a, const void *b)
-{
+static int comp_rank(const void *a, const void *b) {
   int first, second;
   first = *(const int *)a;
   second = *(const int *)b;
   return cabbr_ranktable[second] - cabbr_ranktable[first];
 }
 
-
-int load_levels()
-{
+int load_levels() {
   FILE *fp;
-  char line[READ_SIZE], sect_name[READ_SIZE] = { '\0' }, *ptr;
-  int  linenum = 0, tp, cls, sect_type = -1;
+  char line[READ_SIZE], sect_name[READ_SIZE] = {'\0'}, *ptr;
+  int linenum = 0, tp, cls, sect_type = -1;
 
   if (!(fp = fopen(LEVEL_CONFIG, "r"))) {
-    log("SYSERR: Could not open level configuration file, error: %s!", 
-         strerror(errno));
+    log("SYSERR: Could not open level configuration file, error: %s!",
+        strerror(errno));
     return -1;
   }
 
@@ -1750,7 +1686,7 @@ int load_levels()
 
   for (;;) {
     linenum++;
-    if (!fgets(line, READ_SIZE, fp)) {  /* eof check */
+    if (!fgets(line, READ_SIZE, fp)) { /* eof check */
       log("SYSERR: Unexpected EOF in file %s.", LEVEL_CONFIG);
       return -1;
     } else if (*line == '$') { /* end of file */
@@ -1759,59 +1695,68 @@ int load_levels()
       continue;
     } else if (*line == '#') { /* start of a section */
       if ((tp = sscanf(line, "#%s", sect_name)) != 1) {
-        log("SYSERR: Format error in file %s, line number %d - text: %s.", 
-             LEVEL_CONFIG, linenum, line);
+        log("SYSERR: Format error in file %s, line number %d - text: %s.",
+            LEVEL_CONFIG, linenum, line);
         return -1;
-      } else if ((sect_type = search_block(sect_name, config_sect, FALSE)) == -1) {
-          log("SYSERR: Invalid section in file %s, line number %d: %s.", 
-              LEVEL_CONFIG, linenum, sect_name);
-          return -1;
+      } else if ((sect_type = search_block(sect_name, config_sect, FALSE)) ==
+                 -1) {
+        log("SYSERR: Invalid section in file %s, line number %d: %s.",
+            LEVEL_CONFIG, linenum, sect_name);
+        return -1;
       }
     } else {
       if (sect_type == CONFIG_LEVEL_VERSION) {
         if (!strncmp(line, "Suntzu", 6)) {
-          log("SYSERR: Suntzu %s config files are not compatible with rasputin", LEVEL_CONFIG);
+          log("SYSERR: Suntzu %s config files are not compatible with rasputin",
+              LEVEL_CONFIG);
           return -1;
         } else {
           strcpy(level_version, line); /* OK - both are READ_SIZE */
         }
       } else if (sect_type == CONFIG_LEVEL_VERNUM) {
-	level_vernum = atoi(line);
+        level_vernum = atoi(line);
       } else if (sect_type == CONFIG_LEVEL_EXPERIENCE) {
         tp = atoi(line);
         exp_multiplier = tp;
-      } else if ((sect_type >= CONFIG_LEVEL_FORTITUDE && sect_type <= CONFIG_LEVEL_WILL) ||
+      } else if ((sect_type >= CONFIG_LEVEL_FORTITUDE &&
+                  sect_type <= CONFIG_LEVEL_WILL) ||
                  sect_type == CONFIG_LEVEL_BASEHIT) {
-        for (ptr = line; ptr && *ptr && !isdigit(*ptr); ptr++);
+        for (ptr = line; ptr && *ptr && !isdigit(*ptr); ptr++)
+          ;
         if (!ptr || !*ptr || !isdigit(*ptr)) {
-          log("SYSERR: Cannot find class number in file %s, line number %d, section %s.", 
+          log("SYSERR: Cannot find class number in file %s, line number %d, "
+              "section %s.",
               LEVEL_CONFIG, linenum, sect_name);
           return -1;
         }
         cls = atoi(ptr);
-        for (; ptr && *ptr && isdigit(*ptr); ptr++);
-        for (; ptr && *ptr && !isdigit(*ptr); ptr++);
+        for (; ptr && *ptr && isdigit(*ptr); ptr++)
+          ;
+        for (; ptr && *ptr && !isdigit(*ptr); ptr++)
+          ;
         if (ptr && *ptr && !isdigit(*ptr)) {
-          log("SYSERR: Non-numeric entry in file %s, line number %d, section %s.", 
+          log("SYSERR: Non-numeric entry in file %s, line number %d, section "
+              "%s.",
               LEVEL_CONFIG, linenum, sect_name);
           return -1;
         }
         if (ptr && *ptr) /* There's a value */
           tp = atoi(ptr);
         else {
-          log("SYSERR: Need 1 value in %s, line number %d, section %s.", 
+          log("SYSERR: Need 1 value in %s, line number %d, section %s.",
               LEVEL_CONFIG, linenum, sect_name);
           return -1;
         }
         if (cls < 0 || cls >= NUM_CLASSES) {
-          log("SYSERR: Invalid class number %d in file %s, line number %d.", 
+          log("SYSERR: Invalid class number %d in file %s, line number %d.",
               cls, LEVEL_CONFIG, linenum);
           return -1;
         } else {
           if (sect_type == CONFIG_LEVEL_BASEHIT) {
             basehit_classes[cls] = tp;
           } else {
-            save_classes[SAVING_FORTITUDE + sect_type - CONFIG_LEVEL_FORTITUDE][cls] = tp;
+            save_classes[SAVING_FORTITUDE + sect_type - CONFIG_LEVEL_FORTITUDE]
+                        [cls] = tp;
           }
         }
       } else {
@@ -1824,45 +1769,38 @@ int load_levels()
   return 0;
 }
 
-
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-int highest_skill_value(int level, int type)
-{
+int highest_skill_value(int level, int type) {
   if (level >= 60)
-   return 100;
+    return 100;
   else if (level >= 20)
-   return level + 40;
+    return level + 40;
   else if (level >= 10)
-   return level + 30;
+    return level + 30;
   else if (level >= 1)
-   return level + 25;
+    return level + 25;
   else
-   return 0;
+    return 0;
 }
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
 /* Not anymore because for DBZ it was crap and unnecessary. */
-int calc_penalty_exp(struct char_data *ch, int gain)
-{
-  return gain;
-}
+int calc_penalty_exp(struct char_data *ch, int gain) { return gain; }
 
 static const int size_scaling_table[NUM_SIZES][4] = {
-/*                   str       dex     con  nat arm */
-/* Fine		*/ { -10,	-2,	-2,	0 },
-/* Diminutive	*/ { -10,	-2,	-2,	0 },
-/* Tiny		*/ { -8,	-2,	-2,	0 },
-/* Small	*/ { -4,	-2,	-2,	0 },
-/* Medium	*/ { 0,		0,	0,	0 },
-/* Large	*/ { 8,		-2,	4,	2 },
-/* Huge		*/ { 16,	-4,	8,	5 },
-/* Gargantuan	*/ { 24,	-4,	12,	9 },
-/* Colossal	*/ { 32,	-4,	16,	14 }
-};
+    /*                   str       dex     con  nat arm */
+    /* Fine		*/ {-10, -2, -2, 0},
+    /* Diminutive	*/ {-10, -2, -2, 0},
+    /* Tiny		*/ {-8, -2, -2, 0},
+    /* Small	*/ {-4, -2, -2, 0},
+    /* Medium	*/ {0, 0, 0, 0},
+    /* Large	*/ {8, -2, 4, 2},
+    /* Huge		*/ {16, -4, 8, 5},
+    /* Gargantuan	*/ {24, -4, 12, 9},
+    /* Colossal	*/ {32, -4, 16, 14}};
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
-time_t birth_age(struct char_data *ch)
-{
+time_t birth_age(struct char_data *ch) {
   int tmp;
 
   tmp = rand_number(16, 18);
@@ -1870,14 +1808,9 @@ time_t birth_age(struct char_data *ch)
   return tmp;
 }
 
-time_t max_age(struct char_data *ch)
-{
-  return 120;
-}
+time_t max_age(struct char_data *ch) { return 120; }
 
-static const int class_feats_wizard[] = {
-  FEAT_UNDEFINED
-};
+static const int class_feats_wizard[] = {FEAT_UNDEFINED};
 
 /*
  * Rogues follow opposite logic - they can take any feat in place of these,
@@ -1885,28 +1818,21 @@ static const int class_feats_wizard[] = {
  * feats. Most classes can ONLY take from these lists for their class
  * feats.
  */
-static const int class_feats_rogue[] = {
-  FEAT_UNDEFINED
-};
+static const int class_feats_rogue[] = {FEAT_UNDEFINED};
 
-static const int class_feats_fighter[] = {
-  FEAT_UNDEFINED
-};
+static const int class_feats_fighter[] = {FEAT_UNDEFINED};
 
-static const int no_class_feats[] = {
-  FEAT_UNDEFINED
-};
+static const int no_class_feats[] = {FEAT_UNDEFINED};
 
 static const int *class_bonus_feats[NUM_CLASSES] = {
-/* WIZARD		*/ class_feats_wizard,
-/* CLERIC		*/ no_class_feats,
-/* ROGUE		*/ class_feats_rogue,
-/* FIGHTER		*/ class_feats_fighter,
-/* MONK			*/ no_class_feats,
-/* PALADIN		*/ no_class_feats,
-/* NPC_EXPERT		*/ no_class_feats,
-/* NPC_ADEPT		*/ no_class_feats,
-/* NPC_COMMONER		*/ no_class_feats,
-/* NPC_ARISTOCRAT	*/ no_class_feats,
-/* NPC_WARRIOR		*/ no_class_feats
-};
+    /* WIZARD		*/ class_feats_wizard,
+    /* CLERIC		*/ no_class_feats,
+    /* ROGUE		*/ class_feats_rogue,
+    /* FIGHTER		*/ class_feats_fighter,
+    /* MONK			*/ no_class_feats,
+    /* PALADIN		*/ no_class_feats,
+    /* NPC_EXPERT		*/ no_class_feats,
+    /* NPC_ADEPT		*/ no_class_feats,
+    /* NPC_COMMONER		*/ no_class_feats,
+    /* NPC_ARISTOCRAT	*/ no_class_feats,
+    /* NPC_WARRIOR		*/ no_class_feats};

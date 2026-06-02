@@ -5,23 +5,13 @@
  ************************************************************************/
 
 #include "medit.h"
-#include "character_impl.h"
 #include "character_api.h"
 #include "character_db.h"
+#include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
-#include "descriptor_impl.h"
-#include "descriptor_db.h"
-#include "descriptor_macros.h"
-#include "object_impl.h"
-#include "object_macros.h"
-#include "zone_impl.h"
-#include "zone_db.h"
+#include "comm.h"
 #include "config_db.h"
-#include "flags.h"
-#include "log.h"
-#include "random.h"
-#include "util_macros.h"
 #include "consts/admlevel.h"
 #include "consts/constates.h"
 #include "consts/mobflags.h"
@@ -31,31 +21,40 @@
 #include "consts/sex.h"
 #include "consts/sizes.h"
 #include "consts/triggers.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "flags.h"
 #include "interpreter.h"
-#include "comm.h"
+#include "log.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "random.h"
 #include "spells.h"
+#include "util_macros.h"
+#include "zone_db.h"
+#include "zone_impl.h"
 
+#include "act.wizard.h"
+#include "class.h"
+#include "config.h"
+#include "consts/npc.h"
 #include "db.h"
-#include "shop.h"
-#include "genolc.h"
+#include "dg_olc.h"
+#include "dg_scripts.h"
 #include "genmob.h"
-#include "genzon.h"
+#include "genolc.h"
 #include "genshp.h"
-#include "oasis.h"
+#include "genzon.h"
 #include "handler.h"
 #include "improved-edit.h"
-#include "dg_olc.h"
-#include "screen.h"
+#include "modify.h"
+#include "oasis.h"
 #include "races.h"
 #include "races_plus.h"
-#include "class.h"
+#include "screen.h"
 #include "sensei.h"
-#include "act.wizard.h"
-#include "modify.h"
-#include "dg_scripts.h"
 #include "shop.h"
-#include "consts/npc.h"
-#include "config.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -68,22 +67,21 @@
  */
 
 /*-------------------------------------------------------------------*\
-  utility functions 
+  utility functions
 \*-------------------------------------------------------------------*/
 
-ACMD(do_oasis_medit)
-{
+ACMD(do_oasis_medit) {
   int number = NOBODY, save = 0, real_num;
   struct descriptor_data *d;
   char *buf3;
   char buf1[MAX_STRING_LENGTH];
   char buf2[MAX_STRING_LENGTH];
-  
+
   /****************************************************************************/
   /** Parse any arguments.                                                   **/
   /****************************************************************************/
   buf3 = two_arguments(argument, buf1, buf2);
-  
+
   if (!*buf1) {
     send_to_char(ch, "Specify a mobile VNUM to edit.\r\n");
     return;
@@ -92,32 +90,32 @@ ACMD(do_oasis_medit)
       send_to_char(ch, "Yikes!  Stop that, someone will get hurt!\r\n");
       return;
     }
-    
+
     save = TRUE;
-    
+
     if (is_number(buf2))
       number = atoi(buf2);
     else if (GET_OLC_ZONE(ch) > 0) {
       struct zone_data *zone = zone_by_id(GET_OLC_ZONE(ch));
-      
+
       if (!zone)
         number = NOWHERE;
       else
         number = zone->bot;
     }
-    
+
     if (number == NOWHERE) {
       send_to_char(ch, "Save which zone?\r\n");
       return;
     }
   }
-  
+
   /****************************************************************************/
   /** If a numeric argument was given (like a room number), get it.          **/
   /****************************************************************************/
   if (number == NOBODY)
     number = atoi(buf1);
-  
+
   /****************************************************************************/
   /** Check that whatever it is isn't already being edited.                  **/
   /****************************************************************************/
@@ -125,25 +123,25 @@ ACMD(do_oasis_medit)
     if (STATE(d) == CON_MEDIT) {
       if (d->olc && OLC_NUM(d) == number) {
         send_to_char(ch, "That mobile is currently being edited by %s.\r\n",
-          GET_NAME(d->character));
+                     GET_NAME(d->character));
         return;
       }
     }
   }
-  
+
   d = ch->desc;
-  
+
   /****************************************************************************/
   /** Give descriptor an OLC structure.                                      **/
   /****************************************************************************/
   if (d->olc) {
     mudlog(BRF, ADMLVL_IMMORT, TRUE,
-      "SYSERR: do_oasis_medit: Player already had olc structure.");
+           "SYSERR: do_oasis_medit: Player already had olc structure.");
     free(d->olc);
   }
-  
+
   CREATE(d->olc, struct oasis_olc_data, 1);
-  
+
   /****************************************************************************/
   /** Find the zone.                                                         **/
   /****************************************************************************/
@@ -154,7 +152,7 @@ ACMD(do_oasis_medit)
     d->olc = NULL;
     return;
   }
-  
+
   /****************************************************************************/
   /** Everyone but IMPLs can only edit zones they have been assigned.        **/
   /****************************************************************************/
@@ -165,22 +163,21 @@ ACMD(do_oasis_medit)
     d->olc = NULL;
     return;
   }
-  
+
   /****************************************************************************/
   /** If save is TRUE, save the mobiles.                                     **/
   /****************************************************************************/
   if (save) {
-    send_to_char(ch, "Saving all mobiles in zone %d.\r\n",
-      zone->number);
+    send_to_char(ch, "Saving all mobiles in zone %d.\r\n", zone->number);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
-      "OLC: %s saves mobile info for zone %d.",
-      GET_NAME(ch), zone->number);
-    
+           "OLC: %s saves mobile info for zone %d.", GET_NAME(ch),
+           zone->number);
+
     /**************************************************************************/
     /** Save the mobiles.                                                    **/
     /**************************************************************************/
     save_mobiles(zone);
-    
+
     /**************************************************************************/
     /** Free the olc structure stored in the descriptor.                     **/
     /**************************************************************************/
@@ -188,9 +185,9 @@ ACMD(do_oasis_medit)
     d->olc = NULL;
     return;
   }
-  
+
   OLC_NUM(d) = number;
-  
+
   /****************************************************************************/
   /** If this is a new mobile, setup a new one, otherwise, setup the         **/
   /** existing mobile.                                                       **/
@@ -199,32 +196,29 @@ ACMD(do_oasis_medit)
     medit_setup_new(d);
   else
     medit_setup_existing(d, number);
- 
-  medit_disp_menu(d); 
+
+  medit_disp_menu(d);
   STATE(d) = CON_MEDIT;
-  
+
   /****************************************************************************/
   /** Display the OLC messages to the players in the same room as the        **/
   /** builder and also log it.                                               **/
   /****************************************************************************/
   act("$n starts using OLC.", TRUE, d->character, 0, 0, TO_ROOM);
   SET_BIT_AR(PLR_FLAGS(ch), PLR_WRITING);
-  
-  mudlog(BRF, ADMLVL_IMMORT, TRUE,"OLC: %s starts editing zone %d allowed zone %d",
-    GET_NAME(ch), zone->number, GET_OLC_ZONE(ch));
+
+  mudlog(BRF, ADMLVL_IMMORT, TRUE,
+         "OLC: %s starts editing zone %d allowed zone %d", GET_NAME(ch),
+         zone->number, GET_OLC_ZONE(ch));
 }
 
-void medit_save_to_disk(zone_vnum foo)
-{
-  save_mobiles(zone_by_id(foo));
-}
+void medit_save_to_disk(zone_vnum foo) { save_mobiles(zone_by_id(foo)); }
 
-void medit_setup_new(struct descriptor_data *d)
-{
+void medit_setup_new(struct descriptor_data *d) {
   struct char_data *mob;
 
   /*
-   * Allocate a scratch mobile structure.  
+   * Allocate a scratch mobile structure.
    */
   CREATE(mob, struct char_data, 1);
 
@@ -250,12 +244,11 @@ void medit_setup_new(struct descriptor_data *d)
 
 /*-------------------------------------------------------------------*/
 
-void medit_setup_existing(struct descriptor_data *d, mob_vnum mob_num)
-{
+void medit_setup_existing(struct descriptor_data *d, mob_vnum mob_num) {
   struct char_data *mob;
 
   /*
-   * Allocate a scratch mobile structure. 
+   * Allocate a scratch mobile structure.
    */
   CREATE(mob, struct char_data, 1);
   clear_char(mob);
@@ -279,14 +272,13 @@ void medit_setup_existing(struct descriptor_data *d, mob_vnum mob_num)
  * Ideally, this function should be in db.c, but I'll put it here for
  * portability.
  */
-void init_mobile(struct char_data *mob)
-{
+void init_mobile(struct char_data *mob) {
   int ability;
 
   clear_char(mob);
 
-  //GET_HIT(mob) = 0;
-  //GET_MAX_MANA(mob) = 0;
+  // GET_HIT(mob) = 0;
+  // GET_MAX_MANA(mob) = 0;
   GET_SEX(mob) = SEX_MALE;
   mob->chclass = CLASS_NPC_COMMONER;
 
@@ -310,8 +302,7 @@ void init_mobile(struct char_data *mob)
 /*
  * Save new/edited mob to memory.
  */
-void medit_save_internally(struct descriptor_data *d)
-{
+void medit_save_internally(struct descriptor_data *d) {
   mob_rnum new_rnum;
   struct descriptor_data *dsc;
   struct char_data *mob;
@@ -324,32 +315,31 @@ void medit_save_internally(struct descriptor_data *d)
     return;
   }
 
-  struct mob_proto_data* proto = mob_proto_by_id(v);
+  struct mob_proto_data *proto = mob_proto_by_id(v);
 
   /* this takes care of the mobs currently in-game */
   for (mob = character_list; mob; mob = mob->next) {
-    if (GET_MOB_VNUM(mob) != v) 
+    if (GET_MOB_VNUM(mob) != v)
       continue;
-    
+
     /* remove any old scripts */
-    if (SCRIPT(mob)) 
+    if (SCRIPT(mob))
       extract_script(mob, MOB_TRIGGER);
 
     mob_proto_copy_script_to_mobile(proto, mob);
     assign_triggers(mob, MOB_TRIGGER);
   }
-  /* end trigger update */  
+  /* end trigger update */
 }
 
 /**************************************************************************
- Menu functions 
+ Menu functions
  **************************************************************************/
 
 /*
  * Display positions. (sitting, standing, etc)
  */
-void medit_disp_positions(struct descriptor_data *d)
-{
+void medit_disp_positions(struct descriptor_data *d) {
   int i;
 
   clear_screen(d);
@@ -365,8 +355,7 @@ void medit_disp_positions(struct descriptor_data *d)
 /*
  * Display the gender of the mobile.
  */
-void medit_disp_sex(struct descriptor_data *d)
-{
+void medit_disp_sex(struct descriptor_data *d) {
   int i;
 
   clear_screen(d);
@@ -382,52 +371,51 @@ void medit_disp_sex(struct descriptor_data *d)
 /*
  * Display mob-flags menu.
  */
-void medit_disp_mob_flags(struct descriptor_data *d)
-{
+void medit_disp_mob_flags(struct descriptor_data *d) {
   int i, columns = 0;
   char flags[MAX_STRING_LENGTH];
-  
+
   clear_screen(d);
   for (i = 0; i < NUM_MOB_FLAGS; i++) {
     write_to_output(d, "@g%2d@n) %-20.20s  %s", i + 1, action_bits[i],
-		!(++columns % 2) ? "\r\n" : "");
+                    !(++columns % 2) ? "\r\n" : "");
   }
-  sprintbitarray(MOB_FLAGS(OLC_MOB(d)), action_bits, AF_ARRAY_MAX, flags, sizeof(flags));
-  write_to_output(d, "\r\nCurrent flags : @c%s@n\r\nEnter mob flags (0 to quit) : ",
-		  flags);
+  sprintbitarray(MOB_FLAGS(OLC_MOB(d)), action_bits, AF_ARRAY_MAX, flags,
+                 sizeof(flags));
+  write_to_output(
+      d, "\r\nCurrent flags : @c%s@n\r\nEnter mob flags (0 to quit) : ", flags);
 }
 
 /*-------------------------------------------------------------------*/
 
-void medit_disp_personality(struct descriptor_data *d)
-{
+void medit_disp_personality(struct descriptor_data *d) {
 
- write_to_output(d, "@GPersonalities\n");
- write_to_output(d, "@D--------------@n\n");
- write_to_output(d, "@w1@D) @WBasic@n\n");
- write_to_output(d, "@w1@D) @WCareful@n\n");
- write_to_output(d, "@w1@D) @WAggressive@n\n");
- write_to_output(d, "@w1@D) @WArrogant\n");
- write_to_output(d, "@w1@D) @WIntelligent@n\n");
-
+  write_to_output(d, "@GPersonalities\n");
+  write_to_output(d, "@D--------------@n\n");
+  write_to_output(d, "@w1@D) @WBasic@n\n");
+  write_to_output(d, "@w1@D) @WCareful@n\n");
+  write_to_output(d, "@w1@D) @WAggressive@n\n");
+  write_to_output(d, "@w1@D) @WArrogant\n");
+  write_to_output(d, "@w1@D) @WIntelligent@n\n");
 }
 
 /*
  * Display affection flags menu.
  */
-void medit_disp_aff_flags(struct descriptor_data *d)
-{
+void medit_disp_aff_flags(struct descriptor_data *d) {
   int i, columns = 0;
   char flags[MAX_STRING_LENGTH];
 
   clear_screen(d);
   for (i = 0; i < NUM_AFF_FLAGS; i++) {
-    write_to_output(d, "@g%2d@n) %-20.20s  %s", i + 1, affected_bits[i+1],
+    write_to_output(d, "@g%2d@n) %-20.20s  %s", i + 1, affected_bits[i + 1],
                     !(++columns % 2) ? "\r\n" : "");
   }
-  sprintbitarray(AFF_FLAGS(OLC_MOB(d)), affected_bits, AF_ARRAY_MAX, flags, sizeof(flags));
-  write_to_output(d, "\r\nCurrent flags   : @c%s@n\r\nEnter aff flags (0 to quit) : ",
-                  flags);
+  sprintbitarray(AFF_FLAGS(OLC_MOB(d)), affected_bits, AF_ARRAY_MAX, flags,
+                 sizeof(flags));
+  write_to_output(
+      d,
+      "\r\nCurrent flags   : @c%s@n\r\nEnter aff flags (0 to quit) : ", flags);
 }
 
 /*-------------------------------------------------------------------*/
@@ -435,8 +423,7 @@ void medit_disp_aff_flags(struct descriptor_data *d)
 /*
  * Display class menu.
  */
-void medit_disp_class(struct descriptor_data *d)
-{
+void medit_disp_class(struct descriptor_data *d) {
   int i;
   char buf[MAX_INPUT_LENGTH];
   clear_screen(d);
@@ -451,15 +438,14 @@ void medit_disp_class(struct descriptor_data *d)
 /*
  * Display race menu.
  */
-void medit_disp_race(struct descriptor_data *d)
-{
+void medit_disp_race(struct descriptor_data *d) {
   int columns = 0;
   char buf[MAX_INPUT_LENGTH];
 
   clear_screen(d);
   for (const auto &r : dbat::race::race_map) {
-    sprintf(buf, "@g%2d@n) %-20.20s  %s", r.first , r.second->getName().c_str(),
-                        !(++columns % 2) ? "\r\n" : "");
+    sprintf(buf, "@g%2d@n) %-20.20s  %s", r.first, r.second->getName().c_str(),
+            !(++columns % 2) ? "\r\n" : "");
     write_to_output(d, buf);
   }
   write_to_output(d, "Enter race number : ");
@@ -469,16 +455,15 @@ void medit_disp_race(struct descriptor_data *d)
 /*
  * Display size menu.
  */
-void medit_disp_size(struct descriptor_data *d)
-{
+void medit_disp_size(struct descriptor_data *d) {
   int i, columns = 0;
   char buf[MAX_INPUT_LENGTH];
 
   clear_screen(d);
   for (i = -1; i < NUM_SIZES; i++) {
-    sprintf(buf, "@g%2d@n) %-20.20s  %s", i ,
+    sprintf(buf, "@g%2d@n) %-20.20s  %s", i,
             (i == SIZE_UNDEFINED) ? "DEFAULT" : size_names[i],
-                        !(++columns % 2) ? "\r\n" : "");
+            !(++columns % 2) ? "\r\n" : "");
     write_to_output(d, buf);
   }
   write_to_output(d, "Enter size number (-1 for default): ");
@@ -489,54 +474,55 @@ void medit_disp_size(struct descriptor_data *d)
 /*
  * Display main menu.
  */
-void medit_disp_menu(struct descriptor_data *d)
-{
+void medit_disp_menu(struct descriptor_data *d) {
   struct char_data *mob;
   char flags[MAX_STRING_LENGTH], flag2[MAX_STRING_LENGTH];
 
   mob = OLC_MOB(d);
   clear_screen(d);
 
-  write_to_output(d,
-  "-- Mob Number:  [@c%d@n]\r\n"
-  "@g1@n) Sex: @y%-7.7s@n	         @g2@n) Alias: @y%s\r\n"
-  "@g3@n) S-Desc: @y%s\r\n"
-  "@g4@n) L-Desc:-\r\n@y%s"
-  "@g5@n) D-Desc:-\r\n@y%s"
-  "@g6@n) Level:       [@c%4d@n],  @g7@n) Alignment:    [@c%5d@n]\r\n"
-  "@g8@n) ---:[@c%4d@n],  @g9@n) ---:   [@c%5d@n]\r\n"
-  "@gA@n) ---:  [@c%4d@n],  @gB@n) ---:  [@c%5d@n]\r\n"
-  "@gC@n) Num HP Dice: [@c%4" I64T "@n],  @gD@n) Size HP Dice: [@c%5" I64T "@n],  @gE@n) HP Bonus: [@c%5" I64T "@n]\r\n"
-  "@gF@n) Armor Class: [@c%4d@n],  @gG@n) Exp:      [@c%" I64T "@n],  @gH@n) Gold:  [@c%8d@n]\r\n",
+  write_to_output(
+      d,
+      "-- Mob Number:  [@c%d@n]\r\n"
+      "@g1@n) Sex: @y%-7.7s@n	         @g2@n) Alias: @y%s\r\n"
+      "@g3@n) S-Desc: @y%s\r\n"
+      "@g4@n) L-Desc:-\r\n@y%s"
+      "@g5@n) D-Desc:-\r\n@y%s"
+      "@g6@n) Level:       [@c%4d@n],  @g7@n) Alignment:    [@c%5d@n]\r\n"
+      "@g8@n) ---:[@c%4d@n],  @g9@n) ---:   [@c%5d@n]\r\n"
+      "@gA@n) ---:  [@c%4d@n],  @gB@n) ---:  [@c%5d@n]\r\n"
+      "@gC@n) Num HP Dice: [@c%4" I64T "@n],  @gD@n) Size HP Dice: [@c%5" I64T
+      "@n],  @gE@n) HP Bonus: [@c%5" I64T "@n]\r\n"
+      "@gF@n) Armor Class: [@c%4d@n],  @gG@n) Exp:      [@c%" I64T
+      "@n],  @gH@n) Gold:  [@c%8d@n]\r\n",
 
-	  OLC_NUM(d), genders[(int)GET_SEX(mob)], GET_ALIAS(mob),
-	  GET_SDESC(mob), GET_LDESC(mob), GET_DDESC(mob), GET_LEVEL(mob),
-	  GET_ALIGNMENT(mob), 0, 0,
-	  0, 0, GET_HIT(mob), (getCurKI(mob)),
-                  (getCurST(mob)), GET_ARMOR(mob), GET_EXP(mob), GET_GOLD(mob)
-	  );
-  sprintbitarray(MOB_FLAGS(mob), action_bits, AF_ARRAY_MAX, flags, sizeof(flags));
-  sprintbitarray(AFF_FLAGS(mob), affected_bits, AF_ARRAY_MAX, flag2, sizeof(flag2));
-  write_to_output(d,
-	  "@gI@n) Position   : @y%-10s@n,	 @gJ@n) Default   : @y%-10s\r\n"
-	  "@gK@n) Personality: @Y%s@n\r\n"
-	  "@gL@n) NPC Flags  : @c%s\r\n"
-	  "@gM@n) AFF Flags  : @c%s\r\n"
-          "@gN@n) Class      : @y%-10s@n,	 @gO@n) Race      : @y%-10s\r\n"
-          "@gS@n) Script     : @c%s\r\n"
-          "@gW@n) Copy mob              ,	 @gX@n) Delete mob\r\n"
-          "@gY@n) Size       : @y%s\r\n"
-          "@gZ@n) Wiznet     :\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter choice : ",
+      OLC_NUM(d), genders[(int)GET_SEX(mob)], GET_ALIAS(mob), GET_SDESC(mob),
+      GET_LDESC(mob), GET_DDESC(mob), GET_LEVEL(mob), GET_ALIGNMENT(mob), 0, 0,
+      0, 0, GET_HIT(mob), (getCurKI(mob)), (getCurST(mob)), GET_ARMOR(mob),
+      GET_EXP(mob), GET_GOLD(mob));
+  sprintbitarray(MOB_FLAGS(mob), action_bits, AF_ARRAY_MAX, flags,
+                 sizeof(flags));
+  sprintbitarray(AFF_FLAGS(mob), affected_bits, AF_ARRAY_MAX, flag2,
+                 sizeof(flag2));
+  write_to_output(
+      d,
+      "@gI@n) Position   : @y%-10s@n,	 @gJ@n) Default   : @y%-10s\r\n"
+      "@gK@n) Personality: @Y%s@n\r\n"
+      "@gL@n) NPC Flags  : @c%s\r\n"
+      "@gM@n) AFF Flags  : @c%s\r\n"
+      "@gN@n) Class      : @y%-10s@n,	 @gO@n) Race      : @y%-10s\r\n"
+      "@gS@n) Script     : @c%s\r\n"
+      "@gW@n) Copy mob              ,	 @gX@n) Delete mob\r\n"
+      "@gY@n) Size       : @y%s\r\n"
+      "@gZ@n) Wiznet     :\r\n"
+      "@gQ@n) Quit\r\n"
+      "Enter choice : ",
 
-	  position_types[(int)GET_POS(mob)],
-	  position_types[(int)GET_DEFAULT_POS(mob)],
-          npc_personality[GET_PERSONALITY(mob)],
-	  flags, flag2, SENSEI_NAME(mob),
-          TRUE_RACE(mob),
-          OLC_SCRIPT(d) ?"Set.":"Not Set.", size_names[get_size(mob)]
-	  );
+      position_types[(int)GET_POS(mob)],
+      position_types[(int)GET_DEFAULT_POS(mob)],
+      npc_personality[GET_PERSONALITY(mob)], flags, flag2, SENSEI_NAME(mob),
+      TRUE_RACE(mob), OLC_SCRIPT(d) ? "Set." : "Not Set.",
+      size_names[get_size(mob)]);
 
   OLC_MODE(d) = MEDIT_MAIN_MENU;
 }
@@ -545,8 +531,7 @@ void medit_disp_menu(struct descriptor_data *d)
  *			The GARGANTAUN event handler			*
  ************************************************************************/
 
-void medit_parse(struct descriptor_data *d, char *arg)
-{
+void medit_parse(struct descriptor_data *d, char *arg) {
   int i = -1;
   char *oldtext = NULL;
   struct char_data *mob = NULL;
@@ -558,13 +543,13 @@ void medit_parse(struct descriptor_data *d, char *arg)
       write_to_output(d, "Field must be numerical, try again : ");
       return;
     }
-  } else {	/* String response. */
+  } else { /* String response. */
     if (!genolc_checkstring(d, arg))
       return;
   }
 
   switch (OLC_MODE(d)) {
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_CONFIRM_SAVESTRING:
     /*
      * Ensure mob has MOB_ISNPC set or things will go pear shaped.
@@ -578,10 +563,10 @@ void medit_parse(struct descriptor_data *d, char *arg)
        */
       medit_save_internally(d);
       mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE,
-	"OLC: %s edits mob %d", GET_NAME(d->character), OLC_NUM(d));
+             "OLC: %s edits mob %d", GET_NAME(d->character), OLC_NUM(d));
       if (CONFIG_OLC_SAVE) {
-	medit_save_to_disk(virtual_zone_by_thing(OLC_NUM(d)));
-	write_to_output(d, "Mobile saved to disk.\r\n");
+        medit_save_to_disk(virtual_zone_by_thing(OLC_NUM(d)));
+        write_to_output(d, "Mobile saved to disk.\r\n");
       } else
         write_to_output(d, "Mobile saved to memory.\r\n");
       cleanup_olc(d, CLEANUP_ALL);
@@ -601,17 +586,17 @@ void medit_parse(struct descriptor_data *d, char *arg)
     }
     break;
 
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_MAIN_MENU:
     i = 0;
     switch (*arg) {
     case 'q':
     case 'Q':
-      if (OLC_VAL(d)) {	/* Anything been changed? */
+      if (OLC_VAL(d)) { /* Anything been changed? */
         write_to_output(d, "Do you wish to save your changes? : ");
-	OLC_MODE(d) = MEDIT_CONFIRM_SAVESTRING;
+        OLC_MODE(d) = MEDIT_CONFIRM_SAVESTRING;
       } else
-	cleanup_olc(d, CLEANUP_ALL);
+        cleanup_olc(d, CLEANUP_ALL);
       return;
     case '1':
       OLC_MODE(d) = MEDIT_SEX;
@@ -634,8 +619,8 @@ void medit_parse(struct descriptor_data *d, char *arg)
       send_editor_help(d);
       write_to_output(d, "Enter mob description:\r\n\r\n");
       if (OLC_MOB(d)->description) {
-	write_to_output(d, "%s", OLC_MOB(d)->description);
-	oldtext = strdup(OLC_MOB(d)->description);
+        write_to_output(d, "%s", OLC_MOB(d)->description);
+        oldtext = strdup(OLC_MOB(d)->description);
       }
       string_write(d, &OLC_MOB(d)->description, MAX_MOB_DESC, 0, oldtext);
       OLC_VAL(d) = 1;
@@ -769,25 +754,26 @@ void medit_parse(struct descriptor_data *d, char *arg)
     else
       write_to_output(d, "Oops...\r\n");
     return;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case OLC_SCRIPT_EDIT:
-    if (dg_script_edit_parse(d, arg)) return;
+    if (dg_script_edit_parse(d, arg))
+      return;
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_ALIAS:
     smash_tilde(arg);
     if (GET_ALIAS(OLC_MOB(d)))
       free(GET_ALIAS(OLC_MOB(d)));
     GET_ALIAS(OLC_MOB(d)) = str_udup(arg);
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_S_DESC:
     smash_tilde(arg);
     if (GET_SDESC(OLC_MOB(d)))
       free(GET_SDESC(OLC_MOB(d)));
     GET_SDESC(OLC_MOB(d)) = str_udup(arg);
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_L_DESC:
     smash_tilde(arg);
     if (GET_LDESC(OLC_MOB(d)))
@@ -800,16 +786,17 @@ void medit_parse(struct descriptor_data *d, char *arg)
       GET_LDESC(OLC_MOB(d)) = strdup("undefined");
 
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_D_DESC:
     /*
      * We should never get here.
      */
     cleanup_olc(d, CLEANUP_ALL);
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: OLC: medit_parse(): Reached D_DESC case!");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: OLC: medit_parse(): Reached D_DESC case!");
     write_to_output(d, "Oops...\r\n");
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_NPC_FLAGS:
     if ((i = atoi(arg)) <= 0)
       break;
@@ -817,15 +804,15 @@ void medit_parse(struct descriptor_data *d, char *arg)
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), i - 1);
     medit_disp_mob_flags(d);
     return;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_PERSONALITY:
-     if ((i = atoi(arg)) <= 0)
+    if ((i = atoi(arg)) <= 0)
       break;
     else if (i <= MAX_PERSONALITIES)
-     GET_PERSONALITY(OLC_MOB(d)) = i;
+      GET_PERSONALITY(OLC_MOB(d)) = i;
     medit_disp_personality(d);
     return;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case MEDIT_AFF_FLAGS:
     if ((i = atoi(arg)) <= 0)
       break;
@@ -833,14 +820,14 @@ void medit_parse(struct descriptor_data *d, char *arg)
       TOGGLE_BIT_AR(AFF_FLAGS(OLC_MOB(d)), i);
     /* Remove unwanted bits right away. */
     REMOVE_BIT_AR(AFF_FLAGS(OLC_MOB(d)),
-       AFF_CHARM | AFF_POISON | AFF_GROUP | AFF_SLEEP);
+                  AFF_CHARM | AFF_POISON | AFF_GROUP | AFF_SLEEP);
     medit_disp_aff_flags(d);
     return;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
 
-/*
- * Numerical responses.
- */
+    /*
+     * Numerical responses.
+     */
 
   case MEDIT_SEX:
     GET_SEX(OLC_MOB(d)) = LIMIT(i, 0, NUM_GENDERS - 1);
@@ -859,21 +846,21 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_NUM_HP_DICE:
-    //GET_HIT(OLC_MOB(d)) = LIMIT(i, 0, CONFIG_LEVEL_CAP);
+    // GET_HIT(OLC_MOB(d)) = LIMIT(i, 0, CONFIG_LEVEL_CAP);
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
     break;
 
   case MEDIT_SIZE_HP_DICE:
-    //GET_MANA(OLC_MOB(d)) = LIMIT(i, 0, 1000);
+    // GET_MANA(OLC_MOB(d)) = LIMIT(i, 0, 1000);
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
     break;
 
   case MEDIT_ADD_HP:
-    //GET_MOVE(OLC_MOB(d)) = LIMIT(i, 0, 30000);
+    // GET_MOVE(OLC_MOB(d)) = LIMIT(i, 0, 30000);
     if (MOB_FLAGGED(OLC_MOB(d), MOB_AUTOBALANCE)) {
       TOGGLE_BIT_AR(MOB_FLAGS(OLC_MOB(d)), MOB_AUTOBALANCE);
     }
@@ -917,11 +904,11 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_CLASS:
-    if(!OLC_MOB(d)->chclass) {
-        OLC_MOB(d)->chclass = CLASS_NPC_COMMONER;
+    if (!OLC_MOB(d)->chclass) {
+      OLC_MOB(d)->chclass = CLASS_NPC_COMMONER;
     };
     /* Change size HP dice based on class choice. */
-    //GET_MANA(OLC_MOB(d)) = class_hit_die_size[GET_CLASS(OLC_MOB(d))];
+    // GET_MANA(OLC_MOB(d)) = class_hit_die_size[GET_CLASS(OLC_MOB(d))];
     break;
 
   case MEDIT_COPY:
@@ -949,12 +936,12 @@ void medit_parse(struct descriptor_data *d, char *arg)
     break;
 
   case MEDIT_RACE:
-      chosen_race = dbat::race::find_race_map_id(i, dbat::race::race_map);
-      if(!chosen_race) {
-          write_to_output(d, "That's not a race!");
-          break;
-      }
-      OLC_MOB(d)->race = chosen_race->getID();
+    chosen_race = dbat::race::find_race_map_id(i, dbat::race::race_map);
+    if (!chosen_race) {
+      write_to_output(d, "That's not a race!");
+      break;
+    }
+    OLC_MOB(d)->race = chosen_race->getID();
     /*  Change racial size based on race choice. */
     OLC_MOB(d)->size = race_get_size(OLC_MOB(d)->race);
     break;
@@ -963,35 +950,35 @@ void medit_parse(struct descriptor_data *d, char *arg)
     OLC_MOB(d)->size = LIMIT(i, -1, NUM_SIZES - 1);
     break;
 
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   default:
     /*
      * We should never get here.
      */
     cleanup_olc(d, CLEANUP_ALL);
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: OLC: medit_parse(): Reached default case!");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: OLC: medit_parse(): Reached default case!");
     write_to_output(d, "Oops...\r\n");
     break;
   }
-/*-------------------------------------------------------------------*/
+  /*-------------------------------------------------------------------*/
 
-/*
- * END OF CASE 
- * If we get here, we have probably changed something, and now want to
- * return to main menu.  Use OLC_VAL as a 'has changed' flag  
- */
+  /*
+   * END OF CASE
+   * If we get here, we have probably changed something, and now want to
+   * return to main menu.  Use OLC_VAL as a 'has changed' flag
+   */
 
   OLC_VAL(d) = TRUE;
   medit_disp_menu(d);
 }
 
-void medit_string_cleanup(struct descriptor_data *d, int terminator)
-{
+void medit_string_cleanup(struct descriptor_data *d, int terminator) {
   switch (OLC_MODE(d)) {
 
   case MEDIT_D_DESC:
   default:
-     medit_disp_menu(d);
-     break;
+    medit_disp_menu(d);
+    break;
   }
 }

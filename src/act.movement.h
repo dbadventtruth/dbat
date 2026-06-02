@@ -1,6 +1,6 @@
 #pragma once
-#include "consts/types.h"
 #include "consts/maximums.h"
+#include "consts/types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,7 +34,6 @@ ACMD(do_flee);
 ACMD(do_carry);
 ACMD(do_land);
 ACMD(do_move);
-
 
 #ifdef __cplusplus
 }

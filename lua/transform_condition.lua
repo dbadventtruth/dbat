@@ -48,6 +48,9 @@ function M.transformation(def)
     return {
         id = def.id,
         name = def.display or def.name,
+        alias = def.alias,
+        sort_order = def.sort_order,
+        races = def.races,
         family = def.family,
         tier = def.tier,
         condition = def.condition or def.id,

@@ -20,7 +20,6 @@ ACMD(do_voice);
 ACMD(do_languages);
 ACMD(do_osay);
 
-
 #ifdef __cplusplus
 }
 #endif

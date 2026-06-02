@@ -1,28 +1,28 @@
 /* ************************************************************************
-*   File: spec_assign.c                                 Part of CircleMUD *
-*  Usage: Functions to assign function pointers to objs/mobs/rooms        *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
-#include "config.h"
+ *   File: spec_assign.c                                 Part of CircleMUD *
+ *  Usage: Functions to assign function pointers to objs/mobs/rooms        *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 #include "spec_assign.h"
 #include "character_db.h"
-#include "object_db.h"
-#include "room_impl.h"
-#include "room_api.h"
-#include "room_db.h"
+#include "config.h"
 #include "config_db.h"
-#include "log.h"
 #include "consts/roomflags.h"
 #include "db.h"
 #include "interpreter.h"
+#include "log.h"
+#include "object_db.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "room_impl.h"
 
-#include "spec_procs.h"
-#include "objsave.h"
 #include "mail.h"
+#include "objsave.h"
+#include "spec_procs.h"
 
 #include "iterate.hpp"
 
@@ -33,8 +33,7 @@ void ASSIGNOBJ(obj_vnum obj, SPECIAL(fname));
 
 /* functions to perform assignments */
 
-void ASSIGNMOB(mob_vnum mob, SPECIAL(fname))
-{
+void ASSIGNMOB(mob_vnum mob, SPECIAL(fname)) {
   auto proto = mob_proto_by_id(mob);
 
   if (proto)
@@ -43,8 +42,7 @@ void ASSIGNMOB(mob_vnum mob, SPECIAL(fname))
     log("SYSERR: Attempt to assign spec to non-existant mob #%d", mob);
 }
 
-void ASSIGNOBJ(obj_vnum obj, SPECIAL(fname))
-{
+void ASSIGNOBJ(obj_vnum obj, SPECIAL(fname)) {
   auto proto = obj_proto_by_id(obj);
 
   if (proto)
@@ -53,9 +51,8 @@ void ASSIGNOBJ(obj_vnum obj, SPECIAL(fname))
     log("SYSERR: Attempt to assign spec to non-existant obj #%d", obj);
 }
 
-void ASSIGNROOM(room_vnum room, SPECIAL(fname))
-{
-  struct room_data* rm = room_by_id(room);
+void ASSIGNROOM(room_vnum room, SPECIAL(fname)) {
+  struct room_data *rm = room_by_id(room);
 
   if (rm)
     rm->func = fname;
@@ -63,32 +60,24 @@ void ASSIGNROOM(room_vnum room, SPECIAL(fname))
     log("SYSERR: Attempt to assign spec to non-existant room #%d", room);
 }
 
-
 /* ********************************************************************
-*  Assignments                                                        *
-******************************************************************** */
+ *  Assignments                                                        *
+ ******************************************************************** */
 
 /* assign special procedures to mobiles */
-void assign_mobiles(void)
-{
-  ASSIGNMOB(3010, postmaster);
-}
-
-
+void assign_mobiles(void) { ASSIGNMOB(3010, postmaster); }
 
 /* assign special procedures to objects */
-void assign_objects(void)
-{
-  ASSIGNOBJ(3034, bank);	/* atm */
-  ASSIGNOBJ(3036, bank);	/* cashcard */
-  ASSIGNOBJ(11, gravity);       /* gravity generator */
-  ASSIGNOBJ(65, healtank);      /* Healing Tank */
-  ASSIGNOBJ(3, augmenter);      /* Augmenter 9001 */
+void assign_objects(void) {
+  ASSIGNOBJ(3034, bank);   /* atm */
+  ASSIGNOBJ(3036, bank);   /* cashcard */
+  ASSIGNOBJ(11, gravity);  /* gravity generator */
+  ASSIGNOBJ(65, healtank); /* Healing Tank */
+  ASSIGNOBJ(3, augmenter); /* Augmenter 9001 */
 }
 
 /* assign special procedures to rooms */
-void assign_rooms(void)
-{
+void assign_rooms(void) {
   room_rnum i;
 
   ASSIGNROOM(5, dump);
@@ -98,13 +87,13 @@ void assign_rooms(void)
   ASSIGNROOM(84, auction);
   ASSIGNROOM(85, auction);
   ASSIGNROOM(86, auction);
-  /* Gauntlet rooms track how far a player progressed into zone  Jamdog - 13th Feb 2006 */
+  /* Gauntlet rooms track how far a player progressed into zone  Jamdog - 13th
+   * Feb 2006 */
 
   if (CONFIG_DTS_ARE_DUMPS)
-  room_iterate([&](auto room) {
-    if (room_flagged(room, ROOM_DEATH))
-      room->func = dump;
-    return true;
-  });
-      
+    room_iterate([&](auto room) {
+      if (room_flagged(room, ROOM_DEATH))
+        room->func = dump;
+      return true;
+    });
 }

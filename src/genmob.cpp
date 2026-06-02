@@ -3,35 +3,35 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shop.h"
+#include "genmob.h"
 #include "guild.h"
 #include "iterate.hpp"
-#include "genmob.h"
+#include "shop.h"
 
-#include "character_impl.h"
+#include "affect.h"
 #include "character_api.h"
 #include "character_db.h"
+#include "character_impl.h"
 #include "character_macros.h"
-#include "dgscript_impl.h"
-#include "zone_impl.h"
-#include "shop_impl.h"
-#include "guild_impl.h"
-#include "log.h"
-#include "extract.h"
-#include "races.h"
 #include "character_utils.h"
+#include "class.h"
 #include "consts/admlevel.h"
 #include "db.h"
+#include "dg_olc.h"
+#include "dg_scripts.h"
+#include "dgscript_impl.h"
+#include "extract.h"
 #include "genolc.h"
-#include "shop.h"
 #include "genzon.h"
 #include "guild.h"
-#include "dg_scripts.h"
+#include "guild_impl.h"
 #include "handler.h"
-#include "dg_olc.h"
-#include "class.h"
+#include "log.h"
+#include "races.h"
 #include "races_plus.h"
-#include "affect.h"
+#include "shop.h"
+#include "shop_impl.h"
+#include "zone_impl.h"
 
 #include <cstdlib>
 #include <string.h>
@@ -39,12 +39,10 @@
 /* From db.c */
 void init_mobile_skills(void);
 
-
 int update_mobile_strings(struct char_data *t, struct char_data *f);
 void check_mobile_strings(struct char_data *mob);
 void check_mobile_string(mob_vnum i, char **string, const char *dscr);
 int write_mobile_espec(mob_vnum mvnum, struct char_data *mob, FILE *fd);
-
 
 #if CONFIG_GENOLC_MOBPROG
 int write_mobile_mobprog(mob_vnum mvnum, struct char_data *mob, FILE *fd);
@@ -53,8 +51,7 @@ int write_mobile_mobprog(mob_vnum mvnum, struct char_data *mob, FILE *fd);
 /* local functions */
 void extract_mobile_all(mob_vnum vnum);
 
-static void free_trig_proto_list(struct trig_proto_list *list)
-{
+static void free_trig_proto_list(struct trig_proto_list *list) {
   while (list) {
     auto next = list->next;
     free(list);
@@ -62,8 +59,8 @@ static void free_trig_proto_list(struct trig_proto_list *list)
   }
 }
 
-static struct trig_proto_list *copy_trig_proto_list(const struct trig_proto_list *from)
-{
+static struct trig_proto_list *
+copy_trig_proto_list(const struct trig_proto_list *from) {
   struct trig_proto_list *head = NULL, *tail = NULL;
 
   for (; from; from = from->next) {
@@ -80,8 +77,7 @@ static struct trig_proto_list *copy_trig_proto_list(const struct trig_proto_list
   return head;
 }
 
-static void mob_proto_free_strings(struct mob_proto_data *mob)
-{
+static void mob_proto_free_strings(struct mob_proto_data *mob) {
   if (mob->name)
     free(mob->name);
   if (mob->title)
@@ -99,8 +95,7 @@ static void mob_proto_free_strings(struct mob_proto_data *mob)
   mob->description = NULL;
 }
 
-void mob_proto_free(struct mob_proto_data *mob)
-{
+void mob_proto_free(struct mob_proto_data *mob) {
   if (!mob)
     return;
   mob_proto_free_strings(mob);
@@ -109,25 +104,24 @@ void mob_proto_free(struct mob_proto_data *mob)
   free(mob);
 }
 
-void mob_proto_free_script(struct mob_proto_data *mob)
-{
+void mob_proto_free_script(struct mob_proto_data *mob) {
   if (!mob)
     return;
   free_trig_proto_list(mob->proto_script);
   mob->proto_script = NULL;
 }
 
-void mob_proto_copy_script_to_mobile(struct mob_proto_data *source, struct char_data *dest)
-{
+void mob_proto_copy_script_to_mobile(struct mob_proto_data *source,
+                                     struct char_data *dest) {
   if (!dest)
     return;
   if (dest->proto_script)
     free_proto_script(dest, MOB_TRIGGER);
-  dest->proto_script = source ? copy_trig_proto_list(source->proto_script) : NULL;
+  dest->proto_script =
+      source ? copy_trig_proto_list(source->proto_script) : NULL;
 }
 
-int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from)
-{
+int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from) {
   char *old_name = to->name;
   char *old_title = to->title;
   char *old_short_descr = to->short_descr;
@@ -170,8 +164,7 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from)
   return TRUE;
 }
 
-int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from)
-{
+int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
   int32_t id = to->id;
   struct descriptor_data *desc = to->desc;
   struct char_data *next = to->next;
@@ -209,8 +202,7 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from)
   return TRUE;
 }
 
-int add_mobile(struct char_data *mob, mob_vnum vnum)
-{
+int add_mobile(struct char_data *mob, mob_vnum vnum) {
   int i, shop, guild, cmd_no;
   zone_rnum zone;
   struct char_data *live_mob;
@@ -249,8 +241,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum)
   return vnum;
 }
 
-int copy_mobile(struct char_data *to, struct char_data *from)
-{
+int copy_mobile(struct char_data *to, struct char_data *from) {
   struct mob_proto_data tmp = {};
 
   copy_mobile_to_proto(&tmp, from);
@@ -260,8 +251,7 @@ int copy_mobile(struct char_data *to, struct char_data *from)
   return TRUE;
 }
 
-void extract_mobile_all(mob_vnum vnum)
-{
+void extract_mobile_all(mob_vnum vnum) {
   struct char_data *next, *ch;
 
   for (ch = character_list; ch; ch = next) {
@@ -271,15 +261,15 @@ void extract_mobile_all(mob_vnum vnum)
   }
 }
 
-int delete_mobile(mob_vnum refpt)
-{
+int delete_mobile(mob_vnum refpt) {
   struct char_data *live_mob;
   int counter, cmd_no;
   mob_vnum vnum;
   zone_rnum zone;
-  
-  if(!mob_proto_by_id(refpt)) {
-    log("GenOLC: delete_mobile: Attempted to delete non-existant mobile #%d.", refpt);
+
+  if (!mob_proto_by_id(refpt)) {
+    log("GenOLC: delete_mobile: Attempted to delete non-existant mobile #%d.",
+        refpt);
     return FALSE;
   }
 
@@ -291,7 +281,7 @@ int delete_mobile(mob_vnum refpt)
   add_to_save_list(vz, SL_MOB);
 
   /* Update zone table.  */
-  zone_iterate ([&](auto zone) {
+  zone_iterate([&](auto zone) {
     bool changed = FALSE;
     for (cmd_no = 0; zone->cmd[cmd_no].command != 'S'; cmd_no++) {
       if (zone->cmd[cmd_no].command == 'M' && zone->cmd[cmd_no].arg1 == vnum) {
@@ -300,50 +290,49 @@ int delete_mobile(mob_vnum refpt)
         changed = true;
       }
     }
-    if(changed) {
+    if (changed) {
       add_to_save_list(zone->number, SL_ZON);
     }
-  return true;
-});
+    return true;
+  });
 
   zone_vnum last_saved_zone = NOTHING;
   /* Update shop keepers.  */
-    shop_iterate ([&](auto shop) {
-      zone_vnum zone = virtual_zone_by_thing(SHOP_NUM(shop));
-      /* Find the shop for this keeper and reset it's keeper to
-       * -1 to keep the shop so it could be assigned to someone else */
-      if (SHOP_KEEPER(shop) == vnum) {
-        SHOP_KEEPER(shop) = NOTHING;
-        if(zone != last_saved_zone) {
-          add_to_save_list(zone, SL_SHP);
-          last_saved_zone = zone;
-        }
+  shop_iterate([&](auto shop) {
+    zone_vnum zone = virtual_zone_by_thing(SHOP_NUM(shop));
+    /* Find the shop for this keeper and reset it's keeper to
+     * -1 to keep the shop so it could be assigned to someone else */
+    if (SHOP_KEEPER(shop) == vnum) {
+      SHOP_KEEPER(shop) = NOTHING;
+      if (zone != last_saved_zone) {
+        add_to_save_list(zone, SL_SHP);
+        last_saved_zone = zone;
       }
-      return true;
-    });
-  
-    last_saved_zone = NOTHING;
+    }
+    return true;
+  });
+
+  last_saved_zone = NOTHING;
   /* Update guild masters */
-    guild_iterate ([&](auto guild) {
+  guild_iterate([&](auto guild) {
+    zone_vnum zone = virtual_zone_by_thing(guild->vnum);
+    /* Find the guild for this trainer and reset it's trainer to
+     * -1 to keep the guild so it could be assigned to someone else */
+    if (GM_TRAINER(guild) == vnum) {
+      GM_TRAINER(guild) = NOTHING;
       zone_vnum zone = virtual_zone_by_thing(guild->vnum);
-      /* Find the guild for this trainer and reset it's trainer to
-       * -1 to keep the guild so it could be assigned to someone else */
-      if (GM_TRAINER(guild) == vnum) {
-        GM_TRAINER(guild) = NOTHING;
-        zone_vnum zone = virtual_zone_by_thing(guild->vnum);
-        if(zone != last_saved_zone) {
-          add_to_save_list(zone, SL_GLD);
-          last_saved_zone = zone;
-        }
+      if (zone != last_saved_zone) {
+        add_to_save_list(zone, SL_GLD);
+        last_saved_zone = zone;
       }
-      return true;
-    });
+    }
+    return true;
+  });
 
   return refpt;
 }
 
-int copy_mobile_strings(struct char_data *t, struct char_data *f)
-{
+int copy_mobile_strings(struct char_data *t, struct char_data *f) {
   if (f->name)
     t->name = strdup(f->name);
   if (f->voice)
@@ -361,15 +350,13 @@ int copy_mobile_strings(struct char_data *t, struct char_data *f)
   return TRUE;
 }
 
-int update_mobile_strings(struct char_data *t, struct char_data *f)
-{
+int update_mobile_strings(struct char_data *t, struct char_data *f) {
   free_mobile_strings(t);
   copy_mobile_strings(t, f);
   return TRUE;
 }
 
-int free_mobile_strings(struct char_data *mob)
-{
+int free_mobile_strings(struct char_data *mob) {
   if (mob->name)
     free(mob->name);
   if (mob->voice)
@@ -387,16 +374,14 @@ int free_mobile_strings(struct char_data *mob)
   return TRUE;
 }
 
-
-/* Free a mobile structure that has been edited. Take care of existing mobiles 
+/* Free a mobile structure that has been edited. Take care of existing mobiles
  * and their mob_proto!  */
-int mobile_free_editor(struct char_data *mob)
-{
+int mobile_free_editor(struct char_data *mob) {
   mob_rnum i;
 
   if (mob == NULL)
     return FALSE;
-  
+
   free_mobile_strings(mob);
   if (mob->proto_script)
     free_proto_script(mob, MOB_TRIGGER);
@@ -411,33 +396,31 @@ int mobile_free_editor(struct char_data *mob)
   return TRUE;
 }
 
-int free_mobile(struct char_data *mob)
-{
-  return mobile_free_editor(mob);
-}
+int free_mobile(struct char_data *mob) { return mobile_free_editor(mob); }
 
-int save_mobiles(struct zone_data *zone)
-{
+int save_mobiles(struct zone_data *zone) {
   FILE *mobfd;
   room_vnum i;
   mob_rnum rmob;
   int written;
   char mobfname[64], usedfname[64];
 
-if(!zone) {
+  if (!zone) {
     log("SYSERR: GenOLC: save_mobiles: Invalid zone!");
     return FALSE;
   }
 
   snprintf(mobfname, sizeof(mobfname), "%s%d.new", MOB_PREFIX, zone->number);
   if ((mobfd = fopen(mobfname, "w")) == NULL) {
-    mudlog(BRF, ADMLVL_GOD, TRUE, "SYSERR: GenOLC: Cannot open mob file for writing.");
+    mudlog(BRF, ADMLVL_GOD, TRUE,
+           "SYSERR: GenOLC: Cannot open mob file for writing.");
     return FALSE;
   }
 
   for (i = zone->bot; i <= zone->top; i++) {
     auto proto = mob_proto_by_id(i);
-    if (!proto) continue;
+    if (!proto)
+      continue;
     if (write_mobile_record(i, proto, mobfd) < 0)
       log("SYSERR: GenOLC: Error writing mobile #%d.", i);
   }
@@ -447,7 +430,7 @@ if(!zone) {
   snprintf(usedfname, sizeof(usedfname), "%s%d.mob", MOB_PREFIX, zone->number);
   remove(usedfname);
   rename(mobfname, usedfname);
-  
+
   if (in_save_list(zone->number, SL_MOB)) {
     remove_from_save_list(zone->number, SL_MOB);
     create_world_index(zone->number, "mob");
@@ -457,8 +440,7 @@ if(!zone) {
 }
 
 #if CONFIG_GENOLC_MOBPROG
-int write_mobile_mobprog(mob_vnum mvnum, struct char_data *mob, FILE *fd)
-{
+int write_mobile_mobprog(mob_vnum mvnum, struct char_data *mob, FILE *fd) {
   char wmmarg[MAX_STRING_LENGTH], wmmcom[MAX_STRING_LENGTH];
   MPROG_DATA *mob_prog;
 
@@ -467,11 +449,10 @@ int write_mobile_mobprog(mob_vnum mvnum, struct char_data *mob, FILE *fd)
     wmmcom[MAX_STRING_LENGTH - 1] = '\0';
     strip_cr(strncpy(wmmarg, mob_prog->arglist, MAX_STRING_LENGTH - 1));
     strip_cr(strncpy(wmmcom, mob_prog->comlist, MAX_STRING_LENGTH - 1));
-    fprintf(fd,	"%s %s~\n"
-		"%s%c\n",
-	medit_get_mprog_type(mob_prog), wmmarg,
-	wmmcom, STRING_TERMINATOR
-    );
+    fprintf(fd,
+            "%s %s~\n"
+            "%s%c\n",
+            medit_get_mprog_type(mob_prog), wmmarg, wmmcom, STRING_TERMINATOR);
     if (mob_prog->next == NULL)
       fputs("|\n", fd);
   }
@@ -479,8 +460,7 @@ int write_mobile_mobprog(mob_vnum mvnum, struct char_data *mob, FILE *fd)
 }
 #endif
 
-int write_mobile_espec(mob_vnum mvnum, struct char_data *mob, FILE *fd)
-{
+int write_mobile_espec(mob_vnum mvnum, struct char_data *mob, FILE *fd) {
   struct affected_type *aff;
   int i;
 
@@ -502,9 +482,8 @@ int write_mobile_espec(mob_vnum mvnum, struct char_data *mob, FILE *fd)
   return TRUE;
 }
 
-
-int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto, FILE *fd)
-{
+int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto,
+                        FILE *fd) {
   struct char_data temp = {};
   struct char_data *mob = &temp;
   char ldesc[MAX_STRING_LENGTH], ddesc[MAX_STRING_LENGTH];
@@ -520,17 +499,15 @@ int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto, FILE *fd)
   strip_cr(strncpy(ldesc, GET_LDESC(mob), MAX_STRING_LENGTH - 1));
   strip_cr(strncpy(ddesc, GET_DDESC(mob), MAX_STRING_LENGTH - 1));
 
-  fprintf(fd,	"#%d\n"
-		"%s%c\n"
-		"%s%c\n"
-		"%s%c\n"
-		"%s%c\n",
-	mvnum,
-	GET_ALIAS(mob), STRING_TERMINATOR,
-	GET_SDESC(mob), STRING_TERMINATOR,
-	ldesc, STRING_TERMINATOR,
-	ddesc, STRING_TERMINATOR
-  );
+  fprintf(fd,
+          "#%d\n"
+          "%s%c\n"
+          "%s%c\n"
+          "%s%c\n"
+          "%s%c\n",
+          mvnum, GET_ALIAS(mob), STRING_TERMINATOR, GET_SDESC(mob),
+          STRING_TERMINATOR, ldesc, STRING_TERMINATOR, ddesc,
+          STRING_TERMINATOR);
 
   sprintascii(fbuf1, MOB_FLAGS(mob)[0]);
   sprintascii(fbuf2, MOB_FLAGS(mob)[1]);
@@ -541,26 +518,22 @@ int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto, FILE *fd)
   sprintascii(abuf3, AFF_FLAGS(mob)[2]);
   sprintascii(abuf4, AFF_FLAGS(mob)[3]);
 
-  fprintf(fd, "%s %s %s %s %s %s %s %s %d E\n"
-              "%d %d %d %" I64T "d%" I64T "+%" I64T " %dd%d+%d\n",
-                fbuf1, fbuf2, fbuf3, fbuf4,
-                abuf1, abuf2, abuf3, abuf4,
-		GET_ALIGNMENT(mob),
-		0, 0, 10 - (GET_ARMOR(mob) / 10),
-                0, (getCurKI(mob)), (getCurST(mob)), 0, 0,
-		0
-  );
-  fprintf(fd, 	"%d 0 %d %d\n"
-		"%d %d %d\n",
-		GET_GOLD(mob), GET_RACE(mob), GET_CLASS(mob),
-		GET_POS(mob), GET_DEFAULT_POS(mob), GET_SEX(mob)
-  );
+  fprintf(fd,
+          "%s %s %s %s %s %s %s %s %d E\n"
+          "%d %d %d %" I64T "d%" I64T "+%" I64T " %dd%d+%d\n",
+          fbuf1, fbuf2, fbuf3, fbuf4, abuf1, abuf2, abuf3, abuf4,
+          GET_ALIGNMENT(mob), 0, 0, 10 - (GET_ARMOR(mob) / 10), 0,
+          (getCurKI(mob)), (getCurST(mob)), 0, 0, 0);
+  fprintf(fd,
+          "%d 0 %d %d\n"
+          "%d %d %d\n",
+          GET_GOLD(mob), GET_RACE(mob), GET_CLASS(mob), GET_POS(mob),
+          GET_DEFAULT_POS(mob), GET_SEX(mob));
 
   if (write_mobile_espec(mvnum, mob, fd) < 0)
     log("SYSERR: GenOLC: Error writing E-specs for mobile #%d.", mvnum);
 
   mob_proto_script_save_to_disk(fd, proto);
-
 
 #if CONFIG_GENOLC_MOBPROG
   if (write_mobile_mobprog(mvnum, mob, fd) < 0)
@@ -573,8 +546,7 @@ int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto, FILE *fd)
   return TRUE;
 }
 
-void check_mobile_strings(struct char_data *mob)
-{
+void check_mobile_strings(struct char_data *mob) {
   mob_vnum mvnum = mob->vnum;
   check_mobile_string(mvnum, &GET_LDESC(mob), "long description");
   check_mobile_string(mvnum, &GET_DDESC(mob), "detailed description");
@@ -582,8 +554,7 @@ void check_mobile_strings(struct char_data *mob)
   check_mobile_string(mvnum, &GET_SDESC(mob), "short description");
 }
 
-void check_mobile_string(mob_vnum i, char **string, const char *dscr)
-{
+void check_mobile_string(mob_vnum i, char **string, const char *dscr) {
   if (*string == NULL || **string == '\0') {
     char smbuf[128];
     sprintf(smbuf, "GenOLC: Mob #%d has an invalid %s.", i, dscr);

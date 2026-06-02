@@ -2,13 +2,11 @@
 #include "consts/types.h"
 #include <stddef.h>
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define GW_ARRAY_MAX    4
-
+#define GW_ARRAY_MAX 4
 
 // Guild API functions, implemented in guilds_api.zig
 guild_vnum guild_id_get(struct guild_data *guild);

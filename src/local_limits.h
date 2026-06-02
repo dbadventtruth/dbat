@@ -18,7 +18,6 @@ void gain_condition(struct char_data *ch, int condition, int value);
 void point_update(void);
 void update_innate(struct char_data *ch);
 
-
 #ifdef __cplusplus
 }
 #endif

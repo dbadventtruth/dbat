@@ -1,7 +1,6 @@
 #pragma once
 #include "consts/types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -351,7 +350,6 @@ extern "C" {
 #define SIZEOF_SIZE_T 8
 #define SIZEOF_TIME_T 8
 #define SIZEOF_CHAR_P 8
-
 
 #ifdef __cplusplus
 }

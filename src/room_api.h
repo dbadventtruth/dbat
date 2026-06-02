@@ -6,10 +6,11 @@ extern "C" {
 #endif
 
 // Exit API implemented in rooms_api.zig
-struct room_data* exit_dest_get(struct room_direction_data *exit);
-const char* exit_general_description_get(struct room_direction_data *exit);
-void exit_general_description_set(struct room_direction_data *exit, const char *desc);
-const char* exit_keyword_get(struct room_direction_data *exit);
+struct room_data *exit_dest_get(struct room_direction_data *exit);
+const char *exit_general_description_get(struct room_direction_data *exit);
+void exit_general_description_set(struct room_direction_data *exit,
+                                  const char *desc);
+const char *exit_keyword_get(struct room_direction_data *exit);
 void exit_keyword_set(struct room_direction_data *exit, const char *keyword);
 int16_t exit_info_get(struct room_direction_data *exit);
 void exit_info_set(struct room_direction_data *exit, int16_t info);
@@ -32,8 +33,8 @@ void exit_dcfailsave_set(struct room_direction_data *exit, int dcfailsave);
 int exit_failroom_get(struct room_direction_data *exit);
 void exit_failroom_set(struct room_direction_data *exit, room_vnum failroom);
 int exit_totalfailroom_get(struct room_direction_data *exit);
-void exit_totalfailroom_set(struct room_direction_data *exit, room_vnum totalfailroom);
-
+void exit_totalfailroom_set(struct room_direction_data *exit,
+                            room_vnum totalfailroom);
 
 // Rooms API functions, implemented in rooms_api.zig
 room_vnum room_id_get(struct room_data *room);
@@ -42,13 +43,13 @@ room_vnum room_vnum_get(struct room_data *room);
 void room_vnum_set(struct room_data *room, room_vnum vnum);
 
 zone_vnum room_zone_vnum_get(struct room_data *room);
-struct zone_data* room_zone_get(struct room_data *room);
+struct zone_data *room_zone_get(struct room_data *room);
 void room_zone_set(struct room_data *room, zone_vnum vnum);
 int room_sector_type_get(struct room_data *room);
 void room_sector_type_set(struct room_data *room, int sector_type);
-const char* room_name_get(struct room_data *room);
+const char *room_name_get(struct room_data *room);
 void room_name_set(struct room_data *room, const char *name);
-const char* room_description_get(struct room_data *room);
+const char *room_description_get(struct room_data *room);
 void room_description_set(struct room_data *room, const char *description);
 int room_flagged(struct room_data *room, int pos);
 bool room_flag_toggle(struct room_data *room, int pos);
@@ -76,12 +77,13 @@ void room_send_textf(struct room_data *room, const char *format, ...);
 
 // Return true to continue iteration. Return false to stop.
 
-
-struct room_direction_data *room_dir_option_get(struct room_data *room, int dir);
+struct room_direction_data *room_dir_option_get(struct room_data *room,
+                                                int dir);
 struct char_data *room_people_get(struct room_data *room);
 struct obj_data *room_contents_get(struct room_data *room);
 
-void room_contents_iterate(struct room_data *room, bool recursive, obj_iter_fn func, void *ctx);
+void room_contents_iterate(struct room_data *room, bool recursive,
+                           obj_iter_fn func, void *ctx);
 void room_people_iterate(struct room_data *room, char_iter_fn func, void *ctx);
 
 #ifdef __cplusplus

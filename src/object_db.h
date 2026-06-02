@@ -6,7 +6,6 @@
 extern "C" {
 #endif
 
-
 // Below this is global variables and database functions
 extern struct obj_data *object_list;
 extern long max_obj_id;
@@ -14,11 +13,11 @@ extern long max_obj_id;
 obj_rnum real_object(obj_vnum vnum);
 struct obj_proto_data *obj_proto_by_id(obj_vnum vnum);
 
-void* obj_proto_iterator_create();
-struct obj_proto_data* obj_proto_next(void* iterator);
-void obj_proto_iterator_free(void* iterator);
+void *obj_proto_iterator_create();
+struct obj_proto_data *obj_proto_next(void *iterator);
+void obj_proto_iterator_free(void *iterator);
 
-struct obj_proto_data* obj_proto_get(obj_vnum vnum);
+struct obj_proto_data *obj_proto_get(obj_vnum vnum);
 size_t obj_proto_count();
 void obj_proto_put(obj_vnum vnum, struct obj_proto_data *obj);
 void obj_proto_delete(obj_vnum vnum);

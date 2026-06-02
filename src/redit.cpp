@@ -5,60 +5,59 @@
  *  Copyright 1997-2001 George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 
-
-#include "dg_scripts.h"
-#include "character_impl.h"
 #include "character_api.h"
+#include "character_impl.h"
 #include "character_macros.h"
-#include "descriptor_impl.h"
-#include "descriptor_db.h"
-#include "descriptor_macros.h"
-#include "object_impl.h"
-#include "object_macros.h"
-#include "room_impl.h"
-#include "room_api.h"
-#include "room_db.h"
-#include "room_macros.h"
+#include "character_utils.h"
 #include "config_db.h"
-#include "relocate.h"
-#include "skills.h"
-#include "zone_impl.h"
-#include "zone_db.h"
 #include "consts/admlevel.h"
 #include "consts/constates.h"
+#include "consts/directions.h"
+#include "consts/exitflags.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
 #include "consts/races.h"
-#include "consts/directions.h"
-#include "consts/exitflags.h"
 #include "consts/roomflags.h"
 #include "consts/sectortypes.h"
 #include "consts/triggers.h"
-#include "character_utils.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "dg_scripts.h"
 #include "flags.h"
 #include "log.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "relocate.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "room_macros.h"
+#include "skills.h"
 #include "util_macros.h"
+#include "zone_db.h"
+#include "zone_impl.h"
 
-#include <cstdlib>
-#include <cstring>
-#include <strings.h>
-#include "config.h"
-#include "comm.h"
-#include "interpreter.h"
-#include "db.h"
+#include "act.informative.h"
+#include "act.wizard.h"
 #include "boards.h"
+#include "comm.h"
+#include "config.h"
+#include "db.h"
+#include "dg_olc.h"
+#include "extract.h"
 #include "genolc.h"
 #include "genwld.h"
 #include "genzon.h"
-#include "oasis.h"
-#include "improved-edit.h"
-#include "dg_olc.h"
-#include "spells.h"
 #include "handler.h"
-#include "extract.h"
+#include "improved-edit.h"
+#include "interpreter.h"
+#include "oasis.h"
 #include "races_plus.h"
-#include "act.wizard.h"
-#include "act.informative.h"
+#include "spells.h"
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 
 /*------------------------------------------------------------------------*/
 
@@ -68,52 +67,56 @@
 
 /*------------------------------------------------------------------------*/
 
-
 /*------------------------------------------------------------------------*\
   Utils and exported functions.
 \*------------------------------------------------------------------------*/
 
-ACMD(do_oasis_redit)
-{
+ACMD(do_oasis_redit) {
   char *buf3;
   char buf1[MAX_STRING_LENGTH];
   char buf2[MAX_STRING_LENGTH];
   int number = NOWHERE, save = 0, real_num;
   struct descriptor_data *d;
   struct room_data *room = NULL;
-  
+
   /* Parse any arguments. */
   if (GET_ADMLEVEL(ch) > 0) {
-   buf3 = two_arguments(argument, buf1, buf2);
+    buf3 = two_arguments(argument, buf1, buf2);
   }
 
-  if (GET_ADMLEVEL(ch) < 1 && !room_flagged(char_room_get(ch), ROOM_CANREMODEL)) {
-   send_to_char(ch, "You can not remodel this room.\r\n");
-   return;
+  if (GET_ADMLEVEL(ch) < 1 &&
+      !room_flagged(char_room_get(ch), ROOM_CANREMODEL)) {
+    send_to_char(ch, "You can not remodel this room.\r\n");
+    return;
   }
 
   struct obj_data *capsule = NULL, *next_obj = NULL, *remove = NULL;
   int remodeling = FALSE;
 
   for (capsule = ch->carrying; capsule; capsule = next_obj) {
-       next_obj = capsule->next_content;
+    next_obj = capsule->next_content;
     if (remove != NULL) {
-     continue;
+      continue;
     } else if (GET_OBJ_VNUM(capsule) == 19094) {
-     remove = capsule;    
+      remove = capsule;
     }
   }
 
   if (remove == NULL && GET_ADMLEVEL(ch) < 1) {
-   send_to_char(ch, "You do not have a R.A.D. Remodeling Assistance Droid.\r\n");
-   return;
+    send_to_char(ch,
+                 "You do not have a R.A.D. Remodeling Assistance Droid.\r\n");
+    return;
   } else if (GET_ADMLEVEL(ch) < 1) {
-   act("@GYou open up the computer panel on the droid and begin to program its remodeling routine.@n", TRUE, ch, 0, 0, TO_CHAR);
-   act("@g$n@G opens up a computer panel on some kind of small spherical droid and begins to program it.@n", TRUE, ch, 0, 0, TO_ROOM);
-   extract_obj(remove);
-   remodeling = TRUE;
+    act("@GYou open up the computer panel on the droid and begin to program "
+        "its remodeling routine.@n",
+        TRUE, ch, 0, 0, TO_CHAR);
+    act("@g$n@G opens up a computer panel on some kind of small spherical "
+        "droid and begins to program it.@n",
+        TRUE, ch, 0, 0, TO_ROOM);
+    extract_obj(remove);
+    remodeling = TRUE;
   }
-  
+
   if (!*buf1 || GET_ADMLEVEL(ch) < 1)
     number = char_room_vnum_get(ch);
   else if (!isdigit(*buf1)) {
@@ -121,55 +124,56 @@ ACMD(do_oasis_redit)
       send_to_char(ch, "Yikes!  Stop that, someone will get hurt!\r\n");
       return;
     }
-    
+
     save = TRUE;
-      
+
     if (is_number(buf2))
       number = atoi(buf2);
     else if (GET_OLC_ZONE(ch) >= 0) {
       struct zone_data *zone = zone_by_id(GET_OLC_ZONE(ch));
-        
+
       if (!zone)
         number = NOWHERE;
       else
         number = zone->bot;
     }
-      
+
     if (number == NOWHERE) {
       send_to_char(ch, "Save which zone?\r\n");
       return;
     }
   }
-  
+
   /*
    * If a numeric argument was given (like a room number), get it.
    */
   if (number == NOWHERE)
     number = atoi(buf1);
-  
+
   /* Check to make sure the room isn't already being edited. */
   for (d = descriptor_list; d; d = d->next) {
     if (STATE(d) == CON_REDIT) {
       if (d->olc && OLC_NUM(d) == number) {
-        send_to_char(ch, "That room is currently being edited by %s.\r\n", 
-          PERS(d->character, ch));
+        send_to_char(ch, "That room is currently being edited by %s.\r\n",
+                     PERS(d->character, ch));
         return;
       }
     }
   }
-  
+
   /* Retrieve the player's descriptor. */
   d = ch->desc;
-  
+
   /* Give the descriptor an OLC structure. */
   if (d->olc) {
-    mudlog(BRF, ADMLVL_IMMORT, TRUE, "SYSERR: do_oasis_redit: Player already had olc structure.");
+    mudlog(BRF, ADMLVL_IMMORT, TRUE,
+           "SYSERR: do_oasis_redit: Player already had olc structure.");
     free(d->olc);
   }
-  
+
   /* Create the OLC structure. */
   CREATE(d->olc, struct oasis_olc_data, 1);
-  
+
   /* Find the zone. */
   OLC_ZNUM(d) = virtual_zone_by_thing(number);
   if (OLC_ZNUM(d) == NOWHERE) {
@@ -180,7 +184,7 @@ ACMD(do_oasis_redit)
   }
 
   struct zone_data *zone = zone_by_id(OLC_ZNUM(d));
-  
+
   /* Make sure the builder is allowed to modify this zone. */
   if (!can_edit_zone(ch, zone) && remodeling == FALSE) {
     send_cannot_edit(ch, zone->number);
@@ -188,38 +192,39 @@ ACMD(do_oasis_redit)
     d->olc = NULL;
     return;
   }
-  
+
   if (save) {
     send_to_char(ch, "Saving all rooms in zone %d.\r\n", zone->number);
-    mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE, "OLC: %s saves room info for zone %d.", GET_NAME(ch), zone->number);
-    
+    mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
+           "OLC: %s saves room info for zone %d.", GET_NAME(ch), zone->number);
+
     /* Save the rooms. */
     save_rooms(zone);
-    
+
     /* Free the olc data from the descriptor. */
     free(d->olc);
     d->olc = NULL;
     return;
   }
-  
+
   OLC_NUM(d) = number;
-  
+
   if ((room = room_by_id(number)) != NULL)
     redit_setup_existing(d, number);
   else
     redit_setup_new(d);
 
-  redit_disp_menu(d);  
+  redit_disp_menu(d);
   STATE(d) = CON_REDIT;
   act("$n starts using OLC.", TRUE, d->character, 0, 0, TO_ROOM);
   SET_BIT_AR(PLR_FLAGS(ch), PLR_WRITING);
-  
-  mudlog(BRF, ADMLVL_IMMORT, TRUE, "OLC: %s starts editing zone %d allowed zone %d",
-    GET_NAME(ch), zone->number, GET_OLC_ZONE(ch));
+
+  mudlog(BRF, ADMLVL_IMMORT, TRUE,
+         "OLC: %s starts editing zone %d allowed zone %d", GET_NAME(ch),
+         zone->number, GET_OLC_ZONE(ch));
 }
 
-void redit_setup_new(struct descriptor_data *d)
-{
+void redit_setup_new(struct descriptor_data *d) {
   CREATE(OLC_ROOM(d), struct room_data, 1);
 
   OLC_ROOM(d)->name = strdup("An unfinished room");
@@ -233,8 +238,7 @@ void redit_setup_new(struct descriptor_data *d)
 
 /*------------------------------------------------------------------------*/
 
-void redit_setup_existing(struct descriptor_data *d, room_vnum num)
-{
+void redit_setup_existing(struct descriptor_data *d, room_vnum num) {
   struct room_data *room;
   int counter;
 
@@ -266,9 +270,11 @@ void redit_setup_existing(struct descriptor_data *d, room_vnum num)
        * Allocate the strings.
        */
       if (exist->dir_option[counter]->general_description)
-        room->dir_option[counter]->general_description = strdup(exist->dir_option[counter]->general_description);
+        room->dir_option[counter]->general_description =
+            strdup(exist->dir_option[counter]->general_description);
       if (exist->dir_option[counter]->keyword)
-        room->dir_option[counter]->keyword = strdup(exist->dir_option[counter]->keyword);
+        room->dir_option[counter]->keyword =
+            strdup(exist->dir_option[counter]->keyword);
     }
   }
 
@@ -284,11 +290,11 @@ void redit_setup_existing(struct descriptor_data *d, room_vnum num)
       temp->keyword = strdup(tdesc->keyword);
       temp->description = strdup(tdesc->description);
       if (tdesc->next) {
-	CREATE(temp2, struct extra_descr_data, 1);
-	temp->next = temp2;
-	temp = temp2;
+        CREATE(temp2, struct extra_descr_data, 1);
+        temp->next = temp2;
+        temp = temp2;
       } else
-	temp->next = NULL;
+        temp->next = NULL;
     }
   }
   /*
@@ -300,13 +306,12 @@ void redit_setup_existing(struct descriptor_data *d, room_vnum num)
 
   dg_olc_script_copy(d);
   room->proto_script = NULL;
-  SCRIPT(room) = NULL; 
+  SCRIPT(room) = NULL;
 }
 
 /*------------------------------------------------------------------------*/
 
-void redit_save_internally(struct descriptor_data *d)
-{
+void redit_save_internally(struct descriptor_data *d) {
   int j, room_num, new_room = FALSE;
   struct descriptor_data *dsc;
 
@@ -325,60 +330,55 @@ void redit_save_internally(struct descriptor_data *d)
 
   struct room_data *room = room_by_id(OLC_NUM(d));
 
-  /* Update triggers */  
+  /* Update triggers */
   /* Free old proto list */
-  if (room->proto_script &&
-      room->proto_script != OLC_SCRIPT(d)) 
-    free_proto_script(room, WLD_TRIGGER); 
-       
+  if (room->proto_script && room->proto_script != OLC_SCRIPT(d))
+    free_proto_script(room, WLD_TRIGGER);
+
   room->proto_script = OLC_SCRIPT(d);
   assign_triggers(room, WLD_TRIGGER);
-  /* end trigger update */  
+  /* end trigger update */
 }
 
 /*------------------------------------------------------------------------*/
 
-void redit_save_to_disk(struct zone_data *zone)
-{
-  save_rooms(zone);		/* :) */
+void redit_save_to_disk(struct zone_data *zone) {
+  save_rooms(zone); /* :) */
   update_space();
 }
 
 /*------------------------------------------------------------------------*/
 
-void free_room(struct room_data *room)
-{
+void free_room(struct room_data *room) {
   /* Free the strings (Mythran). */
   free_room_strings(room);
 
   if (SCRIPT(room))
     extract_script(room, WLD_TRIGGER);
   free_proto_script(room, WLD_TRIGGER);
-  
+
   /* Free the room. */
-  free(room);	/* XXX ? */
+  free(room); /* XXX ? */
 }
 
 /**************************************************************************
- Menu functions 
+ Menu functions
  **************************************************************************/
 
 /*
  * For extra descriptions.
  */
-void redit_disp_extradesc_menu(struct descriptor_data *d)
-{
+void redit_disp_extradesc_menu(struct descriptor_data *d) {
   struct extra_descr_data *extra_desc = OLC_DESC(d);
 
   clear_screen(d);
   write_to_output(d,
-	  "@g1@n) Keyword: @y%s\r\n"
-	  "@g2@n) Description:\r\n@y%s\r\n"
-	  "@g3@n) Goto next description: ",
+                  "@g1@n) Keyword: @y%s\r\n"
+                  "@g2@n) Description:\r\n@y%s\r\n"
+                  "@g3@n) Goto next description: ",
 
-	  extra_desc->keyword ? extra_desc->keyword : "<NONE>",
-	  extra_desc->description ? extra_desc->description : "<NONE>"
-	  );
+                  extra_desc->keyword ? extra_desc->keyword : "<NONE>",
+                  extra_desc->description ? extra_desc->description : "<NONE>");
 
   write_to_output(d, !extra_desc->next ? "Not Set.\r\n" : "Set.\r\n");
   write_to_output(d, "Enter choice (0 to quit) : ");
@@ -388,11 +388,10 @@ void redit_disp_extradesc_menu(struct descriptor_data *d)
 /*
  * For exits.
  */
-void redit_disp_exit_menu(struct descriptor_data *d)
-{
+void redit_disp_exit_menu(struct descriptor_data *d) {
   char door_buf[40];
   /*
-   * if exit doesn't exist, alloc/create it 
+   * if exit doesn't exist, alloc/create it
    */
   if (OLC_EXIT(d) == NULL)
     CREATE(OLC_EXIT(d), struct room_direction_data, 1);
@@ -400,33 +399,34 @@ void redit_disp_exit_menu(struct descriptor_data *d)
   sprintbit(OLC_EXIT(d)->exit_info, exit_bits, door_buf, sizeof(door_buf));
 
   clear_screen(d);
-  write_to_output(d,
-	  "@g1@n) Exit to     		: @c%d\r\n"
-	  "@g2@n) Description 		:-\r\n@y%s\r\n"
-	  "@g3@n) Door name   		: @y%s\r\n"
-	  "@g4@n) Key         		: @c%d\r\n"
-	  "@g5@n) Door flags  		: @c%s\r\n"
-	  "@g6@n) Purge exit.\r\n"
-	  "@g7@n) DC Lock		: @c%d\r\n"
- 	  "@g8@n) DC Hide     		: @c%d\r\n"
-	  "@g9@n) DC Skill		: @c%s\r\n"
-	  "@gA@n) DC Move		: @c%d\r\n"
-	  "@gB@n) Skill Fail Save Type		: @c%d\r\n"
-	  "@gC@n) DC Skill Save		: @c%d\r\n"
-	  "@gD@n) Minor Fail Dest. Room	: @c%d\r\n"
-	  "@gE@n) Major Fail Dest. Room	: @c%d@n\r\n"
-	  "Enter choice, 0 to quit : ",
+  write_to_output(
+      d,
+      "@g1@n) Exit to     		: @c%d\r\n"
+      "@g2@n) Description 		:-\r\n@y%s\r\n"
+      "@g3@n) Door name   		: @y%s\r\n"
+      "@g4@n) Key         		: @c%d\r\n"
+      "@g5@n) Door flags  		: @c%s\r\n"
+      "@g6@n) Purge exit.\r\n"
+      "@g7@n) DC Lock		: @c%d\r\n"
+      "@g8@n) DC Hide     		: @c%d\r\n"
+      "@g9@n) DC Skill		: @c%s\r\n"
+      "@gA@n) DC Move		: @c%d\r\n"
+      "@gB@n) Skill Fail Save Type		: @c%d\r\n"
+      "@gC@n) DC Skill Save		: @c%d\r\n"
+      "@gD@n) Minor Fail Dest. Room	: @c%d\r\n"
+      "@gE@n) Major Fail Dest. Room	: @c%d@n\r\n"
+      "Enter choice, 0 to quit : ",
 
-	  OLC_EXIT(d)->to_room != NOWHERE ? OLC_EXIT(d)->to_room : -1,
-	  OLC_EXIT(d)->general_description ? OLC_EXIT(d)->general_description : "<NONE>",
-	  OLC_EXIT(d)->keyword ? OLC_EXIT(d)->keyword : "<NONE>",
-	  OLC_EXIT(d)->key != NOTHING ? OLC_EXIT(d)->key : -1,
-	  door_buf, OLC_EXIT(d)->dclock, OLC_EXIT(d)->dchide,
-          OLC_EXIT(d)->dcskill != 0 ? spell_info[OLC_EXIT(d)->dcskill].name : "<NONE>",
-          OLC_EXIT(d)->dcmove, OLC_EXIT(d)->failsavetype, 
-          OLC_EXIT(d)->dcfailsave, OLC_EXIT(d)->failroom, 
-          OLC_EXIT(d)->totalfailroom
-	  );
+      OLC_EXIT(d)->to_room != NOWHERE ? OLC_EXIT(d)->to_room : -1,
+      OLC_EXIT(d)->general_description ? OLC_EXIT(d)->general_description
+                                       : "<NONE>",
+      OLC_EXIT(d)->keyword ? OLC_EXIT(d)->keyword : "<NONE>",
+      OLC_EXIT(d)->key != NOTHING ? OLC_EXIT(d)->key : -1, door_buf,
+      OLC_EXIT(d)->dclock, OLC_EXIT(d)->dchide,
+      OLC_EXIT(d)->dcskill != 0 ? spell_info[OLC_EXIT(d)->dcskill].name
+                                : "<NONE>",
+      OLC_EXIT(d)->dcmove, OLC_EXIT(d)->failsavetype, OLC_EXIT(d)->dcfailsave,
+      OLC_EXIT(d)->failroom, OLC_EXIT(d)->totalfailroom);
 
   OLC_MODE(d) = REDIT_EXIT_MENU;
 }
@@ -434,55 +434,54 @@ void redit_disp_exit_menu(struct descriptor_data *d)
 /*
  * For exit flags.
  */
-void redit_disp_exit_flag_menu(struct descriptor_data *d)
-{
+void redit_disp_exit_flag_menu(struct descriptor_data *d) {
   char bits[MAX_INPUT_LENGTH];
   int counter, columns = 0;
 
   clear_screen(d);
   for (counter = 0; counter < NUM_EXIT_FLAGS; counter++) {
-    write_to_output(d, "@g%2d@n) %-20.20s%s",
-                    counter + 1,
-                    exit_bits[counter],
+    write_to_output(d, "@g%2d@n) %-20.20s%s", counter + 1, exit_bits[counter],
                     !(++columns % 2) ? "\r\n" : "");
   }
   sprintbit(OLC_EXIT(d)->exit_info, exit_bits, bits, sizeof(bits));
-  write_to_output(d, "\r\nExit flags: @c%s@n\r\n"
-                     "Enter exit flags, 0 to quit : ",
-                     bits);
+  write_to_output(d,
+                  "\r\nExit flags: @c%s@n\r\n"
+                  "Enter exit flags, 0 to quit : ",
+                  bits);
   OLC_MODE(d) = REDIT_EXIT_DOORFLAGS;
 }
 
 /*
  * For room flags.
  */
-void redit_disp_flag_menu(struct descriptor_data *d)
-{
+void redit_disp_flag_menu(struct descriptor_data *d) {
   char bits[MAX_STRING_LENGTH];
   int counter, columns = 0;
 
   clear_screen(d);
   for (counter = 0; counter < NUM_ROOM_FLAGS; counter++) {
-    write_to_output(d, "@g%2d@n) %-20.20s%s", counter + 1,
-		room_bits[counter], !(++columns % 2) ? "\r\n" : "");
+    write_to_output(d, "@g%2d@n) %-20.20s%s", counter + 1, room_bits[counter],
+                    !(++columns % 2) ? "\r\n" : "");
   }
-  sprintbitarray(OLC_ROOM(d)->room_flags, room_bits, RF_ARRAY_MAX, bits, sizeof(bits));
-  write_to_output(d, "\r\nRoom flags: @c%s@n\r\n"
-	  "Enter room flags, 0 to quit : ", bits);
+  sprintbitarray(OLC_ROOM(d)->room_flags, room_bits, RF_ARRAY_MAX, bits,
+                 sizeof(bits));
+  write_to_output(d,
+                  "\r\nRoom flags: @c%s@n\r\n"
+                  "Enter room flags, 0 to quit : ",
+                  bits);
   OLC_MODE(d) = REDIT_FLAGS;
 }
 
 /*
  * For sector type.
  */
-void redit_disp_sector_menu(struct descriptor_data *d)
-{
+void redit_disp_sector_menu(struct descriptor_data *d) {
   int counter, columns = 0;
 
   clear_screen(d);
   for (counter = 0; counter < NUM_ROOM_SECTORS; counter++) {
-    write_to_output(d, "@g%2d@n) %-20.20s%s", counter,
-		sector_types[counter], !(++columns % 3) ? "\r\n" : "");
+    write_to_output(d, "@g%2d@n) %-20.20s%s", counter, sector_types[counter],
+                    !(++columns % 3) ? "\r\n" : "");
   }
   write_to_output(d, "\r\nEnter sector type : ");
   OLC_MODE(d) = REDIT_SECTOR;
@@ -492,16 +491,14 @@ void redit_disp_sector_menu(struct descriptor_data *d)
  * The main menu.
  */
 
-static int _redit_disp_menu_helper(struct room_data *room, int dir)
-{
+static int _redit_disp_menu_helper(struct room_data *room, int dir) {
   if (auto dest = exit_dest_get(room->dir_option[dir]); dest)
     return dest->number;
   else
     return -1;
 }
 
-void redit_disp_menu(struct descriptor_data *d)
-{
+void redit_disp_menu(struct descriptor_data *d) {
   char buf1[MAX_STRING_LENGTH];
   char buf2[MAX_STRING_LENGTH];
   struct room_data *room = OLC_ROOM(d);
@@ -511,54 +508,51 @@ void redit_disp_menu(struct descriptor_data *d)
   sprintbitarray(room->room_flags, room_bits, RF_ARRAY_MAX, buf1, sizeof(buf1));
   sprinttype(room->sector_type, sector_types, buf2, sizeof(buf2));
   if (GET_ADMLEVEL(d->character) > 0) {
-  write_to_output(d,
-	  "-- Room number : [@c%d@n]  	Room zone: [@c%d@n]\r\n"
-	  "@g1@n) Name        : @y%s\r\n"
-	  "@g2@n) Description :\r\n@y%s"
-	  "@g3@n) Room flags  : @c%s\r\n"
-	  "@g4@n) Sector type : @c%s\r\n"
-	  "@g5@n) Exit north  : [@c%6d@n],  @gB@n) Exit northwest : [@c%6d@n]\r\n"
-	  "@g6@n) Exit east   : [@c%6d@n],  @gC@n) Exit northeast : [@c%6d@n]\r\n"
-	  "@g7@n) Exit south  : [@c%6d@n],  @gD@n) Exit southeast : [@c%6d@n]\r\n"
-	  "@g8@n) Exit west   : [@c%6d@n],  @gE@n) Exit southwest : [@c%6d@n]\r\n"
-	  "@g9@n) Exit up     : [@c%6d@n],  @gF@n) Exit in        : [@c%6d@n]\r\n"
-	  "@gA@n) Exit down   : [@c%6d@n],  @gG@n) Exit out       : [@c%6d@n]\r\n"
-	  "@gH@n) Extra descriptions menu\r\n"
-          "@gW@n) Copy Room\r\n"
-	  "@gX@n) Delete Room\r\n"
-	  "@gS@n) Script      : @c%s\r\n"
-          "@gZ@n) Wiznet      :\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter choice : ",
+    write_to_output(
+        d,
+        "-- Room number : [@c%d@n]  	Room zone: [@c%d@n]\r\n"
+        "@g1@n) Name        : @y%s\r\n"
+        "@g2@n) Description :\r\n@y%s"
+        "@g3@n) Room flags  : @c%s\r\n"
+        "@g4@n) Sector type : @c%s\r\n"
+        "@g5@n) Exit north  : [@c%6d@n],  @gB@n) Exit northwest : [@c%6d@n]\r\n"
+        "@g6@n) Exit east   : [@c%6d@n],  @gC@n) Exit northeast : [@c%6d@n]\r\n"
+        "@g7@n) Exit south  : [@c%6d@n],  @gD@n) Exit southeast : [@c%6d@n]\r\n"
+        "@g8@n) Exit west   : [@c%6d@n],  @gE@n) Exit southwest : [@c%6d@n]\r\n"
+        "@g9@n) Exit up     : [@c%6d@n],  @gF@n) Exit in        : [@c%6d@n]\r\n"
+        "@gA@n) Exit down   : [@c%6d@n],  @gG@n) Exit out       : [@c%6d@n]\r\n"
+        "@gH@n) Extra descriptions menu\r\n"
+        "@gW@n) Copy Room\r\n"
+        "@gX@n) Delete Room\r\n"
+        "@gS@n) Script      : @c%s\r\n"
+        "@gZ@n) Wiznet      :\r\n"
+        "@gQ@n) Quit\r\n"
+        "Enter choice : ",
 
-	  OLC_NUM(d), OLC_ZNUM(d), room->name,
-	  room->description, buf1, buf2,
-	  _redit_disp_menu_helper(room, NORTH),
-	  _redit_disp_menu_helper(room, NORTHWEST),
-	  _redit_disp_menu_helper(room, EAST),
-	  _redit_disp_menu_helper(room, NORTHEAST),
-	  _redit_disp_menu_helper(room, SOUTH),
-	  _redit_disp_menu_helper(room, SOUTHEAST),
-	  _redit_disp_menu_helper(room, WEST),
-	  _redit_disp_menu_helper(room, SOUTHWEST),
-	  _redit_disp_menu_helper(room, UP),
-	  _redit_disp_menu_helper(room, INDIR),
-	  _redit_disp_menu_helper(room, DOWN),
-	  _redit_disp_menu_helper(room, OUTDIR),
-          OLC_SCRIPT(d) ? "Set." : "Not Set."
-	  );
-   } else {
-      write_to_output(d,
-          "-- Room number : [@c%d@n]    Room zone: [@c%d@n]\r\n"
-          "@g1@n) Location Designation (Room Name)        : @y%s\r\n"
-          "@g2@n) Remodeling Routine (Room Description)   :\r\n@y%s"
-          "@gH@n) Extra descriptions menu\r\n"
-          "@gQ@n) Quit\r\n"
-          "Enter choice : ",
+        OLC_NUM(d), OLC_ZNUM(d), room->name, room->description, buf1, buf2,
+        _redit_disp_menu_helper(room, NORTH),
+        _redit_disp_menu_helper(room, NORTHWEST),
+        _redit_disp_menu_helper(room, EAST),
+        _redit_disp_menu_helper(room, NORTHEAST),
+        _redit_disp_menu_helper(room, SOUTH),
+        _redit_disp_menu_helper(room, SOUTHEAST),
+        _redit_disp_menu_helper(room, WEST),
+        _redit_disp_menu_helper(room, SOUTHWEST),
+        _redit_disp_menu_helper(room, UP), _redit_disp_menu_helper(room, INDIR),
+        _redit_disp_menu_helper(room, DOWN),
+        _redit_disp_menu_helper(room, OUTDIR),
+        OLC_SCRIPT(d) ? "Set." : "Not Set.");
+  } else {
+    write_to_output(d,
+                    "-- Room number : [@c%d@n]    Room zone: [@c%d@n]\r\n"
+                    "@g1@n) Location Designation (Room Name)        : @y%s\r\n"
+                    "@g2@n) Remodeling Routine (Room Description)   :\r\n@y%s"
+                    "@gH@n) Extra descriptions menu\r\n"
+                    "@gQ@n) Quit\r\n"
+                    "Enter choice : ",
 
-          OLC_NUM(d), OLC_ZNUM(d), room->name,
-          room->description);
-   }
+                    OLC_NUM(d), OLC_ZNUM(d), room->name, room->description);
+  }
 
   OLC_MODE(d) = REDIT_MAIN_MENU;
 }
@@ -567,8 +561,7 @@ void redit_disp_menu(struct descriptor_data *d)
   The main loop
  **************************************************************************/
 
-void redit_parse(struct descriptor_data *d, char *arg)
-{
+void redit_parse(struct descriptor_data *d, char *arg) {
   int number;
   char *oldtext = NULL;
   struct room_data *room = NULL;
@@ -580,14 +573,19 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'Y':
       redit_save_internally(d);
       mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE,
-	"OLC: %s edits room %d.", GET_NAME(d->character), OLC_NUM(d));
+             "OLC: %s edits room %d.", GET_NAME(d->character), OLC_NUM(d));
       if (CONFIG_OLC_SAVE) {
-	redit_save_to_disk(zone_by_id(virtual_zone_by_thing(OLC_NUM(d))));
+        redit_save_to_disk(zone_by_id(virtual_zone_by_thing(OLC_NUM(d))));
         if (GET_ADMLEVEL(d->character) < 1) {
-         write_to_output(d, "@GThe remodeling droid quickly launches about with remodeling the room to your specifications. It seems to finish in no time at all...@n\r\n");
-         act("@GThe remodeling droid quickly launches about with remodeling the room as to @g$n's@G specifications. It seems to finish in no time at all...@n", TRUE, d->character, 0, 0, TO_ROOM);
+          write_to_output(d, "@GThe remodeling droid quickly launches about "
+                             "with remodeling the room to your specifications. "
+                             "It seems to finish in no time at all...@n\r\n");
+          act("@GThe remodeling droid quickly launches about with remodeling "
+              "the room as to @g$n's@G specifications. It seems to finish in "
+              "no time at all...@n",
+              TRUE, d->character, 0, 0, TO_ROOM);
         } else {
-         write_to_output(d, "Room saved to disk.\r\n");
+          write_to_output(d, "Room saved to disk.\r\n");
         }
       } else
         write_to_output(d, "Room saved to memory.\r\n");
@@ -602,15 +600,19 @@ void redit_parse(struct descriptor_data *d, char *arg)
       OLC_ROOM(d)->proto_script = OLC_SCRIPT(d);
       cleanup_olc(d, CLEANUP_ALL);
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "@GYou close the droids interface and put it back among the rest of your things.@n\r\n");
-       act("@g$n@G stops typing information into the droid in $s hands and closes it back up.@n\r\n", TRUE, d->character, 0, 0, TO_ROOM);
-       struct obj_data *obj;
-       obj = read_object(19094, VIRTUAL);
-       obj_to_char(obj, d->character);
+        write_to_output(d, "@GYou close the droids interface and put it back "
+                           "among the rest of your things.@n\r\n");
+        act("@g$n@G stops typing information into the droid in $s hands and "
+            "closes it back up.@n\r\n",
+            TRUE, d->character, 0, 0, TO_ROOM);
+        struct obj_data *obj;
+        obj = read_object(19094, VIRTUAL);
+        obj_to_char(obj, d->character);
       }
       break;
     default:
-      write_to_output(d, "Invalid choice!\r\nDo you wish to save your changes ? : ");
+      write_to_output(
+          d, "Invalid choice!\r\nDo you wish to save your changes ? : ");
       break;
     }
     return;
@@ -627,9 +629,9 @@ void redit_parse(struct descriptor_data *d, char *arg)
       return;
     case '1':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "Enter Location Name:\r\n");
+        write_to_output(d, "Enter Location Name:\r\n");
       } else {
-       write_to_output(d, "Enter Room Name:-\r\n] ");
+        write_to_output(d, "Enter Room Name:-\r\n] ");
       }
       OLC_MODE(d) = REDIT_NAME;
       break;
@@ -638,68 +640,69 @@ void redit_parse(struct descriptor_data *d, char *arg)
       clear_screen(d);
       send_editor_help(d);
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "Set Remodel Parameters (Enter Room Description):-\r\n] ");
+        write_to_output(
+            d, "Set Remodel Parameters (Enter Room Description):-\r\n] ");
       } else {
-       write_to_output(d, "Enter room description:\r\n\r\n");
+        write_to_output(d, "Enter room description:\r\n\r\n");
       }
 
       if (OLC_ROOM(d)->description) {
-	write_to_output(d, "%s", OLC_ROOM(d)->description);
-	oldtext = strdup(OLC_ROOM(d)->description);
+        write_to_output(d, "%s", OLC_ROOM(d)->description);
+        oldtext = strdup(OLC_ROOM(d)->description);
       }
       string_write(d, &OLC_ROOM(d)->description, MAX_ROOM_DESC, 0, oldtext);
       OLC_VAL(d) = 1;
       break;
     case '3':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       redit_disp_flag_menu(d);
       break;
     case '4':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       redit_disp_sector_menu(d);
       break;
     case '5':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = NORTH;
       redit_disp_exit_menu(d);
       break;
     case '6':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = EAST;
       redit_disp_exit_menu(d);
       break;
     case '7':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = SOUTH;
       redit_disp_exit_menu(d);
       break;
     case '8':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = WEST;
       redit_disp_exit_menu(d);
       break;
     case '9':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = UP;
       redit_disp_exit_menu(d);
@@ -707,8 +710,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'a':
     case 'A':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = DOWN;
       redit_disp_exit_menu(d);
@@ -716,8 +719,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'b':
     case 'B':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = NORTHWEST;
       redit_disp_exit_menu(d);
@@ -725,8 +728,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'c':
     case 'C':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = NORTHEAST;
       redit_disp_exit_menu(d);
@@ -734,8 +737,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'd':
     case 'D':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = SOUTHEAST;
       redit_disp_exit_menu(d);
@@ -743,8 +746,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'e':
     case 'E':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = SOUTHWEST;
       redit_disp_exit_menu(d);
@@ -752,8 +755,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'f':
     case 'F':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = INDIR;
       redit_disp_exit_menu(d);
@@ -761,36 +764,36 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'g':
     case 'G':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_VAL(d) = OUTDIR;
       redit_disp_exit_menu(d);
-      break; 
+      break;
     case 'h':
     case 'H':
       /*
        * If the extra description doesn't exist.
        */
       if (!OLC_ROOM(d)->ex_description)
-	CREATE(OLC_ROOM(d)->ex_description, struct extra_descr_data, 1);
+        CREATE(OLC_ROOM(d)->ex_description, struct extra_descr_data, 1);
       OLC_DESC(d) = OLC_ROOM(d)->ex_description;
       redit_disp_extradesc_menu(d);
       break;
     case 'w':
     case 'W':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
-      write_to_output(d, "Disabled for the time being!");     
+      write_to_output(d, "Disabled for the time being!");
       /*OLC_MODE(d) = REDIT_COPY;*/
       break;
     case 'x':
     case 'X':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       /* Delete the room, prompt first. */
       write_to_output(d, "Are you sure you want to delete this room? ");
@@ -799,8 +802,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 's':
     case 'S':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       OLC_SCRIPT_EDIT_MODE(d) = SCRIPT_MAIN_MENU;
       dg_script_menu(d);
@@ -808,8 +811,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'Z':
     case 'z':
       if (GET_ADMLEVEL(d->character) < 1) {
-       write_to_output(d, "That options isn't available to non-builders.\r\n");
-       break;
+        write_to_output(d, "That options isn't available to non-builders.\r\n");
+        break;
       }
       search_replace(arg, "z ", "");
       do_wiznet(d->character, arg, 0, 0);
@@ -820,10 +823,10 @@ void redit_parse(struct descriptor_data *d, char *arg)
       break;
     }
     return;
-    
 
   case OLC_SCRIPT_EDIT:
-    if (dg_script_edit_parse(d, arg)) return;
+    if (dg_script_edit_parse(d, arg))
+      return;
     break;
 
   case REDIT_NAME:
@@ -839,7 +842,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     /*
      * We will NEVER get here, we hope.
      */
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: Reached REDIT_DESC case in parse_redit().");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: Reached REDIT_DESC case in parse_redit().");
     write_to_output(d, "Oops, in REDIT_DESC.\r\n");
     break;
 
@@ -854,7 +858,7 @@ void redit_parse(struct descriptor_data *d, char *arg)
       /*
        * Toggle the bit.
        */
-      TOGGLE_BIT_AR(OLC_ROOM(d)->room_flags, number - 1); 
+      TOGGLE_BIT_AR(OLC_ROOM(d)->room_flags, number - 1);
       redit_disp_flag_menu(d);
     }
     return;
@@ -882,10 +886,11 @@ void redit_parse(struct descriptor_data *d, char *arg)
       send_editor_help(d);
       write_to_output(d, "Enter exit description:\r\n\r\n");
       if (OLC_EXIT(d)->general_description) {
-	write_to_output(d, "%s", OLC_EXIT(d)->general_description);
-	oldtext = strdup(OLC_EXIT(d)->general_description);
+        write_to_output(d, "%s", OLC_EXIT(d)->general_description);
+        oldtext = strdup(OLC_EXIT(d)->general_description);
       }
-      string_write(d, &OLC_EXIT(d)->general_description, MAX_EXIT_DESC, 0, oldtext);
+      string_write(d, &OLC_EXIT(d)->general_description, MAX_EXIT_DESC, 0,
+                   oldtext);
       return;
     case '3':
       OLC_MODE(d) = REDIT_EXIT_KEYWORD;
@@ -904,11 +909,11 @@ void redit_parse(struct descriptor_data *d, char *arg)
        * Delete an exit.
        */
       if (OLC_EXIT(d)->keyword)
-	free(OLC_EXIT(d)->keyword);
+        free(OLC_EXIT(d)->keyword);
       if (OLC_EXIT(d)->general_description)
-	free(OLC_EXIT(d)->general_description);
+        free(OLC_EXIT(d)->general_description);
       if (OLC_EXIT(d))
-	free(OLC_EXIT(d));
+        free(OLC_EXIT(d));
       OLC_EXIT(d) = NULL;
       break;
     case '7':
@@ -936,17 +941,20 @@ void redit_parse(struct descriptor_data *d, char *arg)
     case 'c':
     case 'C':
       OLC_MODE(d) = REDIT_EXIT_DCSAVE;
-      write_to_output(d, "Enter the DC to beat for SAVE from failed skill checks : ");
+      write_to_output(
+          d, "Enter the DC to beat for SAVE from failed skill checks : ");
       return;
     case 'd':
     case 'D':
       OLC_MODE(d) = REDIT_EXIT_FAILROOM;
-      write_to_output(d, "Enter the room to send play to for minor save failure : ");
+      write_to_output(
+          d, "Enter the room to send play to for minor save failure : ");
       return;
     case 'e':
     case 'E':
       OLC_MODE(d) = REDIT_EXIT_TOTALFAILROOM;
-      write_to_output(d, "Enter the room to send play to for major save failure : ");
+      write_to_output(
+          d, "Enter the room to send play to for major save failure : ");
       return;
     default:
       write_to_output(d, "Try again : ");
@@ -957,8 +965,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
   case REDIT_EXIT_NUMBER:
     if ((number = atoi(arg)) != -1)
       if (!room_by_id(number)) {
-	write_to_output(d, "That room does not exist, try again : ");
-	return;
+        write_to_output(d, "That room does not exist, try again : ");
+        return;
       }
     OLC_EXIT(d)->to_room = number;
     redit_disp_exit_menu(d);
@@ -968,7 +976,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     /*
      * We should NEVER get here, hopefully.
      */
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: Reached REDIT_EXIT_DESC case in parse_redit");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: Reached REDIT_EXIT_DESC case in parse_redit");
     write_to_output(d, "Oops, in REDIT_EXIT_DESCRIPTION.\r\n");
     break;
 
@@ -1019,17 +1028,17 @@ void redit_parse(struct descriptor_data *d, char *arg)
        * when backing out to the menu.
        */
       if (OLC_DESC(d)->keyword == NULL || OLC_DESC(d)->description == NULL) {
-	struct extra_descr_data *temp;
-	if (OLC_DESC(d)->keyword)
-	  free(OLC_DESC(d)->keyword);
-	if (OLC_DESC(d)->description)
-	  free(OLC_DESC(d)->description);
+        struct extra_descr_data *temp;
+        if (OLC_DESC(d)->keyword)
+          free(OLC_DESC(d)->keyword);
+        if (OLC_DESC(d)->description)
+          free(OLC_DESC(d)->description);
 
-	/*
-	 * Clean up pointers.
-	 */
-	REMOVE_FROM_LIST(OLC_DESC(d), OLC_ROOM(d)->ex_description, next, temp);
-	free(OLC_DESC(d));
+        /*
+         * Clean up pointers.
+         */
+        REMOVE_FROM_LIST(OLC_DESC(d), OLC_ROOM(d)->ex_description, next, temp);
+        free(OLC_DESC(d));
       }
       break;
     case 1:
@@ -1041,29 +1050,31 @@ void redit_parse(struct descriptor_data *d, char *arg)
       send_editor_help(d);
       write_to_output(d, "Enter extra description:\r\n\r\n");
       if (OLC_DESC(d)->description) {
-	write_to_output(d, "%s", OLC_DESC(d)->description);
-	oldtext = strdup(OLC_DESC(d)->description);
+        write_to_output(d, "%s", OLC_DESC(d)->description);
+        oldtext = strdup(OLC_DESC(d)->description);
       }
-      string_write(d, &OLC_DESC(d)->description, MAX_MESSAGE_LENGTH, 0, oldtext);
+      string_write(d, &OLC_DESC(d)->description, MAX_MESSAGE_LENGTH, 0,
+                   oldtext);
       return;
     case 3:
       if (OLC_DESC(d)->keyword == NULL || OLC_DESC(d)->description == NULL) {
-	write_to_output(d, "You can't edit the next extra description without completing this one.\r\n");
-	redit_disp_extradesc_menu(d);
+        write_to_output(d, "You can't edit the next extra description without "
+                           "completing this one.\r\n");
+        redit_disp_extradesc_menu(d);
       } else {
-	struct extra_descr_data *new_extra;
+        struct extra_descr_data *new_extra;
 
-	if (OLC_DESC(d)->next)
-	  OLC_DESC(d) = OLC_DESC(d)->next;
-	else {
-	  /*
-	   * Make new extra description and attach at end.
-	   */
-	  CREATE(new_extra, struct extra_descr_data, 1);
-	  OLC_DESC(d)->next = new_extra;
-	  OLC_DESC(d) = new_extra;
-	}
-	redit_disp_extradesc_menu(d);
+        if (OLC_DESC(d)->next)
+          OLC_DESC(d) = OLC_DESC(d)->next;
+        else {
+          /*
+           * Make new extra description and attach at end.
+           */
+          CREATE(new_extra, struct extra_descr_data, 1);
+          OLC_DESC(d)->next = new_extra;
+          OLC_DESC(d) = new_extra;
+        }
+        redit_disp_extradesc_menu(d);
       }
       return;
     }
@@ -1075,25 +1086,25 @@ void redit_parse(struct descriptor_data *d, char *arg)
     } else
       write_to_output(d, "That room does not exist.\r\n");
     break;
-  
+
   case REDIT_DELETE:
     if (*arg == 'y' || *arg == 'Y') {
       if (delete_room(OLC_ROOM(d)->number))
         write_to_output(d, "Room deleted.\r\n");
       else
         write_to_output(d, "Couldn't delete the room!\r\n");
-      
+
       cleanup_olc(d, CLEANUP_ALL);
       return;
     } else if (*arg == 'n' || *arg == 'N') {
       redit_disp_menu(d);
-      OLC_MODE(d) = REDIT_MAIN_MENU;      
+      OLC_MODE(d) = REDIT_MAIN_MENU;
       return;
     } else
       write_to_output(d, "Please answer 'Y' or 'N': ");
-    
-    break;  
-  
+
+    break;
+
   case REDIT_EXIT_DCLOCK:
     number = atoi(arg);
     if (number < 0)
@@ -1170,7 +1181,8 @@ void redit_parse(struct descriptor_data *d, char *arg)
     /*
      * We should never get here.
      */
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: Reached default case in parse_redit");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: Reached default case in parse_redit");
     break;
   }
   /*
@@ -1180,8 +1192,7 @@ void redit_parse(struct descriptor_data *d, char *arg)
   redit_disp_menu(d);
 }
 
-void redit_string_cleanup(struct descriptor_data *d, int terminator)
-{
+void redit_string_cleanup(struct descriptor_data *d, int terminator) {
   switch (OLC_MODE(d)) {
   case REDIT_DESC:
     redit_disp_menu(d);

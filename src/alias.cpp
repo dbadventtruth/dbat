@@ -1,43 +1,40 @@
 /* ***********************************************************************
-*  File: alias.c				A utility to CircleMUD	 *
-* Usage: writing/reading player's aliases.				 *
-*									 *
-* Code done by Jeremy Hess and Chad Thompson				 *
-* Modifed by George Greer for inclusion into CircleMUD bpl15.		 *
-*									 *
-* Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-* CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.		 *
-*********************************************************************** */
+ *  File: alias.c				A utility to CircleMUD	 *
+ * Usage: writing/reading player's aliases.				 *
+ *									 *
+ * Code done by Jeremy Hess and Chad Thompson				 *
+ * Modifed by George Greer for inclusion into CircleMUD bpl15.		 *
+ *									 *
+ * Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ * CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.		 *
+ *********************************************************************** */
 
 #include "alias.h"
 #include "consts/maximums.h"
 
-
-#include <linux/limits.h>
-#include <errno.h>
 #include "fileop.h"
 #include "interpreter.h"
+#include <errno.h>
+#include <linux/limits.h>
 
-#include "descriptor_utils.h"
-#include "stringutils.h"
-#include "db.h"
-#include "comm.h"
 #include "character_impl.h"
-#include "flags.h"
-#include "consts/mobflags.h"
-#include "consts/races.h"
-#include "consts/positions.h"
-#include "consts/applies.h"
 #include "character_macros.h"
-#include "descriptor_impl.h"
-#include "command_impl.h"
+#include "comm.h"
 #include "command_db.h"
-#include "util_macros.h"
+#include "command_impl.h"
+#include "consts/applies.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/races.h"
+#include "db.h"
+#include "descriptor_impl.h"
+#include "descriptor_utils.h"
+#include "flags.h"
 #include "log.h"
+#include "stringutils.h"
+#include "util_macros.h"
 
-
-void write_aliases(struct char_data *ch)
-{
+void write_aliases(struct char_data *ch) {
   FILE *file;
   char fn[MAX_STRING_LENGTH];
   struct alias_data *temp;
@@ -49,7 +46,8 @@ void write_aliases(struct char_data *ch)
     return;
 
   if ((file = fopen(fn, "w")) == NULL) {
-    log("SYSERR: Couldn't save aliases for %s in '%s': %s", GET_NAME(ch), fn, strerror(errno));
+    log("SYSERR: Couldn't save aliases for %s in '%s': %s", GET_NAME(ch), fn,
+        strerror(errno));
     /*  SYSERR_DESC:
      *  This error occurs when the server fails to open the relevant alias
      *  file for writing.  The text at the end of the error should give a
@@ -62,19 +60,17 @@ void write_aliases(struct char_data *ch)
     int aliaslen = strlen(temp->alias);
     int repllen = strlen(temp->replacement) - 1;
 
-    fprintf(file, "%d\n%s\n"	/* Alias */
-		  "%d\n%s\n"	/* Replacement */
-		  "%d\n",	/* Type */
-		aliaslen, temp->alias,
-		repllen, temp->replacement + 1,
-		temp->type);
+    fprintf(file,
+            "%d\n%s\n" /* Alias */
+            "%d\n%s\n" /* Replacement */
+            "%d\n",    /* Type */
+            aliaslen, temp->alias, repllen, temp->replacement + 1, temp->type);
   }
-  
+
   fclose(file);
 }
 
-void read_aliases(struct char_data *ch)
-{   
+void read_aliases(struct char_data *ch) {
   FILE *file;
   char xbuf[MAX_STRING_LENGTH];
   struct alias_data *t2, *prev = NULL;
@@ -84,7 +80,8 @@ void read_aliases(struct char_data *ch)
 
   if ((file = fopen(xbuf, "r")) == NULL) {
     if (errno != ENOENT) {
-      log("SYSERR: Couldn't open alias file '%s' for %s: %s", xbuf, GET_NAME(ch), strerror(errno));
+      log("SYSERR: Couldn't open alias file '%s' for %s: %s", xbuf,
+          GET_NAME(ch), strerror(errno));
       /*  SYSERR_DESC:
        *  This error occurs when the server fails to open the relevant alias
        *  file for reading.  The text at the end version should give a valid
@@ -93,9 +90,9 @@ void read_aliases(struct char_data *ch)
     }
     return;
   }
- 
+
   CREATE(GET_ALIASES(ch), struct alias_data, 1);
-  t2 = GET_ALIASES(ch); 
+  t2 = GET_ALIASES(ch);
 
   for (;;) {
     /* Read the aliased command. */
@@ -107,17 +104,17 @@ void read_aliases(struct char_data *ch)
 
     /* Build the replacement. */
     if (fscanf(file, "%d\n", &length) != 1)
-       goto read_alias_error;
+      goto read_alias_error;
 
-    *xbuf = ' ';		/* Doesn't need terminated, fgets() will. */
+    *xbuf = ' '; /* Doesn't need terminated, fgets() will. */
     fgets(xbuf + 1, length + 1, file);
-    t2->replacement = strdup(xbuf); 
+    t2->replacement = strdup(xbuf);
 
     /* Figure out the alias type. */
     if (fscanf(file, "%d\n", &length) != 1)
       goto read_alias_error;
 
-    t2->type = length; 
+    t2->type = length;
 
     if (feof(file))
       break;
@@ -125,8 +122,8 @@ void read_aliases(struct char_data *ch)
     CREATE(t2->next, struct alias_data, 1);
     prev = t2;
     t2 = t2->next;
-  }; 
-  
+  };
+
   fclose(file);
   return;
 
@@ -137,10 +134,9 @@ read_alias_error:
   if (prev)
     prev->next = NULL;
   fclose(file);
-} 
+}
 
-void delete_aliases(const char *charname)
-{
+void delete_aliases(const char *charname) {
   char filename[PATH_MAX];
 
   if (!get_filename(filename, sizeof(filename), ALIAS_FILE, charname))
@@ -148,17 +144,14 @@ void delete_aliases(const char *charname)
 
   if (remove(filename) < 0 && errno != ENOENT)
     log("SYSERR: deleting alias file %s: %s", filename, strerror(errno));
-    /*  SYSERR_DESC:
-     *  When an alias file cannot be removed, this error will occur,
-     *  and the reason why will be the tail end of the error.
-     */
+  /*  SYSERR_DESC:
+   *  When an alias file cannot be removed, this error will occur,
+   *  and the reason why will be the tail end of the error.
+   */
 }
 
-
-
 /* The interface to the outside world: do_alias */
-ACMD(do_alias)
-{
+ACMD(do_alias) {
   char arg[MAX_INPUT_LENGTH];
   char *repl;
   struct alias_data *a, *temp;
@@ -168,17 +161,17 @@ ACMD(do_alias)
 
   repl = any_one_arg(argument, arg);
 
-  if (!*arg) {			/* no argument specified -- list currently defined aliases */
+  if (!*arg) { /* no argument specified -- list currently defined aliases */
     send_to_char(ch, "Currently defined aliases:\r\n");
     if ((a = GET_ALIASES(ch)) == NULL)
       send_to_char(ch, " None.\r\n");
     else {
       while (a != NULL) {
-	send_to_char(ch, "%-15s %s\r\n", a->alias, a->replacement);
-	a = a->next;
+        send_to_char(ch, "%-15s %s\r\n", a->alias, a->replacement);
+        a = a->next;
       }
     }
-  } else {			/* otherwise, add or remove aliases */
+  } else { /* otherwise, add or remove aliases */
     /* is this an alias we've already defined? */
     if ((a = find_alias(GET_ALIASES(ch), arg)) != NULL) {
       REMOVE_FROM_LIST(a, GET_ALIASES(ch), next, temp);
@@ -187,22 +180,22 @@ ACMD(do_alias)
     /* if no replacement string is specified, assume we want to delete */
     if (!*repl) {
       if (a == NULL)
-	send_to_char(ch, "No such alias.\r\n");
+        send_to_char(ch, "No such alias.\r\n");
       else
-	send_to_char(ch, "Alias deleted.\r\n");
-    } else {			/* otherwise, either add or redefine an alias */
+        send_to_char(ch, "Alias deleted.\r\n");
+    } else { /* otherwise, either add or redefine an alias */
       if (!strcasecmp(arg, "alias")) {
-	send_to_char(ch, "You can't alias 'alias'.\r\n");
-	return;
+        send_to_char(ch, "You can't alias 'alias'.\r\n");
+        return;
       }
       CREATE(a, struct alias_data, 1);
       a->alias = strdup(arg);
       delete_doubledollar(repl);
       a->replacement = strdup(repl);
       if (strchr(repl, ALIAS_SEP_CHAR) || strchr(repl, ALIAS_VAR_CHAR))
-	a->type = ALIAS_COMPLEX;
+        a->type = ALIAS_COMPLEX;
       else
-	a->type = ALIAS_SIMPLE;
+        a->type = ALIAS_SIMPLE;
       a->next = GET_ALIASES(ch);
       GET_ALIASES(ch) = a;
       send_to_char(ch, "Alias added.\r\n");
@@ -216,17 +209,18 @@ ACMD(do_alias)
  * is "$*", which stands for the entire original line after the alias.
  * ";" is used to delimit commands.
  */
-#define NUM_TOKENS       9
+#define NUM_TOKENS 9
 
-void perform_complex_alias(struct txt_q *input_q, char *orig, struct alias_data *a)
-{
+void perform_complex_alias(struct txt_q *input_q, char *orig,
+                           struct alias_data *a) {
   struct txt_q temp_queue;
   char *tokens[NUM_TOKENS], *temp, *write_point;
-  char buf2[MAX_RAW_INPUT_LENGTH], buf[MAX_RAW_INPUT_LENGTH];	/* raw? */
+  char buf2[MAX_RAW_INPUT_LENGTH], buf[MAX_RAW_INPUT_LENGTH]; /* raw? */
   int num_of_tokens = 0, num;
 
   /* First, parse the original string */
-  strcpy(buf2, orig);	/* strcpy: OK (orig:MAX_INPUT_LENGTH < buf2:MAX_RAW_INPUT_LENGTH) */
+  strcpy(buf2, orig); /* strcpy: OK (orig:MAX_INPUT_LENGTH <
+                         buf2:MAX_RAW_INPUT_LENGTH) */
   temp = strtok(buf2, " ");
   while (temp != NULL && num_of_tokens < NUM_TOKENS) {
     tokens[num_of_tokens++] = temp;
@@ -247,13 +241,14 @@ void perform_complex_alias(struct txt_q *input_q, char *orig, struct alias_data 
     } else if (*temp == ALIAS_VAR_CHAR) {
       temp++;
       if ((num = *temp - '1') < num_of_tokens && num >= 0) {
-	strcpy(write_point, tokens[num]);	/* strcpy: OK */
-	write_point += strlen(tokens[num]);
+        strcpy(write_point, tokens[num]); /* strcpy: OK */
+        write_point += strlen(tokens[num]);
       } else if (*temp == ALIAS_GLOB_CHAR) {
-	strcpy(write_point, orig);		/* strcpy: OK */
-	write_point += strlen(orig);
-      } else if ((*(write_point++) = *temp) == '$')	/* redouble $ for act safety */
-	*(write_point++) = '$';
+        strcpy(write_point, orig); /* strcpy: OK */
+        write_point += strlen(orig);
+      } else if ((*(write_point++) = *temp) ==
+                 '$') /* redouble $ for act safety */
+        *(write_point++) = '$';
     } else
       *(write_point++) = *temp;
   }
@@ -271,7 +266,6 @@ void perform_complex_alias(struct txt_q *input_q, char *orig, struct alias_data 
   }
 }
 
-
 /*
  * Given a character and a string, perform alias replacement on it.
  *
@@ -280,8 +274,7 @@ void perform_complex_alias(struct txt_q *input_q, char *orig, struct alias_data 
  *   1: String was _not_ modified in place; rather, the expanded aliases
  *      have been placed at the front of the character's input queue.
  */
-int perform_alias(struct descriptor_data *d, char *orig, size_t maxlen)
-{
+int perform_alias(struct descriptor_data *d, char *orig, size_t maxlen) {
   char first_arg[MAX_INPUT_LENGTH], *ptr;
   struct alias_data *a, *tmp;
 

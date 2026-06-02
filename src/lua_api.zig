@@ -831,6 +831,23 @@ fn openDbat(lua: *Lua) i32 {
     lua.pushFunction(zlua.wrap(luaConditionHasTag));
     lua.setField(-2, "condition_has_tag");
 
+    lua.pushFunction(zlua.wrap(luaAddCommas));
+    lua.setField(-2, "add_commas");
+    lua.pushFunction(zlua.wrap(luaAddCommas));
+    lua.setField(-2, "format_number");
+
+    return 1;
+}
+
+fn luaAddCommas(lua: *Lua) i32 {
+    const number = lua.toInteger(1) catch lua.typeError(1, "integer");
+    const value = std.math.cast(i64, number) orelse lua.raiseErrorStr("number out of range", .{});
+    const formatted = cdb.add_commas(value);
+    if (formatted == null) {
+        lua.pushNil();
+    } else {
+        _ = lua.pushString(std.mem.span(formatted));
+    }
     return 1;
 }
 

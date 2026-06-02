@@ -1,7 +1,6 @@
 #pragma once
 #include "consts/types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,7 +62,6 @@ ACMD(do_shogekiha);
 ACMD(do_tsuihidan);
 ACMD(do_slam);
 ACMD(do_rescue);
-
 
 #ifdef __cplusplus
 }

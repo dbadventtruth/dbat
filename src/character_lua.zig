@@ -3,6 +3,7 @@ const zlua = @import("zlua");
 const cdb = @import("cdb");
 const objects_lua = @import("object_lua.zig");
 const rooms_lua = @import("room_lua.zig");
+const zones_lua = @import("zone_lua.zig");
 
 const Lua = zlua.Lua;
 const character_metatable = "dbat.Character";
@@ -64,6 +65,11 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "room_vnum_set", luaCharacterRoomVnumSet);
     addMethod(lua, "room_get", luaCharacterRoomGet);
     addMethod(lua, "zone_vnum_get", luaCharacterZoneVnumGet);
+    addMethod(lua, "zone_get", luaCharacterZoneGet);
+    addMethod(lua, "reveal_hiding", luaCharacterRevealHiding);
+    addMethod(lua, "release_charge", luaCharacterReleaseCharge);
+    addMethod(lua, "send_to_sense", luaCharacterSendToSense);
+    addMethod(lua, "send_to_scouter", luaCharacterSendToScouter);
     addMethod(lua, "name_get", luaCharacterNameGet);
     addMethod(lua, "name_set", luaCharacterNameSet);
     addMethod(lua, "description_get", luaCharacterDescriptionGet);
@@ -325,6 +331,45 @@ fn luaCharacterRoomGet(lua: *Lua) i32 {
 fn luaCharacterZoneVnumGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.char_zone_vnum_get(checkCharacter(lua)));
     return 1;
+}
+
+fn luaCharacterZoneGet(lua: *Lua) i32 {
+    const zone = cdb.char_zone_get(checkCharacter(lua));
+    if (zone == null) {
+        lua.pushNil();
+        return 1;
+    }
+    zones_lua.pushZone(lua, cdb.zone_id_get(zone));
+    return 1;
+}
+
+fn luaCharacterRevealHiding(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const reveal_type = if (lua.getTop() >= 2) intCastOrError(lua, c_int, integer(lua, 2), "reveal type") else 0;
+    cdb.reveal_hiding(ch, reveal_type);
+    return 0;
+}
+
+fn luaCharacterReleaseCharge(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.release_charge(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterSendToSense(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const sense_type = intCastOrError(lua, c_int, integer(lua, 2), "sense type");
+    const text = string(lua, 3);
+    cdb.send_to_sense(sense_type, @constCast(text.ptr), ch);
+    return 0;
+}
+
+fn luaCharacterSendToScouter(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const text = string(lua, 2);
+    const num = if (lua.getTop() >= 3) intCastOrError(lua, c_int, integer(lua, 3), "scouter num") else 1;
+    const scouter_type = if (lua.getTop() >= 4) intCastOrError(lua, c_int, integer(lua, 4), "scouter type") else 0;
+    cdb.send_to_scouter(@constCast(text.ptr), ch, num, scouter_type);
+    return 0;
 }
 
 fn luaCharacterNameGet(lua: *Lua) i32 {

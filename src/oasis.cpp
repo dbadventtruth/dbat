@@ -5,36 +5,34 @@
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 
-
-#include "dg_scripts.h"
+#include "oasis.h"
 #include "character_impl.h"
 #include "character_macros.h"
-#include "descriptor_impl.h"
-#include "descriptor_macros.h"
-#include "object_impl.h"
-#include "zone_impl.h"
-#include "flags.h"
-#include "interpreter.h"
 #include "comm.h"
-#include "db.h"
-#include "shop.h"
-#include "genmob.h"
-#include "genshp.h"
-#include "genzon.h"
-#include "genobj.h"
-#include "oasis.h"
-#include "dg_olc.h"
-#include "handler.h"
-#include "guild.h"
-#include "log.h"
-#include "search.h"
 #include "consts/admlevel.h"
 #include "consts/constates.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
 #include "consts/prefflags.h"
 #include "consts/triggers.h"
-
+#include "db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "dg_olc.h"
+#include "dg_scripts.h"
+#include "flags.h"
+#include "genmob.h"
+#include "genobj.h"
+#include "genshp.h"
+#include "genzon.h"
+#include "guild.h"
+#include "handler.h"
+#include "interpreter.h"
+#include "log.h"
+#include "object_impl.h"
+#include "search.h"
+#include "shop.h"
+#include "zone_impl.h"
 
 /******************************************************************************/
 /** Internal Data Structures                                                 **/
@@ -43,19 +41,10 @@ struct olc_scmd_info_t {
   const char *text;
   int con_type;
 } olc_scmd_info[] = {
-  { "room",	CON_REDIT },
-  { "object",	CON_OEDIT },
-  { "zone",	CON_ZEDIT },
-  { "mobile",	CON_MEDIT },
-  { "shop",	CON_SEDIT },
-  { "config",   CON_CEDIT },
-  { "trigger",  CON_TRIGEDIT },
-  { "action",   CON_AEDIT },
-  { "guild",    CON_GEDIT },
-  { "help",     CON_HEDIT },
-  { "house",    CON_HSEDIT },
-  { "\n",	-1	  }
-};
+    {"room", CON_REDIT},       {"object", CON_OEDIT}, {"zone", CON_ZEDIT},
+    {"mobile", CON_MEDIT},     {"shop", CON_SEDIT},   {"config", CON_CEDIT},
+    {"trigger", CON_TRIGEDIT}, {"action", CON_AEDIT}, {"guild", CON_GEDIT},
+    {"help", CON_HEDIT},       {"house", CON_HSEDIT}, {"\n", -1}};
 
 /******************************************************************************/
 /** Internal Functions                                                       **/
@@ -67,8 +56,7 @@ void free_config(struct config_data *data);
 /*
  * Only player characters should be using OLC anyway.
  */
-void clear_screen(struct descriptor_data *d)
-{
+void clear_screen(struct descriptor_data *d) {
   if (PRF_FLAGGED(d->character, PRF_CLS))
     write_to_output(d, "[H[J");
 }
@@ -78,7 +66,7 @@ void clear_screen(struct descriptor_data *d)
 /*
  * Exported ACMD do_oasis function.
  *
- * This function is the OLC interface.  It deals with all the 
+ * This function is the OLC interface.  It deals with all the
  * generic OLC stuff, then passes control to the sub-olc sections.
  *
  * UPDATE:
@@ -88,99 +76,98 @@ void clear_screen(struct descriptor_data *d)
  *  functions that get called from in do_oasis....yes, similar code, but it is
  *  easier to handle....   - Kip Potter
  */
-ACMD(do_oasis)
-{
+ACMD(do_oasis) {
   /*
    * No screwing around as a mobile.
    */
   if (IS_NPC(ch) || !ch->desc)
-     return;
-   
+    return;
+
   /*
    * Prevent forcing people in OLC to edit other stuff.
    * 'force' just lets command_interpreter() handle the input,
-   * regardless of the state of the victim. 
-   * This can wreck havoc if people are i OLC already 
+   * regardless of the state of the victim.
+   * This can wreck havoc if people are i OLC already
    * - ie. their input should have been redirected by nanny(), and
    * never get to command_interpreter().
-   * -- Welcor 09/03 
+   * -- Welcor 09/03
    * - thanks to Mark Garringer (zizazat@hotmail.com) for the bug report.
    */
-  if (STATE(ch->desc) != CON_PLAYING) 
+  if (STATE(ch->desc) != CON_PLAYING)
     return;
-  
 
   switch (subcmd) {
-  /* The command to see what needs to be saved, typically 'olc'.  */
-      
-    case SCMD_OASIS_CEDIT:
-      do_oasis_cedit(ch, argument, cmd, subcmd);
-      break;
-      
-    case SCMD_OASIS_ZEDIT:
-      do_oasis_zedit(ch, argument, cmd, subcmd);
-      break;
-    
-    case SCMD_OASIS_REDIT:
-      do_oasis_redit(ch, argument, cmd, subcmd);
-      break;
-    
-    case SCMD_OASIS_OEDIT:
-      do_oasis_oedit(ch, argument, cmd, subcmd);
-      break;
-      
-    case SCMD_OASIS_MEDIT:
-      do_oasis_medit(ch, argument, cmd, subcmd);
-      break;
-      
-    case SCMD_OASIS_SEDIT:
-      do_oasis_sedit(ch, argument, cmd, subcmd);
-      break;
-      
-    case SCMD_OASIS_AEDIT:
-      do_oasis_aedit(ch, argument, cmd, subcmd);
-      break;
+    /* The command to see what needs to be saved, typically 'olc'.  */
 
-    case SCMD_OASIS_HEDIT:
-      do_oasis_hedit(ch, argument, cmd, subcmd);
-      break;
+  case SCMD_OASIS_CEDIT:
+    do_oasis_cedit(ch, argument, cmd, subcmd);
+    break;
 
-    case SCMD_OASIS_HSEDIT: 
-      do_oasis_hsedit(ch, argument, cmd, subcmd); 
-      break;
+  case SCMD_OASIS_ZEDIT:
+    do_oasis_zedit(ch, argument, cmd, subcmd);
+    break;
 
-    case SCMD_OASIS_RLIST:
-    case SCMD_OASIS_MLIST:
-    case SCMD_OASIS_OLIST:
-    case SCMD_OASIS_SLIST:
-    case SCMD_OASIS_ZLIST:
-    case SCMD_OASIS_TLIST:
-    case SCMD_OASIS_GLIST:
-      do_oasis_list(ch, argument, cmd, subcmd);
-      break;
-   
-    case SCMD_OASIS_TRIGEDIT:
-      do_oasis_trigedit(ch, argument, cmd, subcmd);
-      break;
-      
-    case SCMD_OASIS_LINKS:
-      do_oasis_links(ch, argument, cmd, subcmd);
-      break;
- 
-    case SCMD_OASIS_GEDIT:
-      do_oasis_gedit(ch, argument, cmd, subcmd);
-      break;
- 
-    default:
-      log("SYSERR: (OLC) Invalid subcmd passed to do_oasis, subcmd - (%d)", subcmd);
-      return;
+  case SCMD_OASIS_REDIT:
+    do_oasis_redit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_OEDIT:
+    do_oasis_oedit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_MEDIT:
+    do_oasis_medit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_SEDIT:
+    do_oasis_sedit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_AEDIT:
+    do_oasis_aedit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_HEDIT:
+    do_oasis_hedit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_HSEDIT:
+    do_oasis_hsedit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_RLIST:
+  case SCMD_OASIS_MLIST:
+  case SCMD_OASIS_OLIST:
+  case SCMD_OASIS_SLIST:
+  case SCMD_OASIS_ZLIST:
+  case SCMD_OASIS_TLIST:
+  case SCMD_OASIS_GLIST:
+    do_oasis_list(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_TRIGEDIT:
+    do_oasis_trigedit(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_LINKS:
+    do_oasis_links(ch, argument, cmd, subcmd);
+    break;
+
+  case SCMD_OASIS_GEDIT:
+    do_oasis_gedit(ch, argument, cmd, subcmd);
+    break;
+
+  default:
+    log("SYSERR: (OLC) Invalid subcmd passed to do_oasis, subcmd - (%d)",
+        subcmd);
+    return;
   }
-  
+
   return;
 }
 
 /*------------------------------------------------------------*\
- Exported utilities 
+ Exported utilities
 \*------------------------------------------------------------*/
 
 /*
@@ -188,8 +175,7 @@ ACMD(do_oasis)
  * attatched to a descriptor, sets all flags back to how they
  * should be.
  */
-void cleanup_olc(struct descriptor_data *d, int8_t cleanup_type)
-{
+void cleanup_olc(struct descriptor_data *d, int8_t cleanup_type) {
   /*
    * Clean up WHAT?
    */
@@ -262,102 +248,107 @@ void cleanup_olc(struct descriptor_data *d, int8_t cleanup_type)
    * and free it all.
    */
   if (OLC_SHOP(d)) {
-//    switch (cleanup_type) {
-//    case CLEANUP_ALL:
-      free_shop(OLC_SHOP(d));
-//      break;
-//    case CLEANUP_STRUCTS:
-//      free(OLC_SHOP(d));
-//      break;
-//    default:
-      /* The caller has screwed up but we already griped above. */
-//      break;
-//    }
+    //    switch (cleanup_type) {
+    //    case CLEANUP_ALL:
+    free_shop(OLC_SHOP(d));
+    //      break;
+    //    case CLEANUP_STRUCTS:
+    //      free(OLC_SHOP(d));
+    //      break;
+    //    default:
+    /* The caller has screwed up but we already griped above. */
+    //      break;
+    //    }
   }
-    /*. Check for a guild . */
-    if (OLC_GUILD(d)) {
-     switch (cleanup_type) {
-      case CLEANUP_ALL:
-       free_guild(OLC_GUILD(d));
-       break;
-      case CLEANUP_STRUCTS:
-       free(OLC_GUILD(d));
-        break;
-       default:
-        break;
-      }
+  /*. Check for a guild . */
+  if (OLC_GUILD(d)) {
+    switch (cleanup_type) {
+    case CLEANUP_ALL:
+      free_guild(OLC_GUILD(d));
+      break;
+    case CLEANUP_STRUCTS:
+      free(OLC_GUILD(d));
+      break;
+    default:
+      break;
     }
+  }
 
-if(OLC_HOUSE(d)) 
-   { /*. free_house performs no sanity checks, must be careful here .*/ 
-     switch(cleanup_type) 
-     { 
-       case CLEANUP_ALL: 
-           free_house(OLC_HOUSE(d)); 
-           break; 
-       case CLEANUP_STRUCTS: 
-           free(OLC_HOUSE(d)); 
-           break; 
-       default: 
-           /*. Caller has screwed up .*/ 
-           break; 
-     } 
-   }
-  
+  if (OLC_HOUSE(d)) { /*. free_house performs no sanity checks, must be careful
+                         here .*/
+    switch (cleanup_type) {
+    case CLEANUP_ALL:
+      free_house(OLC_HOUSE(d));
+      break;
+    case CLEANUP_STRUCTS:
+      free(OLC_HOUSE(d));
+      break;
+    default:
+      /*. Caller has screwed up .*/
+      break;
+    }
+  }
+
   /*. Check for aedit stuff -- M. Scott */
-  if (OLC_ACTION(d))  {
-    switch(cleanup_type)  {
-      case CLEANUP_ALL:
- 	free_action(OLC_ACTION(d));
- 	break;
-      case CLEANUP_STRUCTS:
-        free(OLC_ACTION(d));
-        break;
-      default:
-        /* Caller has screwed up */
- 	break;
+  if (OLC_ACTION(d)) {
+    switch (cleanup_type) {
+    case CLEANUP_ALL:
+      free_action(OLC_ACTION(d));
+      break;
+    case CLEANUP_STRUCTS:
+      free(OLC_ACTION(d));
+      break;
+    default:
+      /* Caller has screwed up */
+      break;
     }
   }
 
   /* free storage if allocated (for tedit and aedit) */
-   /* and Triggers */
-   /* 
-    * this is the command list - it's been copied to disk already,
-    * so just free it -- Welcor
-    */
-   if (OLC_STORAGE(d)) { 
-    free(OLC_STORAGE(d));
-     OLC_STORAGE(d) = NULL;
-   }
-   /*
-    * Free this one regardless. If we've left olc, we've either made
-    * a fresh copy of it in the trig index, or we lost connection.
-    * Either way, we need to get rid of this.
-    */
-   if (OLC_TRIG(d)) {
-     free_trigger(OLC_TRIG(d));
-     OLC_TRIG(d) = NULL;
-   }
+  /* and Triggers */
   /*
-    * OLC_SCRIPT is always set as trig_proto of OLC_OBJ/MOB/ROOM.
-    * Therefore it should not be free'd here.
-    */
-  
+   * this is the command list - it's been copied to disk already,
+   * so just free it -- Welcor
+   */
+  if (OLC_STORAGE(d)) {
+    free(OLC_STORAGE(d));
+    OLC_STORAGE(d) = NULL;
+  }
+  /*
+   * Free this one regardless. If we've left olc, we've either made
+   * a fresh copy of it in the trig index, or we lost connection.
+   * Either way, we need to get rid of this.
+   */
+  if (OLC_TRIG(d)) {
+    free_trigger(OLC_TRIG(d));
+    OLC_TRIG(d) = NULL;
+  }
+  /*
+   * OLC_SCRIPT is always set as trig_proto of OLC_OBJ/MOB/ROOM.
+   * Therefore it should not be free'd here.
+   */
+
   /*
    * Restore descriptor playing status.
    */
   if (d->character) {
     REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
     act("$n stops using OLC.", TRUE, d->character, NULL, NULL, TO_ROOM);
-    
+
     if (cleanup_type == CLEANUP_CONFIG)
-      mudlog(BRF, ADMLVL_IMMORT, TRUE, "OLC: %s stops editing the game configuration", GET_NAME(d->character));
+      mudlog(BRF, ADMLVL_IMMORT, TRUE,
+             "OLC: %s stops editing the game configuration",
+             GET_NAME(d->character));
     else if (STATE(d) == CON_TEDIT)
-      mudlog(BRF, ADMLVL_IMMORT, TRUE, "OLC: %s stops editing text files.", GET_NAME(d->character));
+      mudlog(BRF, ADMLVL_IMMORT, TRUE, "OLC: %s stops editing text files.",
+             GET_NAME(d->character));
     else if (STATE(d) == CON_HEDIT)
-      mudlog(CMP, ADMLVL_IMMORT, TRUE, "OLC: %s stops editing help files.", GET_NAME(d->character));
+      mudlog(CMP, ADMLVL_IMMORT, TRUE, "OLC: %s stops editing help files.",
+             GET_NAME(d->character));
     else
-      mudlog(BRF, ADMLVL_IMMORT, TRUE, "OLC: %s stops editing zone %d allowed zone %d", GET_NAME(d->character), OLC_ZNUM(d), GET_OLC_ZONE(d->character));
+      mudlog(BRF, ADMLVL_IMMORT, TRUE,
+             "OLC: %s stops editing zone %d allowed zone %d",
+             GET_NAME(d->character), OLC_ZNUM(d), GET_OLC_ZONE(d->character));
 
     STATE(d) = CON_PLAYING;
   }
@@ -370,36 +361,34 @@ if(OLC_HOUSE(d))
  * This function is an exact duplicate of the tag_argument function found in
  * one of the ascii patches located on the circlemud ftp website.
  */
-void split_argument(char *argument, char *tag)
-{
+void split_argument(char *argument, char *tag) {
   char *tmp = argument, *ttag = tag, *wrt = argument;
   int i;
-  
+
   for (i = 0; *tmp; tmp++, i++) {
     if (*tmp != ' ' && *tmp != '=')
       *(ttag++) = *tmp;
     else if (*tmp == '=')
       break;
   }
-  
+
   *ttag = '\0';
-  
+
   while (*tmp == '=' || *tmp == ' ')
     tmp++;
-  
+
   while (*tmp)
     *(wrt++) = *(tmp++);
-  
+
   *wrt = '\0';
 }
 
-void free_config(struct config_data *data)
-{
+void free_config(struct config_data *data) {
   /****************************************************************************/
   /** Free strings.                                                          **/
   /****************************************************************************/
   free_strings(data, OASIS_CFG);
-  
+
   /****************************************************************************/
   /** Free the data structure.                                               **/
   /****************************************************************************/
@@ -423,8 +412,7 @@ void free_config(struct config_data *data)
 /**                  FALSE.                                                  **/
 /**                                                                          **/
 /******************************************************************************/
-int can_edit_zone(struct char_data *ch, struct zone_data *zone)
-{
+int can_edit_zone(struct char_data *ch, struct zone_data *zone) {
   /* no access if called with bad arguments */
   if (!ch->desc || IS_NPC(ch) || zone == NULL)
     return FALSE;
@@ -435,11 +423,11 @@ int can_edit_zone(struct char_data *ch, struct zone_data *zone)
   /* always access if ch is high enough level */
   if (GET_ADMLEVEL(ch) >= ADMLVL_GRGOD)
     return (TRUE);
-  
-  /* always access if a player helped build the zone in the first place */ 
+
+  /* always access if a player helped build the zone in the first place */
   if (is_name(GET_NAME(ch), zone->builders))
     return (TRUE);
-  
+
   /* no access if you haven't been assigned a zone */
   if (GET_OLC_ZONE(ch) == NOWHERE)
     return FALSE;
@@ -455,13 +443,12 @@ int can_edit_zone(struct char_data *ch, struct zone_data *zone)
   return (FALSE);
 }
 
-void send_cannot_edit(struct char_data *ch, zone_vnum zone)
-{
+void send_cannot_edit(struct char_data *ch, zone_vnum zone) {
   send_to_char(ch, "You do not have permission to edit zone %d.", zone);
   if (GET_OLC_ZONE(ch) != NOWHERE)
     send_to_char(ch, "  Try zone %d.", GET_OLC_ZONE(ch));
   send_to_char(ch, "\r\n");
-  mudlog(BRF, ADMLVL_IMPL, TRUE, "OLC: %s tried to edit zone %d allowed zone %d",
-    GET_NAME(ch), zone, GET_OLC_ZONE(ch));
-
+  mudlog(BRF, ADMLVL_IMPL, TRUE,
+         "OLC: %s tried to edit zone %d allowed zone %d", GET_NAME(ch), zone,
+         GET_OLC_ZONE(ch));
 }

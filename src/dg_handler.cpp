@@ -1,44 +1,43 @@
 /**************************************************************************
-*  File: dg_handler.c                                                     *
-*                                                                         *
-*  Usage: contains functions to handle memory for scripts.                *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Death's Gate MUD is based on CircleMUD, Copyright (C) 1993, 94.        *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-*                                                                         *
-*  $Author: Mark A. Heilpern/egreen/Welcor $                              *
-*  $Date: 2004/10/11 12:07:00$                                            *
-*  $Revision: 1.0.14 $                                                    *
-***************************************************************************/
+ *  File: dg_handler.c                                                     *
+ *                                                                         *
+ *  Usage: contains functions to handle memory for scripts.                *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Death's Gate MUD is based on CircleMUD, Copyright (C) 1993, 94.        *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ *                                                                         *
+ *  $Author: Mark A. Heilpern/egreen/Welcor $                              *
+ *  $Date: 2004/10/11 12:07:00$                                            *
+ *  $Revision: 1.0.14 $                                                    *
+ ***************************************************************************/
 
-#include "dg_scripts.h"
-#include "dgscript_impl.h"
-#include "dgscript_db.h"
-#include "flags.h"
 #include "character_impl.h"
-#include "object_impl.h"
-#include "room_impl.h"
+#include "character_utils.h"
 #include "db.h"
-#include "handler.h"
 #include "dg_event.h"
+#include "dg_scripts.h"
+#include "dgscript_db.h"
+#include "dgscript_impl.h"
+#include "fileop.h"
+#include "flags.h"
+#include "handler.h"
 #include "log.h"
+#include "object_impl.h"
+#include "object_utils.h"
+#include "room_impl.h"
+#include "room_utils.h"
 #include "stringutils.h"
 #include "util_macros.h"
-#include "character_utils.h"
-#include "object_utils.h"
-#include "room_utils.h"
-#include "fileop.h"
 
-#include <strings.h>
-#include <stdlib.h>
-#include <linux/limits.h>
 #include <errno.h>
+#include <linux/limits.h>
+#include <stdlib.h>
+#include <strings.h>
 
 /* frees memory associated with var */
-void free_var_el(struct trig_var_data *var)
-{
+void free_var_el(struct trig_var_data *var) {
   if (var->name)
     free(var->name);
   if (var->value)
@@ -47,27 +46,26 @@ void free_var_el(struct trig_var_data *var)
 }
 
 /* release memory allocated for a variable list */
-void free_varlist(struct trig_var_data *vd)
-{
-    struct trig_var_data *i, *j;
+void free_varlist(struct trig_var_data *vd) {
+  struct trig_var_data *i, *j;
 
-    for (i = vd; i;) {
-	j = i;
-	i = i->next;
-	free_var_el(j);
-    }
+  for (i = vd; i;) {
+    j = i;
+    i = i->next;
+    free_var_el(j);
+  }
 }
 
 /*
  * remove var name from var_list
  * returns 1 if found, else 0
  */
-int remove_var(struct trig_var_data **var_list, char *name)
-{
+int remove_var(struct trig_var_data **var_list, char *name) {
   struct trig_var_data *i, *j;
 
   for (j = NULL, i = *var_list; i && strcasecmp(name, i->name);
-       j = i, i = i->next);
+       j = i, i = i->next)
+    ;
 
   if (i) {
     if (j) {
@@ -89,29 +87,26 @@ int remove_var(struct trig_var_data **var_list, char *name)
  * The command list is free'd when changed and when
  * shutting down.
  */
-void free_trigger(struct trig_data *trig)
-{
-    free(trig->name);
-    trig->name = NULL;
+void free_trigger(struct trig_data *trig) {
+  free(trig->name);
+  trig->name = NULL;
 
-    if (trig->arglist) {
-      free(trig->arglist);
-      trig->arglist = NULL;
-    }
-    if (trig->var_list) {
-      free_varlist(trig->var_list);
-      trig->var_list = NULL;
-    }
-    if (GET_TRIG_WAIT(trig))
-      event_cancel(GET_TRIG_WAIT(trig));
+  if (trig->arglist) {
+    free(trig->arglist);
+    trig->arglist = NULL;
+  }
+  if (trig->var_list) {
+    free_varlist(trig->var_list);
+    trig->var_list = NULL;
+  }
+  if (GET_TRIG_WAIT(trig))
+    event_cancel(GET_TRIG_WAIT(trig));
 
-    free(trig);
+  free(trig);
 }
 
-
 /* remove a single trigger from a mob/obj/room */
-void extract_trigger(struct trig_data *trig)
-{
+void extract_trigger(struct trig_data *trig) {
   struct trig_data *temp;
 
   if (GET_TRIG_WAIT(trig)) {
@@ -128,8 +123,7 @@ void extract_trigger(struct trig_data *trig)
 }
 
 /* remove all triggers from a mob/obj/room */
-void extract_script(void *thing, int type)
-{
+void extract_script(void *thing, int type) {
   struct script_data *sc = NULL;
   struct trig_data *trig, *next_trig;
   char_data *mob;
@@ -137,21 +131,21 @@ void extract_script(void *thing, int type)
   room_data *room;
 
   switch (type) {
-    case MOB_TRIGGER:
-      mob = (struct char_data *)thing;
-      sc = SCRIPT(mob);
-      SCRIPT(mob) = NULL;
-      break;
-    case OBJ_TRIGGER:
-      obj = (struct obj_data *)thing;
-      sc = SCRIPT(obj);
-      SCRIPT(obj) = NULL;
-      break;
-    case WLD_TRIGGER:
-      room = (struct room_data *)thing;
-      sc = SCRIPT(room);
-      SCRIPT(room) = NULL;
-      break;
+  case MOB_TRIGGER:
+    mob = (struct char_data *)thing;
+    sc = SCRIPT(mob);
+    SCRIPT(mob) = NULL;
+    break;
+  case OBJ_TRIGGER:
+    obj = (struct obj_data *)thing;
+    sc = SCRIPT(obj);
+    SCRIPT(obj) = NULL;
+    break;
+  case WLD_TRIGGER:
+    room = (struct room_data *)thing;
+    sc = SCRIPT(room);
+    SCRIPT(room) = NULL;
+    break;
   }
 
   for (trig = TRIGGERS(sc); trig; trig = next_trig) {
@@ -167,40 +161,39 @@ void extract_script(void *thing, int type)
 }
 
 /* erase the script memory of a mob */
-void extract_script_mem(struct script_memory *sc)
-{
+void extract_script_mem(struct script_memory *sc) {
   struct script_memory *next;
   while (sc) {
     next = sc->next;
-    if (sc->cmd) free(sc->cmd);
+    if (sc->cmd)
+      free(sc->cmd);
     free(sc);
     sc = next;
   }
 }
 
-void free_proto_script(void *thing, int type)
-{
+void free_proto_script(void *thing, int type) {
   struct trig_proto_list *proto = NULL, *fproto;
   char_data *mob;
   obj_data *obj;
   room_data *room;
 
   switch (type) {
-    case MOB_TRIGGER:
-      mob = (struct char_data *)thing;
-      proto = mob->proto_script;
-      mob->proto_script = NULL;
-      break;
-    case OBJ_TRIGGER:
-      obj = (struct obj_data *)thing;
-      proto = obj->proto_script;
-      obj->proto_script = NULL;
-      break;
-    case WLD_TRIGGER:
-      room = (struct room_data *)thing;
-      proto = room->proto_script;
-      room->proto_script = NULL;
-      break;
+  case MOB_TRIGGER:
+    mob = (struct char_data *)thing;
+    proto = mob->proto_script;
+    mob->proto_script = NULL;
+    break;
+  case OBJ_TRIGGER:
+    obj = (struct obj_data *)thing;
+    proto = obj->proto_script;
+    obj->proto_script = NULL;
+    break;
+  case WLD_TRIGGER:
+    room = (struct room_data *)thing;
+    proto = room->proto_script;
+    room->proto_script = NULL;
+    break;
   }
 
   while (proto) {
@@ -210,8 +203,8 @@ void free_proto_script(void *thing, int type)
   }
 }
 
-static struct trig_proto_list *copy_trig_proto_list(const struct trig_proto_list *from)
-{
+static struct trig_proto_list *
+copy_trig_proto_list(const struct trig_proto_list *from) {
   struct trig_proto_list *head = NULL, *tail = NULL;
 
   for (; from; from = from->next) {
@@ -228,8 +221,7 @@ static struct trig_proto_list *copy_trig_proto_list(const struct trig_proto_list
   return head;
 }
 
-void obj_proto_free_script(struct obj_proto_data *obj)
-{
+void obj_proto_free_script(struct obj_proto_data *obj) {
   struct trig_proto_list *proto, *next;
 
   if (!obj)
@@ -244,43 +236,43 @@ void obj_proto_free_script(struct obj_proto_data *obj)
   }
 }
 
-void obj_proto_copy_script_to_obj(struct obj_proto_data *source, struct obj_data *dest)
-{
+void obj_proto_copy_script_to_obj(struct obj_proto_data *source,
+                                  struct obj_data *dest) {
   if (!dest)
     return;
 
   free_proto_script(dest, OBJ_TRIGGER);
-  dest->proto_script = source ? copy_trig_proto_list(source->proto_script) : NULL;
+  dest->proto_script =
+      source ? copy_trig_proto_list(source->proto_script) : NULL;
 }
 
-void copy_proto_script(void *source, void *dest, int type)
-{
+void copy_proto_script(void *source, void *dest, int type) {
   struct trig_proto_list *tp_src = NULL, *tp_dst = NULL;
 
   switch (type) {
-    case MOB_TRIGGER:
-      tp_src = ((char_data *)source)->proto_script;
-      break;
-    case OBJ_TRIGGER:
-      tp_src = ((obj_data *)source)->proto_script;
-      break;
-    case WLD_TRIGGER:
-      tp_src = ((room_data *)source)->proto_script;
-      break;
+  case MOB_TRIGGER:
+    tp_src = ((char_data *)source)->proto_script;
+    break;
+  case OBJ_TRIGGER:
+    tp_src = ((obj_data *)source)->proto_script;
+    break;
+  case WLD_TRIGGER:
+    tp_src = ((room_data *)source)->proto_script;
+    break;
   }
 
   if (tp_src) {
     CREATE(tp_dst, struct trig_proto_list, 1);
     switch (type) {
-      case MOB_TRIGGER:
-        ((char_data *)dest)->proto_script = tp_dst;
-        break;
-      case OBJ_TRIGGER:
-        ((obj_data *)dest)->proto_script = tp_dst;
-        break;
-      case WLD_TRIGGER:
-        ((room_data *)dest)->proto_script = tp_dst;
-        break;
+    case MOB_TRIGGER:
+      ((char_data *)dest)->proto_script = tp_dst;
+      break;
+    case OBJ_TRIGGER:
+      ((obj_data *)dest)->proto_script = tp_dst;
+      break;
+    case WLD_TRIGGER:
+      ((room_data *)dest)->proto_script = tp_dst;
+      break;
     }
 
     while (tp_src) {
@@ -293,8 +285,7 @@ void copy_proto_script(void *source, void *dest, int type)
   }
 }
 
-void delete_variables(const char *charname)
-{
+void delete_variables(const char *charname) {
   char filename[PATH_MAX];
 
   if (!get_filename(filename, sizeof(filename), SCRIPT_VARS_FILE, charname))
@@ -304,8 +295,7 @@ void delete_variables(const char *charname)
     log("SYSERR: deleting variable file %s: %s", filename, strerror(errno));
 }
 
-void update_wait_events(struct room_data *to, struct room_data *from)
-{
+void update_wait_events(struct room_data *to, struct room_data *from) {
   struct trig_data *trig;
 
   if (!SCRIPT(from))

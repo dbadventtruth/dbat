@@ -6,16 +6,15 @@
 **                                                                          **
 *****************************************************************************/
 
-
 #include "feats.h"
 #include "comm.h"
 #include "handler.h"
 #include "interpreter.h"
 
-#include "consts/maximums.h"
-#include "consts/skills.h"
 #include "consts/feats.h"
 #include "consts/magic.h"
+#include "consts/maximums.h"
+#include "consts/skills.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -23,11 +22,10 @@
 /* Local Functions */
 
 void feato(int featnum, char *name, int in_game, int can_learn, int can_stack);
-void list_feats_known(struct char_data *ch); 
-void list_feats_available(struct char_data *ch); 
-void list_feats_complete(struct char_data *ch); 
+void list_feats_known(struct char_data *ch);
+void list_feats_available(struct char_data *ch);
+void list_feats_complete(struct char_data *ch);
 int compare_feats(const void *x, const void *y);
-
 
 /* Global Variables and Structures */
 struct feat_info feat_list[NUM_FEATS_DEFINED];
@@ -41,21 +39,16 @@ extern int spell_sort_info[SKILL_TABLE_SIZE];
 /* External functions*/
 int count_metamagic_feats(struct char_data *ch);
 
-void feato(int featnum, char *name, int in_game, int can_learn, int can_stack)
-{
+void feato(int featnum, char *name, int in_game, int can_learn, int can_stack) {
   feat_list[featnum].name = name;
   feat_list[featnum].in_game = in_game;
   feat_list[featnum].can_learn = can_learn;
   feat_list[featnum].can_stack = can_stack;
 }
 
-void free_feats(void)
-{
-  /* Nothing to do right now */
-}
+void free_feats(void) { /* Nothing to do right now */ }
 
-void assign_feats(void)
-{
+void assign_feats(void) {
 
   int i;
 
@@ -68,161 +61,181 @@ void assign_feats(void)
     feat_list[i].can_stack = FALSE;
   }
 
-// Below are the various feat initializations.
-// First parameter is the feat number, defined in feats.h
-// Second parameter is the displayed name of the feat and argument used to train it
-// Third parameter defines whether or not the feat is in the game or not, and thus can be learned and displayed
-// Fourth parameter defines whether or not the feat can be learned through a trainer or whether it is
-// a feat given automatically to certain classes or races.
-// Fifth parameter defines whether or not the feat can be learned multiple times.
+  // Below are the various feat initializations.
+  // First parameter is the feat number, defined in feats.h
+  // Second parameter is the displayed name of the feat and argument used to
+  // train it Third parameter defines whether or not the feat is in the game or
+  // not, and thus can be learned and displayed Fourth parameter defines whether
+  // or not the feat can be learned through a trainer or whether it is a feat
+  // given automatically to certain classes or races. Fifth parameter defines
+  // whether or not the feat can be learned multiple times.
 
-feato(FEAT_ALERTNESS, "alertness", TRUE, FALSE, FALSE); 
-feato(FEAT_ARMOR_PROFICIENCY_HEAVY, "heavy armor proficiency", FALSE, TRUE, FALSE); 
-feato(FEAT_ARMOR_PROFICIENCY_LIGHT, "light armor proficiency", FALSE, TRUE, FALSE); 
-feato(FEAT_ARMOR_PROFICIENCY_MEDIUM, "medium armor proficiency", FALSE, TRUE, FALSE); 
-feato(FEAT_BLIND_FIGHT, "blind fighting", TRUE, TRUE, FALSE); 
-feato(FEAT_BREW_POTION, "brew potion", FALSE, TRUE, FALSE); 
-feato(FEAT_CLEAVE, "cleave", FALSE, TRUE, FALSE);
-feato(FEAT_COMBAT_CASTING, "combat casting", FALSE, TRUE, FALSE); 
-feato(FEAT_COMBAT_REFLEXES, "combat reflexes", FALSE, TRUE, FALSE);
-feato(FEAT_CRAFT_MAGICAL_ARMS_AND_ARMOR, "craft magical arms and armor", FALSE, TRUE, FALSE); 
-feato(FEAT_CRAFT_ROD, "craft rod", FALSE, TRUE, FALSE);
-feato(FEAT_CRAFT_STAFF, "craft staff", FALSE, TRUE, FALSE); 
-feato(FEAT_CRAFT_WAND, "craft wand", FALSE, TRUE, FALSE); 
-feato(FEAT_CRAFT_WONDEROUS_ITEM, "craft wonderous item", FALSE, TRUE, FALSE); 
-feato(FEAT_DEFLECT_ARROWS, "deflect arrows", FALSE, FALSE, FALSE); 
-feato(FEAT_DODGE, "dodge", TRUE, TRUE, FALSE); 
-feato(FEAT_EMPOWER_SPELL, "empower spell", FALSE, TRUE, FALSE); 
-feato(FEAT_ENDURANCE, "endurance", FALSE, TRUE, FALSE);
-feato(FEAT_ENLARGE_SPELL, "enlarge spell", FALSE, FALSE, FALSE);
-feato(FEAT_WEAPON_PROFICIENCY_BASTARD_SWORD, "weapon proficiency - bastard sword", FALSE, TRUE, FALSE);
-feato(FEAT_EXTEND_SPELL, "extend spell", FALSE, TRUE, FALSE);
-feato(FEAT_EXTRA_TURNING, "extra turning", FALSE, TRUE, FALSE);
-feato(FEAT_FAR_SHOT, "far shot", FALSE, FALSE, FALSE);
-feato(FEAT_FORGE_RING, "forge ring", FALSE, TRUE, FALSE);
-feato(FEAT_GREAT_CLEAVE, "great cleave", FALSE, FALSE, FALSE);
-feato(FEAT_GREAT_FORTITUDE, "great fortitude", TRUE, TRUE, FALSE);
-feato(FEAT_HEIGHTEN_SPELL, "heighten spell", FALSE, TRUE, FALSE);
-feato(FEAT_IMPROVED_BULL_RUSH, "improved bull rush", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_CRITICAL, "improved critical", TRUE, TRUE, TRUE);
-feato(FEAT_IMPROVED_DISARM, "improved disarm", FALSE, TRUE, FALSE);
-feato(FEAT_IMPROVED_INITIATIVE, "improved initiative", TRUE, TRUE, FALSE);
-feato(FEAT_IMPROVED_TRIP, "improved trip", TRUE, TRUE, FALSE);
-feato(FEAT_IMPROVED_TWO_WEAPON_FIGHTING, "improved two weapon fighting", TRUE, TRUE, FALSE);
-feato(FEAT_IMPROVED_UNARMED_STRIKE, "improved unarmed strike", FALSE, FALSE, FALSE);
-feato(FEAT_IRON_WILL, "iron will", TRUE, TRUE, FALSE);
-feato(FEAT_LEADERSHIP, "leadership", FALSE, FALSE, FALSE);
-feato(FEAT_LIGHTNING_REFLEXES, "lightning reflexes", TRUE, TRUE, FALSE);
-feato(FEAT_MARTIAL_WEAPON_PROFICIENCY, "martial weapon proficiency", FALSE, TRUE, FALSE);
-feato(FEAT_MAXIMIZE_SPELL, "maximize spell", FALSE, TRUE, FALSE);
-feato(FEAT_MOBILITY, "mobility", TRUE, TRUE, FALSE);
-feato(FEAT_MOUNTED_ARCHERY, "mounted archery", FALSE, FALSE, FALSE);
-feato(FEAT_MOUNTED_COMBAT, "mounted combat", FALSE, FALSE, FALSE);
-feato(FEAT_POINT_BLANK_SHOT, "point blank shot", FALSE, FALSE, FALSE);
-feato(FEAT_POWER_ATTACK, "power attack", TRUE, TRUE, FALSE);
-feato(FEAT_PRECISE_SHOT, "precise shot", FALSE, FALSE, FALSE);
-feato(FEAT_QUICK_DRAW, "quick draw", FALSE, FALSE, FALSE);
-feato(FEAT_QUICKEN_SPELL, "quicken spell", FALSE, TRUE, FALSE);
-feato(FEAT_RAPID_SHOT, "rapid shot", FALSE, FALSE, FALSE);
-feato(FEAT_RIDE_BY_ATTACK, "ride by attack", FALSE, FALSE, FALSE);
-feato(FEAT_RUN, "run", FALSE, FALSE, FALSE);
-feato(FEAT_SCRIBE_SCROLL, "scribe scroll", FALSE, TRUE, FALSE);
-feato(FEAT_SHOT_ON_THE_RUN, "shot on the run", FALSE, FALSE, FALSE);
-feato(FEAT_SILENT_SPELL, "silent spell", FALSE, TRUE, FALSE);
-feato(FEAT_SIMPLE_WEAPON_PROFICIENCY, "simple weapon proficiency", TRUE, TRUE, FALSE);
-feato(FEAT_SKILL_FOCUS, "skill focus", TRUE, TRUE, TRUE);
-feato(FEAT_SPELL_FOCUS, "spell focus", FALSE, TRUE, TRUE);
-feato(FEAT_SPELL_MASTERY, "spell mastery", FALSE, TRUE, TRUE);
-feato(FEAT_SPELL_PENETRATION, "spell penetration", FALSE, TRUE, FALSE);
-feato(FEAT_SPIRITED_CHARGE, "spirited charge", FALSE, FALSE, FALSE);
-feato(FEAT_SPRING_ATTACK, "spring attack", TRUE, FALSE, FALSE);
-feato(FEAT_STILL_SPELL, "still spell", FALSE, TRUE, FALSE);
-feato(FEAT_STUNNING_FIST, "stunning fist", FALSE, TRUE, FALSE);
-feato(FEAT_SUNDER, "sunder", FALSE, TRUE, FALSE);
-feato(FEAT_TOUGHNESS, "toughness", TRUE, TRUE, TRUE);
-feato(FEAT_TRACK, "track", FALSE, TRUE, FALSE);
-feato(FEAT_TRAMPLE, "trample", FALSE, FALSE, FALSE);
-feato(FEAT_TWO_WEAPON_FIGHTING, "two weapon fighting", TRUE, TRUE, FALSE);
-feato(FEAT_WEAPON_FINESSE, "weapon finesse", TRUE, TRUE, TRUE);
-feato(FEAT_WEAPON_FOCUS, "weapon focus", FALSE, TRUE, TRUE);
-feato(FEAT_WEAPON_SPECIALIZATION, "weapon specialization", FALSE, TRUE, TRUE);
-feato(FEAT_WHIRLWIND_ATTACK, "whirlwind attack", FALSE, TRUE, FALSE);
-feato(FEAT_WEAPON_PROFICIENCY_DRUID, "weapon proficiency - druids", FALSE, FALSE, FALSE);
-feato(FEAT_WEAPON_PROFICIENCY_ROGUE, "weapon proficiency - rogues", FALSE, FALSE, FALSE);
-feato(FEAT_WEAPON_PROFICIENCY_MONK, "weapon proficiency - monks", FALSE, FALSE, FALSE);
-feato(FEAT_WEAPON_PROFICIENCY_WIZARD, "weapon proficiency - wizards", FALSE, FALSE, FALSE);
-feato(FEAT_WEAPON_PROFICIENCY_ELF, "weapon proficiency - elves", FALSE, FALSE, FALSE);
-feato(FEAT_ARMOR_PROFICIENCY_SHIELD, "shield armor proficiency", FALSE, FALSE, FALSE); 
-feato(FEAT_SNEAK_ATTACK, "sneak attack", TRUE, FALSE, TRUE);
-feato(FEAT_EVASION, "evasion", TRUE, FALSE, FALSE);
-feato(FEAT_IMPROVED_EVASION, "improved evasion", TRUE, FALSE, FALSE);
-feato(FEAT_ACROBATIC, "acrobatic", TRUE, TRUE, FALSE);
-feato(FEAT_AGILE, "agile", TRUE, TRUE, FALSE);
-feato(FEAT_ALERTNESS, "alertness", TRUE, FALSE, FALSE);
-feato(FEAT_ANIMAL_AFFINITY, "animal affinity", FALSE, TRUE, FALSE);
-feato(FEAT_ATHLETIC, "athletic", TRUE, TRUE, FALSE);
-feato(FEAT_AUGMENT_SUMMONING, "augment summoning", FALSE, FALSE, FALSE);
-feato(FEAT_COMBAT_EXPERTISE, "combat expertise", FALSE, FALSE, FALSE);
-feato(FEAT_DECEITFUL, "deceitful", TRUE, TRUE, FALSE);
-feato(FEAT_DEFT_HANDS, "deft hands", FALSE, TRUE, FALSE);
-feato(FEAT_DIEHARD, "diehard", TRUE, FALSE, FALSE);
-feato(FEAT_DILIGENT, "diligent", TRUE, TRUE, FALSE);
-feato(FEAT_ESCHEW_MATERIALS, "eschew materials", FALSE, FALSE, FALSE);
-feato(FEAT_EXOTIC_WEAPON_PROFICIENCY, "exotic weapon proficiency", FALSE, FALSE, FALSE);
-feato(FEAT_GREATER_SPELL_FOCUS, "greater spell focus", FALSE, FALSE, TRUE);
-feato(FEAT_GREATER_SPELL_PENETRATION, "greater spell penetration", FALSE, FALSE, FALSE);
-feato(FEAT_GREATER_TWO_WEAPON_FIGHTING, "greater two weapon fighting", TRUE, FALSE, FALSE);
-feato(FEAT_GREATER_WEAPON_FOCUS, "greater weapon focus", FALSE, TRUE, TRUE);
-feato(FEAT_GREATER_WEAPON_SPECIALIZATION, "greater weapon specialization", FALSE, TRUE, TRUE);
-feato(FEAT_IMPROVED_COUNTERSPELL, "improved counterspell", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_FAMILIAR, "improved familiar", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_FEINT, "improved feint", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_GRAPPLE, "improved grapple", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_OVERRUN, "improved overrun", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_PRECISE_SHOT, "improved precise shot", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_SHIELD_BASH, "improved shield bash", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_SUNDER, "improved sunder", FALSE, FALSE, FALSE);
-feato(FEAT_IMPROVED_TURNING, "improved turning", FALSE, FALSE, FALSE);
-feato(FEAT_INVESTIGATOR, "investigator", FALSE, TRUE, FALSE);
-feato(FEAT_MAGICAL_APTITUDE, "magical aptitude", FALSE, TRUE, FALSE);
-feato(FEAT_MANYSHOT, "manyshot", FALSE, FALSE, FALSE);
-feato(FEAT_NATURAL_SPELL, "natural spell", FALSE, FALSE, FALSE);
-feato(FEAT_NEGOTIATOR, "negotiator", FALSE, TRUE, FALSE);
-feato(FEAT_NIMBLE_FINGERS, "nimble fingers", FALSE, TRUE, FALSE);
-feato(FEAT_PERSUASIVE, "persuasive", FALSE, TRUE, FALSE);
-feato(FEAT_RAPID_RELOAD, "rapid reload", FALSE, FALSE, FALSE);
-feato(FEAT_SELF_SUFFICIENT, "self sufficient", FALSE, TRUE, FALSE);
-feato(FEAT_STEALTHY, "stealthy", TRUE, TRUE, FALSE);
-feato(FEAT_ARMOR_PROFICIENCY_TOWER_SHIELD, "tower shield armor proficiency", FALSE, FALSE, FALSE);
-feato(FEAT_TWO_WEAPON_DEFENSE, "two weapon defense", FALSE, FALSE, FALSE);
-feato(FEAT_WIDEN_SPELL, "widen spell", FALSE, FALSE, FALSE);
+  feato(FEAT_ALERTNESS, "alertness", TRUE, FALSE, FALSE);
+  feato(FEAT_ARMOR_PROFICIENCY_HEAVY, "heavy armor proficiency", FALSE, TRUE,
+        FALSE);
+  feato(FEAT_ARMOR_PROFICIENCY_LIGHT, "light armor proficiency", FALSE, TRUE,
+        FALSE);
+  feato(FEAT_ARMOR_PROFICIENCY_MEDIUM, "medium armor proficiency", FALSE, TRUE,
+        FALSE);
+  feato(FEAT_BLIND_FIGHT, "blind fighting", TRUE, TRUE, FALSE);
+  feato(FEAT_BREW_POTION, "brew potion", FALSE, TRUE, FALSE);
+  feato(FEAT_CLEAVE, "cleave", FALSE, TRUE, FALSE);
+  feato(FEAT_COMBAT_CASTING, "combat casting", FALSE, TRUE, FALSE);
+  feato(FEAT_COMBAT_REFLEXES, "combat reflexes", FALSE, TRUE, FALSE);
+  feato(FEAT_CRAFT_MAGICAL_ARMS_AND_ARMOR, "craft magical arms and armor",
+        FALSE, TRUE, FALSE);
+  feato(FEAT_CRAFT_ROD, "craft rod", FALSE, TRUE, FALSE);
+  feato(FEAT_CRAFT_STAFF, "craft staff", FALSE, TRUE, FALSE);
+  feato(FEAT_CRAFT_WAND, "craft wand", FALSE, TRUE, FALSE);
+  feato(FEAT_CRAFT_WONDEROUS_ITEM, "craft wonderous item", FALSE, TRUE, FALSE);
+  feato(FEAT_DEFLECT_ARROWS, "deflect arrows", FALSE, FALSE, FALSE);
+  feato(FEAT_DODGE, "dodge", TRUE, TRUE, FALSE);
+  feato(FEAT_EMPOWER_SPELL, "empower spell", FALSE, TRUE, FALSE);
+  feato(FEAT_ENDURANCE, "endurance", FALSE, TRUE, FALSE);
+  feato(FEAT_ENLARGE_SPELL, "enlarge spell", FALSE, FALSE, FALSE);
+  feato(FEAT_WEAPON_PROFICIENCY_BASTARD_SWORD,
+        "weapon proficiency - bastard sword", FALSE, TRUE, FALSE);
+  feato(FEAT_EXTEND_SPELL, "extend spell", FALSE, TRUE, FALSE);
+  feato(FEAT_EXTRA_TURNING, "extra turning", FALSE, TRUE, FALSE);
+  feato(FEAT_FAR_SHOT, "far shot", FALSE, FALSE, FALSE);
+  feato(FEAT_FORGE_RING, "forge ring", FALSE, TRUE, FALSE);
+  feato(FEAT_GREAT_CLEAVE, "great cleave", FALSE, FALSE, FALSE);
+  feato(FEAT_GREAT_FORTITUDE, "great fortitude", TRUE, TRUE, FALSE);
+  feato(FEAT_HEIGHTEN_SPELL, "heighten spell", FALSE, TRUE, FALSE);
+  feato(FEAT_IMPROVED_BULL_RUSH, "improved bull rush", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_CRITICAL, "improved critical", TRUE, TRUE, TRUE);
+  feato(FEAT_IMPROVED_DISARM, "improved disarm", FALSE, TRUE, FALSE);
+  feato(FEAT_IMPROVED_INITIATIVE, "improved initiative", TRUE, TRUE, FALSE);
+  feato(FEAT_IMPROVED_TRIP, "improved trip", TRUE, TRUE, FALSE);
+  feato(FEAT_IMPROVED_TWO_WEAPON_FIGHTING, "improved two weapon fighting", TRUE,
+        TRUE, FALSE);
+  feato(FEAT_IMPROVED_UNARMED_STRIKE, "improved unarmed strike", FALSE, FALSE,
+        FALSE);
+  feato(FEAT_IRON_WILL, "iron will", TRUE, TRUE, FALSE);
+  feato(FEAT_LEADERSHIP, "leadership", FALSE, FALSE, FALSE);
+  feato(FEAT_LIGHTNING_REFLEXES, "lightning reflexes", TRUE, TRUE, FALSE);
+  feato(FEAT_MARTIAL_WEAPON_PROFICIENCY, "martial weapon proficiency", FALSE,
+        TRUE, FALSE);
+  feato(FEAT_MAXIMIZE_SPELL, "maximize spell", FALSE, TRUE, FALSE);
+  feato(FEAT_MOBILITY, "mobility", TRUE, TRUE, FALSE);
+  feato(FEAT_MOUNTED_ARCHERY, "mounted archery", FALSE, FALSE, FALSE);
+  feato(FEAT_MOUNTED_COMBAT, "mounted combat", FALSE, FALSE, FALSE);
+  feato(FEAT_POINT_BLANK_SHOT, "point blank shot", FALSE, FALSE, FALSE);
+  feato(FEAT_POWER_ATTACK, "power attack", TRUE, TRUE, FALSE);
+  feato(FEAT_PRECISE_SHOT, "precise shot", FALSE, FALSE, FALSE);
+  feato(FEAT_QUICK_DRAW, "quick draw", FALSE, FALSE, FALSE);
+  feato(FEAT_QUICKEN_SPELL, "quicken spell", FALSE, TRUE, FALSE);
+  feato(FEAT_RAPID_SHOT, "rapid shot", FALSE, FALSE, FALSE);
+  feato(FEAT_RIDE_BY_ATTACK, "ride by attack", FALSE, FALSE, FALSE);
+  feato(FEAT_RUN, "run", FALSE, FALSE, FALSE);
+  feato(FEAT_SCRIBE_SCROLL, "scribe scroll", FALSE, TRUE, FALSE);
+  feato(FEAT_SHOT_ON_THE_RUN, "shot on the run", FALSE, FALSE, FALSE);
+  feato(FEAT_SILENT_SPELL, "silent spell", FALSE, TRUE, FALSE);
+  feato(FEAT_SIMPLE_WEAPON_PROFICIENCY, "simple weapon proficiency", TRUE, TRUE,
+        FALSE);
+  feato(FEAT_SKILL_FOCUS, "skill focus", TRUE, TRUE, TRUE);
+  feato(FEAT_SPELL_FOCUS, "spell focus", FALSE, TRUE, TRUE);
+  feato(FEAT_SPELL_MASTERY, "spell mastery", FALSE, TRUE, TRUE);
+  feato(FEAT_SPELL_PENETRATION, "spell penetration", FALSE, TRUE, FALSE);
+  feato(FEAT_SPIRITED_CHARGE, "spirited charge", FALSE, FALSE, FALSE);
+  feato(FEAT_SPRING_ATTACK, "spring attack", TRUE, FALSE, FALSE);
+  feato(FEAT_STILL_SPELL, "still spell", FALSE, TRUE, FALSE);
+  feato(FEAT_STUNNING_FIST, "stunning fist", FALSE, TRUE, FALSE);
+  feato(FEAT_SUNDER, "sunder", FALSE, TRUE, FALSE);
+  feato(FEAT_TOUGHNESS, "toughness", TRUE, TRUE, TRUE);
+  feato(FEAT_TRACK, "track", FALSE, TRUE, FALSE);
+  feato(FEAT_TRAMPLE, "trample", FALSE, FALSE, FALSE);
+  feato(FEAT_TWO_WEAPON_FIGHTING, "two weapon fighting", TRUE, TRUE, FALSE);
+  feato(FEAT_WEAPON_FINESSE, "weapon finesse", TRUE, TRUE, TRUE);
+  feato(FEAT_WEAPON_FOCUS, "weapon focus", FALSE, TRUE, TRUE);
+  feato(FEAT_WEAPON_SPECIALIZATION, "weapon specialization", FALSE, TRUE, TRUE);
+  feato(FEAT_WHIRLWIND_ATTACK, "whirlwind attack", FALSE, TRUE, FALSE);
+  feato(FEAT_WEAPON_PROFICIENCY_DRUID, "weapon proficiency - druids", FALSE,
+        FALSE, FALSE);
+  feato(FEAT_WEAPON_PROFICIENCY_ROGUE, "weapon proficiency - rogues", FALSE,
+        FALSE, FALSE);
+  feato(FEAT_WEAPON_PROFICIENCY_MONK, "weapon proficiency - monks", FALSE,
+        FALSE, FALSE);
+  feato(FEAT_WEAPON_PROFICIENCY_WIZARD, "weapon proficiency - wizards", FALSE,
+        FALSE, FALSE);
+  feato(FEAT_WEAPON_PROFICIENCY_ELF, "weapon proficiency - elves", FALSE, FALSE,
+        FALSE);
+  feato(FEAT_ARMOR_PROFICIENCY_SHIELD, "shield armor proficiency", FALSE, FALSE,
+        FALSE);
+  feato(FEAT_SNEAK_ATTACK, "sneak attack", TRUE, FALSE, TRUE);
+  feato(FEAT_EVASION, "evasion", TRUE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_EVASION, "improved evasion", TRUE, FALSE, FALSE);
+  feato(FEAT_ACROBATIC, "acrobatic", TRUE, TRUE, FALSE);
+  feato(FEAT_AGILE, "agile", TRUE, TRUE, FALSE);
+  feato(FEAT_ALERTNESS, "alertness", TRUE, FALSE, FALSE);
+  feato(FEAT_ANIMAL_AFFINITY, "animal affinity", FALSE, TRUE, FALSE);
+  feato(FEAT_ATHLETIC, "athletic", TRUE, TRUE, FALSE);
+  feato(FEAT_AUGMENT_SUMMONING, "augment summoning", FALSE, FALSE, FALSE);
+  feato(FEAT_COMBAT_EXPERTISE, "combat expertise", FALSE, FALSE, FALSE);
+  feato(FEAT_DECEITFUL, "deceitful", TRUE, TRUE, FALSE);
+  feato(FEAT_DEFT_HANDS, "deft hands", FALSE, TRUE, FALSE);
+  feato(FEAT_DIEHARD, "diehard", TRUE, FALSE, FALSE);
+  feato(FEAT_DILIGENT, "diligent", TRUE, TRUE, FALSE);
+  feato(FEAT_ESCHEW_MATERIALS, "eschew materials", FALSE, FALSE, FALSE);
+  feato(FEAT_EXOTIC_WEAPON_PROFICIENCY, "exotic weapon proficiency", FALSE,
+        FALSE, FALSE);
+  feato(FEAT_GREATER_SPELL_FOCUS, "greater spell focus", FALSE, FALSE, TRUE);
+  feato(FEAT_GREATER_SPELL_PENETRATION, "greater spell penetration", FALSE,
+        FALSE, FALSE);
+  feato(FEAT_GREATER_TWO_WEAPON_FIGHTING, "greater two weapon fighting", TRUE,
+        FALSE, FALSE);
+  feato(FEAT_GREATER_WEAPON_FOCUS, "greater weapon focus", FALSE, TRUE, TRUE);
+  feato(FEAT_GREATER_WEAPON_SPECIALIZATION, "greater weapon specialization",
+        FALSE, TRUE, TRUE);
+  feato(FEAT_IMPROVED_COUNTERSPELL, "improved counterspell", FALSE, FALSE,
+        FALSE);
+  feato(FEAT_IMPROVED_FAMILIAR, "improved familiar", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_FEINT, "improved feint", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_GRAPPLE, "improved grapple", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_OVERRUN, "improved overrun", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_PRECISE_SHOT, "improved precise shot", FALSE, FALSE,
+        FALSE);
+  feato(FEAT_IMPROVED_SHIELD_BASH, "improved shield bash", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_SUNDER, "improved sunder", FALSE, FALSE, FALSE);
+  feato(FEAT_IMPROVED_TURNING, "improved turning", FALSE, FALSE, FALSE);
+  feato(FEAT_INVESTIGATOR, "investigator", FALSE, TRUE, FALSE);
+  feato(FEAT_MAGICAL_APTITUDE, "magical aptitude", FALSE, TRUE, FALSE);
+  feato(FEAT_MANYSHOT, "manyshot", FALSE, FALSE, FALSE);
+  feato(FEAT_NATURAL_SPELL, "natural spell", FALSE, FALSE, FALSE);
+  feato(FEAT_NEGOTIATOR, "negotiator", FALSE, TRUE, FALSE);
+  feato(FEAT_NIMBLE_FINGERS, "nimble fingers", FALSE, TRUE, FALSE);
+  feato(FEAT_PERSUASIVE, "persuasive", FALSE, TRUE, FALSE);
+  feato(FEAT_RAPID_RELOAD, "rapid reload", FALSE, FALSE, FALSE);
+  feato(FEAT_SELF_SUFFICIENT, "self sufficient", FALSE, TRUE, FALSE);
+  feato(FEAT_STEALTHY, "stealthy", TRUE, TRUE, FALSE);
+  feato(FEAT_ARMOR_PROFICIENCY_TOWER_SHIELD, "tower shield armor proficiency",
+        FALSE, FALSE, FALSE);
+  feato(FEAT_TWO_WEAPON_DEFENSE, "two weapon defense", FALSE, FALSE, FALSE);
+  feato(FEAT_WIDEN_SPELL, "widen spell", FALSE, FALSE, FALSE);
 }
 
-// The follwing function is used to check if the character satisfies the various prerequisite(s) (if any)
-// of a feat in order to learn it.
+// The follwing function is used to check if the character satisfies the various
+// prerequisite(s) (if any) of a feat in order to learn it.
 
-int feat_is_available(struct char_data *ch, int featnum, int iarg, char *sarg)
-{
+int feat_is_available(struct char_data *ch, int featnum, int iarg, char *sarg) {
   return FALSE;
 }
 
-int is_proficient_with_armor(const struct char_data *ch, int cmarmor_type)
-{
+int is_proficient_with_armor(const struct char_data *ch, int cmarmor_type) {
   switch (cmarmor_type) {
-    case ARMOR_TYPE_LIGHT:
+  case ARMOR_TYPE_LIGHT:
     break;
-    case ARMOR_TYPE_MEDIUM:
+  case ARMOR_TYPE_MEDIUM:
     break;
-    case ARMOR_TYPE_HEAVY:
+  case ARMOR_TYPE_HEAVY:
     break;
-    case ARMOR_TYPE_SHIELD:
+  case ARMOR_TYPE_SHIELD:
     break;
   }
   return FALSE;
 }
 
-int is_proficient_with_weapon(const struct char_data *ch, int cmweapon_type)
-{
+int is_proficient_with_weapon(const struct char_data *ch, int cmweapon_type) {
   switch (cmweapon_type) {
   case WEAPON_TYPE_UNARMED:
     return 1;
@@ -256,17 +269,14 @@ int is_proficient_with_weapon(const struct char_data *ch, int cmweapon_type)
   }
   return FALSE;
 }
-  
-int compare_feats(const void *x, const void *y)
-{
-  int   a = *(const int *)x,
-        b = *(const int *)y;
-  
+
+int compare_feats(const void *x, const void *y) {
+  int a = *(const int *)x, b = *(const int *)y;
+
   return strcmp(feat_list[a].name, feat_list[b].name);
 }
 
-void sort_feats(void)
-{
+void sort_feats(void) {
   int a;
 
   /* initialize array, avoiding reserved. */
@@ -276,28 +286,20 @@ void sort_feats(void)
   qsort(&feat_sort_info[0], NUM_FEATS_DEFINED, sizeof(int), compare_feats);
 }
 
-void list_feats_known(struct char_data *ch) 
-{
-}
+void list_feats_known(struct char_data *ch) {}
 
-void list_feats_available(struct char_data *ch) 
-{
-}
-void list_feats_complete(struct char_data *ch) 
-{
+void list_feats_available(struct char_data *ch) {}
+void list_feats_complete(struct char_data *ch) {}
 
-}
-
-int find_feat_num(char *name)
-{  
+int find_feat_num(char *name) {
   int ftindex, ok;
   char *temp, *temp2;
   char first[256], first2[256];
-   
+
   for (ftindex = 1; ftindex <= NUM_FEATS_DEFINED; ftindex++) {
     if (is_abbrev(name, feat_list[ftindex].name))
       return (ftindex);
-    
+
     ok = TRUE;
     /* It won't be changed, but other uses of this function elsewhere may. */
     temp = any_one_arg((char *)feat_list[ftindex].name, first);
@@ -308,16 +310,15 @@ int find_feat_num(char *name)
       temp = any_one_arg(temp, first);
       temp2 = any_one_arg(temp2, first2);
     }
-  
+
     if (ok && !*first2)
       return (ftindex);
   }
-    
+
   return (-1);
 }
 
-ACMD(do_feats)
-{
+ACMD(do_feats) {
   char arg[80];
 
   one_argument(argument, arg);
@@ -332,8 +333,7 @@ ACMD(do_feats)
   }
 }
 
-int feat_to_subfeat(int feat)
-{
+int feat_to_subfeat(int feat) {
   switch (feat) {
   case FEAT_IMPROVED_CRITICAL:
     return CFEAT_IMPROVED_CRITICAL;

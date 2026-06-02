@@ -6,18 +6,18 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "log.h"
-#include "consts/admlevel.h"
-#include "character_impl.h"
-#include "zone_db.h"
-#include "shop_db.h"
 #include "character_db.h"
+#include "character_impl.h"
+#include "consts/admlevel.h"
+#include "log.h"
+#include "shop_db.h"
 #include "shop_impl.h"
+#include "zone_db.h"
 #include "zone_impl.h"
 
-#include "shop.h"
-#include "guild.h"
 #include "genshp.h"
+#include "guild.h"
+#include "shop.h"
 
 #include "db.h"
 
@@ -31,8 +31,8 @@
 
 /*-------------------------------------------------------------------*/
 
-void copy_shop(struct shop_data *tshop, struct shop_data *fshop, int free_old_strings)
-{
+void copy_shop(struct shop_data *tshop, struct shop_data *fshop,
+               int free_old_strings) {
   int i;
 
   /*
@@ -65,7 +65,7 @@ void copy_shop(struct shop_data *tshop, struct shop_data *fshop, int free_old_st
    * Copy notification strings over.
    */
   if (free_old_strings)
-  free_shop_strings(tshop);
+    free_shop_strings(tshop);
   S_NOITEM1(tshop) = str_udup(S_NOITEM1(fshop));
   S_NOITEM2(tshop) = str_udup(S_NOITEM2(fshop));
   S_NOCASH1(tshop) = str_udup(S_NOCASH1(fshop));
@@ -80,8 +80,7 @@ void copy_shop(struct shop_data *tshop, struct shop_data *fshop, int free_old_st
 /*
  * Copy a 'NOTHING' terminated integer array list.
  */
-void copy_list(IDXTYPE **tlist, IDXTYPE *flist)
-{
+void copy_list(IDXTYPE **tlist, IDXTYPE *flist) {
   int num_items, i;
 
   if (*tlist)
@@ -90,7 +89,8 @@ void copy_list(IDXTYPE **tlist, IDXTYPE *flist)
   /*
    * Count number of entries.
    */
-  for (i = 0; flist[i] != NOTHING; i++);
+  for (i = 0; flist[i] != NOTHING; i++)
+    ;
   num_items = i + 1;
 
   /*
@@ -108,11 +108,10 @@ void copy_list(IDXTYPE **tlist, IDXTYPE *flist)
 /*-------------------------------------------------------------------*/
 
 /*
- * Copy a -1 terminated (in the type field) shop_buy_data 
+ * Copy a -1 terminated (in the type field) shop_buy_data
  * array list.
  */
-void copy_type_list(struct shop_buy_data **tlist, struct shop_buy_data *flist)
-{
+void copy_type_list(struct shop_buy_data **tlist, struct shop_buy_data *flist) {
   int num_items, i;
 
   if (*tlist)
@@ -121,7 +120,8 @@ void copy_type_list(struct shop_buy_data **tlist, struct shop_buy_data *flist)
   /*
    * Count number of entries.
    */
-  for (i = 0; BUY_TYPE(flist[i]) != NOTHING; i++);
+  for (i = 0; BUY_TYPE(flist[i]) != NOTHING; i++)
+    ;
   num_items = i + 1;
 
   /*
@@ -141,15 +141,15 @@ void copy_type_list(struct shop_buy_data **tlist, struct shop_buy_data *flist)
 
 /*-------------------------------------------------------------------*/
 
-void remove_from_type_list(struct shop_buy_data **list, int num)
-{
+void remove_from_type_list(struct shop_buy_data **list, int num) {
   int i, num_items;
   struct shop_buy_data *nlist;
 
   /*
    * Count number of entries.
    */
-  for (i = 0; (*list)[i].type != NOTHING; i++);
+  for (i = 0; (*list)[i].type != NOTHING; i++)
+    ;
 
   if (num < 0 || num >= i)
     return;
@@ -167,15 +167,15 @@ void remove_from_type_list(struct shop_buy_data **list, int num)
 
 /*-------------------------------------------------------------------*/
 
-void add_to_type_list(struct shop_buy_data **list, struct shop_buy_data *newl)
-{
+void add_to_type_list(struct shop_buy_data **list, struct shop_buy_data *newl) {
   int i, num_items;
   struct shop_buy_data *nlist;
 
   /*
    * Count number of entries.
    */
-  for (i = 0; (*list)[i].type != NOTHING; i++);
+  for (i = 0; (*list)[i].type != NOTHING; i++)
+    ;
   num_items = i;
 
   /*
@@ -197,14 +197,14 @@ void add_to_type_list(struct shop_buy_data **list, struct shop_buy_data *newl)
 
 /*-------------------------------------------------------------------*/
 
-void add_to_int_list(IDXTYPE **list, IDXTYPE newi)
-{
+void add_to_int_list(IDXTYPE **list, IDXTYPE newi) {
   IDXTYPE i, num_items, *nlist;
 
   /*
    * Count number of entries.
    */
-  for (i = 0; (*list)[i] != NOTHING; i++);
+  for (i = 0; (*list)[i] != NOTHING; i++)
+    ;
   num_items = i;
 
   /*
@@ -226,14 +226,14 @@ void add_to_int_list(IDXTYPE **list, IDXTYPE newi)
 
 /*-------------------------------------------------------------------*/
 
-void remove_from_int_list(IDXTYPE **list, IDXTYPE num)
-{
+void remove_from_int_list(IDXTYPE **list, IDXTYPE num) {
   IDXTYPE i, num_items, *nlist;
 
   /*
    * Count number of entries.
    */
-  for (i = 0; (*list)[i] != NOTHING; i++);
+  for (i = 0; (*list)[i] != NOTHING; i++)
+    ;
 
 #if CIRCLE_UNSIGNED_INDEX
   if (num >= i)
@@ -257,8 +257,7 @@ void remove_from_int_list(IDXTYPE **list, IDXTYPE num)
 /*
  * Free all the notice character strings in a shop structure.
  */
-void free_shop_strings(struct shop_data *shop)
-{
+void free_shop_strings(struct shop_data *shop) {
   if (S_NOITEM1(shop)) {
     free(S_NOITEM1(shop));
     S_NOITEM1(shop) = NULL;
@@ -294,8 +293,7 @@ void free_shop_strings(struct shop_data *shop)
 /*
  * Free a type list and all the strings it contains.
  */
-void free_type_list(struct shop_buy_data **list)
-{
+void free_type_list(struct shop_buy_data **list) {
   int i;
 
   for (i = 0; (*list)[i].type != NOTHING; i++)
@@ -311,8 +309,7 @@ void free_type_list(struct shop_buy_data **list)
 /*
  * Free up the whole shop structure and it's content.
  */
-void free_shop(struct shop_data *shop)
-{
+void free_shop(struct shop_data *shop) {
   free_shop_strings(shop);
   free_type_list(&(S_NAMELISTS(shop)));
   free(S_ROOMS(shop));
@@ -325,8 +322,7 @@ void free_shop(struct shop_data *shop)
 /*
  * Generic string modifier for shop keeper messages.
  */
-void modify_string(char **str, char *new_s)
-{
+void modify_string(char **str, char *new_s) {
 
   char buf[MAX_STRING_LENGTH];
   char *pointer;
@@ -347,8 +343,7 @@ void modify_string(char **str, char *new_s)
 
 /*-------------------------------------------------------------------*/
 
-int add_shop(struct shop_data *nshp)
-{
+int add_shop(struct shop_data *nshp) {
   struct shop_data *shop;
   int found = 0;
   struct zone_data *zone = zone_by_id(virtual_zone_by_thing(S_NUM(nshp)));
@@ -357,12 +352,13 @@ int add_shop(struct shop_data *nshp)
    * The shop already exists, just update it.
    */
   if (shop = shop_by_id(nshp->vnum)) {
-   /* free old strings. They're not used in any other place -- Welcor */
-   copy_shop(shop, nshp, TRUE);
+    /* free old strings. They're not used in any other place -- Welcor */
+    copy_shop(shop, nshp, TRUE);
     if (zone)
       add_to_save_list(zone->number, SL_SHP);
     else
-      mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: GenOLC: Cannot determine shop zone.");
+      mudlog(BRF, ADMLVL_BUILDER, TRUE,
+             "SYSERR: GenOLC: Cannot determine shop zone.");
     return shop->vnum;
   }
 
@@ -373,34 +369,30 @@ int add_shop(struct shop_data *nshp)
   if (zone)
     add_to_save_list(zone->number, SL_SHP);
   else
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: GenOLC: Cannot determine shop zone.");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: GenOLC: Cannot determine shop zone.");
 
   return shop->vnum;
 }
 
 /*-------------------------------------------------------------------*/
 
-int save_shops(struct zone_data *zone)
-{
+int save_shops(struct zone_data *zone) {
   int i, j, rshop;
   FILE *shop_file;
   char fname[128], oldname[128];
   struct shop_data *shop;
 
-  if (!zone)
-  {
+  if (!zone) {
     log("SYSERR: GenOLC: save_shops: Invalid zone pointer.");
     return FALSE;
   }
 
   snprintf(fname, sizeof(fname), "%s%d.new", SHP_PREFIX, zone->number);
-  if (!(shop_file = fopen(fname, "w")))
-  {
+  if (!(shop_file = fopen(fname, "w"))) {
     mudlog(BRF, ADMLVL_GOD, TRUE, "SYSERR: OLC: Cannot open shop file!");
     return FALSE;
-  }
-  else if (fprintf(shop_file, "CircleMUD v3.0 Shop File~\n") < 0)
-  {
+  } else if (fprintf(shop_file, "CircleMUD v3.0 Shop File~\n") < 0) {
     mudlog(BRF, ADMLVL_GOD, TRUE, "SYSERR: OLC: Cannot write to shop file!");
     fclose(shop_file);
     return FALSE;
@@ -408,8 +400,7 @@ int save_shops(struct zone_data *zone)
   /*
    * Search database for shops in this zone.
    */
-  for (i = zone->bot; i <= zone->top; i++)
-  {
+  for (i = zone->bot; i <= zone->top; i++) {
     auto shop = shop_by_id(i);
     if (!shop)
       continue;
@@ -425,17 +416,16 @@ int save_shops(struct zone_data *zone)
     /*
      * Save the rates.
      */
-    fprintf(shop_file, "%1.2f\n"
-                       "%1.2f\n",
-            S_BUYPROFIT(shop),
-            S_SELLPROFIT(shop));
+    fprintf(shop_file,
+            "%1.2f\n"
+            "%1.2f\n",
+            S_BUYPROFIT(shop), S_SELLPROFIT(shop));
 
     /*
      * Save the buy types and namelists.
      */
     for (j = 0; S_BUYTYPE(shop, j) != NOTHING; j++)
-      fprintf(shop_file, "%d%s\n",
-              S_BUYTYPE(shop, j),
+      fprintf(shop_file, "%d%s\n", S_BUYTYPE(shop, j),
               S_BUYWORD(shop, j) ? S_BUYWORD(shop, j) : "");
     fprintf(shop_file, "-1\n");
 
@@ -466,10 +456,8 @@ int save_shops(struct zone_data *zone)
             S_NOCASH1(shop) ? S_NOCASH1(shop) : "%s Ke?!",
             S_NOCASH2(shop) ? S_NOCASH2(shop) : "%s Ke?!",
             S_BUY(shop) ? S_BUY(shop) : "%s Ke?! %d?",
-            S_SELL(shop) ? S_SELL(shop) : "%s Ke?! %d?",
-            S_BROKE_TEMPER(shop),
-            S_BITVECTOR(shop),
-            keeper ? keeper->vnum : -1);
+            S_SELL(shop) ? S_SELL(shop) : "%s Ke?! %d?", S_BROKE_TEMPER(shop),
+            S_BITVECTOR(shop), keeper ? keeper->vnum : -1);
     for (j = 0; j < SW_ARRAY_MAX; j++)
       fprintf(shop_file, "%s%d", j ? " " : "", S_NOTRADE(shop)[j]);
     fprintf(shop_file, "\n");
@@ -493,8 +481,7 @@ int save_shops(struct zone_data *zone)
   remove(oldname);
   rename(fname, oldname);
 
-  if (in_save_list(zone->number, SL_SHP))
-  {
+  if (in_save_list(zone->number, SL_SHP)) {
     remove_from_save_list(zone->number, SL_SHP);
     create_world_index(zone->number, "shp");
     log("GenOLC: save_shops: Saving shops '%s'", oldname);

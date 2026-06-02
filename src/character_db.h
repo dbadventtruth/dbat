@@ -23,13 +23,13 @@ void char_unsubscribe(int64_t id, const char *list_name);
 void char_clear_subscriptions(int64_t id);
 void char_for_each(const char *list_name, void (*func)(struct char_data *ch));
 
-void* mob_proto_iterator_create();
-struct mob_proto_data* mob_proto_next(void* iterator);
-void mob_proto_iterator_free(void* iterator);
+void *mob_proto_iterator_create();
+struct mob_proto_data *mob_proto_next(void *iterator);
+void mob_proto_iterator_free(void *iterator);
 
 void mob_proto_put(mob_vnum vnum, struct mob_proto_data *mob);
 void mob_proto_delete(mob_vnum vnum);
-struct mob_proto_data* mob_proto_get(mob_vnum vnum);
+struct mob_proto_data *mob_proto_get(mob_vnum vnum);
 size_t mob_proto_count();
 SpecialFunc mob_proto_special_get(mob_vnum vnum);
 void mob_proto_special_set(mob_vnum vnum, SpecialFunc func);

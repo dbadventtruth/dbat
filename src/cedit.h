@@ -5,8 +5,7 @@
 extern "C" {
 #endif
 
-int save_config( IDXTYPE nowhere );        /* Exported from cedit.c */
-
+int save_config(IDXTYPE nowhere); /* Exported from cedit.c */
 
 #ifdef __cplusplus
 }

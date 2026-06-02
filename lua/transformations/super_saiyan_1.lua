@@ -22,6 +22,8 @@ end
 return {
     id = "super_saiyan_1",
     name = "Super Saiyan First",
+    alias = { "ssj", "ssj1", "super saiyan", "super saiyan 1", "super saiyan first" },
+    sort_order = 101,
     family = "super_saiyan",
     tier = 1,
     condition = "super_saiyan_1",

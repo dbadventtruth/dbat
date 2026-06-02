@@ -1,7 +1,7 @@
 /* ************************************************************************
-*   File: random.c                                      Part of CircleMUD *
-*  Usage: pseudo-random number generator                                  *
-************************************************************************ */
+ *   File: random.c                                      Part of CircleMUD *
+ *  Usage: pseudo-random number generator                                  *
+ ************************************************************************ */
 
 #include "random.h"
 
@@ -44,11 +44,11 @@
  authors. WSE" )
 */
 
-#define	m  (unsigned long)2147483647
-#define	q  (unsigned long)127773
+#define m (unsigned long)2147483647
+#define q (unsigned long)127773
 
-#define	a (unsigned int)16807
-#define	r (unsigned int)2836
+#define a (unsigned int)16807
+#define r (unsigned int)2836
 
 /*
 ** F(z)	= (az)%m
@@ -66,35 +66,26 @@ static unsigned long seed;
 
 /* local functions */
 
+void circle_srandom(unsigned long initial_seed) { seed = initial_seed; }
 
+unsigned long circle_random(void) {
+  int lo, hi, test;
 
-void circle_srandom(unsigned long initial_seed)
-{
-    seed = initial_seed; 
+  hi = seed / q;
+  lo = seed % q;
+
+  test = a * lo - r * hi;
+
+  if (test > 0)
+    seed = test;
+  else
+    seed = test + m;
+
+  return (seed);
 }
-
-
-unsigned long circle_random(void)
-{
-   int lo, hi, test;
-
-    hi   = seed/q;
-    lo   = seed%q;
-
-    test = a*lo - r*hi;
-
-    if (test > 0)
-	seed = test;
-    else
-	seed = test+ m;
-
-    return (seed);
-}
-
 
 /* creates a random number in long long int */
-int64_t large_rand(int64_t from, int64_t to)
-{
+int64_t large_rand(int64_t from, int64_t to) {
   /* error checking in case people call this incorrectly */
   if (from > to) {
     int64_t tmp = from;
@@ -115,8 +106,7 @@ int64_t large_rand(int64_t from, int64_t to)
 }
 
 /* creates a random number in interval [from;to] */
-int rand_number(int from, int to)
-{
+int rand_number(int from, int to) {
   /* error checking in case people call this incorrectly */
   if (from > to) {
     int tmp = from;
@@ -127,25 +117,23 @@ int rand_number(int from, int to)
 }
 
 /* Axion engine dice function */
-int axion_dice(int adjust)
-{
+int axion_dice(int adjust) {
 
- int die1 = 0, die2 = 0, roll = 0;
+  int die1 = 0, die2 = 0, roll = 0;
 
- die1 = rand_number(1, 60);
- die2 = rand_number(1, 60);
+  die1 = rand_number(1, 60);
+  die2 = rand_number(1, 60);
 
- roll = (die1 + die2) + adjust;
+  roll = (die1 + die2) + adjust;
 
- if (roll < 2)
-  roll = 2;
+  if (roll < 2)
+    roll = 2;
 
- return (roll);
+  return (roll);
 }
 
 /* simulates dice roll */
-int dice(int num, int size)
-{
+int dice(int num, int size) {
   int sum = 0;
 
   if (size <= 0 || num <= 0)
@@ -158,14 +146,12 @@ int dice(int num, int size)
 }
 
 /* Add should be set to the amount you want to add to whatever is rolled. */
-int roll_aff_duration(int num, int add)
-{
- int start = num / 20;
- int finish = num / 10;
- int outcome = add;
+int roll_aff_duration(int num, int add) {
+  int start = num / 20;
+  int finish = num / 10;
+  int outcome = add;
 
+  outcome += rand_number(start, finish);
 
- outcome += rand_number(start, finish);
-
- return (outcome);
+  return (outcome);
 }

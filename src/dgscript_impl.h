@@ -7,20 +7,20 @@ extern "C" {
 
 /* linked list for mob/object prototype trigger lists */
 struct trig_proto_list {
-  int vnum;                             /* vnum of the trigger   */
-  struct trig_proto_list *next;         /* next trigger          */
+  int vnum;                     /* vnum of the trigger   */
+  struct trig_proto_list *next; /* next trigger          */
 };
 
 #define DG_SCRIPT_VERSION "DG Scripts 1.0.14"
 
-#define    MOB_TRIGGER   0
-#define    OBJ_TRIGGER   1
-#define    WLD_TRIGGER   2
+#define MOB_TRIGGER 0
+#define OBJ_TRIGGER 1
+#define WLD_TRIGGER 2
 
 /* unless you change this, Puff casts all your dg spells */
 #define DG_CASTER_PROXY 1
 /* spells cast by objects and rooms use this level */
-#define DG_SPELL_LEVEL  25
+#define DG_SPELL_LEVEL 25
 
 /*
  * define this if you don't want wear/remove triggers to fire when
@@ -51,66 +51,63 @@ struct trig_proto_list {
  */
 #define ACTOR_ROOM_IS_UID 1
 
-
-
 /*
  * These are slightly off of PULSE_MOBILE so
  * everything isnt happening at the same time
  */
-#define PULSE_DG_SCRIPT         (13 RL_SEC)
+#define PULSE_DG_SCRIPT (13 RL_SEC)
 
+#define MAX_SCRIPT_DEPTH                                                       \
+  10 /* maximum depth triggers can                                             \
+        recurse into each other */
 
-#define MAX_SCRIPT_DEPTH      10          /* maximum depth triggers can
-					     recurse into each other */
-
-#define SCRIPT_ERROR_CODE     -9999999   /* this shouldn't happen too often */
+#define SCRIPT_ERROR_CODE -9999999 /* this shouldn't happen too often */
 
 /* one line of the trigger */
 struct cmdlist_element {
-  char *cmd;				/* one line of a trigger */
+  char *cmd; /* one line of a trigger */
   struct cmdlist_element *original;
   struct cmdlist_element *next;
 };
 
 struct trig_var_data {
-  char *name;				/* name of variable  */
-  char *value;				/* value of variable */
-  long context;				/* 0: global context */
+  char *name;   /* name of variable  */
+  char *value;  /* value of variable */
+  long context; /* 0: global context */
 
   struct trig_var_data *next;
 };
 
 /* structure for triggers */
 struct trig_data {
-    trig_vnum vnum; 	                /* trigger's rnum                  */
-    uint8_t attach_type;			/* mob/obj/wld intentions          */
-    uint8_t data_type;		        /* type of game_data for trig      */
-    char *name;			        /* name of trigger                 */
-    bitvector_t trigger_type;			/* type of trigger (for bitvector) */
-    struct cmdlist_element *cmdlist;	/* top of command list             */
-    struct cmdlist_element *curr_state;	/* ptr to current line of trigger  */
-    int narg;				/* numerical argument              */
-    char *arglist;			/* argument list                   */
-    int depth;				/* depth into nest ifs/whiles/etc  */
-    int loops;				/* loop iteration counter          */
-    struct event *wait_event;   	/* event to pause the trigger      */
-    bool purged;			/* trigger is set to be purged     */
-    struct trig_var_data *var_list;	/* list of local vars for trigger  */
+  trig_vnum vnum;                     /* trigger's rnum                  */
+  uint8_t attach_type;                /* mob/obj/wld intentions          */
+  uint8_t data_type;                  /* type of game_data for trig      */
+  char *name;                         /* name of trigger                 */
+  bitvector_t trigger_type;           /* type of trigger (for bitvector) */
+  struct cmdlist_element *cmdlist;    /* top of command list             */
+  struct cmdlist_element *curr_state; /* ptr to current line of trigger  */
+  int narg;                           /* numerical argument              */
+  char *arglist;                      /* argument list                   */
+  int depth;                          /* depth into nest ifs/whiles/etc  */
+  int loops;                          /* loop iteration counter          */
+  struct event *wait_event;           /* event to pause the trigger      */
+  bool purged;                        /* trigger is set to be purged     */
+  struct trig_var_data *var_list;     /* list of local vars for trigger  */
 
-    struct trig_data *next;
-    struct trig_data *next_in_world;    /* next in the global trigger list */
+  struct trig_data *next;
+  struct trig_data *next_in_world; /* next in the global trigger list */
 };
-
 
 /* a complete script (composed of several triggers) */
 struct script_data {
-  bitvector_t types;			/* bitvector of trigger types */
-  struct trig_data *trig_list;	        /* list of triggers           */
-  struct trig_var_data *global_vars;	/* list of global variables   */
-  bool purged;				/* script is set to be purged */
-  long context;				/* current context for statics */
+  bitvector_t types;                 /* bitvector of trigger types */
+  struct trig_data *trig_list;       /* list of triggers           */
+  struct trig_var_data *global_vars; /* list of global variables   */
+  bool purged;                       /* script is set to be purged */
+  long context;                      /* current context for statics */
 
-  struct script_data *next;		/* used for purged_scripts    */
+  struct script_data *next; /* used for purged_scripts    */
 };
 
 /* The event data for the wait command */
@@ -124,8 +121,8 @@ struct wait_event_data {
 
 /* used for actor memory triggers */
 struct script_memory {
-  long id;				/* id of who to remember */
-  char *cmd;				/* command, or NULL for generic */
+  long id;   /* id of who to remember */
+  char *cmd; /* command, or NULL for generic */
   struct script_memory *next;
 };
 

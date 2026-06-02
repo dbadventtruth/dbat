@@ -1,15 +1,14 @@
-#include "command.h"
 #include "command_db.h"
+#include "command.h"
 #include "command_impl.h"
 #include <stdlib.h>
 #include <string.h>
 
-struct alias_data *find_alias(struct alias_data *alias_list, char *str)
-{
+struct alias_data *find_alias(struct alias_data *alias_list, char *str) {
   while (alias_list != NULL) {
-    if (*str == *alias_list->alias)	/* hey, every little bit counts :-) */
+    if (*str == *alias_list->alias) /* hey, every little bit counts :-) */
       if (!strcmp(str, alias_list->alias))
-	return (alias_list);
+        return (alias_list);
 
     alias_list = alias_list->next;
   }
@@ -17,9 +16,7 @@ struct alias_data *find_alias(struct alias_data *alias_list, char *str)
   return (NULL);
 }
 
-
-void free_alias(struct alias_data *a)
-{
+void free_alias(struct alias_data *a) {
   if (a->alias)
     free(a->alias);
   if (a->replacement)
@@ -28,8 +25,7 @@ void free_alias(struct alias_data *a)
 }
 
 /* Used in specprocs, mostly.  (Exactly) matches "command" to cmd number */
-int find_command(const char *command)
-{
+int find_command(const char *command) {
   int cmd;
   for (cmd = 0; *complete_cmd_info[cmd].command != '\n'; cmd++)
     if (!strcmp(complete_cmd_info[cmd].command, command))

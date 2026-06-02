@@ -1,39 +1,39 @@
 /*************************************************************************
-*   File: olc.c                                         Part of CircleMUD *
-*  Usage: online creation                                                 *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
+ *   File: olc.c                                         Part of CircleMUD *
+ *  Usage: online creation                                                 *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 
 /*
  * PLEASE, FOR THE LOVE OF GOD, DON'T TRY TO USE THIS YET!!!
  *  *** DO *** NOT *** SEND ME MAIL ASKING WHY IT DOESN'T WORK -- IT'S
  *  NOT DONE!!
  */
-#include "config.h"
 #include "olc.h"
+#include "config.h"
 
-#include "character_impl.h"
 #include "character_api.h"
 #include "character_db.h"
+#include "character_impl.h"
 #include "character_macros.h"
-#include "room_impl.h"
-#include "room_db.h"
-#include "object_impl.h"
-#include "object_db.h"
-#include "config_db.h"
-#include "flags.h"
-#include "log.h"
-#include "stringutils.h"
-#include "consts/mobflags.h"
 #include "comm.h"
-#include "interpreter.h"
-#include "handler.h"
+#include "config_db.h"
+#include "consts/mobflags.h"
 #include "db.h"
+#include "flags.h"
+#include "handler.h"
+#include "interpreter.h"
+#include "log.h"
+#include "object_db.h"
+#include "object_impl.h"
 #include "olc.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "stringutils.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -58,30 +58,22 @@ int can_modify(struct char_data *ch, int vnum);
 ACMD(do_olc);
 void olc_bitvector(int *bv, const char **names, char *arg);
 
-const char *olc_modes[] = {
-  "set",			/* set OLC characteristics */
-  "show",			/* show OLC characteristics */
-  ".",				/* repeat last modification command */
-  "room",			/* modify a room */
-  "mobile",			/* modify a mobile */
-  "object",			/* modify an object */
-  "assedit",                    /* assembly olc */
-  "\n"
-};
+const char *olc_modes[] = {"set",     /* set OLC characteristics */
+                           "show",    /* show OLC characteristics */
+                           ".",       /* repeat last modification command */
+                           "room",    /* modify a room */
+                           "mobile",  /* modify a mobile */
+                           "object",  /* modify an object */
+                           "assedit", /* assembly olc */
+                           "\n"};
 
 const char *olc_commands[] = {
-  "copy",
-  "name",
-  "description",
-  "aliases",
-  "\n",				/* many more to be added */
+    "copy", "name", "description", "aliases", "\n", /* many more to be added */
 };
-
 
 /* The actual do_olc command for the interpreter.  Determines the target
    entity, checks permissions, and passes control to olc_interpreter */
-ACMD(do_olc)
-{
+ACMD(do_olc) {
   void *olc_targ = NULL;
   char mode_arg[MAX_INPUT_LENGTH], arg[MAX_INPUT_LENGTH];
   room_rnum rnum;
@@ -110,7 +102,7 @@ ACMD(do_olc)
     return;
   case OLC_REPEAT:
     if (!(olc_mode = GET_LAST_OLC_MODE(ch)) ||
-	((olc_targ = GET_LAST_OLC_TARG(ch)) == NULL)) {
+        ((olc_targ = GET_LAST_OLC_TARG(ch)) == NULL)) {
       send_to_char(ch, "No last OLC operation!\r\n");
       return;
     }
@@ -120,13 +112,13 @@ ACMD(do_olc)
       /* room specified.  take the numeric argument off */
       argument = one_argument(argument, arg);
       if (!is_number(arg)) {
-	send_to_char(ch, "Invalid room vnum '%s'.\r\n", arg);
-	return;
+        send_to_char(ch, "Invalid room vnum '%s'.\r\n", arg);
+        return;
       }
       vnum = atoi(arg);
       if (!room_by_id(vnum)) {
-	send_to_char(ch, "No such room!\r\n");
-	return;
+        send_to_char(ch, "No such room!\r\n");
+        return;
       }
     } else {
       rnum = IN_ROOM(ch);
@@ -146,7 +138,7 @@ ACMD(do_olc)
     if (!(mob = mob_proto_by_id(vnum)))
       send_to_char(ch, "No such mobile vnum.\r\n");
     else
-      olc_targ = (void *) &(mob);
+      olc_targ = (void *)&(mob);
     break;
   case OLC_OBJ:
     argument = one_argument(argument, arg);
@@ -158,7 +150,7 @@ ACMD(do_olc)
     if (!(obj = obj_proto_by_id(vnum)))
       send_to_char(ch, "No object with vnum %d.\r\n", vnum);
     else
-      olc_targ = (void *) &(obj);
+      olc_targ = (void *)&(obj);
     break;
   default:
     send_to_char(ch, "Usage: olc {.|set|show|obj|mob|room} [args]\r\n");
@@ -180,10 +172,8 @@ ACMD(do_olc)
   /* freshen? */
 }
 
-
 /* OLC interpreter command; called by do_olc */
-void olc_interpreter(void *targ, int mode, char *arg)
-{
+void olc_interpreter(void *targ, int mode, char *arg) {
   int error = 0, command;
   char command_string[MAX_INPUT_LENGTH];
   struct char_data *olc_mob = NULL;
@@ -197,19 +187,18 @@ void olc_interpreter(void *targ, int mode, char *arg)
   }
   switch (mode) {
   case OLC_ROOM:
-    olc_room = (struct room_data *) targ;
+    olc_room = (struct room_data *)targ;
     break;
   case OLC_MOB:
-    olc_mob = (struct char_data *) targ;
+    olc_mob = (struct char_data *)targ;
     break;
   case OLC_OBJ:
-    olc_obj = (struct obj_data *) targ;
+    olc_obj = (struct obj_data *)targ;
     break;
   default:
     log("SYSERR: Invalid OLC mode %d passed to interp.", mode);
     return;
   }
-
 
   switch (command) {
   case OLC_COPY:
@@ -271,43 +260,39 @@ void olc_interpreter(void *targ, int mode, char *arg)
       error = 1;
       break;
     }
-
   }
 }
 
-
 /* can_modify: determine if a particular char can modify a vnum */
-int can_modify(struct char_data *ch, int vnum)
-{
-  return (1);
-}
-
+int can_modify(struct char_data *ch, int vnum) { return (1); }
 
 /* generic fn for modifying a string */
-void olc_string(char **string, size_t maxlen, char *arg)
-{
+void olc_string(char **string, size_t maxlen, char *arg) {
   skip_spaces(&arg);
 
   if (!*arg) {
-    send_to_char(olc_ch, "Enter new string (max of %d characters); use '@' on a new line when done.\r\n", (int) maxlen);
+    send_to_char(olc_ch,
+                 "Enter new string (max of %d characters); use '@' on a new "
+                 "line when done.\r\n",
+                 (int)maxlen);
     **string = '\0';
     string_write(olc_ch->desc, string, maxlen, 0, NULL);
   } else {
     if (strlen(arg) > maxlen) {
-      send_to_char(olc_ch, "String too long (cannot be more than %d chars).\r\n", (int) maxlen);
+      send_to_char(olc_ch,
+                   "String too long (cannot be more than %d chars).\r\n",
+                   (int)maxlen);
     } else {
       if (*string != NULL)
-	free(*string);
+        free(*string);
       *string = strdup(arg);
       send_to_char(olc_ch, "%s", CONFIG_OK);
     }
   }
 }
 
-
 /* generic fn for modifying a bitvector */
-void olc_bitvector(int *bv, const char **names, char *arg)
-{
+void olc_bitvector(int *bv, const char **names, char *arg) {
   int newbv, flagnum, doremove = 0;
   char *this_name;
   char buf[MAX_STRING_LENGTH];
@@ -325,7 +310,7 @@ void olc_bitvector(int *bv, const char **names, char *arg)
     newbv = 0;
 
   while (*arg) {
-    arg = one_argument(arg, buf);	/* get next argument */
+    arg = one_argument(arg, buf); /* get next argument */
 
     /* change to upper-case */
     for (this_name = buf; *this_name; this_name++)
@@ -335,9 +320,9 @@ void olc_bitvector(int *bv, const char **names, char *arg)
     if (*buf == '+' || *buf == '-') {
       this_name = buf + 1;
       if (*buf == '-')
-	doremove = TRUE;
+        doremove = TRUE;
       else
-	doremove = FALSE;
+        doremove = FALSE;
     } else {
       this_name = buf;
       doremove = FALSE;
@@ -348,9 +333,9 @@ void olc_bitvector(int *bv, const char **names, char *arg)
       send_to_char(olc_ch, "Unknown flag: %s\r\n", this_name);
     else {
       if (doremove)
-	REMOVE_BIT(newbv, (1 << flagnum));
+        REMOVE_BIT(newbv, (1 << flagnum));
       else
-	SET_BIT(newbv, (1 << flagnum));
+        SET_BIT(newbv, (1 << flagnum));
     }
   }
 
@@ -359,6 +344,4 @@ void olc_bitvector(int *bv, const char **names, char *arg)
   send_to_char(olc_ch, "Flags now set to: %s\r\n", buf);
 }
 
-void olc_set_show(struct char_data *ch, int olc_mode, char *arg)
-{
-}
+void olc_set_show(struct char_data *ch, int olc_mode, char *arg) {}

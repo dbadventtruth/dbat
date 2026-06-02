@@ -1,25 +1,23 @@
-#include "room_impl.h"
-#include "room_api.h"
 #include "room_utils.h"
+#include "room_api.h"
+#include "room_impl.h"
 
 #include "character_impl.h"
-#include "flags.h"
-#include "consts/races.h"
-#include "consts/positions.h"
-#include "consts/applies.h"
 #include "character_macros.h"
-#include "consts/mobflags.h"
-#include "object_impl.h"
-#include "object_macros.h"
+#include "consts/applies.h"
 #include "consts/itemdata.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/races.h"
 #include "consts/roomflags.h"
 #include "consts/sectortypes.h"
 #include "consts/weather.h"
+#include "flags.h"
+#include "object_impl.h"
+#include "object_macros.h"
 #include "weather_db.h"
 
-
-int num_pc_in_room(struct room_data *room)
-{
+int num_pc_in_room(struct room_data *room) {
   int i = 0;
   struct char_data *ch;
 
@@ -32,51 +30,51 @@ int num_pc_in_room(struct room_data *room)
 
 /* Is there a campfire in the room? */
 bool cook_element(struct room_data *room) {
- struct obj_data *obj, *next_obj;
- int found = FALSE;
+  struct obj_data *obj, *next_obj;
+  int found = FALSE;
 
- for (obj = room->contents; obj; obj = next_obj) {
-  next_obj = obj->next_content;
-  if (GET_OBJ_TYPE(obj) == ITEM_CAMPFIRE) {
-   found = 1;
-  } else if (GET_OBJ_VNUM(obj) == 19093) {
-   found = 2;
+  for (obj = room->contents; obj; obj = next_obj) {
+    next_obj = obj->next_content;
+    if (GET_OBJ_TYPE(obj) == ITEM_CAMPFIRE) {
+      found = 1;
+    } else if (GET_OBJ_VNUM(obj) == 19093) {
+      found = 2;
+    }
   }
- }
- return (found);
+  return (found);
 }
 
 /* Rules (unless overridden by ROOM_DARK):
  *
  * Inside and City rooms are always lit.
  * Outside rooms are dark at sunset and night.  */
-bool room_is_dark(struct room_data* room)
-{
+bool room_is_dark(struct room_data *room) {
 
-  struct room_data* rm = room;
+  struct room_data *rm = room;
 
   if (rm->light)
     return (FALSE);
 
   if (cook_element(rm))
-   return (FALSE);
+    return (FALSE);
 
   if (room_flagged(rm, ROOM_NOINSTANT) && room_flagged(rm, ROOM_DARK)) {
-   return (TRUE);
+    return (TRUE);
   }
   if (room_flagged(rm, ROOM_NOINSTANT) && !room_flagged(rm, ROOM_DARK)) {
-	return (FALSE);
- }
+    return (FALSE);
+  }
 
   if (room_flagged(rm, ROOM_DARK))
     return (TRUE);
 
   if (room_flagged(rm, ROOM_INDOORS))
     return (FALSE);
-  
+
   int sec = room_sector_type_get(rm);
 
-  if (sec == SECT_INSIDE || sec == SECT_CITY || sec == SECT_IMPORTANT || sec == SECT_SHOP)
+  if (sec == SECT_INSIDE || sec == SECT_CITY || sec == SECT_IMPORTANT ||
+      sec == SECT_SHOP)
     return (FALSE);
 
   if (sec == SECT_SPACE)
@@ -91,8 +89,10 @@ bool room_is_dark(struct room_data* room)
   return (FALSE);
 }
 
-bool room_is_sunken(struct room_data* room) {
- if(room_geffect_get(room) < 0) return true;
- if(room_sector_type_get(room) == SECT_UNDERWATER) return true;
- return false;
+bool room_is_sunken(struct room_data *room) {
+  if (room_geffect_get(room) < 0)
+    return true;
+  if (room_sector_type_get(room) == SECT_UNDERWATER)
+    return true;
+  return false;
 }

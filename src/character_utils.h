@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 int roll_stats(struct char_data *ch, int type, int bonus);
-const char* juggleRaceName(char_data *ch, bool capitalized);
+const char *juggleRaceName(char_data *ch, bool capitalized);
 void restore_by(char_data *ch, char_data *healer);
 void restore(char_data *ch, bool announce);
 void resurrect(char_data *ch, int mode);
@@ -144,20 +144,26 @@ void loseBaseAll(char_data *ch, int64_t amt);
 void loseBaseAllTransformed(char_data *ch, int64_t amt, bool trans_mult);
 
 int64_t gainBasePLPercent(char_data *ch, double amt);
-int64_t gainBasePLPercentTransformed(char_data *ch, double amt, bool trans_mult);
+int64_t gainBasePLPercentTransformed(char_data *ch, double amt,
+                                     bool trans_mult);
 int64_t gainBaseKIPercent(char_data *ch, double amt);
-int64_t gainBaseKIPercentTransformed(char_data *ch, double amt, bool trans_mult);
+int64_t gainBaseKIPercentTransformed(char_data *ch, double amt,
+                                     bool trans_mult);
 int64_t gainBaseSTPercent(char_data *ch, double amt);
-int64_t gainBaseSTPercentTransformed(char_data *ch, double amt, bool trans_mult);
+int64_t gainBaseSTPercentTransformed(char_data *ch, double amt,
+                                     bool trans_mult);
 void gainBaseAllPercent(char_data *ch, double amt);
 void gainBaseAllPercentTransformed(char_data *ch, double amt, bool trans_mult);
 
 int64_t loseBasePLPercent(char_data *ch, double amt);
-int64_t loseBasePLPercentTransformed(char_data *ch, double amt, bool trans_mult);
+int64_t loseBasePLPercentTransformed(char_data *ch, double amt,
+                                     bool trans_mult);
 int64_t loseBaseKIPercent(char_data *ch, double amt);
-int64_t loseBaseKIPercentTransformed(char_data *ch, double amt, bool trans_mult);
+int64_t loseBaseKIPercentTransformed(char_data *ch, double amt,
+                                     bool trans_mult);
 int64_t loseBaseSTPercent(char_data *ch, double amt);
-int64_t loseBaseSTPercentTransformed(char_data *ch, double amt, bool trans_mult);
+int64_t loseBaseSTPercentTransformed(char_data *ch, double amt,
+                                     bool trans_mult);
 void loseBaseAllPercent(char_data *ch, double amt);
 void loseBaseAllPercentTransformed(char_data *ch, double amt, bool trans_mult);
 
@@ -200,7 +206,8 @@ int armor_evolve(struct char_data *ch);
 void handle_evolution(struct char_data *ch, int64_t dmg);
 void demon_refill_lf(struct char_data *ch, int64_t num);
 void mob_talk(struct char_data *ch, const char *speech);
-int mob_respond(struct char_data *ch, struct char_data *vict, const char *speech);
+int mob_respond(struct char_data *ch, struct char_data *vict,
+                const char *speech);
 bool is_sparring(struct char_data *ch);
 char *introd_calc(struct char_data *ch);
 int64_t gear_exp(struct char_data *ch, int64_t exp);
@@ -213,13 +220,12 @@ void die_follower(struct char_data *ch);
 void add_follower(struct char_data *ch, struct char_data *leader);
 bool circle_follow(struct char_data *ch, struct char_data *victim);
 
-
-void	advance_level(struct char_data *ch, int whichclass);
-void	set_title(struct char_data *ch, char *title);
-void	gain_exp(struct char_data *ch, int64_t gain);
-void	gain_exp_regardless(struct char_data *ch, int gain);
-void	gain_condition(struct char_data *ch, int condition, int value);
-void	update_pos(struct char_data *victim);
+void advance_level(struct char_data *ch, int whichclass);
+void set_title(struct char_data *ch, char *title);
+void gain_exp(struct char_data *ch, int64_t gain);
+void gain_exp_regardless(struct char_data *ch, int gain);
+void gain_condition(struct char_data *ch, int condition, int value);
+void update_pos(struct char_data *victim);
 
 int perform_get_from_room(struct char_data *ch, struct obj_data *obj);
 void perform_wear(struct char_data *ch, struct obj_data *obj, int where);
@@ -239,10 +245,12 @@ int handle_speed(struct char_data *ch, struct char_data *vict);
 struct time_info_data *age(struct char_data *ch);
 const char *get_i_name(struct char_data *ch, struct char_data *vict);
 
-void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur, int str, int con, int intel, int agl, int wis, int spd);
+void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur,
+                   int str, int con, int intel, int agl, int wis, int spd);
 int know_skill(struct char_data *ch, int skill);
 
-size_t send_to_char(struct char_data *ch, const char *messg, ...) __attribute__((format(printf, 2, 3)));
+size_t send_to_char(struct char_data *ch, const char *messg, ...)
+    __attribute__((format(printf, 2, 3)));
 void admin_set(struct char_data *ch, int value);
 char *sense_location(struct char_data *ch);
 void null_affect(struct char_data *ch, int aff_flag);
@@ -268,9 +276,9 @@ bool char_can_see_in_dark(struct char_data *ch);
 bool char_can_see_char(struct char_data *ch, struct char_data *vict);
 bool char_can_see_obj(struct char_data *ch, struct obj_data *obj);
 
-struct room_direction_data* char_exit_dir(struct char_data *ch, int dir);
-struct room_direction_data* char_exit_dir_2nd(struct char_data *ch, int dir);
-struct room_direction_data* char_exit_dir_3rd(struct char_data *ch, int dir);
+struct room_direction_data *char_exit_dir(struct char_data *ch, int dir);
+struct room_direction_data *char_exit_dir_2nd(struct char_data *ch, int dir);
+struct room_direction_data *char_exit_dir_3rd(struct char_data *ch, int dir);
 
 bool char_can_go_dir(struct char_data *ch, int dir);
 
@@ -284,6 +292,8 @@ bool char_ether_stream(struct char_data *ch);
 bool char_has_moon(struct char_data *ch);
 
 bool char_planet_zenith(struct char_data *ch);
+
+bool release_charge(struct char_data *ch);
 
 #ifdef __cplusplus
 }

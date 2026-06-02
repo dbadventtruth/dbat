@@ -1,56 +1,46 @@
 /* ************************************************************************
-*   File: ban.c                                         Part of CircleMUD *
-*  Usage: banning/unbanning/checking sites and player names               *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
+ *   File: ban.c                                         Part of CircleMUD *
+ *  Usage: banning/unbanning/checking sites and player names               *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 #include "ban_impl.h"
 
 #include "ban.h"
 #include "comm.h"
-#include "interpreter.h"
-#include "handler.h"
 #include "db.h"
 #include "fileop.h"
+#include "handler.h"
+#include "interpreter.h"
 
-#include "character_macros.h"
 #include "character_impl.h"
-#include "log.h"
-#include "util_macros.h"
-#include "flags.h"
-#include "consts/mobflags.h"
+#include "character_macros.h"
 #include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
 #include "descriptor_db.h"
 #include "descriptor_impl.h"
 #include "descriptor_macros.h"
-#include "consts/constates.h"
+#include "flags.h"
+#include "log.h"
+#include "util_macros.h"
 
-#include <errno.h>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
+#include <errno.h>
 
 /* local globals */
-
 
 /* local functions */
 static void _write_one_node(FILE *fp, struct ban_list_element *node);
 static void write_ban_list(void);
 
+static const char *ban_types[] = {"no", "new", "select", "all", "ERROR"};
 
-static const char *ban_types[] = {
-  "no",
-  "new",
-  "select",
-  "all",
-  "ERROR"
-};
-
-
-void load_banned(void)
-{
+void load_banned(void) {
   FILE *fl;
   int i, date;
   char site_name[BANNED_SITE_LENGTH + 1], ban_type[100];
@@ -68,15 +58,18 @@ void load_banned(void)
   }
   while (fscanf(fl, " %s %s %d %s ", ban_type, site_name, &date, name) == 4) {
     CREATE(next_node, struct ban_list_element, 1);
-    strncpy(next_node->site, site_name, BANNED_SITE_LENGTH);	/* strncpy: OK (n_n->site:BANNED_SITE_LENGTH+1) */
+    strncpy(
+        next_node->site, site_name,
+        BANNED_SITE_LENGTH); /* strncpy: OK (n_n->site:BANNED_SITE_LENGTH+1) */
     next_node->site[BANNED_SITE_LENGTH] = '\0';
-    strncpy(next_node->name, name, MAX_NAME_LENGTH);	/* strncpy: OK (n_n->name:MAX_NAME_LENGTH+1) */
+    strncpy(next_node->name, name,
+            MAX_NAME_LENGTH); /* strncpy: OK (n_n->name:MAX_NAME_LENGTH+1) */
     next_node->name[MAX_NAME_LENGTH] = '\0';
     next_node->date = date;
 
     for (i = BAN_NOT; i <= BAN_ALL; i++)
       if (!strcmp(ban_type, ban_types[i]))
-	next_node->type = i;
+        next_node->type = i;
 
     next_node->next = ban_list;
     ban_list = next_node;
@@ -85,9 +78,7 @@ void load_banned(void)
   fclose(fl);
 }
 
-
-int isbanned(char *hostname)
-{
+int isbanned(char *hostname) {
   int i;
   struct ban_list_element *banned_node;
   char *nextchar;
@@ -100,38 +91,34 @@ int isbanned(char *hostname)
     *nextchar = LOWER(*nextchar);
 
   for (banned_node = ban_list; banned_node; banned_node = banned_node->next)
-    if (strstr(hostname, banned_node->site))	/* if hostname is a substring */
+    if (strstr(hostname, banned_node->site)) /* if hostname is a substring */
       i = MAX(i, banned_node->type);
 
   return (i);
 }
 
-
-static void _write_one_node(FILE *fp, struct ban_list_element *node)
-{
+static void _write_one_node(FILE *fp, struct ban_list_element *node) {
   if (node) {
     _write_one_node(fp, node->next);
-    fprintf(fp, "%s %s %ld %s\n", ban_types[node->type],
-	    node->site, (long) node->date, node->name);
+    fprintf(fp, "%s %s %ld %s\n", ban_types[node->type], node->site,
+            (long)node->date, node->name);
   }
 }
 
-static void write_ban_list(void)
-{
+static void write_ban_list(void) {
   FILE *fl;
 
   if (!(fl = fopen(BAN_FILE, "w"))) {
     perror("SYSERR: Unable to open '" BAN_FILE "' for writing");
     return;
   }
-  _write_one_node(fl, ban_list);/* recursively write from end to start */
+  _write_one_node(fl, ban_list); /* recursively write from end to start */
   fclose(fl);
   return;
 }
 
 #define BAN_LIST_FORMAT "%-40.40s  %-8.8s  %-10.10s  %-16.16s\r\n"
-ACMD(do_ban)
-{
+ACMD(do_ban) {
   char flag[MAX_INPUT_LENGTH], site[MAX_INPUT_LENGTH], *nextchar;
   char timestr[16];
   int i;
@@ -142,25 +129,22 @@ ACMD(do_ban)
       send_to_char(ch, "No sites are banned.\r\n");
       return;
     }
-    send_to_char(ch, "%s", BAN_LIST_FORMAT,
-	    "Banned Site Name",
-	    "Ban Type",
-	    "Banned On",
-	    "Banned By");
-    send_to_char(ch, "%s", BAN_LIST_FORMAT,
-	    "---------------------------------",
-	    "---------------------------------",
-	    "---------------------------------",
-	    "---------------------------------");
+    send_to_char(ch, "%s", BAN_LIST_FORMAT, "Banned Site Name", "Ban Type",
+                 "Banned On", "Banned By");
+    send_to_char(ch, "%s", BAN_LIST_FORMAT, "---------------------------------",
+                 "---------------------------------",
+                 "---------------------------------",
+                 "---------------------------------");
 
     for (ban_node = ban_list; ban_node; ban_node = ban_node->next) {
       if (ban_node->date) {
-	strlcpy(timestr, asctime(localtime(&(ban_node->date))), 10);
-	timestr[10] = '\0';
+        strlcpy(timestr, asctime(localtime(&(ban_node->date))), 10);
+        timestr[10] = '\0';
       } else
-	strcpy(timestr, "Unknown");	/* strcpy: OK (strlen("Unknown") < 16) */
+        strcpy(timestr, "Unknown"); /* strcpy: OK (strlen("Unknown") < 16) */
 
-      send_to_char(ch, "%s", BAN_LIST_FORMAT, ban_node->site, ban_types[ban_node->type], timestr, ban_node->name);
+      send_to_char(ch, "%s", BAN_LIST_FORMAT, ban_node->site,
+                   ban_types[ban_node->type], timestr, ban_node->name);
     }
     return;
   }
@@ -170,23 +154,28 @@ ACMD(do_ban)
     send_to_char(ch, "Usage: ban {all | select | new} site_name\r\n");
     return;
   }
-  if (!(!strcasecmp(flag, "select") || !strcasecmp(flag, "all") || !strcasecmp(flag, "new"))) {
+  if (!(!strcasecmp(flag, "select") || !strcasecmp(flag, "all") ||
+        !strcasecmp(flag, "new"))) {
     send_to_char(ch, "Flag must be ALL, SELECT, or NEW.\r\n");
     return;
   }
   for (ban_node = ban_list; ban_node; ban_node = ban_node->next) {
     if (!strcasecmp(ban_node->site, site)) {
-      send_to_char(ch, "That site has already been banned -- unban it to change the ban type.\r\n");
+      send_to_char(ch, "That site has already been banned -- unban it to "
+                       "change the ban type.\r\n");
       return;
     }
   }
 
   CREATE(ban_node, struct ban_list_element, 1);
-  strncpy(ban_node->site, site, BANNED_SITE_LENGTH);	/* strncpy: OK (b_n->site:BANNED_SITE_LENGTH+1) */
+  strncpy(
+      ban_node->site, site,
+      BANNED_SITE_LENGTH); /* strncpy: OK (b_n->site:BANNED_SITE_LENGTH+1) */
   for (nextchar = ban_node->site; *nextchar; nextchar++)
     *nextchar = LOWER(*nextchar);
   ban_node->site[BANNED_SITE_LENGTH] = '\0';
-  strncpy(ban_node->name, GET_NAME(ch), MAX_NAME_LENGTH);	/* strncpy: OK (b_n->size:MAX_NAME_LENGTH+1) */
+  strncpy(ban_node->name, GET_NAME(ch),
+          MAX_NAME_LENGTH); /* strncpy: OK (b_n->size:MAX_NAME_LENGTH+1) */
   ban_node->name[MAX_NAME_LENGTH] = '\0';
   ban_node->date = time(0);
 
@@ -197,16 +186,15 @@ ACMD(do_ban)
   ban_node->next = ban_list;
   ban_list = ban_node;
 
-  mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "%s has banned %s for %s players.",
-	GET_NAME(ch), site, ban_types[ban_node->type]);
+  mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
+         "%s has banned %s for %s players.", GET_NAME(ch), site,
+         ban_types[ban_node->type]);
   send_to_char(ch, "Site banned.\r\n");
   write_ban_list();
 }
 #undef BAN_LIST_FORMAT
 
-
-ACMD(do_unban)
-{
+ACMD(do_unban) {
   char site[MAX_INPUT_LENGTH];
   struct ban_list_element *ban_node, *temp;
   int found = 0;
@@ -230,26 +218,24 @@ ACMD(do_unban)
   }
   REMOVE_FROM_LIST(ban_node, ban_list, next, temp);
   send_to_char(ch, "Site unbanned.\r\n");
-  mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE, "%s removed the %s-player ban on %s.",
-	GET_NAME(ch), ban_types[ban_node->type], ban_node->site);
+  mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
+         "%s removed the %s-player ban on %s.", GET_NAME(ch),
+         ban_types[ban_node->type], ban_node->site);
 
   free(ban_node);
   write_ban_list();
 }
-
 
 /**************************************************************************
  *  Code to check for invalid names (i.e., profanity, etc.)		  *
  *  Written by Sharon P. Goza						  *
  **************************************************************************/
 
-#define MAX_INVALID_NAMES	200
+#define MAX_INVALID_NAMES 200
 
 char *invalid_list[MAX_INVALID_NAMES];
 
-
-int Valid_Name(char *newname)
-{
+int Valid_Name(char *newname) {
   int i, wovels = 0;
   struct descriptor_data *dt;
   char tempname[MAX_INPUT_LENGTH];
@@ -260,14 +246,15 @@ int Valid_Name(char *newname)
    * will not have a character name yet and other people sitting at the
    * prompt won't have characters yet.
    *
-   * New, unindexed characters (i.e., characters who are in the process of creating)
-   * will have an idnum of -1, set by clear_char() in db.c.  If someone is creating a
-   *character by the same name as the one we are checking, then the name is invalid,
-   * to prevent character duping.
-   * THIS SHOULD FIX THE 'invalid name' if disconnected from OLC-bug - WELCOR 9/00
+   * New, unindexed characters (i.e., characters who are in the process of
+   * creating) will have an idnum of -1, set by clear_char() in db.c.  If
+   * someone is creating a character by the same name as the one we are
+   * checking, then the name is invalid, to prevent character duping. THIS
+   * SHOULD FIX THE 'invalid name' if disconnected from OLC-bug - WELCOR 9/00
    */
   for (dt = descriptor_list; dt; dt = dt->next)
-    if (dt->character && GET_NAME(dt->character) && !strcasecmp(GET_NAME(dt->character), newname))
+    if (dt->character && GET_NAME(dt->character) &&
+        !strcasecmp(GET_NAME(dt->character), newname))
       if (GET_IDNUM(dt->character) == -1)
         return (IS_PLAYING(dt));
 
@@ -298,10 +285,8 @@ int Valid_Name(char *newname)
   return (1);
 }
 
-
 /* What's with the wacky capitalization in here? */
-void Free_Invalid_List(void)
-{
+void Free_Invalid_List(void) {
   int invl;
 
   for (invl = 0; invl < num_invalid; invl++)
@@ -310,9 +295,7 @@ void Free_Invalid_List(void)
   num_invalid = 0;
 }
 
-
-void Read_Invalid_List(void)
-{
+void Read_Invalid_List(void) {
   FILE *fp;
   char temp[256];
 

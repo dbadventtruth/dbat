@@ -1,19 +1,19 @@
 #pragma once
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define CIRCLE_UNSIGNED_INDEX 0	/* 0 = signed, 1 = unsigned */
+#define CIRCLE_UNSIGNED_INDEX 0 /* 0 = signed, 1 = unsigned */
 
 #if CIRCLE_UNSIGNED_INDEX
-#define IDXTYPE	uint16_t
-#define NOTHING	((IDXTYPE)~0)
+#define IDXTYPE uint16_t
+#define NOTHING ((IDXTYPE)~0)
 #else
-#define IDXTYPE	int
-#define NOTHING	-1	/* nil reference for objects	*/
+#define IDXTYPE int
+#define NOTHING -1 /* nil reference for objects	*/
 #endif
 
 #define NOWHERE NOTHING
@@ -115,10 +115,13 @@ typedef struct component_data COMPONENT;
 typedef struct trig_data trig_data;
 typedef struct script_data script_data;
 
-#define ACMD(name) void (name)(struct char_data *ch, char *argument, int cmd, int subcmd)
-#define SPECIAL(name) int (name)(struct char_data *ch, void *me, int cmd, char *argument)
+#define ACMD(name)                                                             \
+  void(name)(struct char_data * ch, char *argument, int cmd, int subcmd)
+#define SPECIAL(name)                                                          \
+  int(name)(struct char_data * ch, void *me, int cmd, char *argument)
 
-typedef int(*SpecialFunc)(struct char_data *ch, void *me, int cmd, char *argument);
+typedef int (*SpecialFunc)(struct char_data *ch, void *me, int cmd,
+                           char *argument);
 
 // Return true to continue iteration. Return false to stop.
 typedef bool (*obj_iter_fn)(struct obj_data *obj, void *ctx);

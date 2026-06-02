@@ -60,8 +60,8 @@ struct shop_buy_data *shop_buy_type_get(struct shop_data *shop, size_t index);
 int shop_buy_data_type_get(struct shop_buy_data *data);
 void shop_buy_data_type_set(struct shop_buy_data *data, int type);
 const char *shop_buy_data_keywords_get(struct shop_buy_data *data);
-void shop_buy_data_keywords_set(struct shop_buy_data *data, const char *keywords);
-
+void shop_buy_data_keywords_set(struct shop_buy_data *data,
+                                const char *keywords);
 
 #ifdef __cplusplus
 }

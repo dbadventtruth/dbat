@@ -28,7 +28,6 @@ ACMD(do_strike);
 ACMD(do_ram);
 ACMD(do_breath);
 
-
 #ifdef __cplusplus
 }
 #endif

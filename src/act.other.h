@@ -1,6 +1,6 @@
 #pragma once
-#include "consts/types.h"
 #include "consts/aligns.h"
+#include "consts/types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,7 +112,6 @@ ACMD(do_fix);
 ACMD(do_resurrect);
 ACMD(do_clan);
 ACMD(do_aid);
-
 
 #ifdef __cplusplus
 }

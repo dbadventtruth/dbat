@@ -8,28 +8,28 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "log.h"
-#include "flags.h"
-#include "util_macros.h"
-#include "extradesc_impl.h"
-#include "zone_db.h"
 #include "character_impl.h"
-#include "guild_impl.h"
-#include "shop_impl.h"
-#include "room_impl.h"
-#include "object_impl.h"
-#include "zone_impl.h"
 #include "dgscript_impl.h"
+#include "extradesc_impl.h"
+#include "flags.h"
+#include "guild_impl.h"
+#include "log.h"
+#include "object_impl.h"
+#include "room_impl.h"
+#include "shop_impl.h"
+#include "util_macros.h"
+#include "zone_db.h"
+#include "zone_impl.h"
 
-#include "genolc.h"
-#include "gengld.h"
 #include "cedit.h"
+#include "gengld.h"
 #include "genmob.h"
 #include "genobj.h"
+#include "genolc.h"
 #include "genshp.h"
 #include "genwld.h"
-#include "modify.h"
 #include "genzon.h"
+#include "modify.h"
 #include "oasis.h"
 
 #include "comm.h"
@@ -37,8 +37,7 @@
 /* List of zones to be saved.  */
 struct save_list_data *save_list;
 
-static int save_config_for_zone(struct zone_data *)
-{
+static int save_config_for_zone(struct zone_data *) {
   return save_config(NOWHERE);
 }
 
@@ -48,57 +47,50 @@ struct {
   int (*func)(struct zone_data *zone);
   const char *message;
 } save_types[] = {
-  { SL_MOB, save_mobiles , "mobile" },
-  { SL_OBJ, save_objects, "object" },
-  { SL_SHP, save_shops, "shop" },
-  { SL_WLD, save_rooms, "room" },
-  { SL_ZON, save_zone, "zone" },
-  { SL_CFG, save_config_for_zone, "config" },
-  { SL_GLD, save_guilds, "guild" },
-  { SL_ACT, NULL, "social" },
-  { SL_HLP, NULL, "help" },
-  { -1, NULL, NULL },
+    {SL_MOB, save_mobiles, "mobile"}, {SL_OBJ, save_objects, "object"},
+    {SL_SHP, save_shops, "shop"},     {SL_WLD, save_rooms, "room"},
+    {SL_ZON, save_zone, "zone"},      {SL_CFG, save_config_for_zone, "config"},
+    {SL_GLD, save_guilds, "guild"},   {SL_ACT, NULL, "social"},
+    {SL_HLP, NULL, "help"},           {-1, NULL, NULL},
 };
 
-int genolc_checkstring(struct descriptor_data *d, char *arg)
-{
+int genolc_checkstring(struct descriptor_data *d, char *arg) {
   smash_tilde(arg);
   return TRUE;
 }
 
-char *str_udup(const char *txt)
-{
+char *str_udup(const char *txt) {
   return strdup((txt && *txt) ? txt : "undefined");
 }
 
 /* Original use: to be called at shutdown time.  */
-int save_all(void)
-{
+int save_all(void) {
   while (save_list) {
     if (save_list->type < 0 || save_list->type > SL_MAX) {
       switch (save_list->type) {
-        case SL_ACT:
-          log("Actions not saved - can not autosave. Use 'aedit save'.");
-        save_list = save_list->next;	/* Fatal error, skip this one. */
-          break;
-        case SL_HLP:
-          log("Help not saved - can not autosave. Use 'hedit save'.");
-          save_list = save_list->next;    /* Fatal error, skip this one. */
-          break;
-        default:
-      log("SYSERR: GenOLC: Invalid save type %d in save list.\n", save_list->type);
-          break;
+      case SL_ACT:
+        log("Actions not saved - can not autosave. Use 'aedit save'.");
+        save_list = save_list->next; /* Fatal error, skip this one. */
+        break;
+      case SL_HLP:
+        log("Help not saved - can not autosave. Use 'hedit save'.");
+        save_list = save_list->next; /* Fatal error, skip this one. */
+        break;
+      default:
+        log("SYSERR: GenOLC: Invalid save type %d in save list.\n",
+            save_list->type);
+        break;
       }
-    } else if ((*save_types[save_list->type].func) (zone_by_id(save_list->zone)) < 0)
-      save_list = save_list->next;	/* Fatal error, skip this one. */
+    } else if ((*save_types[save_list->type].func)(
+                   zone_by_id(save_list->zone)) < 0)
+      save_list = save_list->next; /* Fatal error, skip this one. */
   }
 
   return TRUE;
 }
 
 /* NOTE: This changes the buffer passed in.  */
-void strip_cr(char *buffer)
-{
+void strip_cr(char *buffer) {
   int rpos, wpos;
 
   if (buffer == NULL)
@@ -111,8 +103,8 @@ void strip_cr(char *buffer)
   buffer[wpos] = '\0';
 }
 
-void copy_ex_descriptions(struct extra_descr_data **to, struct extra_descr_data *from)
-{
+void copy_ex_descriptions(struct extra_descr_data **to,
+                          struct extra_descr_data *from) {
   struct extra_descr_data *wpos;
 
   CREATE(*to, struct extra_descr_data, 1);
@@ -126,8 +118,7 @@ void copy_ex_descriptions(struct extra_descr_data **to, struct extra_descr_data 
   }
 }
 
-void free_ex_descriptions(struct extra_descr_data *head)
-{
+void free_ex_descriptions(struct extra_descr_data *head) {
   struct extra_descr_data *thised, *next_one;
 
   if (!head) {
@@ -145,8 +136,7 @@ void free_ex_descriptions(struct extra_descr_data *head)
   }
 }
 
-int remove_from_save_list(zone_vnum zone, int type)
-{
+int remove_from_save_list(zone_vnum zone, int type) {
   struct save_list_data *ritem, *temp;
 
   for (ritem = save_list; ritem; ritem = ritem->next)
@@ -154,7 +144,8 @@ int remove_from_save_list(zone_vnum zone, int type)
       break;
 
   if (ritem == NULL) {
-    log("SYSERR: remove_from_save_list: Saved item not found. (%d/%d)", zone, type);
+    log("SYSERR: remove_from_save_list: Saved item not found. (%d/%d)", zone,
+        type);
     return FALSE;
   }
   REMOVE_FROM_LIST(ritem, save_list, next, temp);
@@ -162,27 +153,26 @@ int remove_from_save_list(zone_vnum zone, int type)
   return TRUE;
 }
 
-int add_to_save_list(zone_vnum zone, int type)
-{
+int add_to_save_list(zone_vnum zone, int type) {
   struct save_list_data *nitem;
   zone_rnum rznum;
-  
+
   if (type == SL_CFG)
-    return FALSE; 
-  
+    return FALSE;
+
   auto z = zone_by_id(zone);
-    
+
   if (!z) {
-     if (zone != AEDIT_PERMISSION && zone != HEDIT_PERMISSION) {
+    if (zone != AEDIT_PERMISSION && zone != HEDIT_PERMISSION) {
       log("SYSERR: add_to_save_list: Invalid zone number passed. (%d)", zone);
       return FALSE;
     }
   }
-  
+
   for (nitem = save_list; nitem; nitem = nitem->next)
     if (nitem->zone == zone && nitem->type == type)
       return FALSE;
-  
+
   CREATE(nitem, struct save_list_data, 1);
   nitem->zone = zone;
   nitem->type = type;
@@ -191,19 +181,17 @@ int add_to_save_list(zone_vnum zone, int type)
   return TRUE;
 }
 
-int in_save_list(zone_vnum zone, int type)
-{
+int in_save_list(zone_vnum zone, int type) {
   struct save_list_data *nitem;
-  
+
   for (nitem = save_list; nitem; nitem = nitem->next)
     if (nitem->zone == zone && nitem->type == type)
       return TRUE;
-  
+
   return FALSE;
 }
 
-void free_save_list(void)
-{
+void free_save_list(void) {
   struct save_list_data *sld, *next_sld;
 
   for (sld = save_list; sld; sld = next_sld) {
@@ -213,8 +201,7 @@ void free_save_list(void)
 }
 
 /* Used from do_show(), ideally.  */
-ACMD(do_show_save_list)
-{
+ACMD(do_show_save_list) {
   if (save_list == NULL)
     send_to_char(ch, "All world files are up to date.\r\n");
   else {
@@ -223,17 +210,18 @@ ACMD(do_show_save_list)
     send_to_char(ch, "The following files need saving:\r\n");
     for (item = save_list; item; item = item->next) {
       if (item->type != SL_CFG)
-        send_to_char(ch, " - %s data for zone %d.\r\n", save_types[item->type].message, item->zone);
+        send_to_char(ch, " - %s data for zone %d.\r\n",
+                     save_types[item->type].message, item->zone);
       else
         send_to_char(ch, " - Game configuration data.\r\n");
     }
   }
 }
 
-int sprintascii(char *out, bitvector_t bits)
-{
+int sprintascii(char *out, bitvector_t bits) {
   int i, j = 0;
-  /* 32 bits, don't just add letters to try to get more unless your bitvector_t is also as large. */
+  /* 32 bits, don't just add letters to try to get more unless your bitvector_t
+   * is also as large. */
   char *flags = "abcdefghijklmnopqrstuvwxyzABCDEF";
 
   for (i = 0; flags[i] != '\0'; i++)

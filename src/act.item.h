@@ -1,7 +1,6 @@
 #pragma once
 #include "consts/types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,9 +19,8 @@ void weight_change_object(struct obj_data *obj, int weight);
 void name_from_drinkcon(struct obj_data *obj);
 void name_to_drinkcon(struct obj_data *obj, int type);
 
-
 int64_t max_carry_weight(struct char_data *ch);
-void stop_auction(int type, struct char_data * ch);
+void stop_auction(int type, struct char_data *ch);
 void check_auction(void);
 
 // commands
@@ -47,7 +45,6 @@ ACMD(do_pack);
 ACMD(do_garden);
 ACMD(do_refuel);
 ACMD(do_sac);
-
 
 #ifdef __cplusplus
 }

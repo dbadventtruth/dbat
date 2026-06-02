@@ -16,7 +16,6 @@ ACMD(do_oasis_hedit);
 ACMD(do_helpcheck);
 ACMD(do_hindex);
 
-
 #ifdef __cplusplus
 }
 #endif

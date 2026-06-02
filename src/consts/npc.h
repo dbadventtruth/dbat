@@ -9,7 +9,6 @@ extern "C" {
 
 extern const char *npc_personality[MAX_PERSONALITIES + 1];
 
-
 #ifdef __cplusplus
 }
 #endif

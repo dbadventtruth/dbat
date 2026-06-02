@@ -1,13 +1,11 @@
 #pragma once
 #include "consts/types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* global variables */
-
 
 // functions
 void search_replace(char *string, const char *find, const char *replace);
@@ -77,7 +75,6 @@ ACMD(do_peace);
 ACMD(do_raise);
 ACMD(do_boom);
 ACMD(do_lua);
-
 
 #ifdef __cplusplus
 }

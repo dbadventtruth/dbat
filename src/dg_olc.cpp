@@ -1,64 +1,62 @@
 /**************************************************************************
-*  File: dg_olc.c                                                         *
-*                                                                         *
-*  Usage: this source file is used in extending Oasis style OLC for       *
-*  dg-scripts onto a CircleMUD that already has dg-scripts (as released   *
-*  by Mark Heilpern on 1/1/98) implemented.                               *
-*                                                                         *
-*  Parts of this file by Chris Jacobson of _Aliens vs Predator: The MUD_  *
-*                                                                         *
-*  $Author: Chris Jacobsen/Mark A. Heilpern/egreen/Welcor $               *
-*  $Date: 2004/10/11 12:07:00$                                            *
-*  $Revision: 1.0.14 $                                                    *
-**************************************************************************/
+ *  File: dg_olc.c                                                         *
+ *                                                                         *
+ *  Usage: this source file is used in extending Oasis style OLC for       *
+ *  dg-scripts onto a CircleMUD that already has dg-scripts (as released   *
+ *  by Mark Heilpern on 1/1/98) implemented.                               *
+ *                                                                         *
+ *  Parts of this file by Chris Jacobson of _Aliens vs Predator: The MUD_  *
+ *                                                                         *
+ *  $Author: Chris Jacobsen/Mark A. Heilpern/egreen/Welcor $               *
+ *  $Date: 2004/10/11 12:07:00$                                            *
+ *  $Revision: 1.0.14 $                                                    *
+ **************************************************************************/
 
-#include "dg_scripts.h"
-#include "dgscript_impl.h"
-#include "dgscript_db.h"
 #include "dg_olc.h"
+#include "dg_scripts.h"
+#include "dgscript_db.h"
+#include "dgscript_impl.h"
 
-#include "flags.h"
-#include "consts/mobflags.h"
-#include "consts/admlevel.h"
-#include "consts/constates.h"
-#include "consts/playerflags.h"
-#include "consts/triggers.h"
+#include "act.wizard.h"
 #include "character_impl.h"
 #include "character_macros.h"
+#include "comm.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/triggers.h"
+#include "db.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "dg_event.h"
+#include "flags.h"
+#include "genolc.h"
+#include "genzon.h"
+#include "interpreter.h"
+#include "log.h"
+#include "modify.h"
+#include "oasis.h"
 #include "object_impl.h"
 #include "room_impl.h"
 #include "util_macros.h"
-#include "zone_impl.h"
-#include "descriptor_impl.h"
-#include "descriptor_db.h"
-#include "descriptor_macros.h"
 #include "zone_db.h"
-#include "log.h"
-#include "comm.h"
-#include "db.h"
-#include "genolc.h"
-#include "interpreter.h"
-#include "oasis.h"
-#include "dg_event.h"
-#include "act.wizard.h"
-#include "modify.h"
-#include "genzon.h"
+#include "zone_impl.h"
 
-#include <cstdlib>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 
 /* local functions */
 static void trigedit_disp_menu(struct descriptor_data *d);
 static void trigedit_disp_types(struct descriptor_data *d);
 
-
 /* ***********************************************************************
  * trigedit
  * ***********************************************************************/
 
-ACMD(do_oasis_trigedit)
-{
+ACMD(do_oasis_trigedit) {
   int number, real_num;
   struct descriptor_data *d;
   struct trig_data *trig = NULL;
@@ -81,7 +79,7 @@ ACMD(do_oasis_trigedit)
     if (STATE(d) == CON_TRIGEDIT) {
       if (d->olc && OLC_NUM(d) == number) {
         send_to_char(ch, "That trigger is currently being edited by %s.\r\n",
-          GET_NAME(d->character));
+                     GET_NAME(d->character));
         return;
       }
     }
@@ -92,7 +90,7 @@ ACMD(do_oasis_trigedit)
    */
   if (d->olc) {
     mudlog(BRF, ADMLVL_IMMORT, TRUE,
-      "SYSERR: do_oasis_trigedit: Player already had olc structure.");
+           "SYSERR: do_oasis_trigedit: Player already had olc structure.");
     free(d->olc);
   }
   CREATE(d->olc, struct oasis_olc_data, 1);
@@ -130,67 +128,60 @@ ACMD(do_oasis_trigedit)
   }
   int disp = 0;
   if (disp == 0) {
-  trigedit_disp_menu(d);
-  STATE(d) = CON_TRIGEDIT;
-  disp = 1;
+    trigedit_disp_menu(d);
+    STATE(d) = CON_TRIGEDIT;
+    disp = 1;
   }
 
   act("$n starts using OLC.", TRUE, d->character, 0, 0, TO_ROOM);
   SET_BIT_AR(PLR_FLAGS(ch), PLR_WRITING);
 
-  mudlog(CMP, ADMLVL_IMMORT, TRUE,"OLC: %s starts editing zone %d [trigger](allowed zone %d)",
+  mudlog(CMP, ADMLVL_IMMORT, TRUE,
+         "OLC: %s starts editing zone %d [trigger](allowed zone %d)",
          GET_NAME(ch), zone->number, GET_OLC_ZONE(ch));
 }
 
 /* called when a mob or object is being saved to disk, so its script can */
 /* be saved */
-void script_save_to_disk(FILE *fp, void *item, int type)
-{
+void script_save_to_disk(FILE *fp, void *item, int type) {
   struct trig_proto_list *t;
 
-  if (type==MOB_TRIGGER)
+  if (type == MOB_TRIGGER)
     t = ((struct char_data *)item)->proto_script;
-  else if (type==OBJ_TRIGGER)
+  else if (type == OBJ_TRIGGER)
     t = ((struct obj_data *)item)->proto_script;
-  else if (type==WLD_TRIGGER)
+  else if (type == WLD_TRIGGER)
     t = ((struct room_data *)item)->proto_script;
   else {
     log("SYSERR: Invalid type passed to script_save_to_disk()");
     return;
   }
 
-  while (t)
-  {
-    fprintf(fp,"T %d\n", t->vnum);
+  while (t) {
+    fprintf(fp, "T %d\n", t->vnum);
     t = t->next;
   }
 }
 
-void obj_proto_script_save_to_disk(FILE *fp, struct obj_proto_data *obj)
-{
+void obj_proto_script_save_to_disk(FILE *fp, struct obj_proto_data *obj) {
   struct trig_proto_list *t = obj ? obj->proto_script : NULL;
 
-  while (t)
-  {
-    fprintf(fp,"T %d\n", t->vnum);
+  while (t) {
+    fprintf(fp, "T %d\n", t->vnum);
     t = t->next;
   }
 }
 
-void mob_proto_script_save_to_disk(FILE *fp, struct mob_proto_data *mob)
-{
+void mob_proto_script_save_to_disk(FILE *fp, struct mob_proto_data *mob) {
   struct trig_proto_list *t = mob ? mob->proto_script : NULL;
 
-  while (t)
-  {
-    fprintf(fp,"T %d\n", t->vnum);
+  while (t) {
+    fprintf(fp, "T %d\n", t->vnum);
     t = t->next;
   }
 }
 
-
-void trigedit_setup_new(struct descriptor_data *d)
-{
+void trigedit_setup_new(struct descriptor_data *d) {
   struct trig_data *trig;
 
   /*
@@ -209,15 +200,15 @@ void trigedit_setup_new(struct descriptor_data *d)
   /* cmdlist will be a large char string until the trigger is saved */
   CREATE(OLC_STORAGE(d), char, MAX_CMD_LENGTH);
   strncpy(OLC_STORAGE(d),
-    "%echo% This trigger commandlist is not complete!\r\n", MAX_CMD_LENGTH-1);
+          "%echo% This trigger commandlist is not complete!\r\n",
+          MAX_CMD_LENGTH - 1);
   trig->narg = 100;
 
   OLC_TRIG(d) = trig;
-  OLC_VAL(d) = 0;  /* Has changed flag. (It hasn't so far, we just made it.) */
+  OLC_VAL(d) = 0; /* Has changed flag. (It hasn't so far, we just made it.) */
 }
 
-void trigedit_setup_existing(struct descriptor_data *d, trig_vnum num)
-{
+void trigedit_setup_existing(struct descriptor_data *d, trig_vnum num) {
   struct trig_data *trig;
   struct cmdlist_element *c;
   /*
@@ -233,8 +224,7 @@ void trigedit_setup_existing(struct descriptor_data *d, trig_vnum num)
   CREATE(OLC_STORAGE(d), char, MAX_CMD_LENGTH);
   strcpy(OLC_STORAGE(d), "");
 
-  while (c)
-  {
+  while (c) {
     strcat(OLC_STORAGE(d), c->cmd);
     strcat(OLC_STORAGE(d), "\r\n");
     c = c->next;
@@ -243,22 +233,20 @@ void trigedit_setup_existing(struct descriptor_data *d, trig_vnum num)
   /* it will be converted back to a real cmdlist_element list later */
 
   OLC_TRIG(d) = trig;
-  OLC_VAL(d) = 0;  /* Has changed flag. (It hasn't so far, we just made it.) */
+  OLC_VAL(d) = 0; /* Has changed flag. (It hasn't so far, we just made it.) */
 
   /*trigedit_disp_menu(d);*/
 }
 
-
-static void trigedit_disp_menu(struct descriptor_data *d)
-{
+static void trigedit_disp_menu(struct descriptor_data *d) {
   struct trig_data *trig = OLC_TRIG(d);
   char *attach_type;
   char trgtypes[256];
 
-  if (trig->attach_type==OBJ_TRIGGER) {
+  if (trig->attach_type == OBJ_TRIGGER) {
     attach_type = "Objects";
     sprintbit(GET_TRIG_TYPE(trig), otrig_types, trgtypes, sizeof(trgtypes));
-  } else if (trig->attach_type==WLD_TRIGGER) {
+  } else if (trig->attach_type == WLD_TRIGGER) {
     attach_type = "Rooms";
     sprintbit(GET_TRIG_TYPE(trig), wtrig_types, trgtypes, sizeof(trgtypes));
   } else {
@@ -269,200 +257,196 @@ static void trigedit_disp_menu(struct descriptor_data *d)
   clear_screen(d);
 
   write_to_output(d,
-  "Trigger Editor [@c%d@n]\r\n\r\n"
-  "@g1@n) Name         : @y%s\r\n"
-  "@g2@n) Intended for : @y%s\r\n"
-  "@g3@n) Trigger types: @y%s\r\n"
-  "@g4@n) Numeric Arg  : @y%d\r\n"
-  "@g5@n) Arguments    : @y%s\r\n"
-  "@g6@n) Commands:\r\n@c%s\r\n"
-  "@gW@n) Copy Trigger\r\n"
-  "@gZ@n) Wiznet\r\n"
-  "@gQ@n) Quit\r\n"
-  "Enter Choice :",
+                  "Trigger Editor [@c%d@n]\r\n\r\n"
+                  "@g1@n) Name         : @y%s\r\n"
+                  "@g2@n) Intended for : @y%s\r\n"
+                  "@g3@n) Trigger types: @y%s\r\n"
+                  "@g4@n) Numeric Arg  : @y%d\r\n"
+                  "@g5@n) Arguments    : @y%s\r\n"
+                  "@g6@n) Commands:\r\n@c%s\r\n"
+                  "@gW@n) Copy Trigger\r\n"
+                  "@gZ@n) Wiznet\r\n"
+                  "@gQ@n) Quit\r\n"
+                  "Enter Choice :",
 
-  OLC_NUM(d),				/* vnum on the title line */
-  GET_TRIG_NAME(trig),			/* name                   */
-  attach_type,				/* attach type            */
-  trgtypes,				/* greet/drop/etc         */
-  trig->narg,				/* numeric arg            */
-  trig->arglist?trig->arglist:"",	/* strict arg             */
-  OLC_STORAGE(d));			/* the command list       */
+                  OLC_NUM(d),          /* vnum on the title line */
+                  GET_TRIG_NAME(trig), /* name                   */
+                  attach_type,         /* attach type            */
+                  trgtypes,            /* greet/drop/etc         */
+                  trig->narg,          /* numeric arg            */
+                  trig->arglist ? trig->arglist : "", /* strict arg */
+                  OLC_STORAGE(d)); /* the command list       */
 
   OLC_MODE(d) = TRIGEDIT_MAIN_MENU;
 }
 
-static void trigedit_disp_types(struct descriptor_data *d)
-{
+static void trigedit_disp_types(struct descriptor_data *d) {
   int i, columns = 0;
   const char **types;
   char bitbuf[MAX_STRING_LENGTH];
 
-  switch(OLC_TRIG(d)->attach_type)
-  {
-    case WLD_TRIGGER:
-      types = wtrig_types;
-      break;
-    case OBJ_TRIGGER:
-      types = otrig_types;
-      break;
-    case MOB_TRIGGER:
-    default:
-      types = trig_types;
-      break;
+  switch (OLC_TRIG(d)->attach_type) {
+  case WLD_TRIGGER:
+    types = wtrig_types;
+    break;
+  case OBJ_TRIGGER:
+    types = otrig_types;
+    break;
+  case MOB_TRIGGER:
+  default:
+    types = trig_types;
+    break;
   }
 
   clear_screen(d);
 
   for (i = 0; i < NUM_TRIG_TYPE_FLAGS; i++) {
     write_to_output(d, "@g%2d@n) %-20.20s  %s", i + 1, types[i],
-              !(++columns % 2) ? "\r\n" : "");
+                    !(++columns % 2) ? "\r\n" : "");
   }
   sprintbit(GET_TRIG_TYPE(OLC_TRIG(d)), types, bitbuf, sizeof(bitbuf));
-  write_to_output(d, "\r\nCurrent types : @c%s@n\r\nEnter type (0 to quit) : ", bitbuf);
-
+  write_to_output(
+      d, "\r\nCurrent types : @c%s@n\r\nEnter type (0 to quit) : ", bitbuf);
 }
 
-void trigedit_parse(struct descriptor_data *d, char *arg)
-{
+void trigedit_parse(struct descriptor_data *d, char *arg) {
   int i = 0;
 
   switch (OLC_MODE(d)) {
-    case TRIGEDIT_MAIN_MENU:
-     switch (tolower(*arg)) {
-       case 'q':
-         if (OLC_VAL(d)) { /* Anything been changed? */
-           if (!GET_TRIG_TYPE(OLC_TRIG(d))) {
-             write_to_output(d, "Invalid Trigger Type! Answer a to abort quit!\r\n");
-           }
-           write_to_output(d, "Do you wish to save your changes? : ");
-           OLC_MODE(d) = TRIGEDIT_CONFIRM_SAVESTRING;
-         } else
-           cleanup_olc(d, CLEANUP_ALL);
-           return;
-         case '1':
-           OLC_MODE(d) = TRIGEDIT_NAME;
-           write_to_output(d, "Name: ");
-           break;
-         case '2':
-           OLC_MODE(d) = TRIGEDIT_INTENDED;
-           write_to_output(d, "0: Mobiles, 1: Objects, 2: Rooms: ");
-           break;
-         case '3':
-           OLC_MODE(d) = TRIGEDIT_TYPES;
-           trigedit_disp_types(d);
-           break;
-         case '4':
-           OLC_MODE(d) = TRIGEDIT_NARG;
-           write_to_output(d, "Numeric argument: ");
-           break;
-         case '5':
-           OLC_MODE(d) = TRIGEDIT_ARGUMENT;
-           write_to_output(d, "Argument: ");
-           break;
-         case '6':
-           OLC_MODE(d) = TRIGEDIT_COMMANDS;
-           write_to_output(d, "Enter trigger commands: (/s saves /h for help)\r\n\r\n");
-           d->backstr = NULL;
-           if (OLC_STORAGE(d)) {
-             write_to_output(d, "%s", OLC_STORAGE(d));
-             d->backstr = strdup(OLC_STORAGE(d));
-           }
-           d->str = &OLC_STORAGE(d);
-           d->max_str = MAX_CMD_LENGTH;
-           d->mail_to = 0;
-           OLC_VAL(d) = 1;
-
-           break;
-         case 'w':
-         case 'W':
-           write_to_output(d, "Copy what trigger? ");
-           OLC_MODE(d) = TRIGEDIT_COPY;
-           break;
-         case 'Z':
-         case 'z':
-           search_replace(arg, "z ", ""); 
-           do_wiznet(d->character, arg, 0, 0);
-           break;
-         default:
-           trigedit_disp_menu(d);
-           return;
-     }
-     return;
-
-    case TRIGEDIT_CONFIRM_SAVESTRING:
-      switch(tolower(*arg)) {
-        case 'y':
-          trigedit_save(d);
-          mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE,
-                 "OLC: %s edits trigger %d", GET_NAME(d->character),
-                 OLC_NUM(d));
-          /* fall through */
-        case 'n':
-          cleanup_olc(d, CLEANUP_ALL);
-          return;
-        case 'a': /* abort quitting */
-          break;
-        default:
-          write_to_output(d, "Invalid choice!\r\n");
-          write_to_output(d, "Do you wish to save the trigger? : ");
-          return;
-      }
-      break;
-
-    case TRIGEDIT_NAME:
-      smash_tilde(arg);
-      if (OLC_TRIG(d)->name)
-        free(OLC_TRIG(d)->name);
-      OLC_TRIG(d)->name = strdup((arg && *arg) ? arg : "undefined");
-      OLC_VAL(d)++;
-      break;
-
-    case TRIGEDIT_INTENDED:
-      if ((atoi(arg)>=MOB_TRIGGER) || (atoi(arg)<=WLD_TRIGGER))
-        OLC_TRIG(d)->attach_type = atoi(arg);
-      OLC_VAL(d)++;
-      break;
-
-    case TRIGEDIT_NARG:
-      OLC_TRIG(d)->narg = LIMIT(atoi(arg), 0, 100);
-      OLC_VAL(d)++;
-      break;
-
-    case TRIGEDIT_ARGUMENT:
-      smash_tilde(arg);
-      OLC_TRIG(d)->arglist = (*arg?strdup(arg):NULL);
-      OLC_VAL(d)++;
-      break;
-
-    case TRIGEDIT_TYPES:
-      if ((i = atoi(arg)) == 0)
-        break;
-      else if (!((i < 0) || (i > NUM_TRIG_TYPE_FLAGS)))
-        TOGGLE_BIT((GET_TRIG_TYPE(OLC_TRIG(d))), 1 << (i - 1));
-      OLC_VAL(d)++;
-      trigedit_disp_types(d);
-      return;
-
-    case TRIGEDIT_COMMANDS:
-      break;
-
-    case TRIGEDIT_COPY:
-      if ((i = real_trigger(atoi(arg))) != NOTHING) { 
-        trigedit_setup_existing(d, i); 
+  case TRIGEDIT_MAIN_MENU:
+    switch (tolower(*arg)) {
+    case 'q':
+      if (OLC_VAL(d)) { /* Anything been changed? */
+        if (!GET_TRIG_TYPE(OLC_TRIG(d))) {
+          write_to_output(d,
+                          "Invalid Trigger Type! Answer a to abort quit!\r\n");
+        }
+        write_to_output(d, "Do you wish to save your changes? : ");
+        OLC_MODE(d) = TRIGEDIT_CONFIRM_SAVESTRING;
       } else
-         write_to_output(d, "That trigger does not exist.\r\n");
+        cleanup_olc(d, CLEANUP_ALL);
+      return;
+    case '1':
+      OLC_MODE(d) = TRIGEDIT_NAME;
+      write_to_output(d, "Name: ");
       break;
+    case '2':
+      OLC_MODE(d) = TRIGEDIT_INTENDED;
+      write_to_output(d, "0: Mobiles, 1: Objects, 2: Rooms: ");
+      break;
+    case '3':
+      OLC_MODE(d) = TRIGEDIT_TYPES;
+      trigedit_disp_types(d);
+      break;
+    case '4':
+      OLC_MODE(d) = TRIGEDIT_NARG;
+      write_to_output(d, "Numeric argument: ");
+      break;
+    case '5':
+      OLC_MODE(d) = TRIGEDIT_ARGUMENT;
+      write_to_output(d, "Argument: ");
+      break;
+    case '6':
+      OLC_MODE(d) = TRIGEDIT_COMMANDS;
+      write_to_output(d,
+                      "Enter trigger commands: (/s saves /h for help)\r\n\r\n");
+      d->backstr = NULL;
+      if (OLC_STORAGE(d)) {
+        write_to_output(d, "%s", OLC_STORAGE(d));
+        d->backstr = strdup(OLC_STORAGE(d));
+      }
+      d->str = &OLC_STORAGE(d);
+      d->max_str = MAX_CMD_LENGTH;
+      d->mail_to = 0;
+      OLC_VAL(d) = 1;
+
+      break;
+    case 'w':
+    case 'W':
+      write_to_output(d, "Copy what trigger? ");
+      OLC_MODE(d) = TRIGEDIT_COPY;
+      break;
+    case 'Z':
+    case 'z':
+      search_replace(arg, "z ", "");
+      do_wiznet(d->character, arg, 0, 0);
+      break;
+    default:
+      trigedit_disp_menu(d);
+      return;
+    }
+    return;
+
+  case TRIGEDIT_CONFIRM_SAVESTRING:
+    switch (tolower(*arg)) {
+    case 'y':
+      trigedit_save(d);
+      mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE,
+             "OLC: %s edits trigger %d", GET_NAME(d->character), OLC_NUM(d));
+      /* fall through */
+    case 'n':
+      cleanup_olc(d, CLEANUP_ALL);
+      return;
+    case 'a': /* abort quitting */
+      break;
+    default:
+      write_to_output(d, "Invalid choice!\r\n");
+      write_to_output(d, "Do you wish to save the trigger? : ");
+      return;
+    }
+    break;
+
+  case TRIGEDIT_NAME:
+    smash_tilde(arg);
+    if (OLC_TRIG(d)->name)
+      free(OLC_TRIG(d)->name);
+    OLC_TRIG(d)->name = strdup((arg && *arg) ? arg : "undefined");
+    OLC_VAL(d)++;
+    break;
+
+  case TRIGEDIT_INTENDED:
+    if ((atoi(arg) >= MOB_TRIGGER) || (atoi(arg) <= WLD_TRIGGER))
+      OLC_TRIG(d)->attach_type = atoi(arg);
+    OLC_VAL(d)++;
+    break;
+
+  case TRIGEDIT_NARG:
+    OLC_TRIG(d)->narg = LIMIT(atoi(arg), 0, 100);
+    OLC_VAL(d)++;
+    break;
+
+  case TRIGEDIT_ARGUMENT:
+    smash_tilde(arg);
+    OLC_TRIG(d)->arglist = (*arg ? strdup(arg) : NULL);
+    OLC_VAL(d)++;
+    break;
+
+  case TRIGEDIT_TYPES:
+    if ((i = atoi(arg)) == 0)
+      break;
+    else if (!((i < 0) || (i > NUM_TRIG_TYPE_FLAGS)))
+      TOGGLE_BIT((GET_TRIG_TYPE(OLC_TRIG(d))), 1 << (i - 1));
+    OLC_VAL(d)++;
+    trigedit_disp_types(d);
+    return;
+
+  case TRIGEDIT_COMMANDS:
+    break;
+
+  case TRIGEDIT_COPY:
+    if ((i = real_trigger(atoi(arg))) != NOTHING) {
+      trigedit_setup_existing(d, i);
+    } else
+      write_to_output(d, "That trigger does not exist.\r\n");
+    break;
   }
 
   OLC_MODE(d) = TRIGEDIT_MAIN_MENU;
   trigedit_disp_menu(d);
 }
 
-
 /* save the zone's triggers to internal memory and to disk */
-void trigedit_save(struct descriptor_data *d)
-{
+void trigedit_save(struct descriptor_data *d) {
   int i;
   trig_rnum rnum;
   int found = 0;
@@ -478,10 +462,8 @@ void trigedit_save(struct descriptor_data *d)
   char bitBuf[MAX_INPUT_LENGTH];
   char fname[MAX_INPUT_LENGTH];
 
-  if (proto = trig_proto_by_id(OLC_NUM(d)); proto)
-  {
-    for (cmd = proto->cmdlist; cmd; cmd = next_cmd)
-    {
+  if (proto = trig_proto_by_id(OLC_NUM(d)); proto) {
+    for (cmd = proto->cmdlist; cmd; cmd = next_cmd) {
       next_cmd = cmd->next;
       if (cmd->cmd)
         free(cmd->cmd);
@@ -495,8 +477,7 @@ void trigedit_save(struct descriptor_data *d)
     s = OLC_STORAGE(d);
 
     CREATE(trig->cmdlist, struct cmdlist_element, 1);
-    if (s)
-    {
+    if (s) {
       char *t = strtok(s, "\n\r"); /* strtok returns NULL if s is "\r\n" */
       if (t)
         trig->cmdlist->cmd = strdup(t);
@@ -504,14 +485,12 @@ void trigedit_save(struct descriptor_data *d)
         trig->cmdlist->cmd = strdup("* No script");
 
       cmd = trig->cmdlist;
-      while ((s = strtok(NULL, "\n\r")))
-      {
+      while ((s = strtok(NULL, "\n\r"))) {
         CREATE(cmd->next, struct cmdlist_element, 1);
         cmd = cmd->next;
         cmd->cmd = strdup(s);
       }
-    }
-    else
+    } else
       trig->cmdlist->cmd = strdup("* No Script");
 
     /* make the prorotype look like what we have */
@@ -519,17 +498,13 @@ void trigedit_save(struct descriptor_data *d)
 
     /* go through the mud and replace existing triggers         */
     live_trig = trigger_list;
-    while (live_trig)
-    {
-      if (GET_TRIG_VNUM(live_trig) == proto->vnum)
-      {
-        if (live_trig->arglist)
-        {
+    while (live_trig) {
+      if (GET_TRIG_VNUM(live_trig) == proto->vnum) {
+        if (live_trig->arglist) {
           free(live_trig->arglist);
           live_trig->arglist = NULL;
         }
-        if (live_trig->name)
-        {
+        if (live_trig->name) {
           free(live_trig->name);
           live_trig->name = NULL;
         }
@@ -540,13 +515,11 @@ void trigedit_save(struct descriptor_data *d)
           live_trig->name = strdup(proto->name);
 
         /* anything could have happened so we don't want to keep these */
-        if (GET_TRIG_WAIT(live_trig))
-        {
+        if (GET_TRIG_WAIT(live_trig)) {
           event_cancel(GET_TRIG_WAIT(live_trig));
           GET_TRIG_WAIT(live_trig) = NULL;
         }
-        if (live_trig->var_list)
-        {
+        if (live_trig->var_list) {
           free_varlist(live_trig->var_list);
           live_trig->var_list = NULL;
         }
@@ -562,37 +535,30 @@ void trigedit_save(struct descriptor_data *d)
 
       live_trig = live_trig->next_in_world;
     }
-  }
-  else
-  {
+  } else {
     /* this is a new trigger */
     /* Recompile the command list from the new script */
 
     s = OLC_STORAGE(d);
 
     CREATE(trig->cmdlist, struct cmdlist_element, 1);
-    if (s)
-    {
+    if (s) {
       /* strtok returns NULL if s is "\r\n" */
       char *t = strtok(s, "\n\r");
       trig->cmdlist->cmd = strdup(t ? t : "* No script");
       cmd = trig->cmdlist;
 
-      while ((s = strtok(NULL, "\n\r")))
-      {
+      while ((s = strtok(NULL, "\n\r"))) {
         CREATE(cmd->next, struct cmdlist_element, 1);
         cmd = cmd->next;
         cmd->cmd = strdup(s);
       }
-    }
-    else
+    } else
       trig->cmdlist->cmd = strdup("* No Script");
 
-    
     CREATE(proto, struct trig_data, 1);
     trig_data_copy(proto, trig);
     trig_proto_put(OLC_NUM(d), proto);
-
   }
 
   /* now write the trigger out to disk, along with the rest of the  */
@@ -605,42 +571,37 @@ void trigedit_save(struct descriptor_data *d)
   struct zone_data *zn = zone_by_id(OLC_ZNUM(d));
   zone = zn->number;
   top = zn->top;
-  
 
   snprintf(fname, sizeof(fname), "%s/%i.new", TRG_PREFIX, zone);
 
-  if (!(trig_file = fopen(fname, "w")))
-  {
+  if (!(trig_file = fopen(fname, "w"))) {
     mudlog(BRF, MAX(ADMLVL_GOD, GET_INVIS_LEV(d->character)), TRUE,
            "SYSERR: OLC: Can't open trig file \"%s\"", fname);
     return;
   }
 
-  for (i = zn->bot; i <= top; i++)
-  {
-    if (auto trig = trig_proto_by_id(i); trig)
-    {
+  for (i = zn->bot; i <= top; i++) {
+    if (auto trig = trig_proto_by_id(i); trig) {
 
-      if (fprintf(trig_file, "#%d\n", i) < 0)
-      {
+      if (fprintf(trig_file, "#%d\n", i) < 0) {
         mudlog(BRF, MAX(ADMLVL_GOD, GET_INVIS_LEV(d->character)), TRUE,
                "SYSERR: OLC: Can't write trig file!");
         fclose(trig_file);
         return;
       }
       sprintascii(bitBuf, GET_TRIG_TYPE(trig));
-      fprintf(trig_file, "%s%c\n"
-                         "%d %s %d\n"
-                         "%s%c\n",
-              (GET_TRIG_NAME(trig)) ? (GET_TRIG_NAME(trig)) : "unknown trigger", STRING_TERMINATOR,
-              trig->attach_type,
-              *bitBuf ? bitBuf : "0", GET_TRIG_NARG(trig),
-              GET_TRIG_ARG(trig) ? GET_TRIG_ARG(trig) : "", STRING_TERMINATOR);
+      fprintf(trig_file,
+              "%s%c\n"
+              "%d %s %d\n"
+              "%s%c\n",
+              (GET_TRIG_NAME(trig)) ? (GET_TRIG_NAME(trig)) : "unknown trigger",
+              STRING_TERMINATOR, trig->attach_type, *bitBuf ? bitBuf : "0",
+              GET_TRIG_NARG(trig), GET_TRIG_ARG(trig) ? GET_TRIG_ARG(trig) : "",
+              STRING_TERMINATOR);
 
       /* Build the text for the script */
       strcpy(buf, ""); /* strcpy OK for MAX_CMD_LENGTH > 0*/
-      for (cmd = trig->cmdlist; cmd; cmd = cmd->next)
-      {
+      for (cmd = trig->cmdlist; cmd; cmd = cmd->next) {
         strcat(buf, cmd->cmd);
         strcat(buf, "\n");
       }
@@ -665,15 +626,15 @@ void trigedit_save(struct descriptor_data *d)
   create_world_index(zone, "trg");
 }
 
-void dg_olc_script_copy(struct descriptor_data *d)
-{
+void dg_olc_script_copy(struct descriptor_data *d) {
   struct trig_proto_list *origscript, *editscript;
 
-  if (OLC_ITEM_TYPE(d)==MOB_TRIGGER)
+  if (OLC_ITEM_TYPE(d) == MOB_TRIGGER)
     origscript = OLC_MOB(d)->proto_script;
-  else if (OLC_ITEM_TYPE(d)==OBJ_TRIGGER)
+  else if (OLC_ITEM_TYPE(d) == OBJ_TRIGGER)
     origscript = OLC_OPROTO(d)->proto_script;
-  else origscript = OLC_ROOM(d)->proto_script;
+  else
+    origscript = OLC_ROOM(d)->proto_script;
 
   if (origscript) {
     CREATE(editscript, struct trig_proto_list, 1);
@@ -687,11 +648,10 @@ void dg_olc_script_copy(struct descriptor_data *d)
       editscript = editscript->next;
     }
   } else
-      OLC_SCRIPT(d) = NULL;
+    OLC_SCRIPT(d) = NULL;
 }
 
-void dg_script_menu(struct descriptor_data *d)
-{
+void dg_script_menu(struct descriptor_data *d) {
   struct trig_proto_list *editscript;
   int i = 0;
 
@@ -707,7 +667,7 @@ void dg_script_menu(struct descriptor_data *d)
   while (editscript) {
     auto trig = trig_proto_by_id(editscript->vnum);
     write_to_output(d, "     %2d) [@c%d@n] @c%s@n", ++i, editscript->vnum,
-      trig->name);
+                    trig->name);
     if (trig->attach_type != OLC_ITEM_TYPE(d))
       write_to_output(d, "   @g** Mis-matched Trigger Type **@n\r\n");
     else
@@ -715,142 +675,146 @@ void dg_script_menu(struct descriptor_data *d)
 
     editscript = editscript->next;
   }
-  if (i==0)
+  if (i == 0)
     write_to_output(d, "     <none>\r\n");
 
-  write_to_output(d,  "\r\n"
-    " @gN@n)  New trigger for this script\r\n"
-    " @gD@n)  Delete a trigger in this script\r\n"
-    " @gX@n)  Exit Script Editor\r\n\r\n"
-    "     Enter choice :");
+  write_to_output(d, "\r\n"
+                     " @gN@n)  New trigger for this script\r\n"
+                     " @gD@n)  Delete a trigger in this script\r\n"
+                     " @gX@n)  Exit Script Editor\r\n\r\n"
+                     "     Enter choice :");
 }
 
-int dg_script_edit_parse(struct descriptor_data *d, char *arg)
-{
+int dg_script_edit_parse(struct descriptor_data *d, char *arg) {
   struct trig_proto_list *trig, *currtrig;
   int count, pos, vnum;
 
-  switch(OLC_SCRIPT_EDIT_MODE(d)) {
-    case SCRIPT_MAIN_MENU:
-      switch(tolower(*arg)) {
-        case 'x':
-          /* this was buggy.
-             First we created a copy of a thing, but maintained pointers to scripts,
-             then if we altered the scripts, we freed the pointers and added new ones
-             to the OLC_THING. If we then chose _NOT_ to save the changes, the
-             pointers in the original thing pointed to garbage. If we saved changes
-             the pointers were updated correctly.
+  switch (OLC_SCRIPT_EDIT_MODE(d)) {
+  case SCRIPT_MAIN_MENU:
+    switch (tolower(*arg)) {
+    case 'x':
+      /* this was buggy.
+         First we created a copy of a thing, but maintained pointers to scripts,
+         then if we altered the scripts, we freed the pointers and added new
+         ones to the OLC_THING. If we then chose _NOT_ to save the changes, the
+         pointers in the original thing pointed to garbage. If we saved changes
+         the pointers were updated correctly.
 
-             Solution:
-             Here we just point the working copies to the new proto_scripts
-             We only update the original when choosing to save internally,
-             then free the unused memory there.
+         Solution:
+         Here we just point the working copies to the new proto_scripts
+         We only update the original when choosing to save internally,
+         then free the unused memory there.
 
-             Welcor
+         Welcor
 
-             Thanks to
-             Jeremy Stanley - fungi@yuggoth.org and
-             Torgny Bjers - artovil@arcanerealms.org
-             for the bug report.
+         Thanks to
+         Jeremy Stanley - fungi@yuggoth.org and
+         Torgny Bjers - artovil@arcanerealms.org
+         for the bug report.
 
-             After updating to OasisOLC 2.0.3 I discovered some malfunctions
-             in this code, so I restructured it a bit. Now things work like this:
-             OLC_SCRIPT(d) is assigned a copy of the edited things' proto_script.
-             OLC_OBJ(d), etc.. are initalized with proto_script = NULL;
-             On save, the saved copy is updated with OLC_SCRIPT(d) as new proto_script (freeing the old one).
-             On quit/nosave, OLC_SCRIPT is free()'d, and the prototype not touched.
+         After updating to OasisOLC 2.0.3 I discovered some malfunctions
+         in this code, so I restructured it a bit. Now things work like this:
+         OLC_SCRIPT(d) is assigned a copy of the edited things' proto_script.
+         OLC_OBJ(d), etc.. are initalized with proto_script = NULL;
+         On save, the saved copy is updated with OLC_SCRIPT(d) as new
+         proto_script (freeing the old one). On quit/nosave, OLC_SCRIPT is
+         free()'d, and the prototype not touched.
 
-           */
-          return 0;
-        case 'n':
-          write_to_output(d, "\r\nPlease enter position, vnum   (ex: 1, 200):");
-          OLC_SCRIPT_EDIT_MODE(d) = SCRIPT_NEW_TRIGGER;
-          break;
-        case 'd':
-          write_to_output(d, "     Which entry should be deleted?  0 to abort :");
-          OLC_SCRIPT_EDIT_MODE(d) = SCRIPT_DEL_TRIGGER;
-          break;
-        default:
-          dg_script_menu(d);
-          break;
-      }
+       */
+      return 0;
+    case 'n':
+      write_to_output(d, "\r\nPlease enter position, vnum   (ex: 1, 200):");
+      OLC_SCRIPT_EDIT_MODE(d) = SCRIPT_NEW_TRIGGER;
+      break;
+    case 'd':
+      write_to_output(d, "     Which entry should be deleted?  0 to abort :");
+      OLC_SCRIPT_EDIT_MODE(d) = SCRIPT_DEL_TRIGGER;
+      break;
+    default:
+      dg_script_menu(d);
+      break;
+    }
+    return 1;
+
+  case SCRIPT_NEW_TRIGGER:
+    vnum = -1;
+    count = sscanf(arg, "%d, %d", &pos, &vnum);
+    if (count == 1) {
+      vnum = pos;
+      pos = 999;
+    }
+
+    if (pos <= 0)
+      break; /* this aborts a new trigger entry */
+
+    if (vnum == 0)
+      break; /* this aborts a new trigger entry */
+
+    if (real_trigger(vnum) == NOTHING) {
+      write_to_output(d, "Invalid Trigger VNUM!\r\n"
+                         "Please enter position, vnum   (ex: 1, 200):");
       return 1;
+    }
 
-    case SCRIPT_NEW_TRIGGER:
-      vnum = -1;
-      count = sscanf(arg,"%d, %d",&pos,&vnum);
-      if (count==1) {
-        vnum = pos;
-        pos = 999;
+    /* add the new info in position */
+    currtrig = OLC_SCRIPT(d);
+    CREATE(trig, struct trig_proto_list, 1);
+    trig->vnum = vnum;
+
+    if (pos == 1 || !currtrig) {
+      trig->next = OLC_SCRIPT(d);
+      OLC_SCRIPT(d) = trig;
+    } else {
+      while (currtrig->next && --pos) {
+        currtrig = currtrig->next;
       }
+      trig->next = currtrig->next;
+      currtrig->next = trig;
+    }
+    OLC_VAL(d)++;
+    break;
 
-      if (pos<=0) break; /* this aborts a new trigger entry */
+  case SCRIPT_DEL_TRIGGER:
+    pos = atoi(arg);
+    if (pos <= 0)
+      break;
 
-      if (vnum==0) break; /* this aborts a new trigger entry */
-
-      if (real_trigger(vnum) == NOTHING) {
-        write_to_output(d, "Invalid Trigger VNUM!\r\n"
-                           "Please enter position, vnum   (ex: 1, 200):");
-        return 1;
-      }
-
-      /* add the new info in position */
-      currtrig = OLC_SCRIPT(d);
-      CREATE(trig, struct trig_proto_list, 1);
-      trig->vnum = vnum;
-
-      if (pos==1 || !currtrig) {
-        trig->next = OLC_SCRIPT(d);
-        OLC_SCRIPT(d) = trig;
-      } else {
-        while (currtrig->next && --pos) {
-          currtrig = currtrig->next;
-        }
-        trig->next = currtrig->next;
-        currtrig->next = trig;
-      }
+    if (pos == 1 && OLC_SCRIPT(d)) {
       OLC_VAL(d)++;
-      break;
-
-    case SCRIPT_DEL_TRIGGER:
-      pos = atoi(arg);
-      if (pos<=0) break;
-
-      if (pos==1 && OLC_SCRIPT(d)) {
-        OLC_VAL(d)++;
-        currtrig = OLC_SCRIPT(d);
-        OLC_SCRIPT(d) = currtrig->next;
-        free(currtrig);
-        break;
-      }
-
-      pos--;
       currtrig = OLC_SCRIPT(d);
-      while (--pos && currtrig) currtrig = currtrig->next;
-      /* now curtrig points one before the target */
-      if (currtrig && currtrig->next) {
-        OLC_VAL(d)++;
-        trig = currtrig->next;
-        currtrig->next = trig->next;
-        free(trig);
-      }
+      OLC_SCRIPT(d) = currtrig->next;
+      free(currtrig);
       break;
+    }
+
+    pos--;
+    currtrig = OLC_SCRIPT(d);
+    while (--pos && currtrig)
+      currtrig = currtrig->next;
+    /* now curtrig points one before the target */
+    if (currtrig && currtrig->next) {
+      OLC_VAL(d)++;
+      trig = currtrig->next;
+      currtrig->next = trig->next;
+      free(trig);
+    }
+    break;
   }
 
   dg_script_menu(d);
   return 1;
 }
 
-void trigedit_string_cleanup(struct descriptor_data *d, int terminator)
-{
+void trigedit_string_cleanup(struct descriptor_data *d, int terminator) {
   switch (OLC_MODE(d)) {
-    case TRIGEDIT_COMMANDS:
-      trigedit_disp_menu(d);
-      break;
+  case TRIGEDIT_COMMANDS:
+    trigedit_disp_menu(d);
+    break;
   }
 }
 
-#if 0 /* change to 1 if you get messages telling you you don't have strncasecmp() */
+#if 0 /* change to 1 if you get messages telling you you don't have            \
+         strncasecmp() */
 int strncasecmp (const char *s1, const char *s2, int n)
 {
 	unsigned char c1, c2;
@@ -868,8 +832,7 @@ int strncasecmp (const char *s1, const char *s2, int n)
 }
 #endif
 
-int format_script(struct descriptor_data *d)
-{
+int format_script(struct descriptor_data *d) {
   char nsc[MAX_CMD_LENGTH], *t, line[READ_SIZE];
   char *sc;
   size_t len = 0, nlen = 0, llen = 0;
@@ -885,16 +848,15 @@ int format_script(struct descriptor_data *d)
   while (t) {
     line_num++;
     skip_spaces(&t);
-    if (!strncasecmp(t, "if ", 3) ||
-        !strncasecmp(t, "switch ", 7)) {
+    if (!strncasecmp(t, "if ", 3) || !strncasecmp(t, "switch ", 7)) {
       indent_next = TRUE;
     } else if (!strncasecmp(t, "while ", 6)) {
-      found_case = TRUE;  /* so you can 'break' a loop without complains */
+      found_case = TRUE; /* so you can 'break' a loop without complains */
       indent_next = TRUE;
-    } else if (!strncasecmp(t, "end", 3) ||
-               !strncasecmp(t, "done", 4)) {
+    } else if (!strncasecmp(t, "end", 3) || !strncasecmp(t, "done", 4)) {
       if (!indent) {
-        write_to_output(d, "Unmatched 'end' or 'done' (line %d)!\r\n", line_num);
+        write_to_output(d, "Unmatched 'end' or 'done' (line %d)!\r\n",
+                        line_num);
         free(sc);
         return FALSE;
       }
@@ -908,18 +870,19 @@ int format_script(struct descriptor_data *d)
       }
       indent--;
       indent_next = TRUE;
-    } else if (!strncasecmp(t, "case", 4) ||
-               !strncasecmp(t, "default", 7)) {
+    } else if (!strncasecmp(t, "case", 4) || !strncasecmp(t, "default", 7)) {
       if (!indent) {
-        write_to_output(d, "Case/default outside switch (line %d)!\r\n", line_num);
+        write_to_output(d, "Case/default outside switch (line %d)!\r\n",
+                        line_num);
         free(sc);
         return FALSE;
       }
-      if (!found_case) /* so we don't indent multiple case statements without a break */
+      if (!found_case) /* so we don't indent multiple case statements without a
+                          break */
         indent_next = TRUE;
       found_case = TRUE;
     } else if (!strncasecmp(t, "break", 5)) {
-      if (!found_case || !indent ) {
+      if (!found_case || !indent) {
         write_to_output(d, "Break not in case (line %d)!\r\n", line_num);
         free(sc);
         return FALSE;
@@ -929,18 +892,18 @@ int format_script(struct descriptor_data *d)
     }
 
     *line = '\0';
-    for (nlen = 0, i = 0;i<indent;i++) {
-      strncat(line, "  ", sizeof(line)-1);
+    for (nlen = 0, i = 0; i < indent; i++) {
+      strncat(line, "  ", sizeof(line) - 1);
       nlen += 2;
     }
     llen = snprintf(line + nlen, sizeof(line) - nlen, "%s\r\n", t);
-    if (llen < 0 || llen + nlen + len > d->max_str - 1 ) {
+    if (llen < 0 || llen + nlen + len > d->max_str - 1) {
       write_to_output(d, "String too long, formatting aborted\r\n");
       free(sc);
       return FALSE;
     }
     len = len + nlen + llen;
-    strcat(nsc, line);  /* strcat OK, size checked above */
+    strcat(nsc, line); /* strcat OK, size checked above */
 
     if (indent_next) {
       indent++;

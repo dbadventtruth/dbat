@@ -1,36 +1,26 @@
 /* ************************************************************************
-*   File: spells.c                                      Part of CircleMUD *
-*  Usage: Implementation of "manual spells".  Circle 2.2 spell compat.    *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
+ *   File: spells.c                                      Part of CircleMUD *
+ *  Usage: Implementation of "manual spells".  Circle 2.2 spell compat.    *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 
-
-#include "comm.h"
 #include "spells.h"
-#include "character_impl.h"
+#include "act.informative.h"
+#include "act.item.h"
+#include "act.movement.h"
+#include "affect.h"
 #include "character_api.h"
+#include "character_impl.h"
 #include "character_macros.h"
-#include "object_impl.h"
-#include "object_api.h"
-#include "object_db.h"
-#include "object_macros.h"
-#include "room_impl.h"
-#include "room_api.h"
-#include "room_db.h"
-#include "zone_api.h"
-#include "relocate.h"
-#include "search.h"
-#include "stringutils.h"
 #include "character_utils.h"
+#include "class.h"
+#include "comm.h"
+#include "config.h"
 #include "config_db.h"
-#include "flags.h"
-#include "log.h"
-#include "random.h"
-#include "util_macros.h"
 #include "consts/admlevel.h"
 #include "consts/applies.h"
 #include "consts/itemdata.h"
@@ -41,20 +31,29 @@
 #include "consts/races.h"
 #include "consts/sex.h"
 #include "consts/zoneflags.h"
-#include "handler.h"
-#include "skills.h"
 #include "db.h"
-#include "interpreter.h"
 #include "dg_scripts.h"
 #include "feats.h"
+#include "flags.h"
+#include "handler.h"
+#include "interpreter.h"
+#include "log.h"
 #include "oasis.h"
-#include "config.h"
-#include "act.item.h"
-#include "act.movement.h"
+#include "object_api.h"
+#include "object_db.h"
+#include "object_impl.h"
+#include "object_macros.h"
 #include "races_plus.h"
-#include "act.informative.h"
-#include "affect.h"
-#include "class.h"
+#include "random.h"
+#include "relocate.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "search.h"
+#include "skills.h"
+#include "stringutils.h"
+#include "util_macros.h"
+#include "zone_api.h"
 
 /* external variables */
 
@@ -62,8 +61,7 @@
  * Special spells appear below.
  */
 
-ASPELL(spell_create_water)
-{
+ASPELL(spell_create_water) {
   int water;
 
   if (ch == NULL || obj == NULL)
@@ -71,28 +69,29 @@ ASPELL(spell_create_water)
   /* level = MAX(MIN(level, LVL_IMPL), 1);	 - not used */
 
   if (GET_OBJ_TYPE(obj) == ITEM_DRINKCON) {
-    if ((GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID) != LIQ_WATER) && (GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) != 0)) {
+    if ((GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID) != LIQ_WATER) &&
+        (GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) != 0)) {
       name_from_drinkcon(obj);
       GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID) = LIQ_SLIME;
       name_to_drinkcon(obj, LIQ_SLIME);
     } else {
-      water = MAX(GET_OBJ_VAL(obj, VAL_DRINKCON_CAPACITY) - GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL), 0);
+      water = MAX(GET_OBJ_VAL(obj, VAL_DRINKCON_CAPACITY) -
+                      GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL),
+                  0);
       if (water > 0) {
-	if (GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) >= 0)
-	  name_from_drinkcon(obj);
-	GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID) = LIQ_WATER;
-	GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) += water;
-	name_to_drinkcon(obj, LIQ_WATER);
-	weight_change_object(obj, water);
-	act("$p is filled.", FALSE, ch, obj, 0, TO_CHAR);
+        if (GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) >= 0)
+          name_from_drinkcon(obj);
+        GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID) = LIQ_WATER;
+        GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) += water;
+        name_to_drinkcon(obj, LIQ_WATER);
+        weight_change_object(obj, water);
+        act("$p is filled.", FALSE, ch, obj, 0, TO_CHAR);
       }
     }
   }
 }
 
-
-ASPELL(spell_recall)
-{
+ASPELL(spell_recall) {
   if (victim == NULL || IS_NPC(victim))
     return;
 
@@ -106,17 +105,11 @@ ASPELL(spell_recall)
   greet_memory_mtrigger(victim);
 }
 
-
-ASPELL(spell_teleport)
-{
-
-  
-}
+ASPELL(spell_teleport) {}
 
 #define SUMMON_FAIL "You failed.\r\n"
 
-ASPELL(spell_summon)
-{
+ASPELL(spell_summon) {
   if (ch == NULL || victim == NULL)
     return;
 
@@ -128,27 +121,31 @@ ASPELL(spell_summon)
   if (!CONFIG_PK_ALLOWED) {
     if (MOB_FLAGGED(victim, MOB_AGGRESSIVE)) {
       act("As the words escape your lips and $N travels\r\n"
-	  "through time and space towards you, you realize that $E is\r\n"
-	  "aggressive and might harm you, so you wisely send $M back.",
-	  FALSE, ch, 0, victim, TO_CHAR);
+          "through time and space towards you, you realize that $E is\r\n"
+          "aggressive and might harm you, so you wisely send $M back.",
+          FALSE, ch, 0, victim, TO_CHAR);
       return;
     }
     if (!IS_NPC(victim) && !PRF_FLAGGED(victim, PRF_SUMMONABLE) &&
-	!PLR_FLAGGED(victim, PLR_KILLER)) {
-      send_to_char(victim, "%s just tried to summon you to: %s.\r\n"
-	      "%s failed because you have summon protection on.\r\n"
-	      "Type NOSUMMON to allow other players to summon you.\r\n",
-	      GET_NAME(ch), char_room_get(ch)->name,
-	      (ch->sex == SEX_MALE) ? "He" : "She");
+        !PLR_FLAGGED(victim, PLR_KILLER)) {
+      send_to_char(victim,
+                   "%s just tried to summon you to: %s.\r\n"
+                   "%s failed because you have summon protection on.\r\n"
+                   "Type NOSUMMON to allow other players to summon you.\r\n",
+                   GET_NAME(ch), char_room_get(ch)->name,
+                   (ch->sex == SEX_MALE) ? "He" : "She");
 
-      send_to_char(ch, "You failed because %s has summon protection on.\r\n", GET_NAME(victim));
-      mudlog(BRF, ADMLVL_IMMORT, TRUE, "%s failed summoning %s to %s.", GET_NAME(ch), GET_NAME(victim), char_room_get(ch)->name);
+      send_to_char(ch, "You failed because %s has summon protection on.\r\n",
+                   GET_NAME(victim));
+      mudlog(BRF, ADMLVL_IMMORT, TRUE, "%s failed summoning %s to %s.",
+             GET_NAME(ch), GET_NAME(victim), char_room_get(ch)->name);
       return;
     }
   }
 
   if (MOB_FLAGGED(victim, MOB_NOSUMMON) ||
-      (IS_NPC(victim) && mag_newsaves(ch, victim, SPELL_SUMMON, level, GET_INT(ch)))) {
+      (IS_NPC(victim) &&
+       mag_newsaves(ch, victim, SPELL_SUMMON, level, GET_INT(ch)))) {
     send_to_char(ch, "%s", SUMMON_FAIL);
     return;
   }
@@ -164,13 +161,9 @@ ASPELL(spell_summon)
   entry_memory_mtrigger(victim);
   greet_mtrigger(victim, -1);
   greet_memory_mtrigger(victim);
-
 }
 
-
-
-ASPELL(spell_locate_object)
-{
+ASPELL(spell_locate_object) {
   struct obj_data *i;
   char name[MAX_INPUT_LENGTH];
   int j;
@@ -185,7 +178,7 @@ ASPELL(spell_locate_object)
     send_to_char(ch, "You sense nothing.\r\n");
     return;
   }
-  
+
   strlcpy(name, fname(obj->name), sizeof(name));
   j = level / 2;
 
@@ -193,7 +186,8 @@ ASPELL(spell_locate_object)
     if (!isname(name, i->name))
       continue;
 
-    send_to_char(ch, "%c%s", UPPER(*i->short_description), (i->short_description)+1);
+    send_to_char(ch, "%c%s", UPPER(*i->short_description),
+                 (i->short_description) + 1);
 
     if (i->carried_by)
       send_to_char(ch, " is being carried by %s.\r\n", PERS(i->carried_by, ch));
@@ -213,10 +207,7 @@ ASPELL(spell_locate_object)
     send_to_char(ch, "You sense nothing.\r\n");
 }
 
-
-
-ASPELL(spell_charm)
-{
+ASPELL(spell_charm) {
   struct affected_type af;
 
   if (victim == NULL || ch == NULL)
@@ -267,10 +258,7 @@ ASPELL(spell_charm)
   }
 }
 
-
-
-ASPELL(spell_identify)
-{
+ASPELL(spell_identify) {
   int i, found;
   size_t len;
 
@@ -279,17 +267,22 @@ ASPELL(spell_identify)
     char buf2[MAX_STRING_LENGTH];
 
     sprinttype(GET_OBJ_TYPE(obj), item_types, bitbuf, sizeof(bitbuf));
-    send_to_char(ch, "You feel informed:\r\nObject '%s', Item type: %s\r\n", obj->short_description, bitbuf);
+    send_to_char(ch, "You feel informed:\r\nObject '%s', Item type: %s\r\n",
+                 obj->short_description, bitbuf);
 
     if (GET_OBJ_PERM(obj)) {
-      sprintbitarray(GET_OBJ_PERM(obj), affected_bits, AF_ARRAY_MAX, bitbuf, sizeof(bitbuf));
-      send_to_char(ch, "Item will give you following abilities:  %s\r\n", bitbuf);
+      sprintbitarray(GET_OBJ_PERM(obj), affected_bits, AF_ARRAY_MAX, bitbuf,
+                     sizeof(bitbuf));
+      send_to_char(ch, "Item will give you following abilities:  %s\r\n",
+                   bitbuf);
     }
 
-    sprintbitarray(GET_OBJ_EXTRA(obj), extra_bits, EF_ARRAY_MAX, bitbuf, sizeof(bitbuf));
+    sprintbitarray(GET_OBJ_EXTRA(obj), extra_bits, EF_ARRAY_MAX, bitbuf,
+                   sizeof(bitbuf));
     send_to_char(ch, "Item is: %s\r\n", bitbuf);
 
-    send_to_char(ch, "Weight: %" I64T ", Value: %d, Min Level: %d\r\n", GET_OBJ_WEIGHT(obj), GET_OBJ_COST(obj), GET_OBJ_LEVEL(obj));
+    send_to_char(ch, "Weight: %" I64T ", Value: %d, Min Level: %d\r\n",
+                 GET_OBJ_WEIGHT(obj), GET_OBJ_COST(obj), GET_OBJ_LEVEL(obj));
 
     switch (GET_OBJ_TYPE(obj)) {
     case ITEM_SCROLL:
@@ -297,74 +290,89 @@ ASPELL(spell_identify)
       len = i = 0;
 
       if (GET_OBJ_VAL(obj, VAL_SCROLL_SPELL1) >= 1) {
-	i = snprintf(bitbuf + len, sizeof(bitbuf) - len, " %s", skill_name(GET_OBJ_VAL(obj, VAL_SCROLL_SPELL1)));
+        i = snprintf(bitbuf + len, sizeof(bitbuf) - len, " %s",
+                     skill_name(GET_OBJ_VAL(obj, VAL_SCROLL_SPELL1)));
         if (i >= 0)
           len += i;
       }
 
       if (GET_OBJ_VAL(obj, VAL_SCROLL_SPELL2) >= 1 && len < sizeof(bitbuf)) {
-	i = snprintf(bitbuf + len, sizeof(bitbuf) - len, " %s", skill_name(GET_OBJ_VAL(obj, VAL_SCROLL_SPELL2)));
+        i = snprintf(bitbuf + len, sizeof(bitbuf) - len, " %s",
+                     skill_name(GET_OBJ_VAL(obj, VAL_SCROLL_SPELL2)));
         if (i >= 0)
           len += i;
       }
 
       if (GET_OBJ_VAL(obj, VAL_SCROLL_SPELL3) >= 1 && len < sizeof(bitbuf)) {
-	i = snprintf(bitbuf + len, sizeof(bitbuf) - len, " %s", skill_name(GET_OBJ_VAL(obj, VAL_SCROLL_SPELL3)));
+        i = snprintf(bitbuf + len, sizeof(bitbuf) - len, " %s",
+                     skill_name(GET_OBJ_VAL(obj, VAL_SCROLL_SPELL3)));
         if (i >= 0)
           len += i;
       }
 
-      send_to_char(ch, "This %s casts: %s\r\n", item_types[(int) GET_OBJ_TYPE(obj)], bitbuf);
+      send_to_char(ch, "This %s casts: %s\r\n",
+                   item_types[(int)GET_OBJ_TYPE(obj)], bitbuf);
       break;
     case ITEM_WAND:
     case ITEM_STAFF:
-      send_to_char(ch, "This %s casts: %s\r\nIt has %d maximum charge%s and %d remaining.\r\n",
-		item_types[(int) GET_OBJ_TYPE(obj)], skill_name(GET_OBJ_VAL(obj, VAL_WAND_SPELL)),
-		GET_OBJ_VAL(obj, VAL_WAND_MAXCHARGES), GET_OBJ_VAL(obj, VAL_WAND_MAXCHARGES) == 1 ? "" : "s", GET_OBJ_VAL(obj, VAL_WAND_CHARGES));
+      send_to_char(ch,
+                   "This %s casts: %s\r\nIt has %d maximum charge%s and %d "
+                   "remaining.\r\n",
+                   item_types[(int)GET_OBJ_TYPE(obj)],
+                   skill_name(GET_OBJ_VAL(obj, VAL_WAND_SPELL)),
+                   GET_OBJ_VAL(obj, VAL_WAND_MAXCHARGES),
+                   GET_OBJ_VAL(obj, VAL_WAND_MAXCHARGES) == 1 ? "" : "s",
+                   GET_OBJ_VAL(obj, VAL_WAND_CHARGES));
       break;
     case ITEM_WEAPON:
-      send_to_char(ch, "Damage Dice is '%dD%d' for an average per-round damage of %.1f.\r\n",
-		GET_OBJ_VAL(obj, VAL_WEAPON_DAMDICE), GET_OBJ_VAL(obj, VAL_WEAPON_DAMSIZE), ((GET_OBJ_VAL(obj, VAL_WEAPON_DAMSIZE) + 1) / 2.0) * GET_OBJ_VAL(obj, VAL_WEAPON_DAMDICE));
+      send_to_char(
+          ch,
+          "Damage Dice is '%dD%d' for an average per-round damage of %.1f.\r\n",
+          GET_OBJ_VAL(obj, VAL_WEAPON_DAMDICE),
+          GET_OBJ_VAL(obj, VAL_WEAPON_DAMSIZE),
+          ((GET_OBJ_VAL(obj, VAL_WEAPON_DAMSIZE) + 1) / 2.0) *
+              GET_OBJ_VAL(obj, VAL_WEAPON_DAMDICE));
       break;
     case ITEM_ARMOR:
-      send_to_char(ch, "AC-apply is %.1f\r\n", ((float)GET_OBJ_VAL(obj, VAL_ARMOR_APPLYAC)) / 10);
+      send_to_char(ch, "AC-apply is %.1f\r\n",
+                   ((float)GET_OBJ_VAL(obj, VAL_ARMOR_APPLYAC)) / 10);
       break;
     }
     found = FALSE;
     for (i = 0; i < MAX_OBJ_AFFECT; i++) {
       if ((obj->affected[i].location != APPLY_NONE) &&
-	  (obj->affected[i].modifier != 0)) {
-	if (!found) {
-	  send_to_char(ch, "Can affect you as :\r\n");
-	  found = TRUE;
-	}
-	sprinttype(obj->affected[i].location, apply_types, bitbuf, sizeof(bitbuf));
+          (obj->affected[i].modifier != 0)) {
+        if (!found) {
+          send_to_char(ch, "Can affect you as :\r\n");
+          found = TRUE;
+        }
+        sprinttype(obj->affected[i].location, apply_types, bitbuf,
+                   sizeof(bitbuf));
         switch (obj->affected[i].location) {
         case APPLY_FEAT:
-          snprintf(buf2, sizeof(buf2), " (%s)", feat_list[obj->affected[i].specific].name);
+          snprintf(buf2, sizeof(buf2), " (%s)",
+                   feat_list[obj->affected[i].specific].name);
           break;
         case APPLY_SKILL:
-          snprintf(buf2, sizeof(buf2), " (%s)", spell_info[obj->affected[i].specific].name);
+          snprintf(buf2, sizeof(buf2), " (%s)",
+                   spell_info[obj->affected[i].specific].name);
           break;
         default:
           buf2[0] = 0;
           break;
         }
-	send_to_char(ch, "   Affects: %s%s By %d\r\n", bitbuf, buf2,
+        send_to_char(ch, "   Affects: %s%s By %d\r\n", bitbuf, buf2,
                      obj->affected[i].modifier);
       }
     }
   }
 }
 
-
-
 /*
  * Cannot use this spell on an equipped object or it will mess up the
  * wielding character's hit/dam totals.
  */
-ASPELL(spell_enchant_weapon)
-{
+ASPELL(spell_enchant_weapon) {
   int i;
 
   if (ch == NULL || obj == NULL)
@@ -407,9 +415,7 @@ ASPELL(spell_enchant_weapon)
     act("$p glows yellow.", FALSE, ch, obj, 0, TO_CHAR);
 }
 
-
-ASPELL(spell_detect_poison)
-{
+ASPELL(spell_detect_poison) {
   if (victim) {
     if (victim == ch) {
       if (AFF_FLAGGED(victim, AFF_POISON))
@@ -430,10 +436,11 @@ ASPELL(spell_detect_poison)
     case ITEM_FOUNTAIN:
     case ITEM_FOOD:
       if (GET_OBJ_VAL(obj, VAL_FOOD_POISON))
-	act("You sense that $p has been contaminated.",FALSE,ch,obj,0,TO_CHAR);
+        act("You sense that $p has been contaminated.", FALSE, ch, obj, 0,
+            TO_CHAR);
       else
-	act("You sense that $p is safe for consumption.", FALSE, ch, obj, 0,
-	    TO_CHAR);
+        act("You sense that $p is safe for consumption.", FALSE, ch, obj, 0,
+            TO_CHAR);
       break;
     default:
       send_to_char(ch, "You sense that it should not be consumed.\r\n");
@@ -441,15 +448,14 @@ ASPELL(spell_detect_poison)
   }
 }
 
-ASPELL(spell_portal)
-{
+ASPELL(spell_portal) {
   struct obj_data *portal, *tportal;
   struct room_data *rm;
   rm = char_room_get(victim);
 
   if (ch == NULL || victim == NULL)
     return;
-  
+
   auto zone = room_zone_get(rm);
 
   if (!can_edit_zone(ch, zone) && zone_flagged(zone, ZONE_QUEST)) {
@@ -472,72 +478,67 @@ ASPELL(spell_portal)
   GET_OBJ_VAL(portal, VAL_PORTAL_DEST) = char_room_vnum_get(victim);
   GET_OBJ_VAL(portal, VAL_PORTAL_HEALTH) = 100;
   GET_OBJ_VAL(portal, VAL_PORTAL_MAXHEALTH) = 100;
-  GET_OBJ_TIMER(portal) = (int) (level / 10);
+  GET_OBJ_TIMER(portal) = (int)(level / 10);
   add_unique_id(portal);
   obj_to_room(portal, char_room_get(ch));
-  act("$n opens a portal in thin air.",
-       TRUE, ch, 0, 0, TO_ROOM);
-  act("You open a portal out of thin air.",
-       TRUE, ch, 0, 0, TO_CHAR);
+  act("$n opens a portal in thin air.", TRUE, ch, 0, 0, TO_ROOM);
+  act("You open a portal out of thin air.", TRUE, ch, 0, 0, TO_CHAR);
   /* create the portal at the other end */
   tportal = read_object(portal_object, VIRTUAL);
   GET_OBJ_VAL(tportal, VAL_PORTAL_DEST) = char_room_vnum_get(ch);
   GET_OBJ_VAL(tportal, VAL_PORTAL_HEALTH) = 100;
   GET_OBJ_VAL(tportal, VAL_PORTAL_MAXHEALTH) = 100;
-  GET_OBJ_TIMER(tportal) = (int) (level / 10);
+  GET_OBJ_TIMER(tportal) = (int)(level / 10);
   add_unique_id(portal);
   obj_to_room(tportal, char_room_get(victim));
-  act("A shimmering portal appears out of thin air.",
-       TRUE, victim, 0, 0, TO_ROOM);
-  act("A shimmering portal opens here for you.",
-       TRUE, victim, 0, 0, TO_CHAR);
+  act("A shimmering portal appears out of thin air.", TRUE, victim, 0, 0,
+      TO_ROOM);
+  act("A shimmering portal opens here for you.", TRUE, victim, 0, 0, TO_CHAR);
 }
 
-
-int roll_skill(struct char_data *ch, int snum)
-{
+int roll_skill(struct char_data *ch, int snum) {
   int roll, skval, i;
   if (!IS_NPC(ch)) {
-   skval = GET_SKILL(ch, snum);
-   if (SKILL_SPOT == snum) {
-    if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 4 || GET_GENOME(ch, 1) == 4)) {
-     skval += 5;
+    skval = GET_SKILL(ch, snum);
+    if (SKILL_SPOT == snum) {
+      if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 4 || GET_GENOME(ch, 1) == 4)) {
+        skval += 5;
+      }
+    } else if (SKILL_HIDE == snum) {
+      if (AFF_FLAGGED(ch, AFF_LIQUEFIED)) {
+        skval += 5;
+      } else if (IS_MUTANT(ch) &&
+                 (GET_GENOME(ch, 0) == 5 || GET_GENOME(ch, 1) == 5)) {
+        skval += 10;
+      }
     }
-   } else if (SKILL_HIDE == snum) {
-    if (AFF_FLAGGED(ch, AFF_LIQUEFIED)) {
-     skval += 5;
-    } else if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 5 || GET_GENOME(ch, 1) == 5)) {
-     skval += 10;
+  } else if (IS_NPC(ch)) {
+    int numb = 0;
+    if (GET_LEVEL(ch) <= 10) {
+      numb = rand_number(15, 30);
     }
-   }
-  }
-  else if (IS_NPC(ch)) {
-   int numb = 0;
-   if (GET_LEVEL(ch) <= 10) {
-    numb = rand_number(15, 30);
-   }
-   if (GET_LEVEL(ch) <= 20) {
-    numb = rand_number(20, 40);
-   }
-   if (GET_LEVEL(ch) <= 30) {
-    numb = rand_number(40, 60);
-   }
-   if (GET_LEVEL(ch) <= 60) {
-    numb = rand_number(60, 80);
-   }
-   if (GET_LEVEL(ch) <= 80) {
-    numb = rand_number(70, 90);
-   }
-   if (GET_LEVEL(ch) <= 90) {
-    numb = rand_number(80, 95);
-   }
-   if (GET_LEVEL(ch) <= 100) {
-    numb = rand_number(90, 100);
-   }
-   skval = numb;
+    if (GET_LEVEL(ch) <= 20) {
+      numb = rand_number(20, 40);
+    }
+    if (GET_LEVEL(ch) <= 30) {
+      numb = rand_number(40, 60);
+    }
+    if (GET_LEVEL(ch) <= 60) {
+      numb = rand_number(60, 80);
+    }
+    if (GET_LEVEL(ch) <= 80) {
+      numb = rand_number(70, 90);
+    }
+    if (GET_LEVEL(ch) <= 90) {
+      numb = rand_number(80, 95);
+    }
+    if (GET_LEVEL(ch) <= 100) {
+      numb = rand_number(90, 100);
+    }
+    skval = numb;
   }
   if (snum == SKILL_SPOT && GET_SKILL(ch, SKILL_LISTEN)) {
-   skval += GET_SKILL(ch, SKILL_LISTEN) / 10;
+    skval += GET_SKILL(ch, SKILL_LISTEN) / 10;
   }
   if (snum < 0 || snum >= SKILL_TABLE_SIZE)
     return 0;
@@ -548,37 +549,38 @@ int roll_skill(struct char_data *ch, int snum)
      * higher than this roll to avoid it. Most spells should also have some
      * kind of save called after roll_skill.
      */
-      return roll + rand_number(1, 20);
+    return roll + rand_number(1, 20);
   } else if (IS_SET(spell_info[snum].skilltype, SKTYPE_SKILL)) {
-      if (!skval && IS_SET(spell_info[snum].flags, SKFLAG_NEEDTRAIN)) {
-        return -1;
-      } else {
-        roll = skval;
-        if (IS_SET(spell_info[snum].flags, SKFLAG_STRMOD))
-          roll += ability_mod_value(GET_STR(ch));
-        if (IS_SET(spell_info[snum].flags, SKFLAG_DEXMOD))
-          roll += dex_mod_capped(ch);
-        if (IS_SET(spell_info[snum].flags, SKFLAG_CONMOD))
-          roll += ability_mod_value(GET_CON(ch));
-        if (IS_SET(spell_info[snum].flags, SKFLAG_INTMOD))
-          roll += ability_mod_value(GET_INT(ch));
-        if (IS_SET(spell_info[snum].flags, SKFLAG_WISMOD))
-          roll += ability_mod_value(GET_WIS(ch));
-        if (IS_SET(spell_info[snum].flags, SKFLAG_CHAMOD))
-          roll += ability_mod_value(GET_CHA(ch));
-        if (IS_SET(spell_info[snum].flags, SKFLAG_ARMORALL))
-          roll -= GET_ARMORCHECKALL(ch);
-        else if (IS_SET(spell_info[snum].flags, SKFLAG_ARMORBAD))
-          roll -= GET_ARMORCHECK(ch);
-        return roll + rand_number(1, 20);
-      }
+    if (!skval && IS_SET(spell_info[snum].flags, SKFLAG_NEEDTRAIN)) {
+      return -1;
+    } else {
+      roll = skval;
+      if (IS_SET(spell_info[snum].flags, SKFLAG_STRMOD))
+        roll += ability_mod_value(GET_STR(ch));
+      if (IS_SET(spell_info[snum].flags, SKFLAG_DEXMOD))
+        roll += dex_mod_capped(ch);
+      if (IS_SET(spell_info[snum].flags, SKFLAG_CONMOD))
+        roll += ability_mod_value(GET_CON(ch));
+      if (IS_SET(spell_info[snum].flags, SKFLAG_INTMOD))
+        roll += ability_mod_value(GET_INT(ch));
+      if (IS_SET(spell_info[snum].flags, SKFLAG_WISMOD))
+        roll += ability_mod_value(GET_WIS(ch));
+      if (IS_SET(spell_info[snum].flags, SKFLAG_CHAMOD))
+        roll += ability_mod_value(GET_CHA(ch));
+      if (IS_SET(spell_info[snum].flags, SKFLAG_ARMORALL))
+        roll -= GET_ARMORCHECKALL(ch);
+      else if (IS_SET(spell_info[snum].flags, SKFLAG_ARMORBAD))
+        roll -= GET_ARMORCHECK(ch);
+      return roll + rand_number(1, 20);
+    }
   } else {
-      log("Trying to roll uncategorized skill/spell #%d for %s", snum, GET_NAME(ch));
-      return 0;
+    log("Trying to roll uncategorized skill/spell #%d for %s", snum,
+        GET_NAME(ch));
+    return 0;
   }
 }
 
-int roll_resisted(struct char_data *actor, int sact, struct char_data *resistor, int sres)
-{
+int roll_resisted(struct char_data *actor, int sact, struct char_data *resistor,
+                  int sres) {
   return roll_skill(actor, sact) >= roll_skill(resistor, sres);
 }

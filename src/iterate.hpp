@@ -1,16 +1,14 @@
 #pragma once
 
 #include "character_db.h"
+#include "dgscript_db.h"
+#include "guild_db.h"
 #include "object_db.h"
 #include "room_db.h"
-#include "zone_db.h"
 #include "shop_db.h"
-#include "guild_db.h"
-#include "dgscript_db.h"
+#include "zone_db.h"
 
-template <typename Func>
-inline void mob_proto_iterate(Func &&func)
-{
+template <typename Func> inline void mob_proto_iterate(Func &&func) {
   void *iterator = mob_proto_iterator_create();
   if (!iterator) {
     return;
@@ -29,17 +27,14 @@ inline void mob_proto_iterate(Func &&func)
   mob_proto_iterator_free(iterator);
 }
 
-inline void mob_proto_iterate(bool (*func)(struct mob_proto_data *mob))
-{
+inline void mob_proto_iterate(bool (*func)(struct mob_proto_data *mob)) {
   if (!func) {
     return;
   }
   mob_proto_iterate([&](struct mob_proto_data *mob) { return func(mob); });
 }
 
-template <typename Func>
-inline void obj_proto_iterate(Func &&func)
-{
+template <typename Func> inline void obj_proto_iterate(Func &&func) {
   void *iterator = obj_proto_iterator_create();
   if (!iterator) {
     return;
@@ -58,17 +53,14 @@ inline void obj_proto_iterate(Func &&func)
   obj_proto_iterator_free(iterator);
 }
 
-inline void obj_proto_iterate(bool (*func)(struct obj_proto_data *obj))
-{
+inline void obj_proto_iterate(bool (*func)(struct obj_proto_data *obj)) {
   if (!func) {
     return;
   }
   obj_proto_iterate([&](struct obj_proto_data *obj) { return func(obj); });
 }
 
-template <typename Func>
-inline void trig_proto_iterate(Func &&func)
-{
+template <typename Func> inline void trig_proto_iterate(Func &&func) {
   void *iterator = trig_proto_iterator_create();
   if (!iterator) {
     return;
@@ -87,17 +79,14 @@ inline void trig_proto_iterate(Func &&func)
   trig_proto_iterator_free(iterator);
 }
 
-inline void trig_proto_iterate(bool (*func)(struct trig_data *trig))
-{
+inline void trig_proto_iterate(bool (*func)(struct trig_data *trig)) {
   if (!func) {
     return;
   }
   trig_proto_iterate([&](struct trig_data *trig) { return func(trig); });
 }
 
-template <typename Func>
-inline void room_iterate(Func &&func)
-{
+template <typename Func> inline void room_iterate(Func &&func) {
   void *iterator = room_iterator_create();
   if (!iterator) {
     return;
@@ -116,17 +105,14 @@ inline void room_iterate(Func &&func)
   room_iterator_free(iterator);
 }
 
-inline void room_iterate(bool (*func)(struct room_data *room))
-{
+inline void room_iterate(bool (*func)(struct room_data *room)) {
   if (!func) {
     return;
   }
   room_iterate([&](struct room_data *room) { return func(room); });
 }
 
-template <typename Func>
-inline void zone_iterate(Func &&func)
-{
+template <typename Func> inline void zone_iterate(Func &&func) {
   void *iterator = zone_iterator_create();
   if (!iterator) {
     return;
@@ -145,17 +131,14 @@ inline void zone_iterate(Func &&func)
   zone_iterator_free(iterator);
 }
 
-inline void zone_iterate(bool (*func)(struct zone_data *zone))
-{
+inline void zone_iterate(bool (*func)(struct zone_data *zone)) {
   if (!func) {
     return;
   }
   zone_iterate([&](struct zone_data *zone) { return func(zone); });
 }
 
-template <typename Func>
-inline void shop_iterate(Func &&func)
-{
+template <typename Func> inline void shop_iterate(Func &&func) {
   void *iterator = shop_iterator_create();
   if (!iterator) {
     return;
@@ -174,17 +157,14 @@ inline void shop_iterate(Func &&func)
   shop_iterator_free(iterator);
 }
 
-inline void shop_iterate(bool (*func)(struct shop_data *shop))
-{
+inline void shop_iterate(bool (*func)(struct shop_data *shop)) {
   if (!func) {
     return;
   }
   shop_iterate([&](struct shop_data *shop) { return func(shop); });
 }
 
-template <typename Func>
-inline void guild_iterate(Func &&func)
-{
+template <typename Func> inline void guild_iterate(Func &&func) {
   void *iterator = guild_iterator_create();
   if (!iterator) {
     return;
@@ -203,8 +183,7 @@ inline void guild_iterate(Func &&func)
   guild_iterator_free(iterator);
 }
 
-inline void guild_iterate(bool (*func)(struct guild_data *guild))
-{
+inline void guild_iterate(bool (*func)(struct guild_data *guild)) {
   if (!func) {
     return;
   }

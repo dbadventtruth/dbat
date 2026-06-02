@@ -2,16 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 
-int flag_test(const bitvector_t bitvector[], int flag)
-{
+int flag_test(const bitvector_t bitvector[], int flag) {
   int array_pos = flag / 32;
   int bit_pos = flag % 32;
 
   return (bitvector[array_pos] & (1u << bit_pos)) != 0;
 }
 
-void flag_set(bitvector_t bitvector[], int flag, int value)
-{
+void flag_set(bitvector_t bitvector[], int flag, int value) {
   int array_pos = flag / 32;
   int bit_pos = flag % 32;
 
@@ -22,8 +20,7 @@ void flag_set(bitvector_t bitvector[], int flag, int value)
   }
 }
 
-int flag_toggle(bitvector_t bitvector[], int flag)
-{
+int flag_toggle(bitvector_t bitvector[], int flag) {
   int array_pos = flag / 32;
   int bit_pos = flag % 32;
 
@@ -31,8 +28,8 @@ int flag_toggle(bitvector_t bitvector[], int flag)
   return (bitvector[array_pos] & (1 << bit_pos)) != 0;
 }
 
-size_t sprintbit(bitvector_t bitvector, const char *names[], char *result, size_t reslen)
-{
+size_t sprintbit(bitvector_t bitvector, const char *names[], char *result,
+                 size_t reslen) {
   if (reslen == 0) {
     return 0;
   }
@@ -69,8 +66,7 @@ size_t sprintbit(bitvector_t bitvector, const char *names[], char *result, size_
   return len;
 }
 
-size_t sprinttype(int type, const char *names[], char *result, size_t reslen)
-{
+size_t sprinttype(int type, const char *names[], char *result, size_t reslen) {
   int nr = 0;
 
   while (type > 0 && *names[nr] != '\n') {
@@ -82,8 +78,8 @@ size_t sprinttype(int type, const char *names[], char *result, size_t reslen)
   return strlcpy(result, name, reslen);
 }
 
-size_t sprintbitarray(bitvector_t bitvector[], const char *names[], int maxar, char *result, size_t reslen)
-{
+size_t sprintbitarray(bitvector_t bitvector[], const char *names[], int maxar,
+                      char *result, size_t reslen) {
   if (reslen == 0) {
     return 0;
   }
@@ -125,12 +121,10 @@ size_t sprintbitarray(bitvector_t bitvector[], const char *names[], int maxar, c
   return len;
 }
 
-int get_flag_by_name(const char *flag_list[], char *flag_name) 
-{ 
-   int i=0; 
-   for (;flag_list[i] && *flag_list[i] && strcmp(flag_list[i], "\n") != 0; i++) 
-     if (!strcmp(flag_list[i], flag_name)) 
-       return (i); 
-   return (NOFLAG); 
+int get_flag_by_name(const char *flag_list[], char *flag_name) {
+  int i = 0;
+  for (; flag_list[i] && *flag_list[i] && strcmp(flag_list[i], "\n") != 0; i++)
+    if (!strcmp(flag_list[i], flag_name))
+      return (i);
+  return (NOFLAG);
 }
-

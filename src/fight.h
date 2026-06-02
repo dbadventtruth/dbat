@@ -1,6 +1,6 @@
 #pragma once
-#include "consts/types.h"
 #include "consts/maximums.h"
+#include "consts/types.h"
 #include "spells.h"
 
 #ifdef __cplusplus
@@ -14,14 +14,14 @@ extern struct attack_hit_type attack_hit_text[NUM_ATTACK_TYPES];
 // functions
 void death_cry(struct char_data *ch);
 int group_bonus(struct char_data *ch, int type);
-void die(struct char_data *ch, struct char_data * killer);
+void die(struct char_data *ch, struct char_data *killer);
 void remove_limb(struct char_data *vict, int num);
 void impact_sound(struct char_data *ch, char *mssg);
 void fight_stack(void);
 void appear(struct char_data *ch);
-void raw_kill(struct char_data *ch, struct char_data * killer);
-void	set_fighting(struct char_data *ch, struct char_data *victim);
-void	stop_fighting(struct char_data *ch);
+void raw_kill(struct char_data *ch, struct char_data *killer);
+void set_fighting(struct char_data *ch, struct char_data *victim);
+void stop_fighting(struct char_data *ch);
 void group_gain(struct char_data *ch, struct char_data *victim);
 void mutant_limb_regen(struct char_data *ch);
 
@@ -101,7 +101,6 @@ ACMD(do_kaioken);
 ACMD(do_escape);
 ACMD(do_balefire);
 ACMD(do_blessedhammer);
-
 
 #ifdef __cplusplus
 }

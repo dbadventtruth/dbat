@@ -1,20 +1,22 @@
 /**************************************************************************
-*  File: dg_event.c                                                       *
-*                                                                         *
-*  Usage: This file contains a simplified event system to allow           *
-*  DG Script triggers to use the "wait" command, causing a delay in the   *
-*  middle of a script.                                                    *
-*                                                                         *
-*  By: Mark A. Heilpern (Sammy @ eQuoria MUD   equoria.com:4000)          *
-*                                                                         *
-*  As of dg scripts pl 8 this includes the 'FULL' DG event package.       *                                                                       *
-*  This file includes the file queue.c, which handles the priority queues.*                                                                       *
-*  Thomas Arp - Welcor - 2002                                             *
-*                                                                         *
-*  $Author: Mark A. Heilpern/egreen/Welcor $                              *
-*  $Date: 2004/10/11 12:07:00$                                            *
-*  $Revision: 1.0.14 $                                                    *
-**************************************************************************/
+ *  File: dg_event.c                                                       *
+ *                                                                         *
+ *  Usage: This file contains a simplified event system to allow           *
+ *  DG Script triggers to use the "wait" command, causing a delay in the   *
+ *  middle of a script.                                                    *
+ *                                                                         *
+ *  By: Mark A. Heilpern (Sammy @ eQuoria MUD   equoria.com:4000)          *
+ *                                                                         *
+ *  As of dg scripts pl 8 this includes the 'FULL' DG event package.       *
+ *                                                                   * This file
+ * includes the file queue.c, which handles the priority queues.*
+ *                                                        * Thomas Arp - Welcor
+ * - 2002                                             *
+ *                                                                         *
+ *  $Author: Mark A. Heilpern/egreen/Welcor $                              *
+ *  $Date: 2004/10/11 12:07:00$                                            *
+ *  $Revision: 1.0.14 $                                                    *
+ **************************************************************************/
 /*
  * dg_event.c: This file contains a simplified event system to allow
  * DG Script triggers to use the "wait" command, causing a delay in the
@@ -28,25 +30,20 @@
  *
  */
 #include "dg_event.h"
-#include <limits.h>
 #include "comm.h"
 #include "log.h"
+#include <limits.h>
 
-static struct queue *event_q;          /* the event queue */
+static struct queue *event_q; /* the event queue */
 
 /* initializes the event queue */
-void event_init(void)
-{
-  event_q = queue_init();
-}
-
+void event_init(void) { event_q = queue_init(); }
 
 /*
 ** Add an event to the current list
 */
 /* creates an event and returns it */
-struct event *event_create(EVENTFUNC(*func), void *event_obj, long when)
-{
+struct event *event_create(EVENTFUNC(*func), void *event_obj, long when) {
   struct event *new_event;
 
   if (when < 1) /* make sure its in the future */
@@ -60,17 +57,16 @@ struct event *event_create(EVENTFUNC(*func), void *event_obj, long when)
   return new_event;
 }
 
-
 /* removes the event from the system */
-void event_cancel(struct event *event)
-{
+void event_cancel(struct event *event) {
   if (!event) {
     log("SYSERR:  Attempted to cancel a NULL event");
     return;
-    }
+  }
 
   if (!event->q_el) {
-    log("SYSERR:  Attempted to cancel a non-NULL unqueued event, freeing anyway");
+    log("SYSERR:  Attempted to cancel a non-NULL unqueued event, freeing "
+        "anyway");
   } else
     queue_deq(event_q, event->q_el);
 
@@ -79,15 +75,13 @@ void event_cancel(struct event *event)
   free(event);
 }
 
-
 /* Process any events whose time has come. */
-void event_process(void)
-{
+void event_process(void) {
   struct event *the_event;
   long new_time;
 
-  while ((long) pulse >= queue_key(event_q)) {
-    if (!(the_event = (struct event *) queue_head(event_q))) {
+  while ((long)pulse >= queue_key(event_q)) {
+    if (!(the_event = (struct event *)queue_head(event_q))) {
       log("SYSERR: Attempt to get a NULL event");
       return;
     }
@@ -107,10 +101,8 @@ void event_process(void)
   }
 }
 
-
 /* returns the time remaining before the event */
-long event_time(struct event *event)
-{
+long event_time(struct event *event) {
   long when;
 
   when = queue_elmt_key(event->q_el);
@@ -118,10 +110,8 @@ long event_time(struct event *event)
   return (when - pulse);
 }
 
-
 /* frees all events in the queue */
-void event_free_all(void)
-{
+void event_free_all(void) {
   if (!event_q)
     return;
 
@@ -130,24 +120,22 @@ void event_free_all(void)
 }
 
 /* boolean function to tell whether an event is queued or not */
-int event_is_queued(struct event *event)
-{
-   if (event->q_el)
-     return 1;
-   else
-     return 0;
+int event_is_queued(struct event *event) {
+  if (event->q_el)
+    return 1;
+  else
+    return 0;
 }
 
 /* ************************************************************************
-*  File: queue.c                                                          *
-*                                                                         *
-*  Usage: generic queue functions for building and using a priority queue *
-*                                                                         *
-************************************************************************ */
+ *  File: queue.c                                                          *
+ *                                                                         *
+ *  Usage: generic queue functions for building and using a priority queue *
+ *                                                                         *
+ ************************************************************************ */
 
 /* returns a new, initialized queue */
-struct queue *queue_init(void)
-{
+struct queue *queue_init(void) {
   struct queue *q;
 
   CREATE(q, struct queue, 1);
@@ -155,10 +143,8 @@ struct queue *queue_init(void)
   return q;
 }
 
-
 /* add data into the priority queue q with key */
-struct q_element *queue_enq(struct queue *q, void *data, long key)
-{
+struct q_element *queue_enq(struct queue *q, void *data, long key) {
   struct q_element *qe, *i;
   int bucket;
 
@@ -166,7 +152,7 @@ struct q_element *queue_enq(struct queue *q, void *data, long key)
   qe->data = data;
   qe->key = key;
 
-  bucket = key % NUM_EVENT_QUEUES;   /* which queue does this go in */
+  bucket = key % NUM_EVENT_QUEUES; /* which queue does this go in */
 
   if (!q->head[bucket]) { /* queue is empty */
     q->head[bucket] = qe;
@@ -177,16 +163,16 @@ struct q_element *queue_enq(struct queue *q, void *data, long key)
     for (i = q->tail[bucket]; i; i = i->prev) {
 
       if (i->key < key) { /* found insertion point */
-	if (i == q->tail[bucket])
-	  q->tail[bucket] = qe;
-	else {
-	  qe->next = i->next;
-	  i->next->prev = qe;
-	}
+        if (i == q->tail[bucket])
+          q->tail[bucket] = qe;
+        else {
+          qe->next = i->next;
+          i->next->prev = qe;
+        }
 
-	qe->prev = i;
-	i->next = qe;
-	break;
+        qe->prev = i;
+        i->next = qe;
+        break;
       }
     }
 
@@ -200,10 +186,8 @@ struct q_element *queue_enq(struct queue *q, void *data, long key)
   return qe;
 }
 
-
 /* remove queue element qe from the priority queue q */
-void queue_deq(struct queue *q, struct q_element *qe)
-{
+void queue_deq(struct queue *q, struct q_element *qe) {
   int i;
 
   i = qe->key % NUM_EVENT_QUEUES;
@@ -221,13 +205,11 @@ void queue_deq(struct queue *q, struct q_element *qe)
   free(qe);
 }
 
-
 /*
  * removes and returns the data of the
  * first element of the priority queue q
  */
-void *queue_head(struct queue *q)
-{
+void *queue_head(struct queue *q) {
   void *dg_data;
   int i;
 
@@ -241,13 +223,11 @@ void *queue_head(struct queue *q)
   return dg_data;
 }
 
-
 /*
  * returns the key of the head element of the priority queue
  * if q is NULL, then return the largest unsigned number
  */
-long queue_key(struct queue *q)
-{
+long queue_key(struct queue *q) {
   int i;
 
   i = pulse % NUM_EVENT_QUEUES;
@@ -258,17 +238,11 @@ long queue_key(struct queue *q)
     return LONG_MAX;
 }
 
-
 /* returns the key of queue element qe */
-long queue_elmt_key(struct q_element *qe)
-{
-  return qe->key;
-}
-
+long queue_elmt_key(struct q_element *qe) { return qe->key; }
 
 /* free q and contents */
-void queue_free(struct queue *q)
-{
+void queue_free(struct queue *q) {
   int i;
   struct q_element *qe, *next_qe;
   struct event *event;
@@ -276,10 +250,10 @@ void queue_free(struct queue *q)
   for (i = 0; i < NUM_EVENT_QUEUES; i++)
     for (qe = q->head[i]; qe; qe = next_qe) {
       next_qe = qe->next;
-      if ((event = (struct event *) qe->data) != NULL) {
-       if (event->event_obj)
-         free(event->event_obj);
-       free(event);
+      if ((event = (struct event *)qe->data) != NULL) {
+        if (event->event_obj)
+          free(event->event_obj);
+        free(event);
       }
       free(qe);
     }

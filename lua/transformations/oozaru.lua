@@ -3,6 +3,9 @@ local transform = require("lua.transform_condition")
 return transform.transformation({
     id = "oozaru",
     name = "@ROozaru@n",
+    alias = { "ape", "great ape" },
+    races = { 1, 7 },
+    sort_order = 10,
     family = "oozaru",
     tier = 1,
     bonus = 10000,

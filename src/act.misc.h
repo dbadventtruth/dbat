@@ -56,7 +56,6 @@ ACMD(do_spiritcontrol);
 ACMD(do_ashcloud);
 ACMD(do_silk);
 
-
 #ifdef __cplusplus
 }
 #endif

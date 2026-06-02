@@ -1,14 +1,14 @@
 #pragma once
-#include "consts/types.h"
 #include "consts/maximums.h"
 #include "consts/senseis.h"
+#include "consts/types.h"
 #include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern const char *config_sect[NUM_CONFIG_SECTIONS+1];
+extern const char *config_sect[NUM_CONFIG_SECTIONS + 1];
 extern const int class_hit_die_size[NUM_CLASSES];
 
 // functions
@@ -24,7 +24,6 @@ int highest_skill_value(int level, int type);
 int calc_penalty_exp(struct char_data *ch, int gain);
 time_t birth_age(struct char_data *ch);
 time_t max_age(struct char_data *ch);
-
 
 #ifdef __cplusplus
 }

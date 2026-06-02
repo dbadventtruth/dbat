@@ -6,6 +6,18 @@ local function call_or_value(value, ch, def)
 end
 
 local function available(def, ch)
+    if def.races ~= nil then
+        local race = ch:race_get()
+        local allowed = false
+        for _, race_id in ipairs(def.races) do
+            if race == race_id then
+                allowed = true
+                break
+            end
+        end
+        if not allowed then return false end
+    end
+
     local result = call_or_value(def.available, ch, def)
     if result == nil then return true end
     return result and true or false

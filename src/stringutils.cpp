@@ -1,13 +1,12 @@
 #include "stringutils.h"
 
+#include "consts/maximums.h"
 #include "log.h"
 #include "util_macros.h"
-#include "consts/maximums.h"
 
 #include <cstdio>
 
-int levenshtein_distance(char *s1, char *s2)
-{
+int levenshtein_distance(char *s1, char *s2) {
   int s1_len = strlen(s1), s2_len = strlen(s2);
   int **d, i, j;
 
@@ -21,8 +20,9 @@ int levenshtein_distance(char *s1, char *s2)
     d[0][j] = j;
   for (i = 1; i <= s1_len; i++)
     for (j = 1; j <= s2_len; j++)
-      d[i][j] = MIN(d[i - 1][j] + 1, MIN(d[i][j - 1] + 1,
-      d[i - 1][j - 1] + ((s1[i - 1] == s2[j - 1]) ? 0 : 1)));
+      d[i][j] = MIN(d[i - 1][j] + 1,
+                    MIN(d[i][j - 1] + 1,
+                        d[i - 1][j - 1] + ((s1[i - 1] == s2[j - 1]) ? 0 : 1)));
 
   i = d[s1_len][s2_len];
 
@@ -33,15 +33,14 @@ int levenshtein_distance(char *s1, char *s2)
   return i;
 }
 
-int count_color_chars(char *string)
-{
+int count_color_chars(char *string) {
   int i, len;
   int num = 0;
 
-        if (!string || !*string)
-                return 0;
+  if (!string || !*string)
+    return 0;
 
-        len = strlen(string);
+  len = strlen(string);
   for (i = 0; i < len; i++) {
     while (string[i] == '@') {
       if (string[i + 1] == '@') {
@@ -58,95 +57,89 @@ int count_color_chars(char *string)
 }
 
 /* Trims leading and trailing spaces from string */
-void trim(char *s)
-{
-	// Trim spaces and tabs from beginning:
-	int i=0,j;
-	while((s[i]==' ')||(s[i]=='\t')) {
-		i++;
-	}
-	if(i>0) {
-		for(j=0;j<strlen(s);j++) {
-			s[j]=s[j+i];
-		}
-	s[j]='\0';
-	}
+void trim(char *s) {
+  // Trim spaces and tabs from beginning:
+  int i = 0, j;
+  while ((s[i] == ' ') || (s[i] == '\t')) {
+    i++;
+  }
+  if (i > 0) {
+    for (j = 0; j < strlen(s); j++) {
+      s[j] = s[j + i];
+    }
+    s[j] = '\0';
+  }
 
-	// Trim spaces and tabs from end:
-	i=strlen(s)-1;
-	while((s[i]==' ')||(s[i]=='\t')) {
-		i--;
-	}
-	if(i<(strlen(s)-1)) {
-		s[i+1]='\0';
-	}
+  // Trim spaces and tabs from end:
+  i = strlen(s) - 1;
+  while ((s[i] == ' ') || (s[i] == '\t')) {
+    i--;
+  }
+  if (i < (strlen(s) - 1)) {
+    s[i + 1] = '\0';
+  }
 }
 
-
 /* Turns number into string and adds commas to it. */
-char *add_commas(int64_t num)
-{ 
-  #define DIGITS_PER_GROUP      3 
-  #define BUFFER_COUNT         19 
-  #define DIGITS_PER_BUFFER    25 
+char *add_commas(int64_t num) {
+#define DIGITS_PER_GROUP 3
+#define BUFFER_COUNT 19
+#define DIGITS_PER_BUFFER 25
 
   int64_t i, j, len, negative = (num < 0);
-  char num_string[DIGITS_PER_BUFFER]; 
-  static char comma_string[BUFFER_COUNT][DIGITS_PER_BUFFER]; 
+  char num_string[DIGITS_PER_BUFFER];
+  static char comma_string[BUFFER_COUNT][DIGITS_PER_BUFFER];
   static int64_t which = 0;
 
   sprintf(num_string, "%" I64T "", num);
-  len = strlen(num_string); 
+  len = strlen(num_string);
 
-  for (i = j = 0; num_string[i]; ++i) { 
-    if ((len - i) % DIGITS_PER_GROUP == 0 && i && i - negative) 
-      comma_string[which][j++] = ','; 
-    comma_string[which][j++] = num_string[i]; 
-  } 
-  comma_string[which][j] = '\0'; 
+  for (i = j = 0; num_string[i]; ++i) {
+    if ((len - i) % DIGITS_PER_GROUP == 0 && i && i - negative)
+      comma_string[which][j++] = ',';
+    comma_string[which][j++] = num_string[i];
+  }
+  comma_string[which][j] = '\0';
 
-  i = which; 
-  which = (which + 1) % BUFFER_COUNT; 
+  i = which;
+  which = (which + 1) % BUFFER_COUNT;
 
-  return comma_string[i]; 
+  return comma_string[i];
 
-  #undef DIGITS_PER_GROUP 
-  #undef BUFFER_COUNT 
-  #undef DIGITS_PER_BUFFER 
+#undef DIGITS_PER_GROUP
+#undef BUFFER_COUNT
+#undef DIGITS_PER_BUFFER
 }
 
-char *CAP(char *txt)
-{
+char *CAP(char *txt) {
   int i;
-  for (i = 0; txt[i] != '\0' && (txt[i] == '@' && IS_COLOR_CHAR(txt[i + 1])); i += 2);
+  for (i = 0; txt[i] != '\0' && (txt[i] == '@' && IS_COLOR_CHAR(txt[i + 1]));
+       i += 2)
+    ;
 
   txt[i] = UPPER(txt[i]);
   return (txt);
 }
 
-char *strlwr(char *s) 
-{ 
-   if (s != NULL) 
-   { 
-      char *p; 
+char *strlwr(char *s) {
+  if (s != NULL) {
+    char *p;
 
-      for (p = s; *p; ++p) 
-         *p = LOWER(*p); 
-   } 
-   return s; 
+    for (p = s; *p; ++p)
+      *p = LOWER(*p);
+  }
+  return s;
 }
 
 /* Strips \r\n from end of string.  */
-void prune_crlf(char *txt)
-{
+void prune_crlf(char *txt) {
   int i = strlen(txt) - 1;
 
   while (txt[i] == '\n' || txt[i] == '\r')
     txt[i--] = '\0';
 }
 
-char *one_argument(char *argument, char *first_arg)
-{
+char *one_argument(char *argument, char *first_arg) {
   char *begin = first_arg;
 
   if (!argument) {
@@ -169,39 +162,35 @@ char *one_argument(char *argument, char *first_arg)
   return (argument);
 }
 
-
 /*
  * one_word is like any_one_arg, except that words in quotes ("") are
  * considered one word.
  *
  * No longer ignores fill words.  -dak, 6 Jan 2003.
  */
-char *one_word(char *argument, char *first_arg)
-{
-    skip_spaces(&argument);
+char *one_word(char *argument, char *first_arg) {
+  skip_spaces(&argument);
 
-    if (*argument == '\"') {
+  if (*argument == '\"') {
+    argument++;
+    while (*argument && *argument != '\"') {
+      *(first_arg++) = LOWER(*argument);
       argument++;
-      while (*argument && *argument != '\"') {
-        *(first_arg++) = LOWER(*argument);
-        argument++;
-      }
-      argument++;
-    } else {
-      while (*argument && !isspace(*argument)) {
-        *(first_arg++) = LOWER(*argument);
-        argument++;
-      }
     }
+    argument++;
+  } else {
+    while (*argument && !isspace(*argument)) {
+      *(first_arg++) = LOWER(*argument);
+      argument++;
+    }
+  }
 
-    *first_arg = '\0';
+  *first_arg = '\0';
   return (argument);
 }
 
-
 /* same as one_argument except that it doesn't ignore fill words */
-char *any_one_arg(char *argument, char *first_arg)
-{
+char *any_one_arg(char *argument, char *first_arg) {
   skip_spaces(&argument);
 
   while (*argument && !isspace(*argument)) {
@@ -218,22 +207,23 @@ char *any_one_arg(char *argument, char *first_arg)
  * Same as one_argument except that it takes two args and returns the rest;
  * ignores fill words
  */
-char *two_arguments(char *argument, char *first_arg, char *second_arg)
-{
-  return (one_argument(one_argument(argument, first_arg), second_arg)); /* :-) */
+char *two_arguments(char *argument, char *first_arg, char *second_arg) {
+  return (
+      one_argument(one_argument(argument, first_arg), second_arg)); /* :-) */
 }
 
 /*
  * Same as two_arguments only, well you get the idea... - Iovan
  *
  */
-char *three_arguments(char *argument, char *first_arg, char *second_arg, char *third_arg)
-{
- return (one_argument(one_argument(one_argument(argument, first_arg), second_arg), third_arg)); /* >.> */
+char *three_arguments(char *argument, char *first_arg, char *second_arg,
+                      char *third_arg) {
+  return (
+      one_argument(one_argument(one_argument(argument, first_arg), second_arg),
+                   third_arg)); /* >.> */
 }
 
-int is_abbrev(const char *arg1, const char *arg2)
-{
+int is_abbrev(const char *arg1, const char *arg2) {
   if (!*arg1)
     return (0);
 
@@ -252,19 +242,18 @@ int is_abbrev(const char *arg1, const char *arg2)
  *
  * NOTE: Requires sizeof(arg2) >= sizeof(string)
  */
-void half_chop(char *string, char *arg1, char *arg2)
-{
+void half_chop(char *string, char *arg1, char *arg2) {
   char *temp;
 
   temp = any_one_arg(string, arg1);
   skip_spaces(&temp);
   if (arg2 != temp)
-  strcpy(arg2, temp);	/* strcpy: OK (documentation) */
+    strcpy(arg2, temp); /* strcpy: OK (documentation) */
 }
 
-void skip_spaces(char **string)
-{
-  for (; **string && isspace(**string); (*string)++);
+void skip_spaces(char **string) {
+  for (; **string && isspace(**string); (*string)++)
+    ;
 }
 
 /*
@@ -278,8 +267,7 @@ void skip_spaces(char **string)
  *
  * Modifies the string in-place.
  */
-char *delete_doubledollar(char *string)
-{
+char *delete_doubledollar(char *string) {
   char *ddread, *ddwrite;
 
   /* If the string has no dollar signs, return immediately */
@@ -289,11 +277,10 @@ char *delete_doubledollar(char *string)
   /* Start from the location of the first dollar sign */
   ddread = ddwrite;
 
-
-  while (*ddread)   /* Until we reach the end of the string... */
+  while (*ddread) /* Until we reach the end of the string... */
     if ((*(ddwrite++) = *(ddread++)) == '$') /* copy one char */
       if (*ddread == '$')
-	ddread++; /* skip if we saw 2 $'s in a row */
+        ddread++; /* skip if we saw 2 $'s in a row */
 
   *ddwrite = '\0';
 
@@ -306,8 +293,7 @@ char *delete_doubledollar(char *string)
  * it to be returned.  Returns -1 if not found; 0..n otherwise.  Array
  * must be terminated with a '\n' so it knows to stop searching.
  */
-int search_block(char *arg, const char **list, int exact)
-{
+int search_block(char *arg, const char **list, int exact) {
   int i, l;
 
   /*  We used to have \r as the first character on certain array items to
@@ -326,21 +312,20 @@ int search_block(char *arg, const char **list, int exact)
   if (exact) {
     for (i = 0; **(list + i) != '\n'; i++)
       if (!strcmp(arg, *(list + i)))
-	return (i);
+        return (i);
   } else {
     if (!l)
-      l = 1;			/* Avoid "" to match the first available
-				 * string */
+      l = 1; /* Avoid "" to match the first available
+              * string */
     for (i = 0; **(list + i) != '\n'; i++)
       if (!strncmp(arg, *(list + i), l))
-	return (i);
+        return (i);
   }
 
   return (-1);
 }
 
-int is_number(const char *str)
-{
+int is_number(const char *str) {
   while (*str)
     if (!isdigit(*(str++)))
       return (0);
@@ -348,46 +333,21 @@ int is_number(const char *str)
   return (1);
 }
 
-const char *fill[] =
-{
-  "in",
-  "into",
-  "from",
-  "with",
-  "the",
-  "on",
-  "at",
-  "to",
-  "\n"
-};
+const char *fill[] = {"in", "into", "from", "with", "the",
+                      "on", "at",   "to",   "\n"};
 
-int fill_word(char *argument)
-{
+int fill_word(char *argument) {
   return (search_block(argument, fill, TRUE) >= 0);
 }
 
+const char *reserved[] = {"a",    "an",      "self",      "me", "all",
+                          "room", "someone", "something", "\n"};
 
-const char *reserved[] =
-{
-  "a",
-  "an",
-  "self",
-  "me",
-  "all",
-  "room",
-  "someone",
-  "something",
-  "\n"
-};
-
-
-int reserved_word(char *argument)
-{
+int reserved_word(char *argument) {
   return (search_block(argument, reserved, TRUE) >= 0);
 }
 
-char *fname(const char *namelist)
-{
+char *fname(const char *namelist) {
   static char holder[READ_SIZE];
   char *point;
 

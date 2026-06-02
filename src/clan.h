@@ -20,11 +20,11 @@ extern "C" {
 // interested in what will happen...
 //
 // If this isn't your cup of tea, Clans can easily act as a fairly decent
-// method for implementing clans. And, unlike most clan code out there, any given
-// player can belong to any number of clans. If you decide to use our clan
+// method for implementing clans. And, unlike most clan code out there, any
+// given player can belong to any number of clans. If you decide to use our clan
 // code, please make note of it in your helpfile(s) relating to clans. Simply
-// noting that this was orionally written by Alister of Aeonian Dreams would work
-// splendid.
+// noting that this was orionally written by Alister of Aeonian Dreams would
+// work splendid.
 //
 //  - Alister
 //
@@ -33,19 +33,17 @@ extern "C" {
 //
 //********************************************************************************
 
-#define LVL_CLAN_MOD            32
-#define DEFAULT_OPEN_JOIN          FALSE
-#define DEFAULT_OPEN_LEAVE         FALSE
-#define DEFAULT_CLAN_INFO       "little is known about this clan, currently."
-#define LIB_CLAN                LIB_ETC"clan/"
-#define CLAN_LIST               LIB_CLAN"clans.cla"
-
+#define LVL_CLAN_MOD 32
+#define DEFAULT_OPEN_JOIN FALSE
+#define DEFAULT_OPEN_LEAVE FALSE
+#define DEFAULT_CLAN_INFO "little is known about this clan, currently."
+#define LIB_CLAN LIB_ETC "clan/"
+#define CLAN_LIST LIB_CLAN "clans.cla"
 
 //
 // Boot up all the clans we have
 //
 void clanBoot();
-
 
 //
 // Reload a clan from disk
@@ -53,14 +51,12 @@ void clanBoot();
 //
 bool clanReload(const char *name);
 
-
 //
 // create a new clan with the given name, and default info
 // return false if a clan already has that name
 // returns true if the clan is created
 //
 bool clanCreate(const char *name);
-
 
 //
 // Write a clan's info.
@@ -75,13 +71,11 @@ void clan_update(void);
 //
 void clanDestroy(const char *name);
 
-
 //
 // Returns true if a clan with the given name has formed
 // returns false otherwise
 //
 bool isClan(const char *name);
-
 
 //
 // Sets a character as applying to become a member of the
@@ -93,7 +87,6 @@ bool isClan(const char *name);
 //
 bool clanApply(const char *name, struct char_data *ch);
 
-
 //
 // add a person to a clan.
 // returns false if the person is an NPC or does not exist
@@ -101,14 +94,16 @@ bool clanApply(const char *name, struct char_data *ch);
 //
 bool clanInduct(const char *name, struct char_data *ch);
 
-
 //
 // These handle clan ranks
 //
 
-bool clanHIGHRANK(const char *name, const struct char_data *ch, const char *rank);
-bool clanMIDRANK(const char *name, const struct char_data *ch, const char *rank);
-bool clanRANK(const char *name, const struct char_data *ch, struct char_data *vict, int num);
+bool clanHIGHRANK(const char *name, const struct char_data *ch,
+                  const char *rank);
+bool clanMIDRANK(const char *name, const struct char_data *ch,
+                 const char *rank);
+bool clanRANK(const char *name, const struct char_data *ch,
+              struct char_data *vict, int num);
 bool clanRANKD(const char *name, struct char_data *ch, struct char_data *vict);
 
 //
@@ -125,18 +120,15 @@ bool clanBSET(const char *name, struct char_data *ch);
 //
 bool clanMakeModerator(const char *name, struct char_data *ch);
 
-
 //
 // Expels a character from the clan.
 //
 void clanExpel(const char *name, struct char_data *ch);
 
-
 //
 // Decline a character's application to the clan.
 //
 void clanDecline(const char *name, const struct char_data *ch);
-
 
 //
 // returns true if the character is a member of the clan
@@ -155,13 +147,11 @@ void handle_clan_member_list(struct char_data *ch);
 //
 bool clanIsModerator(const char *name, const struct char_data *ch);
 
-
 //
 // returns true if the character is applying for the given
 // clan. returns false otherwise, or if the char is an NPC
 //
 bool clanIsApplicant(const char *name, const struct char_data *ch);
-
 
 //
 // returns true if anyone can join the clan
@@ -169,13 +159,11 @@ bool clanIsApplicant(const char *name, const struct char_data *ch);
 //
 bool clanOpenJoin(const char *name);
 
-
 //
 // return strue if anyone can feely leave the clan
 // return false if people need to be expelled by a moderator
 //
 bool clanOpenLeave(const char *name);
-
 
 //
 // Sets open_join to true or false
@@ -183,19 +171,16 @@ bool clanOpenLeave(const char *name);
 //
 bool clanSetOpenJoin(const char *name, const int val);
 
-
 //
 // Sets open_leave to true or false
 // returns true if successful and false otherwise
 //
 bool clanSetOpenLeave(const char *name, const int val);
 
-
 //
 // list all info for the given clan to a character
 //
 void listClanInfo(const char *name, struct char_data *ch);
-
 
 //
 // send a list of all clans to the character
@@ -204,23 +189,20 @@ void listClans(struct char_data *ch);
 int checkCLAN(struct char_data *ch);
 void checkAPP(struct char_data *ch);
 
-
 //
 // send a list of the ranks of a clan NOT FINISHED
 //
-//void listClanRanks(struct char_data *ch);
+// void listClanRanks(struct char_data *ch);
 
 //
 // number of clans
 //
 extern int num_clans;
 
-
 //
 // List all of the clans vict belongs to, to char
 //
 void listClansOfVictToChar(const struct char_data *vict, struct char_data *ch);
-
 
 #ifdef __cplusplus
 }

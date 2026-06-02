@@ -6,11 +6,11 @@ extern "C" {
 #endif
 
 // defines
-#define MAX_PORTAL_TYPES        6
+#define MAX_PORTAL_TYPES 6
 /* For show_obj_to_char 'mode'.	/-- arbitrary */
-#define SHOW_OBJ_LONG		0
-#define SHOW_OBJ_SHORT		1
-#define SHOW_OBJ_ACTION		2
+#define SHOW_OBJ_LONG 0
+#define SHOW_OBJ_SHORT 1
+#define SHOW_OBJ_ACTION 2
 
 #define HIST_LENGTH 100
 
@@ -25,10 +25,10 @@ void sort_commands(void);
 char *find_exdesc(char *word, struct extra_descr_data *list);
 void add_history(struct char_data *ch, char *str, int type);
 void introWrite(struct char_data *ch, struct char_data *vict, char *name);
-void look_at_room(struct room_data *target_room, struct char_data *ch, int ignore_brief);
+void look_at_room(struct room_data *target_room, struct char_data *ch,
+                  int ignore_brief);
 int perf_skill(int skill);
 int search_help(const char *argument, int level);
-
 
 // commands
 ACMD(do_look);
@@ -74,7 +74,6 @@ ACMD(do_intro);
 ACMD(do_scan);
 ACMD(do_toplist);
 ACMD(do_whois);
-
 
 #ifdef __cplusplus
 }

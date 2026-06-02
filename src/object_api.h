@@ -14,7 +14,7 @@ obj_vnum obj_proto_id_get(struct obj_data *obj);
 void obj_proto_id_set(struct obj_data *obj, obj_vnum vnum);
 obj_vnum obj_vnum_get(struct obj_data *obj);
 void obj_vnum_set(struct obj_data *obj, obj_vnum vnum);
-struct room_data* obj_room_get(struct obj_data *obj);
+struct room_data *obj_room_get(struct obj_data *obj);
 room_vnum obj_room_vnum_get(struct obj_data *obj);
 void obj_room_vnum_set(struct obj_data *obj, room_vnum vnum);
 room_vnum obj_room_loaded_get(struct obj_data *obj);
@@ -36,8 +36,10 @@ bool obj_aff_flagged(struct obj_data *obj, int pos);
 bool obj_aff_flag_toggle(struct obj_data *obj, int pos);
 void obj_aff_flag_set(struct obj_data *obj, int pos, bool value);
 int64_t obj_weight_get(struct obj_data *obj);
-int64_t obj_weight_get_contained(struct obj_data *obj); // weight of contained objects only
-int64_t obj_weight_get_total(struct obj_data *obj); // this includes the weight of contained objects
+int64_t obj_weight_get_contained(
+    struct obj_data *obj); // weight of contained objects only
+int64_t obj_weight_get_total(
+    struct obj_data *obj); // this includes the weight of contained objects
 int64_t obj_weight_mod(struct obj_data *obj, int64_t delta);
 void obj_weight_set(struct obj_data *obj, int64_t weight);
 int obj_cost_get(struct obj_data *obj);
@@ -49,13 +51,13 @@ void obj_timer_set(struct obj_data *obj, int timer);
 int obj_size_get(struct obj_data *obj);
 void obj_size_set(struct obj_data *obj, int size);
 // Not sure how to handle affected array yet...
-const char* obj_name_get(struct obj_data *obj);
+const char *obj_name_get(struct obj_data *obj);
 void obj_name_set(struct obj_data *obj, const char *value);
-const char* obj_description_get(struct obj_data *obj);
+const char *obj_description_get(struct obj_data *obj);
 void obj_description_set(struct obj_data *obj, const char *value);
-const char* obj_short_description_get(struct obj_data *obj);
+const char *obj_short_description_get(struct obj_data *obj);
 void obj_short_description_set(struct obj_data *obj, const char *value);
-const char* obj_action_description_get(struct obj_data *obj);
+const char *obj_action_description_get(struct obj_data *obj);
 void obj_action_description_set(struct obj_data *obj, const char *value);
 int64_t obj_carried_by_get(struct obj_data *obj);
 void obj_carried_by_set(struct obj_data *obj, struct char_data *ch);
@@ -73,15 +75,19 @@ size_t obj_inventory_count(struct obj_data *obj, bool recursive);
 bool obj_search_vnum_match(struct obj_data *obj, void *ctx);
 bool obj_search_type_match(struct obj_data *obj, void *ctx);
 
-void obj_contents_list_iterate(struct obj_data *obj, bool recursive, obj_iter_fn func, void *ctx);
-void obj_inventory_iterate(struct obj_data *obj, bool recursive, obj_iter_fn func, void *ctx);
+void obj_contents_list_iterate(struct obj_data *obj, bool recursive,
+                               obj_iter_fn func, void *ctx);
+void obj_inventory_iterate(struct obj_data *obj, bool recursive,
+                           obj_iter_fn func, void *ctx);
 
-
-struct obj_data* obj_contents_search_vnum(struct obj_data *obj, obj_vnum vnum, bool recursive, int flags);
-struct obj_data* obj_contents_search_type(struct obj_data *obj, int type, bool recursive, int flags);
-struct obj_data* obj_inventory_search_vnum(struct obj_data *obj, obj_vnum vnum, bool recursive, int flags);
-struct obj_data* obj_inventory_search_type(struct obj_data *obj, int type, bool recursive, int flags);
-
+struct obj_data *obj_contents_search_vnum(struct obj_data *obj, obj_vnum vnum,
+                                          bool recursive, int flags);
+struct obj_data *obj_contents_search_type(struct obj_data *obj, int type,
+                                          bool recursive, int flags);
+struct obj_data *obj_inventory_search_vnum(struct obj_data *obj, obj_vnum vnum,
+                                           bool recursive, int flags);
+struct obj_data *obj_inventory_search_type(struct obj_data *obj, int type,
+                                           bool recursive, int flags);
 
 #ifdef __cplusplus
 }

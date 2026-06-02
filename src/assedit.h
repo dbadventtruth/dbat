@@ -15,7 +15,6 @@ void assedit_parse(struct descriptor_data *d, char *arg);
 
 ACMD(do_assedit);
 
-
 #ifdef __cplusplus
 }
 #endif

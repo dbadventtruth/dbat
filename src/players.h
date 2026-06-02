@@ -6,7 +6,6 @@ extern "C" {
 
 void remove_player(int pfilepos);
 
-
 #ifdef __cplusplus
 }
 #endif

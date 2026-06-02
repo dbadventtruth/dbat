@@ -27,19 +27,19 @@ struct board_memory {
 };
 
 struct board_info {
-   int	read_lvl;	/* min level to read messages on this board */
-   int	write_lvl;	/* min level to write messages on this board */
-   int	remove_lvl;	/* min level to remove messages from this board */
-  int  num_messages;           /* num messages of this board */
-  int  vnum;
+  int read_lvl;     /* min level to read messages on this board */
+  int write_lvl;    /* min level to write messages on this board */
+  int remove_lvl;   /* min level to remove messages from this board */
+  int num_messages; /* num messages of this board */
+  int vnum;
   struct board_info *next;
   struct board_msg *messages;
-  int  version;
-  
+  int version;
+
   /* why 301? why not?  It might not be the greatest, but if you really
      know what a hash is, you'll realize that in this case, I didn't even
      work on the algorithm, so it shouldn't make a bit of difference */
-  
+
   struct board_memory *memory[301];
 };
 

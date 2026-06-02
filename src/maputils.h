@@ -1,26 +1,24 @@
 #pragma once
 #include "consts/types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MAP_ROWS	199
-#define MAP_COLS	199
+#define MAP_ROWS 199
+#define MAP_COLS 199
 
 struct mapstruct {
   int x;
   int y;
 };
-typedef struct mapstruct MapStruct;  
+typedef struct mapstruct MapStruct;
 
 MapStruct findcoord(struct room_data *room);
-void printmap(struct room_data *room, struct char_data * ch, int type, int vnum);
+void printmap(struct room_data *room, struct char_data *ch, int type, int vnum);
 void ping_ship(int vnum, int vnum2);
 
-extern room_vnum mapnums[MAP_ROWS+1][MAP_COLS+1];
-
+extern room_vnum mapnums[MAP_ROWS + 1][MAP_COLS + 1];
 
 #ifdef __cplusplus
 }

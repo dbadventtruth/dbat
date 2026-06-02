@@ -19,7 +19,6 @@ ACMD(do_action);
 ACMD(do_insult);
 ACMD(do_gmote);
 
-
 #ifdef __cplusplus
 }
 #endif

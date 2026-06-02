@@ -7,7 +7,6 @@ extern "C" {
 
 void free_context_help(void);
 
-
 #ifdef __cplusplus
 }
 #endif

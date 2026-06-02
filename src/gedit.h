@@ -17,7 +17,6 @@ void free_guild_strings(struct guild_data *guild);
 void free_guild(struct guild_data *guild);
 void gedit_modify_string(char **str, char *new_g);
 
-
 #ifdef __cplusplus
 }
 #endif

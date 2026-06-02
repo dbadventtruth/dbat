@@ -1,23 +1,23 @@
 /* ************************************************************************
-* 	!PLEASE NOTE! With the introduction of CEDIT you should control   *
-*	most of these entries from WITHIN THE GAME VIA CEDIT              *
-* 	the values are load from the file lib/etc/config		  *
-*	Please check there before making changes to the file.		  *
-************************************************************************ */
+ * 	!PLEASE NOTE! With the introduction of CEDIT you should control   *
+ *	most of these entries from WITHIN THE GAME VIA CEDIT              *
+ * 	the values are load from the file lib/etc/config		  *
+ *	Please check there before making changes to the file.		  *
+ ************************************************************************ */
 /* ************************************************************************
-*   File: config.c                                      Part of CircleMUD *
-*  Usage: Configuration of various aspects of CircleMUD operation         *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
-#include "consts/maximums.h"
-#include "consts/admlevel.h"
-#include "character_impl.h"
+ *   File: config.c                                      Part of CircleMUD *
+ *  Usage: Configuration of various aspects of CircleMUD operation         *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 #include "config.h"
-#include "interpreter.h"	/* alias_data definition for structs.h */
+#include "character_impl.h"
+#include "consts/admlevel.h"
+#include "consts/maximums.h"
+#include "interpreter.h" /* alias_data definition for structs.h */
 
 /*
  * Update:  The following constants and variables are now the default values
@@ -46,7 +46,6 @@
 /****************************************************************************/
 /****************************************************************************/
 
-
 /*
  * pk_allowed sets the tone of the entire game.  If pk_allowed is set to
  * NO, then players will not be allowed to kill, summon, charm, or sleep
@@ -74,11 +73,11 @@ int number_of_assassins = 0;
 
 char last_user_freed[MAX_INPUT_LENGTH];
 
- /* Toplist Data */
- int TOPLOADED = FALSE;
- char *topname[25];
- int64_t toppoint[25] = {0};
- /* End Top Data */
+/* Toplist Data */
+int TOPLOADED = FALSE;
+char *topname[25];
+int64_t toppoint[25] = {0};
+/* End Top Data */
 
 int ERAPLAYERS = 0;
 int TOPCOUNTDOWN = 60;
@@ -105,26 +104,26 @@ int PCOUNT = 0;
 int HIGHPCOUNT = 0;
 time_t PCOUNTDATE = 0;
 time_t PCOUNTDAY = 0;
- /* This is for the dragon ball system */
- int SELFISHMETER = 0;
- int SHADOW_DRAGON1 = -1;
- int SHADOW_DRAGON2 = -1;
- int SHADOW_DRAGON3 = -1;
- int SHADOW_DRAGON4 = -1;
- int SHADOW_DRAGON5 = -1;
- int SHADOW_DRAGON6 = -1;
- int SHADOW_DRAGON7 = -1;
+/* This is for the dragon ball system */
+int SELFISHMETER = 0;
+int SHADOW_DRAGON1 = -1;
+int SHADOW_DRAGON2 = -1;
+int SHADOW_DRAGON3 = -1;
+int SHADOW_DRAGON4 = -1;
+int SHADOW_DRAGON5 = -1;
+int SHADOW_DRAGON6 = -1;
+int SHADOW_DRAGON7 = -1;
 
- int DBALL_HUNTER1 = -1;
- int DBALL_HUNTER2 = -1;
- int DBALL_HUNTER3 = -1;
- int DBALL_HUNTER4 = -1;
+int DBALL_HUNTER1 = -1;
+int DBALL_HUNTER2 = -1;
+int DBALL_HUNTER3 = -1;
+int DBALL_HUNTER4 = -1;
 
- int DBALL_HUNTER1_VNUM = 88;
- int DBALL_HUNTER2_VNUM = 89;
- int DBALL_HUNTER3_VNUM = 0;
- int DBALL_HUNTER4_VNUM = 0;
- /* End dragon ball system stuff       */
+int DBALL_HUNTER1_VNUM = 88;
+int DBALL_HUNTER2_VNUM = 89;
+int DBALL_HUNTER3_VNUM = 0;
+int DBALL_HUNTER4_VNUM = 0;
+/* End dragon ball system stuff       */
 
 /*  how many people can get into a tunnel?  The default is two, but there
  *  is also an alternate message in the case of one person being allowed.
@@ -132,8 +131,8 @@ time_t PCOUNTDAY = 0;
 int tunnel_size = 2;
 
 /* exp change limits */
-int max_exp_gain = 1000000;	/* max gainable per kill */
-int max_exp_loss = 250000;	/* max losable per death */
+int max_exp_gain = 1000000; /* max gainable per kill */
+int max_exp_loss = 250000;  /* max losable per death */
 
 /* number of tics (usually 75 seconds) before PC/NPC corpses decompose */
 int max_npc_corpse_time = 5;
@@ -268,30 +267,27 @@ int auto_pwipe = YES;
 
    Detailed explanation by array element:
    * Element 0, level -1, days 0: Players with PLR_DELETED flag are always
-	wiped.
+        wiped.
    * Element 1, level 0, days 0: Players at level 0 have created a
-	character, but have never actually entered the game, so always
-	wipe them.
+        character, but have never actually entered the game, so always
+        wipe them.
    * Element 2, level 1, days 30: Players at level 1 are wiped if they
-	haven't logged on in the past 30 days.
+        haven't logged on in the past 30 days.
    * Element 3, level 4, days 90: Players level 2 through 4 are wiped if
-	they haven't logged on in the past 90 days.
+        they haven't logged on in the past 90 days.
    * Element 4, level 10, days 180: Players level 5-10 get 180 days.
    * Element 5, level 20, days 360: Players level 11-20 get 360 days.
    * Element 6, level 30, days 360: Players level 21-30 get 360 days.
    * Element 7: Because -1 is less than 30, this is assumed to
-	be the end of the criteria.  The days entry is not used in this
-	case.
+        be the end of the criteria.  The days entry is not used in this
+        case.
 */
 const struct pclean_criteria_data pclean_criteria[7] = {
-/*	LEVEL		DAYS	*/
-  {	0		,0	}, /* level 0 */
-  {	1		,30	},
-  {	4		,90	},
-  {	10		,180	},
-  {	50		,360	}, /* highest mortal */
-  {	100		,360	}, /* all immortals */
-  {	-1		,0	}  /* no more level checks */
+    /*	LEVEL		DAYS	*/
+    {0, 0},                                    /* level 0 */
+    {1, 30},    {4, 90}, {10, 180}, {50, 360}, /* highest mortal */
+    {100, 360},                                /* all immortals */
+    {-1, 0}                                    /* no more level checks */
 };
 
 /* Do you want players who self-delete to be wiped immediately with no
@@ -301,7 +297,6 @@ int selfdelete_fastwipe = YES;
 
 /****************************************************************************/
 /****************************************************************************/
-
 
 /* ROOM NUMBERS */
 room_vnum death_start_room = 6000;
@@ -321,13 +316,11 @@ room_vnum frozen_start_room = 2;
  * donation rooms.
  */
 room_vnum donation_room_1 = 3063;
-room_vnum donation_room_2 = NOWHERE;	/* unused - room for expansion */
-room_vnum donation_room_3 = NOWHERE;	/* unused - room for expansion */
-
+room_vnum donation_room_2 = NOWHERE; /* unused - room for expansion */
+room_vnum donation_room_3 = NOWHERE; /* unused - room for expansion */
 
 /****************************************************************************/
 /****************************************************************************/
-
 
 /* GAME OPERATION OPTIONS */
 
@@ -401,7 +394,7 @@ int max_bad_pws = 3;
 int siteok_everyone = TRUE;
 
 /*
- * Some nameservers are very slow and cause the game to lag terribly every 
+ * Some nameservers are very slow and cause the game to lag terribly every
  * time someone logs in.  The lag is caused by the gethostbyaddr() function
  * which is responsible for resolving numeric IP addresses to alphabetic names.
  * Sometimes, nameservers can be so slow that the incredible lag caused by
@@ -426,39 +419,36 @@ const char *ANSIQUESTION = "Do you support the ANSI color standard (Yn)? ";
 int auto_save_olc = 1;
 
 /*
- * if you wish to enable Aedit, set this to 1 
+ * if you wish to enable Aedit, set this to 1
  * This will make the mud look for a file called socials.new,
  * which is in a different format than the stock socials file.
  */
 int use_new_socials = 1;
 
-const char *MENU =
-"\r\n"
-"@GWelcome to @YCircleMUD!@n\r\n"
-"@B0@W) @CExit from @YCircleMUD.@n\r\n"
-"@B1@W) @CEnter the game.@n\r\n"
-"@B2@W) @CEnter description.@n\r\n"
-"@B3@W) @CGame Info (Please Read)@n\r\n"
-"@B4@W) @CChange password.@n\r\n"
-"@B5@W) @CDelete this character.@n\r\n"
-"\r\n"
-"   @WMake your choice: @n";
-
-
+const char *MENU = "\r\n"
+                   "@GWelcome to @YCircleMUD!@n\r\n"
+                   "@B0@W) @CExit from @YCircleMUD.@n\r\n"
+                   "@B1@W) @CEnter the game.@n\r\n"
+                   "@B2@W) @CEnter description.@n\r\n"
+                   "@B3@W) @CGame Info (Please Read)@n\r\n"
+                   "@B4@W) @CChange password.@n\r\n"
+                   "@B5@W) @CDelete this character.@n\r\n"
+                   "\r\n"
+                   "   @WMake your choice: @n";
 
 const char *WELC_MESSG =
-"\r\n"
-"Welcome to the land of CircleMUD!  May your visit here be... Interesting."
-"\r\n\r\n";
+    "\r\n"
+    "Welcome to the land of CircleMUD!  May your visit here be... Interesting."
+    "\r\n\r\n";
 
 const char *START_MESSG =
-"Welcome.  This is your new CircleMUD character!  You can now earn gold,\r\n"
-"gain experience, find weapons and equipment, and much more -- while\r\n"
-"meeting people from around the world!\r\n";
+    "Welcome.  This is your new CircleMUD character!  You can now earn "
+    "gold,\r\n"
+    "gain experience, find weapons and equipment, and much more -- while\r\n"
+    "meeting people from around the world!\r\n";
 
 /****************************************************************************/
 /****************************************************************************/
-
 
 /* AUTOWIZ OPTIONS */
 
@@ -505,8 +495,8 @@ int reroll_status = NO;
  * allow_multiclass: Controls whether you can advance multiple classes
  * allow_prestige: Controls whether you can advance prestige classes
  * auto_level: Controls whether you will automatically go up a level when
- *   you have enough experience. I recommend that you leave auto_level 
- *   YES if allow_multiclass is NO and vice versa. auto-leveling will 
+ *   you have enough experience. I recommend that you leave auto_level
+ *   YES if allow_multiclass is NO and vice versa. auto-leveling will
  *   only level your primary class!
  */
 

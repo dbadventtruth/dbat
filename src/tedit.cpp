@@ -5,32 +5,30 @@
  * XXX: This needs Oasis-ifying.
  */
 
-
+#include "tedit.h"
 #include "character_impl.h"
 #include "character_macros.h"
-#include "descriptor_impl.h"
-#include "descriptor_db.h"
-#include "descriptor_macros.h"
-#include "interpreter.h"
 #include "comm.h"
-#include "db.h"
-#include "genolc.h"
-#include "oasis.h"
-#include "improved-edit.h"
-#include "tedit.h"
 #include "config.h"
-#include "log.h"
-#include "weather_db.h"
-#include "flags.h"
 #include "consts/admlevel.h"
 #include "consts/constates.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
+#include "db.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "flags.h"
+#include "genolc.h"
+#include "improved-edit.h"
+#include "interpreter.h"
+#include "log.h"
+#include "oasis.h"
+#include "weather_db.h"
 
 #include <cstring>
 
-void news_string_cleanup(struct descriptor_data *d, int terminator)
-{
+void news_string_cleanup(struct descriptor_data *d, int terminator) {
   FILE *fl;
   char *storage = NEWS_FILE;
 
@@ -44,32 +42,36 @@ void news_string_cleanup(struct descriptor_data *d, int terminator)
     if (!*d->str)
       mudlog(CMP, ADMLVL_IMPL, TRUE, "SYSERR: Can't write file '%s'.", storage);
     else {
-         char *tmstr;
-         time_t mytime = time(0);
-         tmstr = (char *) asctime(localtime(&mytime));
-         *(tmstr + strlen(tmstr) - 1) = '\0';
+      char *tmstr;
+      time_t mytime = time(0);
+      tmstr = (char *)asctime(localtime(&mytime));
+      *(tmstr + strlen(tmstr) - 1) = '\0';
 
-     fprintf(fl, "#%d %s\n@cUpdated By@D: @C%-13s @cDate@D: @Y%s@n\n", TOP_OF_NEWS, d->newsbuf, GET_NAME(d->character), tmstr);
-     free(d->newsbuf);
-     d->newsbuf = NULL;
-     strip_cr(*d->str);
-     fprintf(fl, "%s\n", *d->str);
-     *d->str = NULL;
-     fclose(fl);
-     
-     NEWSUPDATE = time(0);
-     save_mud_time(&time_info);
-     struct descriptor_data *i;
+      fprintf(fl, "#%d %s\n@cUpdated By@D: @C%-13s @cDate@D: @Y%s@n\n",
+              TOP_OF_NEWS, d->newsbuf, GET_NAME(d->character), tmstr);
+      free(d->newsbuf);
+      d->newsbuf = NULL;
+      strip_cr(*d->str);
+      fprintf(fl, "%s\n", *d->str);
+      *d->str = NULL;
+      fclose(fl);
 
-     for (i = descriptor_list; i; i = i->next) {
-      if (!IS_PLAYING(i))
-       continue;
-      if (PLR_FLAGGED(i->character, PLR_WRITING))
-       continue;
-      if (NEWSUPDATE > GET_LPLAY(i->character))
-       send_to_char(i->character, "\r\n@GA news entry has been made by %s, type 'news %d' to see it.@n\r\n", GET_NAME(d->character), TOP_OF_NEWS);
-     }
-     do_reboot(d->character, "news", 0, 0);
+      NEWSUPDATE = time(0);
+      save_mud_time(&time_info);
+      struct descriptor_data *i;
+
+      for (i = descriptor_list; i; i = i->next) {
+        if (!IS_PLAYING(i))
+          continue;
+        if (PLR_FLAGGED(i->character, PLR_WRITING))
+          continue;
+        if (NEWSUPDATE > GET_LPLAY(i->character))
+          send_to_char(i->character,
+                       "\r\n@GA news entry has been made by %s, type 'news %d' "
+                       "to see it.@n\r\n",
+                       GET_NAME(d->character), TOP_OF_NEWS);
+      }
+      do_reboot(d->character, "news", 0, 0);
     }
     break;
   case STRINGADD_ABORT:
@@ -85,8 +87,7 @@ void news_string_cleanup(struct descriptor_data *d, int terminator)
   STATE(d) = CON_PLAYING;
 }
 
-void tedit_string_cleanup(struct descriptor_data *d, int terminator)
-{
+void tedit_string_cleanup(struct descriptor_data *d, int terminator) {
   FILE *fl;
   char *storage = OLC_STORAGE(d);
 
@@ -99,36 +100,42 @@ void tedit_string_cleanup(struct descriptor_data *d, int terminator)
       mudlog(CMP, ADMLVL_IMPL, TRUE, "SYSERR: Can't write file '%s'.", storage);
     else {
       if (*d->str && !(strcmp(storage, "text/news"))) {
-         char *tmstr;
-         time_t mytime = time(0);
-         tmstr = (char *) asctime(localtime(&mytime));
-         *(tmstr + strlen(tmstr) - 1) = '\0';
+        char *tmstr;
+        time_t mytime = time(0);
+        tmstr = (char *)asctime(localtime(&mytime));
+        *(tmstr + strlen(tmstr) - 1) = '\0';
 
         strip_cr(*d->str);
-        fprintf(fl, "\n-----------------------------------------------\n@Y%s @cUpdated By@D: @C%s@n\r\n-----------------------------------------------\n%s\n", tmstr, GET_NAME(d->character), *d->str);
-      }
-      else if (*d->str) {
+        fprintf(
+            fl,
+            "\n-----------------------------------------------\n@Y%s @cUpdated "
+            "By@D: "
+            "@C%s@n\r\n-----------------------------------------------\n%s\n",
+            tmstr, GET_NAME(d->character), *d->str);
+      } else if (*d->str) {
         strip_cr(*d->str);
         fputs(*d->str, fl);
       }
       fclose(fl);
-      mudlog(CMP, ADMLVL_GOD, TRUE, "OLC: %s saves '%s'.", GET_NAME(d->character), storage);
+      mudlog(CMP, ADMLVL_GOD, TRUE, "OLC: %s saves '%s'.",
+             GET_NAME(d->character), storage);
       write_to_output(d, "Saved.\r\n");
 
       if (!(strcmp(storage, "text/news"))) {
-       NEWSUPDATE = time(0);
-       save_mud_time(&time_info);
-       struct descriptor_data *i;
+        NEWSUPDATE = time(0);
+        save_mud_time(&time_info);
+        struct descriptor_data *i;
 
-       for (i = descriptor_list; i; i = i->next) {
-        if (!IS_PLAYING(i))
-         continue;
-        if (PLR_FLAGGED(i->character, PLR_WRITING))
-         continue;
-        if (NEWSUPDATE > GET_LPLAY(i->character))
-         send_to_char(i->character, "\r\n@GThe NEWS file has been updated, type 'news' to see it.@n\r\n");
-       }
-       do_reboot(d->character, "all", 0, 0);
+        for (i = descriptor_list; i; i = i->next) {
+          if (!IS_PLAYING(i))
+            continue;
+          if (PLR_FLAGGED(i->character, PLR_WRITING))
+            continue;
+          if (NEWSUPDATE > GET_LPLAY(i->character))
+            send_to_char(i->character, "\r\n@GThe NEWS file has been updated, "
+                                       "type 'news' to see it.@n\r\n");
+        }
+        do_reboot(d->character, "all", 0, 0);
       }
     }
     break;
@@ -146,45 +153,43 @@ void tedit_string_cleanup(struct descriptor_data *d, int terminator)
   STATE(d) = CON_PLAYING;
 }
 
-ACMD(do_tedit)
-{
+ACMD(do_tedit) {
   int l, i = 0;
   char field[MAX_INPUT_LENGTH];
   char *backstr = NULL;
-   
+
   struct {
     char *cmd;
     char level;
     char **buffer;
-    int  size;
+    int size;
     char *filename;
   } fields[] = {
-	/* edit the lvls to your own needs */
-	{ "credits",	ADMLVL_IMPL,	&credits,	24000,	CREDITS_FILE},
-	{ "donottouch",	6,	&news,		24000,	NEWS_FILE},
-	{ "motd",	ADMLVL_IMPL,	&motd,		24000,	MOTD_FILE},
-	{ "imotd",	ADMLVL_IMPL,	&imotd,		24000,	IMOTD_FILE},
-	{ "help",       ADMLVL_GRGOD,	&help,		24000,	HELP_PAGE_FILE},
-	{ "info",	ADMLVL_GRGOD,	&info,		24000,	INFO_FILE},
-	{ "background",	ADMLVL_IMPL,	&background,	24000,	BACKGROUND_FILE},
-	{ "handbook",   ADMLVL_IMPL,	&handbook,	24000,  HANDBOOK_FILE},
-	{ "update",	ADMLVL_IMPL,	&policies,	24000,	POLICIES_FILE},
-        { "ihelp",      ADMLVL_GRGOD,   &ihelp,         24000,  IHELP_PAGE_FILE},
-	{ "\n",		0,		NULL,		0,	NULL }
-  };
+      /* edit the lvls to your own needs */
+      {"credits", ADMLVL_IMPL, &credits, 24000, CREDITS_FILE},
+      {"donottouch", 6, &news, 24000, NEWS_FILE},
+      {"motd", ADMLVL_IMPL, &motd, 24000, MOTD_FILE},
+      {"imotd", ADMLVL_IMPL, &imotd, 24000, IMOTD_FILE},
+      {"help", ADMLVL_GRGOD, &help, 24000, HELP_PAGE_FILE},
+      {"info", ADMLVL_GRGOD, &info, 24000, INFO_FILE},
+      {"background", ADMLVL_IMPL, &background, 24000, BACKGROUND_FILE},
+      {"handbook", ADMLVL_IMPL, &handbook, 24000, HANDBOOK_FILE},
+      {"update", ADMLVL_IMPL, &policies, 24000, POLICIES_FILE},
+      {"ihelp", ADMLVL_GRGOD, &ihelp, 24000, IHELP_PAGE_FILE},
+      {"\n", 0, NULL, 0, NULL}};
 
   if (ch->desc == NULL)
     return;
-   
+
   one_argument(argument, field);
 
   if (!*field) {
     send_to_char(ch, "Files available to be edited:\r\n");
     for (l = 0; *fields[l].cmd != '\n'; l++) {
       if (GET_ADMLEVEL(ch) >= fields[l].level) {
-	send_to_char(ch, "%-11.11s ", fields[l].cmd);
-	if (!(++i % 7))
-	  send_to_char(ch, "\r\n");
+        send_to_char(ch, "%-11.11s ", fields[l].cmd);
+        if (!(++i % 7))
+          send_to_char(ch, "\r\n");
       }
     }
     if (i % 7)
@@ -196,12 +201,12 @@ ACMD(do_tedit)
   for (l = 0; *(fields[l].cmd) != '\n'; l++)
     if (!strncmp(field, fields[l].cmd, strlen(field)))
       break;
-   
+
   if (*fields[l].cmd == '\n') {
     send_to_char(ch, "Invalid text editor option.\r\n");
     return;
   }
-   
+
   if (GET_ADMLEVEL(ch) < fields[l].level) {
     send_to_char(ch, "You are not godly enough for that!\r\n");
     return;
@@ -213,11 +218,12 @@ ACMD(do_tedit)
   send_to_char(ch, "Edit file below:\r\n\r\n");
 
   if (ch->desc->olc) {
-    mudlog(BRF, ADMLVL_IMMORT, TRUE, "SYSERR: do_tedit: Player already had olc structure.");
+    mudlog(BRF, ADMLVL_IMMORT, TRUE,
+           "SYSERR: do_tedit: Player already had olc structure.");
     free(ch->desc->olc);
   }
   CREATE(ch->desc->olc, struct oasis_olc_data, 1);
-  
+
   if (*fields[l].buffer) {
     send_to_char(ch, "%s", *fields[l].buffer);
     backstr = strdup(*fields[l].buffer);

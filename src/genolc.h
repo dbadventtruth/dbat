@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-#define STRING_TERMINATOR       '~'
+#define STRING_TERMINATOR '~'
 
-#define CONFIG_GENOLC_MOBPROG	0
+#define CONFIG_GENOLC_MOBPROG 0
 
 int genolc_checkstring(struct descriptor_data *d, char *arg);
 
@@ -17,7 +17,8 @@ int in_save_list(zone_vnum, int type);
 void strip_cr(char *);
 int save_all(void);
 char *str_udup(const char *);
-void copy_ex_descriptions(struct extra_descr_data **to, struct extra_descr_data *from);
+void copy_ex_descriptions(struct extra_descr_data **to,
+                          struct extra_descr_data *from);
 void free_ex_descriptions(struct extra_descr_data *head);
 int sprintascii(char *out, bitvector_t bits);
 void free_save_list(void);
@@ -31,22 +32,21 @@ struct save_list_data {
 extern struct save_list_data *save_list;
 
 /* save_list_data.type */
-#define SL_MOB	0
-#define SL_OBJ	1
-#define SL_SHP	2
-#define SL_WLD	3
-#define SL_ZON	4
-#define SL_CFG	5
-#define SL_GLD	6
-#define SL_MAX	SL_GLD
-#define SL_ACT  SL_MAX + 1 /* must be above MAX */
-#define SL_HLP  SL_MAX + 2 /* must be above MAX */
+#define SL_MOB 0
+#define SL_OBJ 1
+#define SL_SHP 2
+#define SL_WLD 3
+#define SL_ZON 4
+#define SL_CFG 5
+#define SL_GLD 6
+#define SL_MAX SL_GLD
+#define SL_ACT SL_MAX + 1 /* must be above MAX */
+#define SL_HLP SL_MAX + 2 /* must be above MAX */
 
-#define LIMIT(var, low, high)	MIN(high, MAX(var, low))
+#define LIMIT(var, low, high) MIN(high, MAX(var, low))
 
 void create_world_index(int znum, const char *type);
 void free_save_list(void);
-
 
 #ifdef __cplusplus
 }

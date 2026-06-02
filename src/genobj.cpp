@@ -4,15 +4,16 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shop.h"
-#include "dg_scripts.h"
 #include "genobj.h"
+#include "dg_scripts.h"
 #include "genolc.h"
 #include "genzon.h"
+#include "shop.h"
 
-#include "handler.h"
 #include "dg_olc.h"
 #include "dgscript_impl.h"
+#include "extract.h"
+#include "handler.h"
 #include "object_api.h"
 #include "object_db.h"
 #include "object_impl.h"
@@ -20,21 +21,21 @@
 #include "relocate.h"
 #include "shop.h"
 #include "zone_impl.h"
-#include "extract.h"
 
 #include "consts/admlevel.h"
-#include "log.h"
 #include "db.h"
+#include "log.h"
 
-#include <string.h>
-#include <stddef.h>
 #include <cstdlib>
+#include <stddef.h>
+#include <string.h>
 
-static_assert(sizeof(struct obj_proto_data) == offsetof(struct obj_data, in_room),
-              "object prototype fields must stay prefix-compatible with object instances");
+static_assert(sizeof(struct obj_proto_data) ==
+                  offsetof(struct obj_data, in_room),
+              "object prototype fields must stay prefix-compatible with object "
+              "instances");
 
-static void free_trig_proto_list(struct trig_proto_list *list)
-{
+static void free_trig_proto_list(struct trig_proto_list *list) {
   while (list) {
     struct trig_proto_list *next = list->next;
     free(list);
@@ -42,8 +43,8 @@ static void free_trig_proto_list(struct trig_proto_list *list)
   }
 }
 
-static struct trig_proto_list *copy_trig_proto_list(const struct trig_proto_list *from)
-{
+static struct trig_proto_list *
+copy_trig_proto_list(const struct trig_proto_list *from) {
   struct trig_proto_list *head = NULL, *tail = NULL;
 
   for (; from; from = from->next) {
@@ -60,8 +61,7 @@ static struct trig_proto_list *copy_trig_proto_list(const struct trig_proto_list
   return head;
 }
 
-void obj_proto_free_strings(struct obj_proto_data *obj)
-{
+void obj_proto_free_strings(struct obj_proto_data *obj) {
   if (obj->name)
     free(obj->name);
   if (obj->description)
@@ -79,8 +79,7 @@ void obj_proto_free_strings(struct obj_proto_data *obj)
   obj->ex_description = NULL;
 }
 
-void obj_proto_free(struct obj_proto_data *obj)
-{
+void obj_proto_free(struct obj_proto_data *obj) {
   if (!obj)
     return;
   obj_proto_free_strings(obj);
@@ -88,8 +87,8 @@ void obj_proto_free(struct obj_proto_data *obj)
   free(obj);
 }
 
-void obj_proto_copy(struct obj_proto_data *to, const struct obj_proto_data *from)
-{
+void obj_proto_copy(struct obj_proto_data *to,
+                    const struct obj_proto_data *from) {
   obj_proto_free_strings(to);
   free_trig_proto_list(to->proto_script);
   to->vnum = from->vnum;
@@ -106,8 +105,10 @@ void obj_proto_copy(struct obj_proto_data *to, const struct obj_proto_data *from
   memcpy(to->affected, from->affected, sizeof(to->affected));
   to->name = from->name ? strdup(from->name) : NULL;
   to->description = from->description ? strdup(from->description) : NULL;
-  to->short_description = from->short_description ? strdup(from->short_description) : NULL;
-  to->action_description = from->action_description ? strdup(from->action_description) : NULL;
+  to->short_description =
+      from->short_description ? strdup(from->short_description) : NULL;
+  to->action_description =
+      from->action_description ? strdup(from->action_description) : NULL;
   if (from->ex_description)
     copy_ex_descriptions(&to->ex_description, from->ex_description);
   else
@@ -115,8 +116,8 @@ void obj_proto_copy(struct obj_proto_data *to, const struct obj_proto_data *from
   to->proto_script = copy_trig_proto_list(from->proto_script);
 }
 
-void obj_proto_from_instance(struct obj_proto_data *to, const struct obj_data *from)
-{
+void obj_proto_from_instance(struct obj_proto_data *to,
+                             const struct obj_data *from) {
   obj_proto_free_strings(to);
   free_trig_proto_list(to->proto_script);
 
@@ -135,8 +136,10 @@ void obj_proto_from_instance(struct obj_proto_data *to, const struct obj_data *f
 
   to->name = from->name ? strdup(from->name) : NULL;
   to->description = from->description ? strdup(from->description) : NULL;
-  to->short_description = from->short_description ? strdup(from->short_description) : NULL;
-  to->action_description = from->action_description ? strdup(from->action_description) : NULL;
+  to->short_description =
+      from->short_description ? strdup(from->short_description) : NULL;
+  to->action_description =
+      from->action_description ? strdup(from->action_description) : NULL;
   if (from->ex_description)
     copy_ex_descriptions(&to->ex_description, from->ex_description);
   else
@@ -144,8 +147,8 @@ void obj_proto_from_instance(struct obj_proto_data *to, const struct obj_data *f
   to->proto_script = copy_trig_proto_list(from->proto_script);
 }
 
-void obj_apply_proto_to_instance(struct obj_data *to, const struct obj_proto_data *from)
-{
+void obj_apply_proto_to_instance(struct obj_data *to,
+                                 const struct obj_proto_data *from) {
   to->vnum = from->vnum;
   memcpy(to->value, from->value, sizeof(to->value));
   to->type_flag = from->type_flag;
@@ -162,8 +165,10 @@ void obj_apply_proto_to_instance(struct obj_data *to, const struct obj_proto_dat
   free_object_strings(to);
   to->name = from->name ? strdup(from->name) : NULL;
   to->description = from->description ? strdup(from->description) : NULL;
-  to->short_description = from->short_description ? strdup(from->short_description) : NULL;
-  to->action_description = from->action_description ? strdup(from->action_description) : NULL;
+  to->short_description =
+      from->short_description ? strdup(from->short_description) : NULL;
+  to->action_description =
+      from->action_description ? strdup(from->action_description) : NULL;
   if (from->ex_description)
     copy_ex_descriptions(&to->ex_description, from->ex_description);
   else
@@ -173,21 +178,19 @@ void obj_apply_proto_to_instance(struct obj_data *to, const struct obj_proto_dat
   to->proto_script = copy_trig_proto_list(from->proto_script);
 }
 
-void obj_proto_to_instance(struct obj_data *to, const struct obj_proto_data *from)
-{
+void obj_proto_to_instance(struct obj_data *to,
+                           const struct obj_proto_data *from) {
   obj_apply_proto_to_instance(to, from);
 }
 
-obj_vnum add_object(struct obj_proto_data *newobj, obj_vnum ovnum)
-{
+obj_vnum add_object(struct obj_proto_data *newobj, obj_vnum ovnum) {
   int found = NOTHING;
   zone_vnum znum = virtual_zone_by_thing(ovnum);
 
   /*
    * Write object to internal tables.
    */
-  if (auto proto = obj_proto_by_id(ovnum); proto)
-  {
+  if (auto proto = obj_proto_by_id(ovnum); proto) {
     obj_proto_copy(proto, newobj);
     update_objects(proto);
     add_to_save_list(znum, SL_OBJ);
@@ -203,7 +206,8 @@ obj_vnum add_object(struct obj_proto_data *newobj, obj_vnum ovnum)
   return ovnum;
 }
 
-/* ------------------------------------------------------------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------------------------------------------------------------
+ */
 
 /*
  * Fix all existing objects to have these values.
@@ -212,13 +216,11 @@ obj_vnum add_object(struct obj_proto_data *newobj, obj_vnum ovnum)
  * if object is pointing to this prototype, then we need to replace it
  * with the new one.
  */
-int update_objects(struct obj_proto_data *refobj)
-{
+int update_objects(struct obj_proto_data *refobj) {
   struct obj_data *obj;
   int count = 0;
 
-  for (obj = object_list; obj; obj = obj->next)
-  {
+  for (obj = object_list; obj; obj = obj->next) {
     if (obj->vnum != refobj->vnum)
       continue;
 
@@ -229,13 +231,13 @@ int update_objects(struct obj_proto_data *refobj)
   return count;
 }
 
-/* ------------------------------------------------------------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------------------------------------------------------------
+ */
 
+/* ------------------------------------------------------------------------------------------------------------------------------
+ */
 
-/* ------------------------------------------------------------------------------------------------------------------------------ */
-
-int save_objects(struct zone_data *zone)
-{
+int save_objects(struct zone_data *zone) {
   char cmfname[128], buf[MAX_STRING_LENGTH];
   char ebuf1[MAX_STRING_LENGTH], ebuf2[MAX_STRING_LENGTH];
   char ebuf3[MAX_STRING_LENGTH], ebuf4[MAX_STRING_LENGTH];
@@ -248,31 +250,28 @@ int save_objects(struct zone_data *zone)
   struct obj_data *obj;
   struct extra_descr_data *ex_desc;
 
-if(!zone) {
+  if (!zone) {
     log("SYSERR: OasisOLC: save_objects: Invalid zone!");
     return FALSE;
   }
 
   snprintf(cmfname, sizeof(cmfname), "%s%d.new", OBJ_PREFIX, zone->number);
-  if (!(fp = fopen(cmfname, "w+")))
-  {
-    mudlog(BRF, ADMLVL_IMMORT, TRUE, "SYSERR: OLC: Cannot open objects file %s!", cmfname);
+  if (!(fp = fopen(cmfname, "w+"))) {
+    mudlog(BRF, ADMLVL_IMMORT, TRUE,
+           "SYSERR: OLC: Cannot open objects file %s!", cmfname);
     return FALSE;
   }
   /*
    * Start running through all objects in this zone.
    */
-  for (counter = zone->bot; counter <= zone->top; counter++)
-  {
+  for (counter = zone->bot; counter <= zone->top; counter++) {
     auto obj = obj_proto_by_id(counter);
     if (!obj)
       continue;
-    if (obj)
-    {
+    if (obj) {
       strncpy(buf, obj->action_description, sizeof(buf) - 1);
       strip_cr(buf);
-    }
-    else
+    } else
       *buf = '\0';
 
     fprintf(fp,
@@ -284,8 +283,11 @@ if(!zone) {
 
             GET_OBJ_VNUM(obj),
             (obj->name && *obj->name) ? obj->name : "undefined",
-            (obj->short_description && *obj->short_description) ? obj->short_description : "undefined",
-            (obj->description && *obj->description) ? obj->description : "undefined",
+            (obj->short_description && *obj->short_description)
+                ? obj->short_description
+                : "undefined",
+            (obj->description && *obj->description) ? obj->description
+                                                    : "undefined",
             buf);
 
     sprintascii(ebuf1, GET_OBJ_EXTRA(obj)[0]);
@@ -306,16 +308,13 @@ if(!zone) {
             "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n"
             "%" I64T " %d %d %d\n",
 
-            GET_OBJ_TYPE(obj),
-            ebuf1, ebuf2, ebuf3, ebuf4,
-            wbuf1, wbuf2, wbuf3, wbuf4,
-            pbuf1, pbuf2, pbuf3, pbuf4,
-            GET_OBJ_VAL(obj, 0), GET_OBJ_VAL(obj, 1), GET_OBJ_VAL(obj, 2),
-            GET_OBJ_VAL(obj, 3), GET_OBJ_VAL(obj, 4), GET_OBJ_VAL(obj, 5),
-            GET_OBJ_VAL(obj, 6), GET_OBJ_VAL(obj, 7), GET_OBJ_VAL(obj, 8),
-            GET_OBJ_VAL(obj, 9), GET_OBJ_VAL(obj, 10), GET_OBJ_VAL(obj, 11),
-            GET_OBJ_VAL(obj, 12), GET_OBJ_VAL(obj, 13), GET_OBJ_VAL(obj, 14),
-            GET_OBJ_VAL(obj, 15),
+            GET_OBJ_TYPE(obj), ebuf1, ebuf2, ebuf3, ebuf4, wbuf1, wbuf2, wbuf3,
+            wbuf4, pbuf1, pbuf2, pbuf3, pbuf4, GET_OBJ_VAL(obj, 0),
+            GET_OBJ_VAL(obj, 1), GET_OBJ_VAL(obj, 2), GET_OBJ_VAL(obj, 3),
+            GET_OBJ_VAL(obj, 4), GET_OBJ_VAL(obj, 5), GET_OBJ_VAL(obj, 6),
+            GET_OBJ_VAL(obj, 7), GET_OBJ_VAL(obj, 8), GET_OBJ_VAL(obj, 9),
+            GET_OBJ_VAL(obj, 10), GET_OBJ_VAL(obj, 11), GET_OBJ_VAL(obj, 12),
+            GET_OBJ_VAL(obj, 13), GET_OBJ_VAL(obj, 14), GET_OBJ_VAL(obj, 15),
             GET_OBJ_WEIGHT(obj), GET_OBJ_COST(obj), 0, GET_OBJ_LEVEL(obj));
 
     /*
@@ -327,23 +326,23 @@ if(!zone) {
     /*
      * Do we have extra descriptions?
      */
-    if (obj->ex_description)
-    { /* Yes, save them too. */
-      for (ex_desc = obj->ex_description; ex_desc; ex_desc = ex_desc->next)
-      {
+    if (obj->ex_description) { /* Yes, save them too. */
+      for (ex_desc = obj->ex_description; ex_desc; ex_desc = ex_desc->next) {
         /*
          * Sanity check to prevent nasty protection faults.
          */
-        if (!ex_desc->keyword || !ex_desc->description || !*ex_desc->keyword || !*ex_desc->description)
-        {
-          mudlog(BRF, ADMLVL_IMMORT, TRUE, "SYSERR: OLC: oedit_save_to_disk: Corrupt ex_desc!");
+        if (!ex_desc->keyword || !ex_desc->description || !*ex_desc->keyword ||
+            !*ex_desc->description) {
+          mudlog(BRF, ADMLVL_IMMORT, TRUE,
+                 "SYSERR: OLC: oedit_save_to_disk: Corrupt ex_desc!");
           continue;
         }
         strncpy(buf, ex_desc->description, sizeof(buf) - 1);
         strip_cr(buf);
-        fprintf(fp, "E\n"
-                    "%s~\n"
-                    "%s~\n",
+        fprintf(fp,
+                "E\n"
+                "%s~\n"
+                "%s~\n",
                 ex_desc->keyword, buf);
       }
     }
@@ -352,10 +351,12 @@ if(!zone) {
      */
     for (counter2 = 0; counter2 < MAX_OBJ_AFFECT; counter2++)
       if (obj->affected[counter2].modifier)
-        fprintf(fp, "A\n"
-                    "%d %d %d\n",
+        fprintf(fp,
+                "A\n"
+                "%d %d %d\n",
                 obj->affected[counter2].location,
-                obj->affected[counter2].modifier, obj->affected[counter2].specific);
+                obj->affected[counter2].modifier,
+                obj->affected[counter2].specific);
   }
 
   /*
@@ -367,8 +368,7 @@ if(!zone) {
   remove(buf);
   rename(cmfname, buf);
 
-  if (in_save_list(zone->number, SL_OBJ))
-  {
+  if (in_save_list(zone->number, SL_OBJ)) {
     remove_from_save_list(zone->number, SL_OBJ);
     create_world_index(zone->number, "obj");
     log("GenOLC: save_objects: Saving objects '%s'", buf);
@@ -379,8 +379,7 @@ if(!zone) {
 /*
  * Free all, unconditionally.
  */
-void free_object_strings(struct obj_data *obj)
-{
+void free_object_strings(struct obj_data *obj) {
 #if 0 /* Debugging, do not enable. */
   extern struct obj_data *object_list;
   struct obj_data *t;
@@ -412,12 +411,13 @@ void free_object_strings(struct obj_data *obj)
     free_ex_descriptions(obj->ex_description);
 }
 
-void copy_object_strings(struct obj_data *to, struct obj_data *from)
-{
+void copy_object_strings(struct obj_data *to, struct obj_data *from) {
   to->name = from->name ? strdup(from->name) : NULL;
   to->description = from->description ? strdup(from->description) : NULL;
-  to->short_description = from->short_description ? strdup(from->short_description) : NULL;
-  to->action_description = from->action_description ? strdup(from->action_description) : NULL;
+  to->short_description =
+      from->short_description ? strdup(from->short_description) : NULL;
+  to->action_description =
+      from->action_description ? strdup(from->action_description) : NULL;
 
   if (from->ex_description)
     copy_ex_descriptions(&to->ex_description, from->ex_description);
@@ -425,8 +425,7 @@ void copy_object_strings(struct obj_data *to, struct obj_data *from)
     to->ex_description = NULL;
 }
 
-int copy_object(struct obj_data *to, struct obj_data *from)
-{
+int copy_object(struct obj_data *to, struct obj_data *from) {
   struct obj_proto_data tmp = {};
   obj_proto_from_instance(&tmp, from);
   obj_apply_proto_to_instance(to, &tmp);
@@ -435,8 +434,7 @@ int copy_object(struct obj_data *to, struct obj_data *from)
   return TRUE;
 }
 
-int copy_object_preserve(struct obj_data *to, struct obj_data *from)
-{
+int copy_object_preserve(struct obj_data *to, struct obj_data *from) {
   struct obj_proto_data tmp = {};
   obj_proto_from_instance(&tmp, from);
   obj_apply_proto_to_instance(to, &tmp);
@@ -445,8 +443,7 @@ int copy_object_preserve(struct obj_data *to, struct obj_data *from)
   return TRUE;
 }
 
-int delete_object(obj_vnum vnum)
-{
+int delete_object(obj_vnum vnum) {
   zone_rnum zrnum;
   struct obj_data *tmp;
   int shop, j, cmd_no;
@@ -455,7 +452,7 @@ int delete_object(obj_vnum vnum)
 
   if (!obj)
     return NOTHING;
-  
+
   auto zone = zone_by_id(virtual_zone_by_thing(vnum));
 
   add_to_save_list(zone->number, SL_OBJ);
@@ -463,34 +460,28 @@ int delete_object(obj_vnum vnum)
   obj_proto_delete(obj->vnum);
 
   /* This is something you might want to read about in the logs. */
-  log("GenOLC: delete_object: Deleting object #%d (%s).", GET_OBJ_VNUM(obj), obj->short_description);
+  log("GenOLC: delete_object: Deleting object #%d (%s).", GET_OBJ_VNUM(obj),
+      obj->short_description);
 
-  for (tmp = object_list; tmp; tmp = tmp->next)
-  {
+  for (tmp = object_list; tmp; tmp = tmp->next) {
     if (tmp->vnum != obj->vnum)
       continue;
 
     /* extract_obj() will just axe contents. */
-    if (tmp->contains)
-    {
+    if (tmp->contains) {
       struct obj_data *this_content, *next_content;
-      for (this_content = tmp->contains; this_content; this_content = next_content)
-      {
+      for (this_content = tmp->contains; this_content;
+           this_content = next_content) {
         next_content = this_content->next_content;
-        if (auto room = obj_room_get(tmp); room)
-        {
+        if (auto room = obj_room_get(tmp); room) {
           /* Transfer stuff from object to room. */
           obj_from_obj(this_content);
           obj_to_room(this_content, room);
-        }
-        else if (tmp->worn_by || tmp->carried_by)
-        {
+        } else if (tmp->worn_by || tmp->carried_by) {
           /* Transfer stuff from object to person inventory. */
           obj_from_char(this_content);
           obj_to_char(this_content, tmp->carried_by);
-        }
-        else if (tmp->in_obj)
-        {
+        } else if (tmp->in_obj) {
           /* Transfer stuff from object to containing object. */
           obj_from_obj(this_content);
           obj_to_obj(this_content, tmp->in_obj);

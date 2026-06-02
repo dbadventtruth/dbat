@@ -7,7 +7,6 @@ extern "C" {
 
 int stats_disp_menu(struct descriptor_data *d);
 
-
 #ifdef __cplusplus
 }
 #endif

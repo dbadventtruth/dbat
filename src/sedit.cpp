@@ -3,71 +3,66 @@
  * Copyright 1996 Harvey Gilpin						*
  * Copyright 1997-2001 George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shop.h"
-#include "shop_impl.h"
-#include "character_impl.h"
+#include "act.informative.h"
 #include "character_api.h"
 #include "character_db.h"
+#include "character_impl.h"
 #include "character_macros.h"
-#include "descriptor_impl.h"
-#include "descriptor_db.h"
-#include "descriptor_macros.h"
-#include "object_impl.h"
-#include "object_api.h"
-#include "object_db.h"
-#include "room_impl.h"
-#include "room_db.h"
-#include "zone_impl.h"
-#include "zone_db.h"
+#include "character_utils.h"
 #include "config_db.h"
 #include "consts/admlevel.h"
 #include "consts/constates.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
 #include "consts/races.h"
-#include "act.informative.h"
-#include "character_utils.h"
+#include "descriptor_db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
 #include "flags.h"
 #include "log.h"
+#include "object_api.h"
+#include "object_db.h"
+#include "object_impl.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "shop.h"
 #include "shop_db.h"
+#include "shop_impl.h"
 #include "util_macros.h"
+#include "zone_db.h"
+#include "zone_impl.h"
 
+#include "config.h"
+#include "sedit.h"
 #include <cstdlib>
 #include <cstring>
 #include <strings.h>
-#include "config.h"
-#include "sedit.h"
 
 #include "comm.h"
-#include "interpreter.h"
 #include "db.h"
-#include "shop.h"
 #include "genolc.h"
 #include "genshp.h"
 #include "genzon.h"
+#include "interpreter.h"
 #include "oasis.h"
 #include "races_plus.h"
+#include "shop.h"
 
 /*
  * Should check more things.
  */
-void sedit_save_internally(struct descriptor_data *d)
-{
+void sedit_save_internally(struct descriptor_data *d) {
   OLC_SHOP(d)->vnum = OLC_NUM(d);
   add_shop(OLC_SHOP(d));
 }
 
-void sedit_save_to_disk(struct zone_data *zone)
-{
-  save_shops(zone);
-}
+void sedit_save_to_disk(struct zone_data *zone) { save_shops(zone); }
 
 /*-------------------------------------------------------------------*\
-  utility functions 
+  utility functions
 \*-------------------------------------------------------------------*/
 
-ACMD(do_oasis_sedit)
-{
+ACMD(do_oasis_sedit) {
   int number = NOWHERE, save = 0;
   shop_rnum real_num;
   struct descriptor_data *d;
@@ -75,12 +70,12 @@ ACMD(do_oasis_sedit)
   char buf1[MAX_INPUT_LENGTH];
   char buf2[MAX_INPUT_LENGTH];
   struct shop_data *shop = NULL;
-  
+
   /****************************************************************************/
   /** Parse any arguments.                                                   **/
   /****************************************************************************/
   buf3 = two_arguments(argument, buf1, buf2);
-  
+
   if (!*buf1) {
     send_to_char(ch, "Specify a shop VNUM to edit.\r\n");
     return;
@@ -89,32 +84,32 @@ ACMD(do_oasis_sedit)
       send_to_char(ch, "Yikes!  Stop that, someone will get hurt!\r\n");
       return;
     }
-    
+
     save = TRUE;
-    
+
     if (is_number(buf2))
       number = atoi(buf2);
     else if (GET_OLC_ZONE(ch) > 0) {
       struct zone_data *zone = zone_by_id(GET_OLC_ZONE(ch));
-      
+
       if (!zone)
         number = NOWHERE;
       else
         number = zone->bot;
     }
-    
+
     if (number == NOWHERE) {
       send_to_char(ch, "Save which zone?\r\n");
       return;
     }
   }
-  
+
   /****************************************************************************/
   /** If a numeric argument was given, get it.                               **/
   /****************************************************************************/
   if (number == NOWHERE)
     number = atoi(buf1);
-  
+
   /****************************************************************************/
   /** Check that the shop isn't already being edited.                        **/
   /****************************************************************************/
@@ -122,28 +117,28 @@ ACMD(do_oasis_sedit)
     if (STATE(d) == CON_SEDIT) {
       if (d->olc && OLC_NUM(d) == number) {
         send_to_char(ch, "That shop is currently being edited by %s.\r\n",
-          PERS(d->character, ch));
+                     PERS(d->character, ch));
         return;
       }
     }
   }
-  
+
   /****************************************************************************/
   /** Point d to the builder's descriptor.                                   **/
   /****************************************************************************/
   d = ch->desc;
-  
+
   /****************************************************************************/
   /** Give the descriptor an OLC structure.                                  **/
   /****************************************************************************/
   if (d->olc) {
     mudlog(BRF, ADMLVL_IMMORT, TRUE,
-      "SYSERR: do_oasis_sedit: Player already had olc structure.");
+           "SYSERR: do_oasis_sedit: Player already had olc structure.");
     free(d->olc);
   }
-  
+
   CREATE(d->olc, struct oasis_olc_data, 1);
-  
+
   /****************************************************************************/
   /** Find the zone.                                                         **/
   /****************************************************************************/
@@ -156,13 +151,13 @@ ACMD(do_oasis_sedit)
   }
 
   struct zone_data *zone = zone_by_id(OLC_ZNUM(d));
-  
+
   /****************************************************************************/
   /** Everyone but IMPLs can only edit zones they have been assigned.        **/
   /****************************************************************************/
   if (!can_edit_zone(ch, zone)) {
     send_cannot_edit(ch, zone->number);
-    
+
     /**************************************************************************/
     /** Free the OLC structure.                                              **/
     /**************************************************************************/
@@ -170,19 +165,17 @@ ACMD(do_oasis_sedit)
     d->olc = NULL;
     return;
   }
-  
+
   if (save) {
-    send_to_char(ch, "Saving all shops in zone %d.\r\n",
-      zone->number);
+    send_to_char(ch, "Saving all shops in zone %d.\r\n", zone->number);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
-      "OLC: %s saves shop info for zone %d.",
-      GET_NAME(ch), zone->number);
-    
+           "OLC: %s saves shop info for zone %d.", GET_NAME(ch), zone->number);
+
     /**************************************************************************/
     /** Save the shops to the shop file.                                     **/
     /**************************************************************************/
     save_shops(zone);
-    
+
     /**************************************************************************/
     /** Free the OLC structure.                                              **/
     /**************************************************************************/
@@ -190,26 +183,26 @@ ACMD(do_oasis_sedit)
     d->olc = NULL;
     return;
   }
-  
+
   OLC_NUM(d) = number;
-  
+
   if (shop = shop_by_id(number))
     sedit_setup_existing(d, number);
   else
     sedit_setup_new(d);
 
-  sedit_disp_menu(d);  
+  sedit_disp_menu(d);
   STATE(d) = CON_SEDIT;
-  
+
   act("$n starts using OLC.", TRUE, d->character, 0, 0, TO_ROOM);
   SET_BIT_AR(PLR_FLAGS(ch), PLR_WRITING);
-  
-  mudlog(BRF, ADMLVL_IMMORT, TRUE, "OLC: %s starts editing zone %d allowed zone %d",
-    GET_NAME(ch), zone->number, GET_OLC_ZONE(ch));
+
+  mudlog(BRF, ADMLVL_IMMORT, TRUE,
+         "OLC: %s starts editing zone %d allowed zone %d", GET_NAME(ch),
+         zone->number, GET_OLC_ZONE(ch));
 }
 
-void sedit_setup_new(struct descriptor_data *d)
-{
+void sedit_setup_new(struct descriptor_data *d) {
   struct shop_data *shop;
 
   /*
@@ -256,8 +249,7 @@ void sedit_setup_new(struct descriptor_data *d)
 
 /*-------------------------------------------------------------------*/
 
-void sedit_setup_existing(struct descriptor_data *d, shop_vnum num)
-{
+void sedit_setup_existing(struct descriptor_data *d, shop_vnum num) {
   /*
    * Create a scratch shop structure.
    */
@@ -269,11 +261,10 @@ void sedit_setup_existing(struct descriptor_data *d, shop_vnum num)
 }
 
 /**************************************************************************
- Menu functions 
+ Menu functions
  **************************************************************************/
 
-void sedit_products_menu(struct descriptor_data *d)
-{
+void sedit_products_menu(struct descriptor_data *d) {
   struct shop_data *shop;
   int i;
 
@@ -283,23 +274,21 @@ void sedit_products_menu(struct descriptor_data *d)
   write_to_output(d, "##     VNUM     Product\r\n");
   for (i = 0; S_PRODUCT(shop, i) != NOTHING; i++) {
     auto obj = obj_proto_by_id(S_PRODUCT(shop, i));
-    write_to_output(d, "%2d - [@c%5d@n] - @y%s@n\r\n", i,
-	    obj->vnum,
-	    obj->short_description);
+    write_to_output(d, "%2d - [@c%5d@n] - @y%s@n\r\n", i, obj->vnum,
+                    obj->short_description);
   }
   write_to_output(d, "\r\n"
-	  "@gA@n) Add a new product.\r\n"
-	  "@gD@n) Delete a product.\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter choice : ");
+                     "@gA@n) Add a new product.\r\n"
+                     "@gD@n) Delete a product.\r\n"
+                     "@gQ@n) Quit\r\n"
+                     "Enter choice : ");
 
   OLC_MODE(d) = SEDIT_PRODUCTS_MENU;
 }
 
 /*-------------------------------------------------------------------*/
 
-void sedit_compact_rooms_menu(struct descriptor_data *d)
-{
+void sedit_compact_rooms_menu(struct descriptor_data *d) {
   struct shop_data *shop;
   int i, count = 0;
 
@@ -308,22 +297,21 @@ void sedit_compact_rooms_menu(struct descriptor_data *d)
   clear_screen(d);
   for (i = 0; S_ROOM(shop, i) != NOWHERE; i++) {
     write_to_output(d, "%2d - [@c%5d@n]  | %s", i, S_ROOM(shop, i),
-			!(++count % 5) ? "\r\n" : "");
+                    !(++count % 5) ? "\r\n" : "");
   }
   write_to_output(d, "\r\n"
-	  "@gA@n) Add a new room.\r\n"
-	  "@gD@n) Delete a room.\r\n"
-	  "@gL@n) Long display.\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter choice : ");
+                     "@gA@n) Add a new room.\r\n"
+                     "@gD@n) Delete a room.\r\n"
+                     "@gL@n) Long display.\r\n"
+                     "@gQ@n) Quit\r\n"
+                     "Enter choice : ");
 
   OLC_MODE(d) = SEDIT_ROOMS_MENU;
 }
 
 /*-------------------------------------------------------------------*/
 
-void sedit_rooms_menu(struct descriptor_data *d)
-{
+void sedit_rooms_menu(struct descriptor_data *d) {
   struct shop_data *shop;
   int i;
 
@@ -333,25 +321,25 @@ void sedit_rooms_menu(struct descriptor_data *d)
   write_to_output(d, "##     VNUM     Room\r\n\r\n");
   for (i = 0; S_ROOM(shop, i) != NOWHERE; i++) {
     if (room_by_id(S_ROOM(shop, i))) {
-      write_to_output(d, "%2d - [@c%5d@n] - @y%s@n\r\n", i, S_ROOM(shop, i), room_by_id(S_ROOM(shop, i))->name);
+      write_to_output(d, "%2d - [@c%5d@n] - @y%s@n\r\n", i, S_ROOM(shop, i),
+                      room_by_id(S_ROOM(shop, i))->name);
     } else {
       write_to_output(d, "%2d - [@R!Removed Room!@n]\r\n", i);
     }
   }
   write_to_output(d, "\r\n"
-	  "@gA@n) Add a new room.\r\n"
-	  "@gD@n) Delete a room.\r\n"
-	  "@gC@n) Compact Display.\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter choice : ");
+                     "@gA@n) Add a new room.\r\n"
+                     "@gD@n) Delete a room.\r\n"
+                     "@gC@n) Compact Display.\r\n"
+                     "@gQ@n) Quit\r\n"
+                     "Enter choice : ");
 
   OLC_MODE(d) = SEDIT_ROOMS_MENU;
 }
 
 /*-------------------------------------------------------------------*/
 
-void sedit_namelist_menu(struct descriptor_data *d)
-{
+void sedit_namelist_menu(struct descriptor_data *d) {
   struct shop_data *shop;
   int i;
 
@@ -361,57 +349,57 @@ void sedit_namelist_menu(struct descriptor_data *d)
   write_to_output(d, "##              Type   Namelist\r\n\r\n");
   for (i = 0; S_BUYTYPE(shop, i) != NOTHING; i++) {
     write_to_output(d, "%2d - @c%15s@n - @y%s@n\r\n", i,
-		item_types[S_BUYTYPE(shop, i)],
-		S_BUYWORD(shop, i) ? S_BUYWORD(shop, i) : "<None>");
+                    item_types[S_BUYTYPE(shop, i)],
+                    S_BUYWORD(shop, i) ? S_BUYWORD(shop, i) : "<None>");
   }
   write_to_output(d, "\r\n"
-	  "@gA@n) Add a new entry.\r\n"
-	  "@gD@n) Delete an entry.\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter choice : ");
+                     "@gA@n) Add a new entry.\r\n"
+                     "@gD@n) Delete an entry.\r\n"
+                     "@gQ@n) Quit\r\n"
+                     "Enter choice : ");
 
   OLC_MODE(d) = SEDIT_NAMELIST_MENU;
 }
 
 /*-------------------------------------------------------------------*/
 
-void sedit_shop_flags_menu(struct descriptor_data *d)
-{
+void sedit_shop_flags_menu(struct descriptor_data *d) {
   char bits[MAX_STRING_LENGTH];
   int i, count = 0;
 
   clear_screen(d);
   for (i = 0; i < NUM_SHOP_FLAGS; i++) {
     write_to_output(d, "@g%2d@n) %-20.20s   %s", i + 1, shop_bits[i],
-		!(++count % 2) ? "\r\n" : "");
+                    !(++count % 2) ? "\r\n" : "");
   }
   sprintbit(S_BITVECTOR(OLC_SHOP(d)), shop_bits, bits, sizeof(bits));
-  write_to_output(d, "\r\nCurrent Shop Flags : @c%s@n\r\nEnter choice : ", bits);
+  write_to_output(d,
+                  "\r\nCurrent Shop Flags : @c%s@n\r\nEnter choice : ", bits);
   OLC_MODE(d) = SEDIT_SHOP_FLAGS;
 }
 
 /*-------------------------------------------------------------------*/
 
-void sedit_no_trade_menu(struct descriptor_data *d)
-{
+void sedit_no_trade_menu(struct descriptor_data *d) {
   char bits[MAX_STRING_LENGTH];
   int i, count = 0;
 
   clear_screen(d);
   for (i = 0; i < NUM_TRADERS; i++) {
     write_to_output(d, "@g%2d@n) %-20.20s   %s", i + 1, trade_letters[i],
-		!(++count % 2) ? "\r\n" : "");
+                    !(++count % 2) ? "\r\n" : "");
   }
   sprintbitarray(S_NOTRADE(OLC_SHOP(d)), trade_letters, 4, bits, sizeof(bits));
-  write_to_output(d, "\r\nCurrently won't trade with: @c%s@n\r\n"
-	  "Enter choice : ", bits);
+  write_to_output(d,
+                  "\r\nCurrently won't trade with: @c%s@n\r\n"
+                  "Enter choice : ",
+                  bits);
   OLC_MODE(d) = SEDIT_NOTRADE;
 }
 
 /*-------------------------------------------------------------------*/
 
-void sedit_types_menu(struct descriptor_data *d)
-{
+void sedit_types_menu(struct descriptor_data *d) {
   struct shop_data *shop;
   int i, count = 0;
 
@@ -420,7 +408,7 @@ void sedit_types_menu(struct descriptor_data *d)
   clear_screen(d);
   for (i = 0; i < NUM_ITEM_TYPES; i++) {
     write_to_output(d, "@g%2d@n) @c%-20s@n  %s", i, item_types[i],
-		!(++count % 3) ? "\r\n" : "");
+                    !(++count % 3) ? "\r\n" : "");
   }
   write_to_output(d, "@nEnter choice : ");
   OLC_MODE(d) = SEDIT_TYPE_MENU;
@@ -431,8 +419,7 @@ void sedit_types_menu(struct descriptor_data *d)
 /*
  * Display main menu.
  */
-void sedit_disp_menu(struct descriptor_data *d)
-{
+void sedit_disp_menu(struct descriptor_data *d) {
   char buf1[MAX_STRING_LENGTH];
   char buf2[MAX_STRING_LENGTH];
   struct shop_data *shop;
@@ -444,47 +431,34 @@ void sedit_disp_menu(struct descriptor_data *d)
   clear_screen(d);
   sprintbitarray(S_NOTRADE(shop), trade_letters, 4, buf1, sizeof(buf1));
   sprintbit(S_BITVECTOR(shop), shop_bits, buf2, sizeof(buf2));
-  write_to_output(d,
-	  "-- Shop Number : [@c%d@n]\r\n"
-	  "@g0@n) Keeper      : [@c%d@n] @y%s\r\n"
-          "@g1@n) Open 1      : @c%4d@n          @g2@n) Close 1     : @c%4d\r\n"
-          "@g3@n) Open 2      : @c%4d@n          @g4@n) Close 2     : @c%4d\r\n"
-	  "@g5@n) Sell rate   : @c%1.2f@n          @g6@n) Buy rate    : @c%1.2f\r\n"
-	  "@g7@n) Keeper no item : @y%s\r\n"
-	  "@g8@n) Player no item : @y%s\r\n"
-	  "@g9@n) Keeper no cash : @y%s\r\n"
-	  "@gA@n) Player no cash : @y%s\r\n"
-	  "@gB@n) Keeper no buy  : @y%s\r\n"
-	  "@gC@n) Buy success    : @y%s\r\n"
-	  "@gD@n) Sell success   : @y%s\r\n"
-	  "@gE@n) No Trade With  : @c%s\r\n"
-	  "@gF@n) Shop flags     : @c%s\r\n"
-	  "@gR@n) Rooms Menu\r\n"
-	  "@gP@n) Products Menu\r\n"
-	  "@gT@n) Accept Types Menu\r\n"
-          "@gW@n) Copy Shop\r\n"
-	  "@gQ@n) Quit\r\n"
-	  "Enter Choice : ",
+  write_to_output(
+      d,
+      "-- Shop Number : [@c%d@n]\r\n"
+      "@g0@n) Keeper      : [@c%d@n] @y%s\r\n"
+      "@g1@n) Open 1      : @c%4d@n          @g2@n) Close 1     : @c%4d\r\n"
+      "@g3@n) Open 2      : @c%4d@n          @g4@n) Close 2     : @c%4d\r\n"
+      "@g5@n) Sell rate   : @c%1.2f@n          @g6@n) Buy rate    : @c%1.2f\r\n"
+      "@g7@n) Keeper no item : @y%s\r\n"
+      "@g8@n) Player no item : @y%s\r\n"
+      "@g9@n) Keeper no cash : @y%s\r\n"
+      "@gA@n) Player no cash : @y%s\r\n"
+      "@gB@n) Keeper no buy  : @y%s\r\n"
+      "@gC@n) Buy success    : @y%s\r\n"
+      "@gD@n) Sell success   : @y%s\r\n"
+      "@gE@n) No Trade With  : @c%s\r\n"
+      "@gF@n) Shop flags     : @c%s\r\n"
+      "@gR@n) Rooms Menu\r\n"
+      "@gP@n) Products Menu\r\n"
+      "@gT@n) Accept Types Menu\r\n"
+      "@gW@n) Copy Shop\r\n"
+      "@gQ@n) Quit\r\n"
+      "Enter Choice : ",
 
-	  OLC_NUM(d),
-	  keeper ? keeper->vnum : -1,
-	  keeper ? keeper->short_descr : "None",
-	  S_OPEN1(shop),
-	  S_CLOSE1(shop),
-	  S_OPEN2(shop),
-	  S_CLOSE2(shop),
-	  S_BUYPROFIT(shop),
-	  S_SELLPROFIT(shop),
-	  S_NOITEM1(shop),
-	  S_NOITEM2(shop),
-	  S_NOCASH1(shop),
-	  S_NOCASH2(shop),
-	  S_NOBUY(shop),
-	  S_BUY(shop),
-	  S_SELL(shop),
-	  buf1,
-	  buf2
-  );
+      OLC_NUM(d), keeper ? keeper->vnum : -1,
+      keeper ? keeper->short_descr : "None", S_OPEN1(shop), S_CLOSE1(shop),
+      S_OPEN2(shop), S_CLOSE2(shop), S_BUYPROFIT(shop), S_SELLPROFIT(shop),
+      S_NOITEM1(shop), S_NOITEM2(shop), S_NOCASH1(shop), S_NOCASH2(shop),
+      S_NOBUY(shop), S_BUY(shop), S_SELL(shop), buf1, buf2);
 
   OLC_MODE(d) = SEDIT_MAIN_MENU;
 }
@@ -493,8 +467,7 @@ void sedit_disp_menu(struct descriptor_data *d)
   The GARGANTUAN event handler
  **************************************************************************/
 
-void sedit_parse(struct descriptor_data *d, char *arg)
-{
+void sedit_parse(struct descriptor_data *d, char *arg) {
   int i;
 
   struct mob_proto_data *keeper = NULL;
@@ -506,17 +479,17 @@ void sedit_parse(struct descriptor_data *d, char *arg)
     }
   }
   switch (OLC_MODE(d)) {
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case SEDIT_CONFIRM_SAVESTRING:
     switch (*arg) {
     case 'y':
     case 'Y':
       sedit_save_internally(d);
       mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE,
-        "OLC: %s edits shop %d", GET_NAME(d->character), OLC_NUM(d));
+             "OLC: %s edits shop %d", GET_NAME(d->character), OLC_NUM(d));
       if (CONFIG_OLC_SAVE) {
-	sedit_save_to_disk(zone_by_id(OLC_ZNUM(d)));
-	write_to_output(d, "Shop saved to disk.\r\n");
+        sedit_save_to_disk(zone_by_id(OLC_ZNUM(d)));
+        write_to_output(d, "Shop saved to disk.\r\n");
       } else
         write_to_output(d, "Shop saved to memory.\r\n");
       cleanup_olc(d, CLEANUP_STRUCTS);
@@ -526,22 +499,23 @@ void sedit_parse(struct descriptor_data *d, char *arg)
       cleanup_olc(d, CLEANUP_ALL);
       return;
     default:
-      write_to_output(d, "Invalid choice!\r\nDo you wish to save your changes? : ");
+      write_to_output(
+          d, "Invalid choice!\r\nDo you wish to save your changes? : ");
       return;
     }
     break;
 
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case SEDIT_MAIN_MENU:
     i = 0;
     switch (*arg) {
     case 'q':
     case 'Q':
-      if (OLC_VAL(d)) {		/* Anything been changed? */
+      if (OLC_VAL(d)) { /* Anything been changed? */
         write_to_output(d, "Do you wish to save your changes? : ");
-	OLC_MODE(d) = SEDIT_CONFIRM_SAVESTRING;
+        OLC_MODE(d) = SEDIT_CONFIRM_SAVESTRING;
       } else
-	cleanup_olc(d, CLEANUP_ALL);
+        cleanup_olc(d, CLEANUP_ALL);
       return;
     case '0':
       OLC_MODE(d) = SEDIT_KEEPER;
@@ -642,7 +616,7 @@ void sedit_parse(struct descriptor_data *d, char *arg)
     else
       write_to_output(d, "Oops...\r\n");
     return;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case SEDIT_NAMELIST_MENU:
     switch (*arg) {
     case 'a':
@@ -659,7 +633,7 @@ void sedit_parse(struct descriptor_data *d, char *arg)
       break;
     }
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case SEDIT_PRODUCTS_MENU:
     switch (*arg) {
     case 'a':
@@ -677,7 +651,7 @@ void sedit_parse(struct descriptor_data *d, char *arg)
       break;
     }
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   case SEDIT_ROOMS_MENU:
     switch (*arg) {
     case 'a':
@@ -703,7 +677,7 @@ void sedit_parse(struct descriptor_data *d, char *arg)
       break;
     }
     break;
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
     /*
      * String edits.
      */
@@ -746,7 +720,7 @@ void sedit_parse(struct descriptor_data *d, char *arg)
     sedit_namelist_menu(d);
     return;
 
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
     /*
      * Numerical responses.
      */
@@ -754,8 +728,8 @@ void sedit_parse(struct descriptor_data *d, char *arg)
     i = atoi(arg);
     if ((i = atoi(arg)) != -1)
       if ((keeper = mob_proto_by_id(i)) == NULL) {
-	write_to_output(d, "That mobile does not exist, try again : ");
-	return;
+        write_to_output(d, "That mobile does not exist, try again : ");
+        return;
       }
     S_KEEPER(OLC_SHOP(d)) = i;
     if (i == -1)
@@ -763,7 +737,9 @@ void sedit_parse(struct descriptor_data *d, char *arg)
     /*
      * Fiddle with special procs.
      */
-    S_FUNC(OLC_SHOP(d)) = mob_proto_special_get(keeper->vnum) != shop_keeper ? mob_proto_special_get(keeper->vnum) : NULL;
+    S_FUNC(OLC_SHOP(d)) = mob_proto_special_get(keeper->vnum) != shop_keeper
+                              ? mob_proto_special_get(keeper->vnum)
+                              : NULL;
     mob_proto_special_set(keeper->vnum, shop_keeper);
     break;
   case SEDIT_OPEN1:
@@ -796,8 +772,8 @@ void sedit_parse(struct descriptor_data *d, char *arg)
   case SEDIT_NEW_PRODUCT:
     if ((i = atoi(arg)) != -1)
       if ((i = real_object(i)) == NOTHING) {
-	write_to_output(d, "That object does not exist, try again : ");
-	return;
+        write_to_output(d, "That object does not exist, try again : ");
+        return;
       }
     if (i > 0)
       add_to_int_list(&(S_PRODUCTS(OLC_SHOP(d))), i);
@@ -810,8 +786,8 @@ void sedit_parse(struct descriptor_data *d, char *arg)
   case SEDIT_NEW_ROOM:
     if ((i = atoi(arg)) != -1)
       if ((i = room_vnum_check(i)) == NOWHERE) {
-	write_to_output(d, "That room does not exist, try again : ");
-	return;
+        write_to_output(d, "That room does not exist, try again : ");
+        return;
       }
     if (i >= 0)
       add_to_int_list(&(S_ROOMS(OLC_SHOP(d))), i);
@@ -842,24 +818,25 @@ void sedit_parse(struct descriptor_data *d, char *arg)
       write_to_output(d, "That shop does not exist.\r\n");
     break;
 
-/*-------------------------------------------------------------------*/
+    /*-------------------------------------------------------------------*/
   default:
     /*
      * We should never get here.
      */
     cleanup_olc(d, CLEANUP_ALL);
-    mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: OLC: sedit_parse(): Reached default case!");
+    mudlog(BRF, ADMLVL_BUILDER, TRUE,
+           "SYSERR: OLC: sedit_parse(): Reached default case!");
     write_to_output(d, "Oops...\r\n");
     break;
   }
 
-/*-------------------------------------------------------------------*/
+  /*-------------------------------------------------------------------*/
 
-/*
- * END OF CASE 
- * If we get here, we have probably changed something, and now want to
- * return to main menu.  Use OLC_VAL as a 'has changed' flag.
- */
+  /*
+   * END OF CASE
+   * If we get here, we have probably changed something, and now want to
+   * return to main menu.  Use OLC_VAL as a 'has changed' flag.
+   */
   OLC_VAL(d) = 1;
   sedit_disp_menu(d);
 }

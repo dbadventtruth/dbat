@@ -1,46 +1,45 @@
 /* ************************************************************************
-*   File: modify.c                                      Part of CircleMUD *
-*  Usage: Run-time modification of game variables                         *
-*                                                                         *
-*  All rights reserved.  See license.doc for complete information.        *
-*                                                                         *
-*  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
-*  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
-************************************************************************ */
+ *   File: modify.c                                      Part of CircleMUD *
+ *  Usage: Run-time modification of game variables                         *
+ *                                                                         *
+ *  All rights reserved.  See license.doc for complete information.        *
+ *                                                                         *
+ *  Copyright (C) 1993, 94 by the Trustees of the Johns Hopkins University *
+ *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
+ ************************************************************************ */
 
 #include "modify.h"
 
-#include "descriptor_impl.h"
-#include "descriptor_macros.h"
-#include "character_impl.h"
-#include "character_macros.h"
-#include "flags.h"
-#include "log.h"
-#include "interpreter.h"
-#include "handler.h"
-#include "db.h"
-#include "comm.h"
-#include "spells.h"
-#include "mail.h"
-#include "util_macros.h"
 #include "board_impl.h"
 #include "boards.h"
-#include "improved-edit.h"
-#include "oasis.h"
-#include "tedit.h"
-#include "shop.h"
-#include "guild.h"
-#include "search.h"
-#include "skills.h"
-#include "spell_parser.h"
-#include "dg_olc.h"
-#include "boards.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "comm.h"
 #include "config.h"
 #include "config_db.h"
 #include "consts/admlevel.h"
+#include "consts/constates.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
-#include "consts/constates.h"
+#include "db.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "dg_olc.h"
+#include "flags.h"
+#include "guild.h"
+#include "handler.h"
+#include "improved-edit.h"
+#include "interpreter.h"
+#include "log.h"
+#include "mail.h"
+#include "oasis.h"
+#include "search.h"
+#include "shop.h"
+#include "skills.h"
+#include "spell_parser.h"
+#include "spells.h"
+#include "tedit.h"
+#include "util_macros.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -53,32 +52,16 @@ static int count_pages(char *str, struct char_data *ch);
 static void playing_string_cleanup(struct descriptor_data *d, int action);
 static void exdesc_string_cleanup(struct descriptor_data *d, int action);
 
-static const char *string_fields[] =
-{
-  "name",
-  "short",
-  "long",
-  "description",
-  "title",
-  "delete-description",
-  "\n"
-};
-
+static const char *string_fields[] = {
+    "name", "short", "long", "description", "title", "delete-description",
+    "\n"};
 
 /* maximum length for text field x+1 */
-static const int length[] =
-{
-  15,
-  60,
-  256,
-  240,
-  60
-};
-
+static const int length[] = {15, 60, 256, 240, 60};
 
 /* ************************************************************************
-*  modification of malloc'ed strings                                      *
-************************************************************************ */
+ *  modification of malloc'ed strings                                      *
+ ************************************************************************ */
 
 /*
  * Put '#if 1' here to erase ~, or roll your own method.  A common idea
@@ -87,18 +70,17 @@ static const int length[] =
  * function around because other MUD packages use it, like mudFTP.
  *   -gg 9/9/98
  */
-void smash_tilde(char *str)
-{
+void smash_tilde(char *str) {
   /*
    * Erase any _line ending_ tildes inserted in the editor.
    * The load mechanism can't handle those, yet.
    * -- Welcor 04/2003
    */
 
-   char *p = str;
-   for (; *p; p++)
-     if (*p == '~' && (*(p+1)=='\r' || *(p+1)=='\n' || *(p+1)=='\0'))
-       *p=' ';
+  char *p = str;
+  for (; *p; p++)
+    if (*p == '~' && (*(p + 1) == '\r' || *(p + 1) == '\n' || *(p + 1) == '\0'))
+      *p = ' ';
 #if 1
   /*
    * Erase any ~'s inserted by people in the editor.  This prevents anyone
@@ -106,23 +88,22 @@ void smash_tilde(char *str)
    * Derived from an idea by Sammy <samedi@dhc.net> (who happens to like
    * his tildes thank you very much.), -gg 2/20/98
    */
-    while ((str = strchr(str, '~')) != NULL)
-      *str = ' ';
+  while ((str = strchr(str, '~')) != NULL)
+    *str = ' ';
 #endif
 }
 
-static void smash_numb(char *str)
-{
+static void smash_numb(char *str) {
   /*
    * Erase any _line ending_ tildes inserted in the editor.
    * The load mechanism can't handle those, yet.
    * -- Welcor 04/2003
    */
 
-   char *p = str;
-   for (; *p; p++)
-     if (*p == '#' && (*(p+1)=='\r' || *(p+1)=='\n' || *(p+1)=='\0'))
-       *p=' ';
+  char *p = str;
+  for (; *p; p++)
+    if (*p == '#' && (*(p + 1) == '\r' || *(p + 1) == '\n' || *(p + 1) == '\0'))
+      *p = ' ';
 #if 1
   /*
    * Erase any ~'s inserted by people in the editor.  This prevents anyone
@@ -130,8 +111,8 @@ static void smash_numb(char *str)
    * Derived from an idea by Sammy <samedi@dhc.net> (who happens to like
    * his tildes thank you very much.), -gg 2/20/98
    */
-    while ((str = strchr(str, '#')) != NULL)
-      *str = ' ';
+  while ((str = strchr(str, '#')) != NULL)
+    *str = ' ';
 #endif
 }
 
@@ -142,15 +123,15 @@ static void smash_numb(char *str)
  * else you may want through it.  The improved editor patch when updated
  * could use it to pass the old text buffer, for instance.
  */
-void string_write(struct descriptor_data *d, char **writeto, size_t len, long mailto, void *data)
-{
+void string_write(struct descriptor_data *d, char **writeto, size_t len,
+                  long mailto, void *data) {
   if (d->character && !IS_NPC(d->character))
     SET_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
 
   if (using_improved_editor)
     d->backstr = (char *)data;
   else if (data)
-    free(data); 
+    free(data);
 
   d->str = writeto;
   d->max_str = len;
@@ -161,8 +142,7 @@ void string_write(struct descriptor_data *d, char **writeto, size_t len, long ma
  * Add user input to the 'current' string (as defined by d->str).
  * This is still overly complex.
  */
-void string_add(struct descriptor_data *d, char *str)
-{
+void string_add(struct descriptor_data *d, char *str) {
   int action;
 
   delete_doubledollar(str);
@@ -174,34 +154,34 @@ void string_add(struct descriptor_data *d, char *str)
   /* changed to only accept '@' if it's by itself - fnord 10/15/2004 */
   if ((action = (*str == '@' && !str[1])))
     *str = '\0';
-  else
-    if ((action = improved_editor_execute(d, str)) == STRINGADD_ACTION)
-      return;
+  else if ((action = improved_editor_execute(d, str)) == STRINGADD_ACTION)
+    return;
 
   if (action != STRINGADD_OK)
-    /* Do nothing. */ ;
+    /* Do nothing. */;
   else if (!(*d->str)) {
     if (strlen(str) + 3 > d->max_str) { /* \r\n\0 */
       send_to_char(d->character, "String too long - Truncated.\r\n");
       strcpy(str + (d->max_str - 3), "\r\n");
       CREATE(*d->str, char, d->max_str);
-      strcpy(*d->str, str);	/* strcpy: OK (size checked) */
+      strcpy(*d->str, str); /* strcpy: OK (size checked) */
       if (!using_improved_editor)
-        action = STRINGADD_SAVE; 
+        action = STRINGADD_SAVE;
     } else {
       CREATE(*d->str, char, strlen(str) + 3);
-      strcpy(*d->str, str);	/* strcpy: OK (size checked) */
+      strcpy(*d->str, str); /* strcpy: OK (size checked) */
     }
   } else {
     if (strlen(str) + strlen(*d->str) + 3 > d->max_str) { /* \r\n\0 */
       send_to_char(d->character, "String too long.  Last line skipped.\r\n");
       if (!using_improved_editor)
-        action = STRINGADD_SAVE; 
+        action = STRINGADD_SAVE;
       else if (action == STRINGADD_OK)
-        action = STRINGADD_ACTION;    /* No appending \r\n\0, but still let them save. */
+        action = STRINGADD_ACTION; /* No appending \r\n\0, but still let them
+                                      save. */
     } else {
       RECREATE(*d->str, char, strlen(*d->str) + strlen(str) + 3); /* \r\n\0 */
-      strcat(*d->str, str);	/* strcat: OK (size precalculated) */
+      strcat(*d->str, str); /* strcat: OK (size precalculated) */
     }
   }
 
@@ -209,43 +189,43 @@ void string_add(struct descriptor_data *d, char *str)
    * Common cleanup code.
    */
   switch (action) {
-    case STRINGADD_ABORT:
-      switch (STATE(d)) {
-        case CON_CEDIT:
-        case CON_TEDIT:
-        case CON_NEWSEDIT:
-        case CON_REDIT:
-        case CON_MEDIT:
-        case CON_OEDIT:
-        case CON_IEDIT:
-        case CON_EXDESC:
-        case CON_TRIGEDIT:
-        case CON_HEDIT:
-          free(*d->str);
-          *d->str = d->backstr;
-          d->backstr = NULL;
-          d->str = NULL;
-          break;
-      case CON_PLAYING:
-	/* all CON_PLAYING are handled below in playing_string_cleanup */
-	break;
-		     
-        default:
-          log("SYSERR: string_add: Aborting write from unknown origin.");
-          break;
-      }
-      break;
-    case STRINGADD_SAVE:
-      if (d->str && *d->str && **d->str == '\0') {
-        free(*d->str);
-        *d->str = strdup("Nothing.\r\n");
-      }
-      if (d->backstr)
-        free(d->backstr);
+  case STRINGADD_ABORT:
+    switch (STATE(d)) {
+    case CON_CEDIT:
+    case CON_TEDIT:
+    case CON_NEWSEDIT:
+    case CON_REDIT:
+    case CON_MEDIT:
+    case CON_OEDIT:
+    case CON_IEDIT:
+    case CON_EXDESC:
+    case CON_TRIGEDIT:
+    case CON_HEDIT:
+      free(*d->str);
+      *d->str = d->backstr;
       d->backstr = NULL;
+      d->str = NULL;
       break;
-    case STRINGADD_ACTION:
+    case CON_PLAYING:
+      /* all CON_PLAYING are handled below in playing_string_cleanup */
       break;
+
+    default:
+      log("SYSERR: string_add: Aborting write from unknown origin.");
+      break;
+    }
+    break;
+  case STRINGADD_SAVE:
+    if (d->str && *d->str && **d->str == '\0') {
+      free(*d->str);
+      *d->str = strdup("Nothing.\r\n");
+    }
+    if (d->backstr)
+      free(d->backstr);
+    d->backstr = NULL;
+    break;
+  case STRINGADD_ACTION:
+    break;
   }
 
   /* Ok, now final cleanup. */
@@ -255,20 +235,18 @@ void string_add(struct descriptor_data *d, char *str)
     struct {
       int mode;
       void (*func)(struct descriptor_data *dsc, int todo);
-    } cleanup_modes[] = {
-      { CON_CEDIT  , cedit_string_cleanup },
-      { CON_MEDIT  , medit_string_cleanup },
-      { CON_OEDIT  , oedit_string_cleanup },
-      { CON_REDIT  , redit_string_cleanup },
-      { CON_TEDIT  , tedit_string_cleanup },
-      { CON_TRIGEDIT, trigedit_string_cleanup },
-      { CON_EXDESC , exdesc_string_cleanup },
-      { CON_PLAYING, playing_string_cleanup },
-      { CON_IEDIT  , oedit_string_cleanup },
-      { CON_HEDIT  , hedit_string_cleanup },
-      { CON_NEWSEDIT  , news_string_cleanup },
-      { -1, NULL }
-    };
+    } cleanup_modes[] = {{CON_CEDIT, cedit_string_cleanup},
+                         {CON_MEDIT, medit_string_cleanup},
+                         {CON_OEDIT, oedit_string_cleanup},
+                         {CON_REDIT, redit_string_cleanup},
+                         {CON_TEDIT, tedit_string_cleanup},
+                         {CON_TRIGEDIT, trigedit_string_cleanup},
+                         {CON_EXDESC, exdesc_string_cleanup},
+                         {CON_PLAYING, playing_string_cleanup},
+                         {CON_IEDIT, oedit_string_cleanup},
+                         {CON_HEDIT, hedit_string_cleanup},
+                         {CON_NEWSEDIT, news_string_cleanup},
+                         {-1, NULL}};
 
     for (i = 0; cleanup_modes[i].func; i++)
       if (STATE(d) == cleanup_modes[i].mode)
@@ -276,21 +254,21 @@ void string_add(struct descriptor_data *d, char *str)
 
     /* Common post cleanup code. */
     d->str = NULL;
-      d->mail_to = 0;
+    d->mail_to = 0;
     d->max_str = 0;
     if (d->character && !IS_NPC(d->character)) {
       REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
-	  REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
-	}
-  } else if (action != STRINGADD_ACTION && strlen(*d->str) + 3 <= d->max_str) /* 3 = \r\n\0 */
-     strcat(*d->str, "\r\n");
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
+    }
+  } else if (action != STRINGADD_ACTION &&
+             strlen(*d->str) + 3 <= d->max_str) /* 3 = \r\n\0 */
+    strcat(*d->str, "\r\n");
 }
 
-static void playing_string_cleanup(struct descriptor_data *d, int action)
-{
+static void playing_string_cleanup(struct descriptor_data *d, int action) {
   struct board_info *board;
-  struct board_msg *fore,*cur,*aft;
-  
+  struct board_msg *fore, *cur, *aft;
+
   if (PLR_FLAGGED(d->character, PLR_MAILING)) {
     if (action == STRINGADD_SAVE && *d->str) {
       store_mail(d->mail_to, GET_IDNUM(d->character), *d->str);
@@ -303,80 +281,77 @@ static void playing_string_cleanup(struct descriptor_data *d, int action)
     }
   }
 
-  if(PLR_FLAGGED(d->character,PLR_WRITING)) {
+  if (PLR_FLAGGED(d->character, PLR_WRITING)) {
     if (d->mail_to >= BOARD_MAGIC) {
       if (action == STRINGADD_ABORT) {
-	/* find the message */
-	board = locate_board(d->mail_to - BOARD_MAGIC);
-	fore=cur=aft=NULL;
-	for(cur = BOARD_MESSAGES(board);cur;cur = aft) {
-	  aft=MESG_NEXT(cur);
-	  if(cur->data == *d->str) {
-	    if(BOARD_MESSAGES(board) == cur) {
-	      if(MESG_NEXT(cur) != NULL) {
-		BOARD_MESSAGES(board) = MESG_NEXT(cur);
-	      } else {
-		BOARD_MESSAGES(board) = NULL;
-	      }
-	    }
-	    if(fore) {
-	      MESG_NEXT(fore) = aft;
-	    }
-	    if(aft) {
-	      MESG_PREV(aft) = fore;
-	    }
-	    free(cur->subject);
-	    free(cur->data);
-	    free(cur);
-	    BOARD_MNUM(board)--;
-	    write_to_output(d,"Post aborted.\r\n");
-	    return;
-	  }
-	  fore=cur;
-	}
-	write_to_output(d,"Unable to find your message to delete it!\r\n");
+        /* find the message */
+        board = locate_board(d->mail_to - BOARD_MAGIC);
+        fore = cur = aft = NULL;
+        for (cur = BOARD_MESSAGES(board); cur; cur = aft) {
+          aft = MESG_NEXT(cur);
+          if (cur->data == *d->str) {
+            if (BOARD_MESSAGES(board) == cur) {
+              if (MESG_NEXT(cur) != NULL) {
+                BOARD_MESSAGES(board) = MESG_NEXT(cur);
+              } else {
+                BOARD_MESSAGES(board) = NULL;
+              }
+            }
+            if (fore) {
+              MESG_NEXT(fore) = aft;
+            }
+            if (aft) {
+              MESG_PREV(aft) = fore;
+            }
+            free(cur->subject);
+            free(cur->data);
+            free(cur);
+            BOARD_MNUM(board)--;
+            write_to_output(d, "Post aborted.\r\n");
+            return;
+          }
+          fore = cur;
+        }
+        write_to_output(d, "Unable to find your message to delete it!\r\n");
       } else {
-	write_to_output(d,"\r\nPost saved.\r\n");
-	save_board(locate_board(d->mail_to - BOARD_MAGIC));
+        write_to_output(d, "\r\nPost saved.\r\n");
+        save_board(locate_board(d->mail_to - BOARD_MAGIC));
       }
     }
-    
+
     /* hm... I wonder what happens when you can't finish writing a note */
-    }
+  }
 }
 
-static void exdesc_string_cleanup(struct descriptor_data *d, int action)
-{
+static void exdesc_string_cleanup(struct descriptor_data *d, int action) {
   if (action == STRINGADD_ABORT)
     write_to_output(d, "Description aborted.\r\n");
-  
+
   write_to_output(d, CONFIG_MENU);
   STATE(d) = CON_MENU;
 }
 
-
 /* *********************************************************************
-   *  Modification of character skills                                 *
-   ********************************************************************* */
+ *  Modification of character skills                                 *
+ ********************************************************************* */
 
-ACMD(do_skillset)
-{
+ACMD(do_skillset) {
   struct char_data *vict;
   char name[MAX_INPUT_LENGTH];
   char buf[MAX_INPUT_LENGTH], help[MAX_STRING_LENGTH];
-  int skill, value, i=0, qend;
+  int skill, value, i = 0, qend;
 
   argument = one_argument(argument, name);
 
-  if (!*name) {			/* no arguments. print an informative text */
+  if (!*name) { /* no arguments. print an informative text */
     send_to_char(ch, "Syntax: skillset <name> '<skill>' <value>\r\n"
-		"Skill being one of the following:\r\n");
+                     "Skill being one of the following:\r\n");
     for (qend = 0, i = 0; i < SKILL_TABLE_SIZE; i++) {
-      if (spell_info[i].name == unused_spellname)	/* This is valid. */
-	continue;
+      if (spell_info[i].name == unused_spellname) /* This is valid. */
+        continue;
       send_to_char(ch, "%18s", spell_info[i].name);
       if (qend++ % 4 == 3)
-	send_to_char(ch, "\r\n");
+        send_to_char(ch, "\r\n");
     }
     if (qend % 4 != 0)
       send_to_char(ch, "\r\n");
@@ -392,15 +367,19 @@ ACMD(do_skillset)
   /* If there is no chars in argument */
   if (!*argument) {
     i = snprintf(help, sizeof(help) - i, "\r\nSkills:\r\n");
-    i += print_skills_by_type(vict, help + i, sizeof(help) - i, SKTYPE_SKILL, NULL);
+    i += print_skills_by_type(vict, help + i, sizeof(help) - i, SKTYPE_SKILL,
+                              NULL);
     i += snprintf(help + i, sizeof(help) - i, "\r\nSpells:\r\n");
-    i += print_skills_by_type(vict, help + i, sizeof(help) - i, SKTYPE_SPELL, NULL);
+    i += print_skills_by_type(vict, help + i, sizeof(help) - i, SKTYPE_SPELL,
+                              NULL);
     if (CONFIG_ENABLE_LANGUAGES) {
       i += snprintf(help + i, sizeof(help) - i, "\r\nLanguages:\r\n");
-      i += print_skills_by_type(vict, help + i, sizeof(help) - i, SKTYPE_SKILL | SKTYPE_LANG, NULL);
+      i += print_skills_by_type(vict, help + i, sizeof(help) - i,
+                                SKTYPE_SKILL | SKTYPE_LANG, NULL);
     }
     if (i >= sizeof(help))
-      strcpy(help + sizeof(help) - strlen("** OVERFLOW **") - 1, "** OVERFLOW **"); /* strcpy: OK */
+      strcpy(help + sizeof(help) - strlen("** OVERFLOW **") - 1,
+             "** OVERFLOW **"); /* strcpy: OK */
     send_to_char(ch, "%s", help);
     return;
   }
@@ -418,13 +397,14 @@ ACMD(do_skillset)
     send_to_char(ch, "Skill must be enclosed in: ''\r\n");
     return;
   }
-  strcpy(help, (argument + 1));	/* strcpy: OK (MAX_INPUT_LENGTH <= MAX_STRING_LENGTH) */
+  strcpy(help, (argument +
+                1)); /* strcpy: OK (MAX_INPUT_LENGTH <= MAX_STRING_LENGTH) */
   help[qend - 1] = '\0';
   if ((skill = find_skill_num(help, SKTYPE_SKILL)) <= 0) {
     send_to_char(ch, "Unrecognized skill.\r\n");
     return;
   }
-  argument += qend + 1;		/* skip to next parameter */
+  argument += qend + 1; /* skip to next parameter */
   argument = one_argument(argument, buf);
 
   if (!*buf) {
@@ -442,15 +422,15 @@ ACMD(do_skillset)
    * checked for the -1 above so we are safe here.
    */
   SET_SKILL(vict, skill, value);
-  mudlog(BRF, ADMLVL_IMMORT, TRUE, "skillset: %s changed %s's '%s' to %d.", GET_NAME(ch), GET_NAME(vict), spell_info[skill].name, value);
-  send_to_char(ch, "You change %s's %s to %d.\r\n", GET_NAME(vict), spell_info[skill].name, value);
+  mudlog(BRF, ADMLVL_IMMORT, TRUE, "skillset: %s changed %s's '%s' to %d.",
+         GET_NAME(ch), GET_NAME(vict), spell_info[skill].name, value);
+  send_to_char(ch, "You change %s's %s to %d.\r\n", GET_NAME(vict),
+               spell_info[skill].name, value);
 }
 
-
-
 /*********************************************************************
-* New Pagination Code
-* Michael Buselli submitted the following code for an enhanced pager
-* for CircleMUD.  All functions below are his.  --JE 8 Mar 96
-*
-*********************************************************************/
+ * New Pagination Code
+ * Michael Buselli submitted the following code for an enhanced pager
+ * for CircleMUD.  All functions below are his.  --JE 8 Mar 96
+ *
+ *********************************************************************/
