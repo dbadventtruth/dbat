@@ -1,6 +1,6 @@
 #include "sensei.h"
 #include "races_plus.h"
-#include "characters.h"
+#include "character_impl.h"
 
 #include <utility>
 #include <string>

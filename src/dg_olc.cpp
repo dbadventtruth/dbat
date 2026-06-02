@@ -11,10 +11,10 @@
 *  $Date: 2004/10/11 12:07:00$                                            *
 *  $Revision: 1.0.14 $                                                    *
 **************************************************************************/
-#include "utils.h"
+
 #include "dg_scripts.h"
 #include "dg_olc.h"
-#include "utils.h"
+
 #include "comm.h"
 #include "db.h"
 #include "genolc.h"

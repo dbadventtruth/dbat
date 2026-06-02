@@ -9,7 +9,7 @@
  ************************************************************************ */
 #include "config.h"
 #include "local_limits.h"
-#include "utils.h"
+
 #include "spells.h"
 #include "comm.h"
 #include "dg_comm.h"

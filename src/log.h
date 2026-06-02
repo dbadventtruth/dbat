@@ -1,7 +1,6 @@
 #pragma once
 #include "consts/types.h"
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef __cplusplus

@@ -4,9 +4,40 @@
  * Copyright 1997-2001 George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 #include "config.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_db.h"
+#include "room_impl.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "character_db.h"
+#include "dgscript_impl.h"
+#include "dgscript_db.h"
+#include "config_db.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/directions.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "consts/triggers.h"
+#include "character_utils.h"
+#include "flags.h"
+#include "log.h"
+#include "room_db.h"
+#include "util_macros.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 #include "comm.h"
 #include "interpreter.h"
-#include "utils.h"
+
 #include "db.h"
 #include "genolc.h"
 #include "genzon.h"

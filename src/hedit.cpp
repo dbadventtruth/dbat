@@ -10,7 +10,7 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 **************************************************************************/
 #include "help.h"
-#include "utils.h"
+
 
 #include "hedit.h"
 #include "comm.h"

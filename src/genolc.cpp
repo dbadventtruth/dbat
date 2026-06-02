@@ -15,7 +15,7 @@
 #include "modify.h"
 #include "genzon.h"
 #include "oasis.h"
-#include "utils.h"
+
 #include "comm.h"
 
 /* List of zones to be saved.  */

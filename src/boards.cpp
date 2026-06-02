@@ -45,7 +45,7 @@ it.
 
 */
 #include "boards.h"
-#include "utils.h"
+
 #include "boards.h"
 #include "comm.h"
 #include "db.h"

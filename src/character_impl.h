@@ -1,26 +1,16 @@
 #pragma once
 #include "consts/types.h"
 #include "consts/prefflags.h"
-#include "consts/magic.h"
 #include "consts/colors.h"
-#include "consts/conditions.h"
 #include "consts/history.h"
-#include "consts/senseis.h"
 #include "consts/itemdata.h"
 #include "consts/skills.h"
 #include "consts/bonus.h"
-#include "consts/feats.h"
 #include "consts/affflags.h"
 #include "consts/adminflags.h"
-#include "consts/mobflags.h"
-#include "consts/playerflags.h"
-#include "consts/positions.h"
-#include "consts/fightprefs.h"
-#include "consts/appearance.h"
-#include "consts/admlevel.h"
-#include "consts/races.h"
-#include "consts/senseis.h"
-#include "consts/sizes.h"
+
+#include <time.h>
+
 
 #ifdef __cplusplus
 extern "C" {

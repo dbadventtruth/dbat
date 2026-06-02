@@ -8,9 +8,9 @@
 
 #include "consts/types.h"
 #include "object_impl.h"
+#include "object_api.h"
 #include "room_impl.h"
 #include "character_impl.h"
-#include "object_api.h"
 
 namespace dbat::game::search {
 

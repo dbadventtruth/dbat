@@ -11,13 +11,39 @@
 /***
  * The entire shop rewrite for Circle 3.0 was done by Jeff Fink.  Thanks Jeff!
  ***/
-#include "shops.h"
 #include "shop.h"
+#include "shop_impl.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "flags.h"
+#include "log.h"
+#include "search.h"
+#include "stringutils.h"
+#include "weather_db.h"
+#include "extract.h"
+#include "relocate.h"
+#include "random.h"
+#include "util_macros.h"
+#include "skills.h"
+#include "consts/aligns.h"
+#include "consts/applies.h"
+#include "consts/itemdata.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/pulse.h"
+#include "consts/races.h"
+#include "consts/sizes.h"
 #include "comm.h"
 #include "handler.h"
 #include "db.h"
 #include "interpreter.h"
-#include "utils.h"
+
 #include "spells.h"
 #include "feats.h"
 #include "act.comm.h"
@@ -29,6 +55,9 @@
 #include "fileop.h"
 
 #include "iterate.hpp"
+
+#include <cctype>
+#include <cstring>
 
 /* Forward/External function declarations */
 static void sort_keeper_objs(struct char_data *keeper, struct shop_data* shop);

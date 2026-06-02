@@ -8,16 +8,29 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 **************************************************************************/
 #include "act.other.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
 #include "consts/maximums.h"
 #include "consts/shadowdragons.h"
 #include "consts/auction.h"
 #include "consts/aligns.h"
 #include "consts/search.h"
 #include "flags.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/constates.h"
+
+#include <cstring>
+#include <strings.h>
 
 #include <sys/stat.h>
 
-#include "utils.h"
+
 #include "search.h"
 #include "random.h"
 #include "affect.h"

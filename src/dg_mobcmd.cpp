@@ -43,7 +43,7 @@
 #include "comm.h"
 #include "act.wizard.h"
 #include "fight.h"
-#include "utils.h"
+
 #include "search.h"
 #include "relocate.h"
 #include "extract.h"

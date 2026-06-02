@@ -1,5 +1,6 @@
 #pragma once
 #include "consts/types.h"
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {

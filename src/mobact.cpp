@@ -9,7 +9,7 @@
 ************************************************************************ */
 
 #include "mobact.h"
-#include "utils.h"
+
 #include "db.h"
 #include "comm.h"
 #include "interpreter.h"
@@ -24,7 +24,7 @@
 #include "act.social.h"
 #include "spec_procs.h"
 #include "class.h"
-#include "shops.h"
+#include "shop.h"
 
 #include "iterate.hpp"
 

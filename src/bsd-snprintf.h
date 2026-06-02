@@ -34,13 +34,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * --- 8< --- OpenSSH LICENSE --- 8< ---
  */
+#pragma once
+#include <stddef.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* $Id: bsd-snprintf.h,v 1.1.1.1 2004/12/21 00:32:50 fnord Exp $ */
-#pragma once
+
 
 
 #ifndef HAVE_SNPRINTF

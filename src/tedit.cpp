@@ -5,7 +5,12 @@
  * XXX: This needs Oasis-ifying.
  */
 
-#include "utils.h"
+
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
 #include "interpreter.h"
 #include "comm.h"
 #include "db.h"
@@ -14,6 +19,15 @@
 #include "improved-edit.h"
 #include "tedit.h"
 #include "config.h"
+#include "log.h"
+#include "weather_db.h"
+#include "flags.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+
+#include <cstring>
 
 void news_string_cleanup(struct descriptor_data *d, int terminator)
 {

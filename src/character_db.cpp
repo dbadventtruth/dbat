@@ -1,7 +1,7 @@
-#include "characters.h"
+#include "character_impl.h"
 #include "consts/triggers.h"
 #include "consts/search.h"
-#include "objects.h"
+#include "object_impl.h"
 
 struct char_data *character_list;
 struct char_data *affect_list;

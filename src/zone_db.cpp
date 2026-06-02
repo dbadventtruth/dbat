@@ -1,4 +1,4 @@
-#include "zones.h"
+#include "zone_impl.h"
 #include "iterate.hpp"
 
 struct reset_q_type reset_q;	/* queue of zones to be reset	 */

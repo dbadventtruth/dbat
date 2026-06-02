@@ -1,5 +1,5 @@
 #pragma once
-
+#include "consts/types.h"
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -38,9 +38,6 @@ static inline double clampHealth(double val) {
 static inline double fixnan(double val) {
     return (val != val) ? 0.0 : val;  // NaN check
 }
-
-#define YESNO(a) ((a) ? "YES" : "NO")
-#define ONOFF(a) ((a) ? "ON" : "OFF")
 
 
 /* memory utils **********************************************************/

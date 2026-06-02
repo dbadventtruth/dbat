@@ -1,7 +1,7 @@
 const cdb = @import("cdb");
 const std = @import("std");
 const bitflags = @import("flags.zig");
-const obj_api = @import("objects_api.zig");
+const obj_api = @import("object_api.zig");
 
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 

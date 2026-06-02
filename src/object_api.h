@@ -1,11 +1,7 @@
 #pragma once
 #include "consts/types.h"
-#include "consts/itemdata.h"
-#include "consts/maximums.h"
-#include "consts/affflags.h"
-#include "consts/sizes.h"
-#include "consts/weapons.h"
-#include "consts/applies.h"
+
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

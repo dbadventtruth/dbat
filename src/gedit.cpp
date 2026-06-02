@@ -6,7 +6,7 @@
  *  Made for Oasis OLC                                                   *
  *  Copyright 1996 Harvey Gilpin.                                        *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-#include "guilds.h"
+#include "guild.h"
 #include "config.h"
 
 #include "gedit.h"
@@ -14,7 +14,7 @@
 #include "act.informative.h"
 #include "oasis.h"
 #include "gengld.h"
-#include "utils.h"
+
 #include "comm.h"
 #include "handler.h"
 #include "races_plus.h"

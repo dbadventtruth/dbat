@@ -6,7 +6,26 @@
 /** Copyright 2002 Kip Potter [Mythran] (kip_potter@hotmail.com)             **/
 /******************************************************************************/
 
-#include "utils.h"
+
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "shop_impl.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "dgscript_impl.h"
+#include "log.h"
+#include "flags.h"
+#include "stringutils.h"
+#include "consts/admlevel.h"
+#include "consts/directions.h"
+#include "consts/itemdata.h"
+#include "consts/mobflags.h"
+#include "consts/races.h"
+#include "consts/triggers.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "db.h"
@@ -16,9 +35,11 @@
 #include "guild.h"
 #include "races_plus.h"
 #include "class.h"
-#include "shops.h"
+#include "shop.h"
 
 #include "iterate.hpp"
+
+#include <cstdlib>
 
 
 /******************************************************************************/

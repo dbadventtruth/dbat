@@ -5,10 +5,36 @@
  ************************************************************************/
 
 #include "medit.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "config_db.h"
+#include "flags.h"
+#include "log.h"
+#include "random.h"
+#include "util_macros.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/positions.h"
+#include "consts/races.h"
+#include "consts/sex.h"
+#include "consts/sizes.h"
+#include "consts/triggers.h"
 #include "interpreter.h"
 #include "comm.h"
 #include "spells.h"
-#include "utils.h"
+
 #include "db.h"
 #include "shop.h"
 #include "genolc.h"
@@ -20,15 +46,20 @@
 #include "improved-edit.h"
 #include "dg_olc.h"
 #include "screen.h"
+#include "races.h"
 #include "races_plus.h"
 #include "class.h"
 #include "sensei.h"
 #include "act.wizard.h"
 #include "modify.h"
 #include "dg_scripts.h"
-#include "shops.h"
+#include "shop.h"
 #include "consts/npc.h"
 #include "config.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 
 /*-------------------------------------------------------------------*/
 

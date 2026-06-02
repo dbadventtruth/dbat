@@ -1,4 +1,4 @@
-#include "guilds.h"
+#include "guild_impl.h"
 
 
 guild_rnum real_guild(guild_vnum vnum)

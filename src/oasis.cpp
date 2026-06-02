@@ -5,7 +5,7 @@
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 
-#include "utils.h"
+
 #include "dg_scripts.h"
 #include "interpreter.h"
 #include "comm.h"

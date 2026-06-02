@@ -7,7 +7,7 @@
 * Paolo Libardi - pinkpallin@libero.it		     * 
 *****************************************************/
 #include "maputils.h"
-#include "utils.h"
+
 #include "comm.h"
 #include "interpreter.h"
 #include "db.h"

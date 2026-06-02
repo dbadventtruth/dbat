@@ -13,7 +13,7 @@
 #include "handler.h"
 #include "db.h"
 #include "interpreter.h"
-#include "utils.h"
+
 #include "spells.h"
 #include "players.h"
 #include "class.h"

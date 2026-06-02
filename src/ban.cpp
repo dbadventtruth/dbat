@@ -8,7 +8,7 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
 #include "bans.h"
-#include "utils.h"
+
 #include "ban.h"
 #include "comm.h"
 #include "interpreter.h"

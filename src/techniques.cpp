@@ -3,11 +3,27 @@
 //
 
 #include "techniques.h"
-#include "utils.h"
+
 #include "combat.h"
 #include "comm.h"
 #include "spells.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
 #include "character_utils.h"
+#include "flags.h"
+#include "random.h"
+#include "room_impl.h"
+#include "search.h"
+#include "consts/affflags.h"
+#include "consts/applies.h"
+#include "consts/maximums.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/races.h"
+#include "consts/sex.h"
+
+#include <cstdlib>
 
 bool tech_handle_zanzoken(char_data *ch, char_data *vict, const char* name) {
     if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) || AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&

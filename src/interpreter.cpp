@@ -8,7 +8,10 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
 #include "interpreter.h"
-#include "utils.h"
+
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
 #include "comm.h"
 #include "config.h"
 #include "db.h"
@@ -26,7 +29,6 @@
 #include "players.h"
 #include "assedit.h"
 #include "guild.h"
-#include "bans.h"
 #include "lua.h"
 #include "ban.h"
 #include "players.h"

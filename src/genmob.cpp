@@ -3,11 +3,22 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shops.h"
-#include "guilds.h"
+#include "shop.h"
+#include "guild.h"
 #include "iterate.hpp"
 #include "genmob.h"
-#include "utils.h"
+
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "character_macros.h"
+#include "dgscript_impl.h"
+#include "zone_impl.h"
+#include "log.h"
+#include "extract.h"
+#include "races.h"
+#include "character_utils.h"
+#include "consts/admlevel.h"
 #include "db.h"
 #include "genolc.h"
 #include "shop.h"
@@ -20,6 +31,7 @@
 #include "races_plus.h"
 #include "affect.h"
 
+#include <cstdlib>
 #include <string.h>
 
 /* From db.c */

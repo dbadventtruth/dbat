@@ -1,12 +1,10 @@
 #pragma once
-#include "consts/assemblytypes.h"
+#include "consts/types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct assembly_data   ASSEMBLY;
-typedef struct component_data  COMPONENT;
 
 /* ******************************************************************** *
  * Structure definitions.                                              *

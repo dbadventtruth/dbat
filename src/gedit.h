@@ -1,6 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "guild.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -6,8 +6,22 @@
 *  to house all player level object editing functions -- Iovan 1/6/13     *
 ************************************************************************ */
 #include "consts/attacks.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "relocate.h"
+#include "races.h"
+#include "descriptor_utils.h"
+#include "flags.h"
+#include "consts/constates.h"
+#include "consts/itemdata.h"
+#include "consts/mobflags.h"
 #include "obj_edit.h"
-#include "utils.h"
+
 #include "comm.h"
 #include "interpreter.h"
 #include "handler.h"
@@ -20,6 +34,10 @@
 #include "obj_edit.h"
 #include "dg_comm.h"
 #include "act.other.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 
 /* local functions  */
 void disp_custom_menu(struct descriptor_data *d);

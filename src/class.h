@@ -2,6 +2,7 @@
 #include "consts/types.h"
 #include "consts/maximums.h"
 #include "consts/senseis.h"
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {

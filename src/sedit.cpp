@@ -3,10 +3,41 @@
  * Copyright 1996 Harvey Gilpin						*
  * Copyright 1997-2001 George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shops.h"
+#include "shop.h"
+#include "shop_impl.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_api.h"
+#include "object_db.h"
+#include "room_impl.h"
+#include "room_db.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "config_db.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "act.informative.h"
+#include "character_utils.h"
+#include "flags.h"
+#include "log.h"
+#include "shop_db.h"
+#include "util_macros.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 #include "config.h"
 #include "sedit.h"
-#include "utils.h"
+
 #include "comm.h"
 #include "interpreter.h"
 #include "db.h"
@@ -16,7 +47,6 @@
 #include "genzon.h"
 #include "oasis.h"
 #include "races_plus.h"
-#include "act.informative.h"
 
 /*
  * Should check more things.

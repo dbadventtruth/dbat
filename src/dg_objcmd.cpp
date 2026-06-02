@@ -15,7 +15,7 @@
 #include "interpreter.h"
 #include "handler.h"
 #include "db.h"
-#include "utils.h"
+
 #include "extract.h"
 #include "relocate.h"
 

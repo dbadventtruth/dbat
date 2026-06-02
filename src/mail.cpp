@@ -14,7 +14,7 @@ Written by Jeremy Elson (jelson@circlemud.org)
 
 *************************************************************************/
 #include "mail.h"
-#include "utils.h"
+
 #include "comm.h"
 #include "db.h"
 #include "interpreter.h"

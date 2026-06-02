@@ -1,7 +1,10 @@
 #include "stringutils.h"
-#include "utils.h"
+
 #include "log.h"
+#include "util_macros.h"
 #include "consts/maximums.h"
+
+#include <cstdio>
 
 int levenshtein_distance(char *s1, char *s2)
 {

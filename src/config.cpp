@@ -15,7 +15,7 @@
 ************************************************************************ */
 #include "consts/maximums.h"
 #include "consts/admlevel.h"
-#include "characters.h"
+#include "character_impl.h"
 #include "config.h"
 #include "interpreter.h"	/* alias_data definition for structs.h */
 
@@ -548,4 +548,3 @@ float exp_multiplier = 1.0;
  * you create.
  */
 int method = 0;
-

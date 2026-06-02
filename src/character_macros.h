@@ -1,18 +1,4 @@
 #pragma once
-#include <stdbool.h>
-#include <stdint.h>
-#include <time.h>
-#include "character_impl.h"
-#include "character_api.h"
-#include "character_db.h"
-#include "flags.h"
-#include "consts/pulse.h"
-#include "consts/races.h"
-#include "consts/sex.h"
-#include "consts/prefflags.h"
-#include "consts/playerflags.h"
-#include "consts/adminflags.h"
-#include "consts/mobflags.h"
 
 #ifdef __cplusplus
 extern "C" {

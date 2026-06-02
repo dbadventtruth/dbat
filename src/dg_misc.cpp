@@ -15,7 +15,7 @@
 #include "db.h"
 #include "spells.h"
 #include "fight.h"
-#include "utils.h"
+
 #include "extract.h"
 #include "affect.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "consts/types.h"
-#include "consts/zoneflags.h"
+#include <stddef.h>
 
 
 #ifdef __cplusplus

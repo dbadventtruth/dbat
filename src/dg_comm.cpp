@@ -13,7 +13,19 @@
 *  $Revision: 1.0.14 $                                                    *
 ************************************************************************ */
 #include "consts/maximums.h"
-#include "utils.h"
+
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "object_impl.h"
+#include "room_impl.h"
+#include "flags.h"
+#include "util_macros.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "consts/sex.h"
 #include "dg_comm.h"
 #include "act.informative.h"
 #include "races_plus.h"
@@ -23,6 +35,8 @@
 #include "spells.h"
 #include "handler.h"
 #include "search.h"
+
+#include <cstring>
 
 /* local functions */
 void sub_write_to_char(struct char_data *ch, char *tokens[], void *otokens[], char type[]);

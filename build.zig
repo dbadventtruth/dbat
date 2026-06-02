@@ -132,6 +132,14 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
 
+    const include_audit_step = b.step("include-audit", "Audit header include hygiene");
+    const include_audit = b.addSystemCommand(&.{ "python3", "tools/include_audit.py" });
+    include_audit_step.dependOn(&include_audit.step);
+
+    const include_self_check_step = b.step("include-self-check", "Check headers are self-contained");
+    const include_self_check = b.addSystemCommand(&.{ "python3", "tools/include_audit.py", "--self-contained" });
+    include_self_check_step.dependOn(&include_self_check.step);
+
     _ = zcc.createStep(b, "cdb", targets.toOwnedSlice(b.allocator) catch @panic("OOM"));
 
     if (b.args) |args| {

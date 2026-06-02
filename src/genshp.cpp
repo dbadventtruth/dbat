@@ -3,10 +3,10 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shops.h"
-#include "guilds.h"
+#include "shop.h"
+#include "guild.h"
 #include "genshp.h"
-#include "utils.h"
+
 #include "db.h"
 
 #include "genolc.h"

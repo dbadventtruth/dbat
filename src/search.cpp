@@ -1,4 +1,4 @@
-#include "utils.h"
+
 #include "act.informative.h"
 
 int is_name(const char *str, const char *namelist)

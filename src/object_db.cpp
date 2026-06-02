@@ -1,4 +1,4 @@
-#include "objects.h"
+#include "object_impl.h"
 #include "consts/triggers.h"
 #include "consts/search.h"
 

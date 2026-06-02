@@ -4,11 +4,11 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shops.h"
+#include "shop.h"
 #include "dg_scripts.h"
 
 #include "genwld.h"
-#include "utils.h"
+
 #include "db.h"
 #include "handler.h"
 #include "comm.h"

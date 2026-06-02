@@ -3,11 +3,9 @@
 #include "consts/itemdata.h"
 #include "consts/maximums.h"
 #include "consts/affflags.h"
-#include "consts/sizes.h"
-#include "consts/weapons.h"
-#include "consts/applies.h"
 #include "affected_impl.h"
 #include "extradesc_impl.h"
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {

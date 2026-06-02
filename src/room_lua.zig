@@ -1,8 +1,8 @@
 const std = @import("std");
 const zlua = @import("zlua");
 const cdb = @import("cdb");
-const characters_lua = @import("characters_lua.zig");
-const objects_lua = @import("objects_lua.zig");
+const characters_lua = @import("character_lua.zig");
+const objects_lua = @import("object_lua.zig");
 
 const Lua = zlua.Lua;
 const room_metatable = "dbat.Room";

@@ -1,5 +1,5 @@
 #pragma once
-#include "skills.h"
+#include "consts/types.h"
 
 #ifdef __cplusplus
 extern "C" {

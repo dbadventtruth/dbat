@@ -1,5 +1,5 @@
 #include "disabled.h"
-#include "utils.h"
+
 #include "command.h"
 #include "fileop.h"
 #include "db.h"

@@ -12,7 +12,7 @@
 #include "help.h"
 #include "bans.h"
 
-#include "utils.h"
+
 #include "comm.h"
 #include "config.h"
 #include "maputils.h"

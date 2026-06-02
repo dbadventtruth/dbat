@@ -1,4 +1,4 @@
-#include "shops.h"
+#include "shop_impl.h"
 
 shop_vnum real_shop(shop_vnum vnum)
 {

@@ -1,6 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "consts/senseis.h"
 #include "races_plus.h"
 
 #include <map>

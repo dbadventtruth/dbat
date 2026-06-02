@@ -1,8 +1,8 @@
 const cdb = @import("cdb");
 const std = @import("std");
-const characters = @import("characters.zig");
+const characters = @import("character.zig");
 const bitflags = @import("flags.zig");
-const obj_api = @import("objects_api.zig");
+const obj_api = @import("object_api.zig");
 const lua_api = @import("lua_api.zig");
 const modifiers_api = @import("modifiers_api.zig");
 

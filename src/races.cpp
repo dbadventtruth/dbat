@@ -1,11 +1,31 @@
 #include "races_plus.h"
 
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "object_impl.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "consts/sex.h"
+#include "consts/sizes.h"
+#include "consts/itemdata.h"
+#include "consts/weapons.h"
+#include "consts/admlevel.h"
+#include "character_api.h"
+#include "object_macros.h"
+#include "flags.h"
+#include "log.h"
+#include "random.h"
+#include "stringutils.h"
+
 #include <utility>
 #include <string>
 #include <algorithm>
 #include <iterator>
+#include <strings.h>
 
-#include "utils.h"
+
 #include "interpreter.h"
 #include "spells.h"
 #include "comm.h"

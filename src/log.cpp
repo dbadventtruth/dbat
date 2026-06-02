@@ -1,4 +1,4 @@
-#include "utils.h"
+
 #include "comm.h"
 
 /* log a death trap hit */

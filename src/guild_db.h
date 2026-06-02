@@ -1,7 +1,6 @@
 #pragma once
 #include "consts/types.h"
-#include "consts/skills.h"
-#include "consts/feats.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

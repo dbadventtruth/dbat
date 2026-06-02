@@ -28,7 +28,7 @@
 //
 //********************************************************************************
 #include "consts/maximums.h"
-#include "utils.h"          // for CREATE() and IDNUM()
+          // for CREATE() and IDNUM()
 #include "fileop.h"
 #include "clan.h"        // the interface we need to impleme
 #include "db.h"             // for LIB_ETC

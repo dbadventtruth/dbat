@@ -2,6 +2,12 @@
 
 #include "consts/types.h"
 
+#include "consts/applies.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/sizes.h"
+
 #include "character_impl.h"
 #include "character_api.h"
 #include "character_db.h"
@@ -25,10 +31,9 @@
 #include "shop_impl.h"
 #include "shop_api.h"
 #include "shop_db.h"
-
 #include "guild_impl.h"
 #include "guild_db.h"
-#include "guild_impl.h"
+#include "guild_api.h"
 #include "dgscript_impl.h"
 #include "dgscript_db.h"
 #include "help.h"

@@ -1,7 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "shops.h"
-#include "shop.h"
 
 #ifdef __cplusplus
 extern "C" {

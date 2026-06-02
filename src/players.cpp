@@ -9,7 +9,7 @@
 ************************************************************************ */
 #include "players.h"
 #include "players.h"
-#include "utils.h"
+
 #include "db.h"
 #include "handler.h"
 #include "pfdefaults.h"

@@ -3,7 +3,7 @@
  * Copyright 2002-2003 Kip Potter   (kip_potter@hotmail.com)            *
  * A graphical in-game game configuration utility for OasisOLC.         *
  ************************************************************************/
-#include "utils.h"
+
 #include "consts/create.h"
 #include "config.h"
 #include "cedit.h"
@@ -13,7 +13,7 @@
 #include "interpreter.h"
 #include "genolc.h"
 #include "improved-edit.h"
-#include "utils.h"
+
 #include "spec_assign.h"
 #include "iterate.hpp"
 

@@ -1,6 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "consts/races.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -9,7 +9,7 @@
 #include "hsedit.h"
 #include "config.h"
 #include "comm.h"
-#include "utils.h"
+
 #include "handler.h"
 #include "interpreter.h"
 #include "db.h"

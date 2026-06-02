@@ -1,5 +1,6 @@
 #pragma once
 #include "consts/types.h"
+#include "consts/maximums.h"
 #include "spells.h"
 
 #ifdef __cplusplus

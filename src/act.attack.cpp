@@ -16,7 +16,7 @@
 #include "act.attack.h"
 #include "consts/maximums.h"
 #include "consts/attacks.h"
-#include "utils.h"
+
 #include "search.h"
 #include "techniques.h"
 #include "combat.h"

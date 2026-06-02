@@ -10,11 +10,19 @@
 /* --relistan 2/22/99 - 2/24/99 */
 
 #include "statedit.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "descriptor_impl.h"
+#include "log.h"
+#include "util_macros.h"
+#include "consts/admlevel.h"
 #include "interpreter.h"
 #include "comm.h"
-#include "utils.h"
+
 #include "db.h"
 #include "oasis.h"
+
+#include <cstdlib>
 
 int parse_stat_menu(struct descriptor_data *d, char *arg);
 int stats_assign_stat(int abil, char *arg, struct descriptor_data *d);

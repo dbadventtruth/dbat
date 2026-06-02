@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-#include "utils.h"
+
 #include "random.h"
 #include "search.h"
 #include "relocate.h"

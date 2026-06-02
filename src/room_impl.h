@@ -2,8 +2,6 @@
 #include "consts/types.h"
 #include "consts/roomflags.h"
 #include "consts/directions.h"
-#include "consts/sectortypes.h"
-#include "consts/exitflags.h"
 #include "extradesc_impl.h"
 
 #ifdef __cplusplus

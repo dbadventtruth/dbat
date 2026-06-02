@@ -3,7 +3,7 @@ const cdb = @import("cdb");
 const jsonx = @import("flags_json.zig");
 const bitflags = @import("flags.zig");
 const extradesc_json = @import("extradesc_json.zig");
-const dgscripts_json = @import("dgscripts_json.zig");
+const dgscripts_json = @import("dgscript_json.zig");
 
 pub const JsonValue = jsonx.JsonValue;
 

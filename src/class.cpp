@@ -15,7 +15,7 @@
  * the appropriate new special cases for your new class.
  */
 #include "consts/maximums.h"
-#include "utils.h"
+
 #include "class.h"
 
 #include "db.h"

@@ -1,3 +1,6 @@
+#pragma once
+#include "consts/types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,9 +32,6 @@ extern "C" {
 //    telnet://dreams.game-host.org:4000
 //
 //********************************************************************************
-
-#pragma once
-#include "consts/types.h"
 
 #define LVL_CLAN_MOD            32
 #define DEFAULT_OPEN_JOIN          FALSE

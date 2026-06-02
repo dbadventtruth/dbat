@@ -8,7 +8,7 @@
 *  $Revision: 1.0.14 $                                                    *
 **************************************************************************/
 
-#include "utils.h"
+
 #include "dg_scripts.h"
 #include "comm.h"
 #include "interpreter.h"

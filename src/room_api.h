@@ -1,9 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "consts/roomflags.h"
-#include "consts/directions.h"
-#include "consts/sectortypes.h"
-#include "consts/exitflags.h"
 
 #ifdef __cplusplus
 extern "C" {

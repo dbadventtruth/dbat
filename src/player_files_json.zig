@@ -1,7 +1,7 @@
 const std = @import("std");
 const cdb = @import("cdb");
-const characters_json = @import("characters_json.zig");
-const objects_json = @import("objects_json.zig");
+const characters_json = @import("character_json.zig");
+const objects_json = @import("object_json.zig");
 const jsonx = @import("flags_json.zig");
 
 const RENT_RENTED = 2;

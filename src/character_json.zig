@@ -2,8 +2,8 @@ const std = @import("std");
 const cdb = @import("cdb");
 const jsonx = @import("flags_json.zig");
 const bitflags = @import("flags.zig");
-const dgscripts_json = @import("dgscripts_json.zig");
-const characters_api = @import("characters_api.zig");
+const dgscripts_json = @import("dgscript_json.zig");
+const characters_api = @import("character_api.zig");
 const lua_api = @import("lua_api.zig");
 
 pub const JsonValue = jsonx.JsonValue;

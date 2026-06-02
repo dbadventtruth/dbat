@@ -5,8 +5,43 @@
  *  Copyright 1997-2001 George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 
-#include "utils.h"
+
 #include "dg_scripts.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "room_macros.h"
+#include "config_db.h"
+#include "relocate.h"
+#include "skills.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "consts/directions.h"
+#include "consts/exitflags.h"
+#include "consts/roomflags.h"
+#include "consts/sectortypes.h"
+#include "consts/triggers.h"
+#include "character_utils.h"
+#include "flags.h"
+#include "log.h"
+#include "util_macros.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 #include "config.h"
 #include "comm.h"
 #include "interpreter.h"
@@ -20,6 +55,7 @@
 #include "dg_olc.h"
 #include "spells.h"
 #include "handler.h"
+#include "extract.h"
 #include "races_plus.h"
 #include "act.wizard.h"
 #include "act.informative.h"

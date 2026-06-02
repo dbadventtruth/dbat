@@ -5,14 +5,46 @@
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
 
-#include "shops.h"
+#include "shop.h"
+#include "shop_impl.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "board_impl.h"
+#include "object_impl.h"
+#include "object_api.h"
+#include "object_db.h"
+#include "object_macros.h"
+#include "shop_db.h"
+#include "room_impl.h"
+#include "search.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "config_db.h"
+#include "consts/admlevel.h"
+#include "consts/applies.h"
+#include "consts/constates.h"
+#include "consts/itemdata.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "consts/sizes.h"
+#include "consts/triggers.h"
+#include "consts/weapons.h"
+#include "character_utils.h"
+#include "flags.h"
+#include "log.h"
+#include "util_macros.h"
 #include "boards.h"
 #include "config.h"
 #include "dg_scripts.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "spells.h"
-#include "utils.h"
+
 #include "db.h"
 #include "handler.h"
 #include "boards.h"
@@ -24,12 +56,16 @@
 #include "improved-edit.h"
 #include "dg_olc.h"
 #include "feats.h"
+#include "skills.h"
 #include "act.informative.h"
 #include "act.wizard.h"
 #include "races_plus.h"
 #include "fight.h"
 
 #include <stddef.h>
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 
 static_assert(sizeof(struct obj_proto_data) == offsetof(struct obj_data, in_room),
               "oedit shared object fields must stay prefix-compatible");

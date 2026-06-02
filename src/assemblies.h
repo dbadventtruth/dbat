@@ -1,7 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "assembly_impl.h"
-
 
 #ifdef __cplusplus
 extern "C" {

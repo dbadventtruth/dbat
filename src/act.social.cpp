@@ -15,7 +15,7 @@
 #include "config.h"
 #include "db.h"
 #include "comm.h"
-#include "utils.h"
+
 #include "search.h"
 #include "interpreter.h"
 #include "handler.h"

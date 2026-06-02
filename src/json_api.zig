@@ -1,13 +1,13 @@
 const std = @import("std");
 const cdb = @import("cdb");
-const rooms_json = @import("rooms_json.zig");
+const rooms_json = @import("room_json.zig");
 const exits_json = @import("exits_json.zig");
-const characters_json = @import("characters_json.zig");
-const objects_json = @import("objects_json.zig");
-const zones_json = @import("zones_json.zig");
-const shops_json = @import("shops_json.zig");
-const guilds_json = @import("guilds_json.zig");
-const dgscripts_json = @import("dgscripts_json.zig");
+const characters_json = @import("character_json.zig");
+const objects_json = @import("object_json.zig");
+const zones_json = @import("zone_json.zig");
+const shops_json = @import("shop_json.zig");
+const guilds_json = @import("guild_json.zig");
+const dgscripts_json = @import("dgscript_json.zig");
 
 var global_io: std.Io = undefined;
 var has_io = false;

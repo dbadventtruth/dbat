@@ -17,7 +17,7 @@
 #include "consts/fish.h"
 #include "consts/recipes.h"
 #include "consts/attacks.h"
-#include "utils.h"
+
 
 #include "random.h"
 #include "affect.h"

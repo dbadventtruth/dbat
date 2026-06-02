@@ -1,6 +1,5 @@
 #pragma once
 #include "consts/types.h"
-#include "house.h"
 
 #ifdef __cplusplus
 extern "C" {

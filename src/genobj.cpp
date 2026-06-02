@@ -4,12 +4,12 @@
  * Copyright 1996 by Harvey Gilpin					*
  * Copyright 1997-2001 by George Greer (greerga@circlemud.org)		*
  ************************************************************************/
-#include "shops.h"
+#include "shop.h"
 #include "dg_scripts.h"
 #include "genobj.h"
 #include "genolc.h"
 #include "genzon.h"
-#include "utils.h"
+
 #include "handler.h"
 #include "dg_olc.h"
 #include "shop.h"

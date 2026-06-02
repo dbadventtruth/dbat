@@ -1,7 +1,6 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
-#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,6 +76,11 @@ struct weather_data;
 struct time_info_data;
 struct reset_com;
 struct skill_data;
+struct assembly_data;
+struct component_data;
+struct trig_data;
+struct script_data;
+struct house_control_rec;
 
 typedef struct char_data char_data;
 typedef struct obj_data obj_data;
@@ -104,6 +108,12 @@ typedef struct weather_data weather_data;
 typedef struct time_info_data time_info_data;
 typedef struct reset_com reset_com;
 typedef struct skill_data skill_data;
+typedef struct assembly_data assembly_data;
+typedef struct component_data component_data;
+typedef struct assembly_data ASSEMBLY;
+typedef struct component_data COMPONENT;
+typedef struct trig_data trig_data;
+typedef struct script_data script_data;
 
 #define ACMD(name) void (name)(struct char_data *ch, char *argument, int cmd, int subcmd)
 #define SPECIAL(name) int (name)(struct char_data *ch, void *me, int cmd, char *argument)

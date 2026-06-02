@@ -8,15 +8,12 @@
 *  $Date: 2004/10/11 12:07:00$                                            *
 *  $Revision: 1.0.14 $                                                    *
 **************************************************************************/
-
 #pragma once
 #include "consts/types.h"
-#include "dgscript_impl.h"
-#include "dgscript_db.h"
 
-#include "db.h"
-#include "genzon.h"
-#include "oasis.h"
+#include <stddef.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {

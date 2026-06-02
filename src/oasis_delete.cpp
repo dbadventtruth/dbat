@@ -18,7 +18,7 @@
 */                                                                       
 
 #include "config.h"
-#include "utils.h"
+
 #include "oasis.h"
 
 /* Internal Functions */

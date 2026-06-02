@@ -9,7 +9,7 @@
 *  To see this in action, check out AderonMUD                            * 
 ************************************************************************ */ 
 
-#include "utils.h" 
+ 
 #include "db.h"
 #include "handler.h"
 #include "reset.h" 

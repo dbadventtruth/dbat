@@ -1,8 +1,8 @@
 #pragma once
 #include "consts/types.h"
 #include "consts/maximums.h"
-#include "consts/constates.h"
 #include <sys/socket.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {

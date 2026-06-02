@@ -1,4 +1,4 @@
-#include "rooms.h"
+#include "room_impl.h"
 
 
 /* returns the real number of the room with given virtual number */

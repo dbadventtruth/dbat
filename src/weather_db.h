@@ -1,6 +1,5 @@
 #pragma once
-#include <stdint.h>
-#include "consts/weather.h"
+#include "consts/types.h"
 
 #ifdef __cplusplus
 extern "C" {

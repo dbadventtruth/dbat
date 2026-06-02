@@ -1,6 +1,6 @@
-#include "rooms.h"
+#include "room_impl.h"
 #include "room_utils.h"
-#include "utils.h"
+
 
 int num_pc_in_room(struct room_data *room)
 {
