@@ -1,0 +1,18 @@
+#pragma once
+#include "consts/types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// functions
+void send_to_imm(char *messg, ...) __attribute__ ((format (printf, 1, 2)));
+void fly_zone(struct zone_data *zone, char *messg, struct char_data *ch);
+void send_to_scouter(char *messg, struct char_data *ch, int num, int type);
+void send_to_sense(int type, char *messg, struct char_data *ch);
+void send_to_worlds(struct char_data *ch);
+
+
+#ifdef __cplusplus
+}
+#endif

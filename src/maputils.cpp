@@ -1,0 +1,407 @@
+/***************************************************** 
+* maputils.c --- implementation file for ascii maps  * 
+*				     		     * 
+* Kyle Goodwin, (c) 1998 All Rights Reserved         * 
+* vbmasta@earthlink.net - Head Implemenor FirocMUD   * 
+*				     		     * 
+* Paolo Libardi - pinkpallin@libero.it		     * 
+*****************************************************/
+#include "maputils.h"
+#include "utils.h"
+#include "comm.h"
+#include "interpreter.h"
+#include "db.h"
+#include "vehicles.h"
+
+
+extern struct room_data *world;  
+room_vnum mapnums[MAP_ROWS+1][MAP_COLS+1];  
+
+void ping_ship(int vnum, int vnum2)
+{
+
+ struct char_data *tch, *next_ch;
+ struct obj_data *controls = NULL, *obj = NULL;
+ int found = FALSE;
+ 
+ if (vnum2 == -1) {
+  return;
+ }
+
+  for (tch = character_list; tch; tch = next_ch) {
+   next_ch = tch->next;
+   if (found == FALSE) {
+    if (!(obj = find_control(tch))) {
+     continue;
+    } else {
+     if (GET_OBJ_VAL(obj, 0) == vnum && vnum != vnum2) {
+      controls = obj;
+      found = TRUE;
+     }
+    }
+   }
+  }
+
+  if (found == TRUE) {
+   send_to_room(obj_room_get(controls), "@D[@RALERT@D: @YAn unknown radar signal has been detected!@D]@n");
+  }
+}
+
+int checkship(struct room_data *room, int vnum)
+{
+ struct obj_data *i = NULL;
+ int there = FALSE;
+
+ struct room_data *rm = room;
+
+ for (i = rm->contents; i; i = i->next_content) {
+  if (!room_flagged(rm, ROOM_NEBULA)) {
+   if (GET_OBJ_TYPE(i) == ITEM_VEHICLE && there != TRUE) {
+    there = TRUE;
+    ping_ship(GET_OBJ_VNUM(i), vnum);
+   } 
+  }
+ }
+
+ i = NULL;
+
+ return there;
+}
+
+char *getmapchar(struct room_data *room, struct char_data * ch, struct room_data * start, int vnum) {
+  static char mapchar[50];
+  int there = FALSE, enemy = FALSE;
+
+  if (room == start) {
+   there = TRUE;
+  }
+  if (checkship(room, vnum)) {
+   enemy = TRUE;
+  }
+
+  struct room_data *rm = room;
+
+  if (room == room_by_id(GET_RADAR1(ch)) || room == room_by_id(GET_RADAR2(ch)) || room == room_by_id(GET_RADAR3(ch))) {
+   if (there) {
+    sprintf(mapchar, "@WB@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@WB@r#");
+   } else {
+    sprintf(mapchar, "@WBB");
+   }
+  } /* End Buoy */ 
+  else if (room_flagged(rm, ROOM_EORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@GE@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@GE@r#");
+   } else {
+    sprintf(mapchar, "@GEE");
+   }
+  } /* End Earth Character */
+  else if (room_flagged(rm, ROOM_CORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@MC@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@MC@r#");
+   } else {
+    sprintf(mapchar, "@MCC");
+   }
+  } /* End Cerria Character */
+  else if (room_flagged(rm, ROOM_FORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@CF@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@CF@r#");
+   } else {
+    sprintf(mapchar, "@CFF");
+   }
+  } /* End Frigid Character */
+  else if (room_flagged(rm, ROOM_KORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@mK@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@mK@r#");
+   } else {
+    sprintf(mapchar, "@mKK");
+   }
+  } /* End Konack Character */
+  else if (room_flagged(rm, ROOM_NORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@gN@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@gN@r#");
+   } else {
+    sprintf(mapchar, "@gNN");
+   }
+  } /* End Namek Character */
+  else if (room->number == 50772) {
+   if (there) {
+    sprintf(mapchar, "@cZ@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@cZ@r#");
+   } else {
+    sprintf(mapchar, "@cZZ");
+   }
+  } /* End Zenith Character */
+  else if (room_flagged(rm, ROOM_VORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@YV@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@YV@r#");
+   } else {
+    sprintf(mapchar, "@YVV");
+   }
+  } /* End Vegeta Character */
+  else if (room_flagged(rm, ROOM_AORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@BA@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@BA@r#");
+   } else {
+    sprintf(mapchar, "@BAA");
+   }
+  } /* End Aether Character */
+  else if (room_flagged(rm, ROOM_YORBIT)) {
+   if (there) {
+    sprintf(mapchar, "@MY@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@MY@r#");
+   } else {
+    sprintf(mapchar, "@MYY");
+   }
+  } /* End Yardrat Character */
+  else if (room_flagged(rm, ROOM_KANORB)) {
+   if (there) {
+    sprintf(mapchar, "@CK@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@CK@r#");
+   } else {
+    sprintf(mapchar, "@CKK");
+   }
+  } /* End Kanassa Character */
+  else if (room_flagged(rm, ROOM_ARLORB)) {
+   if (there) {
+    sprintf(mapchar, "@mA@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@mA@r#");
+   } else {
+    sprintf(mapchar, "@mAA");
+   }
+  } /* End Arlia Character */
+  else if (room_flagged(rm, ROOM_NEBULA)) {
+   if (there) {
+    sprintf(mapchar, "@m&@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@m&@r#");
+   } else {
+    sprintf(mapchar, "@m&&");
+   }
+  } /* End Nebula Character */
+  else if (room->number == 38028) {
+   if (there) {
+    sprintf(mapchar, "@yQ@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@yQ@r#");
+   } else {
+    sprintf(mapchar, "@yQQ");
+   }
+  } /* End Namek Character */
+  else if (room_flagged(rm, ROOM_ASTERO)) {
+   if (there) {
+    sprintf(mapchar, "@y:@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@y:@r#");
+   } else {
+    sprintf(mapchar, "@y::");
+   }
+  } /* End Asteroid Character */
+  else if (room_flagged(rm, ROOM_WORMHO)) {
+   if (there) {
+    sprintf(mapchar, "@b@1*@RX@n");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@b@1*@r#@n");
+   } else {
+    sprintf(mapchar, "@b@1**@n");
+   }
+  } /* End Wormhole Character */
+  else if (room_flagged(rm, ROOM_STATION)) {
+   if (there) {
+    sprintf(mapchar, "@DS@RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@DS@r#");
+   } else {
+    sprintf(mapchar, "@DSS");
+   }
+  } /* End Station Character */
+  else if (room_flagged(rm, ROOM_STAR)) {
+   if (there) {
+    sprintf(mapchar, "@6 @RX@n");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@6 @r#@n");
+   } else {
+    sprintf(mapchar, "@6  @n");
+   }
+  } /* End Star Character */
+  else {
+   if (there) {
+    sprintf(mapchar, "@w @RX");
+   } else if (enemy == TRUE) {
+    sprintf(mapchar, "@w @r#");
+   } else {
+    int color = rand_number(1, 30);
+    if (rand_number(1, 40) == 2) {
+     sprintf(mapchar, "%s. ", color > 15 ? "@w" : (color >= 7 ? "@Y" : (color > 3 ? "@R" : "@B")));
+    } else if (rand_number(1, 40) == 2) {
+     sprintf(mapchar, "%s .", color > 15 ? "@w" : (color >= 7 ? "@Y" : (color > 3 ? "@R" : "@B")));
+    } else {
+     sprintf(mapchar, "@w  ");
+    }
+   }
+  } /* End default Character */
+  return mapchar;
+}  
+
+MapStruct findcoord(struct room_data* room) {
+  int x, y;
+  MapStruct coords;
+
+  coords.x = 0;
+  coords.y = 0;
+
+  for (y = 0; y <= MAP_ROWS; y++ ) {
+    for (x = 0; x <= MAP_COLS; x++ ) {
+      if (mapnums[y][x] == room->number) {
+        coords.y = y;
+        coords.x = x;
+        return coords;
+      }
+    }
+  }
+
+  log("SYSERR: findcoord for non-map rnum");
+  return coords;
+}
+
+void printmap(struct room_data *room, struct char_data * ch, int type, int vnum) {
+  int x=0, lasty = -1;
+  int y=0;
+  int sightradius;
+  int count = 0, initline = 0;
+  char buf[MAX_STRING_LENGTH * 2];
+  char buf2[512];
+  MapStruct coord = findcoord(room);
+
+  struct room_data *start = room;
+
+  strcpy(buf, "\n");
+  if (type == 0) {
+   sightradius = 12;
+  } else {
+   sightradius = 4;
+  }
+
+  if (type == 0) {
+    send_to_char(ch, "@b______________________________________________________________________@n\n");
+  }
+
+  for (y = coord.y-sightradius; y <= coord.y+sightradius; y++) {
+   if (type == 0) {
+	   if (count == initline) {
+	    strcat(buf, "@b     [@CR. Key@b]     | ");
+	   } else if (count == initline + 1) {
+	    strcat(buf, "@GEE@D:@w Earth@b         | ");
+	   } else if (count == initline + 2) {
+	    strcat(buf, "@gNN@D:@w Namek@b         | ");
+	   } else if (count == initline + 3) {
+	    strcat(buf, "@YVV@D:@w Vegeta@b        | ");
+	   } else if (count == initline + 4) {
+	    strcat(buf, "@CFF@D:@w Frigid@b        | ");
+	   } else if (count == initline + 5) {
+	    strcat(buf, "@mKK@D:@w Konack@b        | ");
+	   } else if (count == initline + 6) {
+	    strcat(buf, "@BAA@D:@w Aether@b        | ");
+	   } else if (count == initline + 7) {
+	    strcat(buf, "@MYY@D:@w Yardrat@b       | ");
+	   } else if (count == initline + 8) {
+	    strcat(buf, "@CKK@D:@w Kanassa@b       | ");
+	   } else if (count == initline + 9) {
+	    strcat(buf, "@mAA@D:@w Arlia@b         | ");
+           } else if (count == initline + 10) {
+            strcat(buf, "@cZZ@D:@w Zenith@b        | ");
+           } else if (count == initline + 11) {
+            strcat(buf, "@MCC@D:@w Cerria@b        | ");
+	   } else if (count == initline + 12) {
+	    strcat(buf, "@WBB@D:@w Buoy@b          | ");
+	   } else if (count == initline + 13) {
+	    strcat(buf, "@m&&@D:@w Nebula@b        | ");
+	   } else if (count == initline + 14) {
+	    strcat(buf, "@yQQ@D:@w Asteroid@b      | ");
+           } else if (count == initline + 15) {
+            strcat(buf, "@y::@D:@w Asteroid Field@b| ");
+	   } else if (count == initline + 16) {
+	    strcat(buf, "@b@1**@n@D:@w Wormhole@b      | ");
+	   } else if (count == initline + 17) {
+	    strcat(buf, "@DSS@D:@w S. Station@b    | ");
+	   } else if (count == initline + 18) {
+	    strcat(buf, " @r#@D:@w Unknown Ship@b  | ");
+	   } else if (count == initline + 19) {
+	    strcat(buf, "@6  @n@D:@w Star@b          | ");
+	   } else {
+	    strcat(buf, "                  @b| ");
+	   }
+    count++;
+   } else {
+     if (count == 0) {
+      strcat(buf, "      @RCompass@n           ");
+     }
+     else if (count == 2) {
+      sprintf(buf2, "@w       @w|%s@w|            ", (R_EXIT(room, 0) ? " @CN " : "   "));
+      strcat(buf, buf2);
+     }
+     else if (count == 3) {
+      sprintf(buf2, "@w @w|%s@w| |%s@w| |%s@w|      ", (R_EXIT(room, 6) ? " @CNW" : "   "), (R_EXIT(room, 4) ? " @YU " : "   "), (R_EXIT(room, 7) ? "@CNE " : "   "));
+      strcat(buf, buf2);
+     }
+     else if (count == 4) {
+      sprintf(buf2, "@w @w|%s@w| |%s@w| |%s@w|      ", (R_EXIT(room, 3) ? "  @CW" : "   "), (R_EXIT(room, 10) ? "@m I " : (R_EXIT(room, 11) ? "@mOUT" : "   ")), (R_EXIT(room, 1) ? "@CE  " : "   "));
+      strcat(buf, buf2);
+     }
+     else if (count == 5) {
+      sprintf(buf2, "@w @w|%s@w| |%s@w| |%s@w|      ", (R_EXIT(room, 9) ? " @CSW" : "   "), (R_EXIT(room, 5) ? " @YD " : "   "), (R_EXIT(room, 8) ? "@CSE " : "   "));
+      strcat(buf, buf2);
+     }
+     else if (count == 6) {
+      sprintf(buf2, "@w       @w|%s@w|            ", (R_EXIT(room, 2) ? " @CS " : "   "));
+      strcat(buf, buf2);
+     } else {
+      strcat(buf, "                        ");
+     }
+     count++;
+   }
+    for (x = coord.x-sightradius; x <= coord.x+sightradius; x++) {
+      if (x==coord.x && y==coord.y) {
+        strcat(buf, getmapchar(room_by_id(mapnums[y][x]), ch, start, vnum));
+      } else if (x > MAP_COLS || x < 0) {
+        if (lasty != TRUE && y > -1 && y < 200) {
+         strcat(buf, "@D?");
+         lasty = TRUE;
+        }
+      } else if (y > MAP_ROWS || y < 0) {
+        if (y == -1 || y == 200) {
+         strcat(buf, "@D??");
+        }
+      } else
+        strcat(buf, getmapchar(room_by_id(mapnums[y][x]), ch, start, vnum));
+    }
+    strcat(buf, "\n");
+    lasty = FALSE;
+  }
+
+  send_to_char(ch, "%s", buf);
+  *buf2 = '\0';
+  *buf = '\0';
+  if (type == 0) {
+   send_to_char(ch, "\n@b______________________________________________________________________@n");
+  }
+}
