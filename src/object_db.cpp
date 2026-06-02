@@ -1,4 +1,6 @@
 #include "object_impl.h"
+#include "object_api.h"
+#include "object_db.h"
 #include "consts/triggers.h"
 #include "consts/search.h"
 

@@ -20,6 +20,11 @@
 #include "config.h"
 
 #include "oasis.h"
+#include "config_db.h"
+#include "log.h"
+#include "consts/admlevel.h"
+
+#include <cstdlib>
 
 /* Internal Functions */
 int free_strings(void *data, int type);

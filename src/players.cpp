@@ -8,8 +8,23 @@
 *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
 ************************************************************************ */
 #include "players.h"
-#include "players.h"
 
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "affected_impl.h"
+#include "flags.h"
+#include "object_db.h"
+#include "object_utils.h"
+#include "relocate.h"
+#include "character_utils.h"
+#include "dgscript_impl.h"
+#include "dg_scripts.h"
+#include "stringutils.h"
+#include "consts/applies.h"
+#include "player_impl.h"
 #include "db.h"
 #include "handler.h"
 #include "pfdefaults.h"
@@ -23,9 +38,24 @@
 #include "affect.h"
 #include "interpreter.h"
 #include "genolc.h"
+#include "log.h"
+#include "util_macros.h"
+#include "json.h"
+#include "consts/admlevel.h"
+#include "consts/applies.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/positions.h"
+#include "consts/races.h"
+#include "consts/sectortypes.h"
+#include "consts/senseis.h"
+#include "consts/pulse.h"
+#include "consts/time.h"
 
 #include <unistd.h>
 #include <cctype>
+#include <cstring>
 
 #define LOAD_HIT	0
 #define LOAD_MANA	1

@@ -13,6 +13,9 @@
 #include "consts/maximums.h"
 #include "consts/recipes.h"
 #include "consts/search.h"
+#include "consts/itemdata.h"
+#include "consts/skills.h"
+#include "character_db.h"
 
 
 #include "search.h"
@@ -33,6 +36,8 @@
 #include "comm.h"
 #include "spells.h"
 #include "handler.h"
+#include "character_macros.h"
+#include "object_macros.h"
 #include "feats.h"
 #include "guild.h"
 #include "genzon.h"

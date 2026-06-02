@@ -1,5 +1,17 @@
 #include "room_impl.h"
+#include "room_api.h"
 #include "room_utils.h"
+
+#include "character_impl.h"
+#include "character_macros.h"
+#include "consts/mobflags.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "consts/itemdata.h"
+#include "consts/roomflags.h"
+#include "consts/sectortypes.h"
+#include "consts/weather.h"
+#include "weather_db.h"
 
 
 int num_pc_in_room(struct room_data *room)

@@ -10,6 +10,12 @@
 
 #include "modify.h"
 
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "flags.h"
+#include "log.h"
 #include "interpreter.h"
 #include "handler.h"
 #include "db.h"
@@ -26,6 +32,12 @@
 #include "dg_olc.h"
 #include "boards.h"
 #include "config.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/constates.h"
+
+#include <cstdlib>
+#include <cstring>
 
 /* local functions */
 
@@ -436,6 +448,3 @@ ACMD(do_skillset)
 * for CircleMUD.  All functions below are his.  --JE 8 Mar 96
 *
 *********************************************************************/
-
-
-

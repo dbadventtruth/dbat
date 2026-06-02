@@ -14,6 +14,8 @@
 #include "character_macros.h"
 #include "dgscript_impl.h"
 #include "zone_impl.h"
+#include "shop_impl.h"
+#include "guild_impl.h"
 #include "log.h"
 #include "extract.h"
 #include "races.h"

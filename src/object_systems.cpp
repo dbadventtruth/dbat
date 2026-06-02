@@ -1,7 +1,15 @@
 #include "object_systems.h"
 
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_db.h"
+#include "object_api.h"
+#include "room_api.h"
+#include "random.h"
+#include "consts/itemdata.h"
 #include "handler.h"
 #include "comm.h"
+#include "relocate.h"
 
 /* This updates the malfunctioning of certain objects that are damaged. */
 void broken_update()

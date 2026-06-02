@@ -1,4 +1,5 @@
 #include "character_impl.h"
+#include "object_api.h"
 #include "consts/triggers.h"
 #include "consts/search.h"
 #include "object_impl.h"

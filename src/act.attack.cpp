@@ -16,6 +16,8 @@
 #include "act.attack.h"
 #include "consts/maximums.h"
 #include "consts/attacks.h"
+#include "consts/roomflags.h"
+#include "consts/skills.h"
 
 #include "search.h"
 #include "techniques.h"
@@ -31,6 +33,9 @@
 #include "dg_comm.h"
 #include "class.h"
 #include "races_plus.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "character_utils.h"
 
 ACMD(do_lightgrenade)
 {

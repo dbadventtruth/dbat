@@ -16,11 +16,28 @@
 #include "config.h"
 #include "olc.h"
 
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "character_macros.h"
+#include "room_impl.h"
+#include "room_db.h"
+#include "object_impl.h"
+#include "object_db.h"
+#include "config_db.h"
+#include "flags.h"
+#include "log.h"
+#include "stringutils.h"
+#include "consts/mobflags.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "handler.h"
 #include "db.h"
 #include "olc.h"
+
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
 
 /* OLC command format:
  *

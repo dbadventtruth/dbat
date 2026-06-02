@@ -9,6 +9,7 @@
 ************************************************************************ */
 #include "config.h"
 #include "consts/maximums.h"
+#include "consts/bonus.h"
 
 #include "weather.h"
 #include "command.h"
@@ -31,6 +32,10 @@
 #include "relocate.h"
 #include "search.h"
 #include "act.social.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+
+#include <cstring>
 
 /* local functions */
 static void perform_tell(struct char_data *ch, struct char_data *vict, char *arg);

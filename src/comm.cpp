@@ -9,11 +9,44 @@
 ************************************************************************ */
 #include "consts/maximums.h"
 #include "consts/songs.h"
+#include "consts/affflags.h"
+#include "consts/constates.h"
+#include "consts/playerflags.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/pulse.h"
+#include "consts/races.h"
 #include "help.h"
-#include "bans.h"
 
 
 #include "comm.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "db.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_api.h"
+#include "flags.h"
+#include "config_db.h"
+#include "room_db.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "weather_db.h"
+#include "stringutils.h"
+#include "consts/admlevel.h"
+#include "consts/applies.h"
+#include "consts/sex.h"
+#include "consts/roomflags.h"
+#include "consts/triggers.h"
+#include "oasis.h"
+#include "ban_impl.h"
+#include "dgscript_impl.h"
+#include "util_macros.h"
 #include "config.h"
 #include "maputils.h"
 #include "ban.h"
@@ -50,6 +83,10 @@
 #include "mail.h"
 #include "races_plus.h"
 #include "screen.h"
+#include "log.h"
+
+#include <cstdlib>
+#include <cstring>
 
 #include <errno.h>
 #include <sys/types.h>

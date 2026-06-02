@@ -2,17 +2,26 @@
 #include "character_api.h"
 #include "character_macros.h"
 #include "character_utils.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "room_api.h"
+#include "util_macros.h"
 
 #include "consts/aligns.h"
 #include "consts/affflags.h"
+#include "consts/applies.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
 #include "consts/prefflags.h"
 #include "consts/races.h"
+#include "consts/roomflags.h"
+#include "consts/positions.h"
 #include "flags.h"
 #include "room_db.h"
+#include "room_impl.h"
 #include "races_plus.h"
 #include "spells.h"
+#include "skills.h"
 #include "comm.h"
 #include "class.h"
 #include "fight.h"
@@ -31,6 +40,8 @@
 #include "weather.h"
 #include "combat.h"
 #include "local_limits.h"
+
+#include "log.h"
 
 #include <string>
 

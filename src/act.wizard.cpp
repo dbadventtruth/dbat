@@ -9,6 +9,15 @@
 ************************************************************************ */
 #include "act.wizard.h"
 #include "consts/maximums.h"
+#include "consts/pulse.h"
+#include "consts/admlevel.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "descriptor_db.h"
 #include "player_impl.h"
 #include "player_db.h"
 #include "players.h"
@@ -19,6 +28,8 @@
 
 #include "interpreter.h"
 #include "time.h"
+#include "db.h"
+#include "consts/constates.h"
 
 #include "search.h"
 #include "relocate.h"
@@ -53,8 +64,12 @@
 #include "shop.h"
 #include "guild.h"
 #include "spell_parser.h"
+#include "log.h"
+#include "stringutils.h"
 
 #include "iterate.hpp"
+
+#include <cstdlib>
 
 
 

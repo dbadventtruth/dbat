@@ -9,6 +9,43 @@
 **************************************************************************/
 
 
+#include "character_impl.h"
+#include "character_macros.h"
+#include "races.h"
+#include "flags.h"
+#include "dgscript_impl.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "room_impl.h"
+#include "room_db.h"
+#include "room_macros.h"
+#include "room_api.h"
+#include "character_api.h"
+#include "character_utils.h"
+#include "object_api.h"
+#include "zone_db.h"
+#include "zone_impl.h"
+#include "search.h"
+#include "log.h"
+#include "random.h"
+#include "weather_db.h"
+#include "skills.h"
+#include "stringutils.h"
+#include "util_macros.h"
+#include "consts/applies.h"
+#include "consts/affflags.h"
+#include "consts/itemdata.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/sex.h"
+#include "consts/positions.h"
+#include "consts/sizes.h"
+#include "consts/sectortypes.h"
+#include "consts/roomflags.h"
+#include "consts/exitflags.h"
+#include "consts/directions.h"
+#include "consts/triggers.h"
+#include "consts/directions.h"
 #include "dg_scripts.h"
 #include "comm.h"
 #include "interpreter.h"
@@ -20,6 +57,10 @@
 #include "oasis.h"
 #include "class.h"
 #include "races_plus.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 
 
 /* Utility functions */

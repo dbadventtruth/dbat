@@ -7,6 +7,27 @@
  *  Copyright 1996 Harvey Gilpin.                                        *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "guild.h"
+#include "guild_impl.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "zone_impl.h"
+#include "zone_db.h"
+#include "guild_db.h"
+#include "character_db.h"
+#include "log.h"
+#include "flags.h"
+#include "util_macros.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/races.h"
+#include "skills.h"
+#include "config_db.h"
 #include "config.h"
 
 #include "gedit.h"
@@ -23,6 +44,10 @@
 #include "feats.h"
 #include "genolc.h"
 #include "shop.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <strings.h>
 
 /*
  * Should check more things.

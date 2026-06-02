@@ -41,6 +41,13 @@ int json_import_obj_prototypes(const char* folder);
 int json_import_shops(const char* folder);
 int json_import_guilds(const char* folder);
 
+int json_player_load(const char* path, struct char_data* ch);
+int json_player_save(const char* path, struct char_data* ch);
+int json_player_objects_save(const char* path, struct char_data* ch, int rentcode, int cost);
+int json_player_objects_load(const char* path, struct char_data* ch);
+int json_house_objects_save(const char* path, room_vnum vnum);
+int json_house_objects_load(const char* path, room_vnum vnum);
+
 #ifdef __cplusplus
 }
 #endif

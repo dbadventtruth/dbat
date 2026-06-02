@@ -10,6 +10,13 @@
 
 #include "mobact.h"
 
+#include "character_impl.h"
+#include "character_macros.h"
+#include "character_api.h"
+#include "flags.h"
+#include "random.h"
+#include "consts/affflags.h"
+#include "consts/races.h"
 #include "db.h"
 #include "comm.h"
 #include "interpreter.h"

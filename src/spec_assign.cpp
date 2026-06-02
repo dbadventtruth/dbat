@@ -9,6 +9,14 @@
 ************************************************************************ */
 #include "config.h"
 #include "spec_assign.h"
+#include "character_db.h"
+#include "object_db.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "room_db.h"
+#include "config_db.h"
+#include "log.h"
+#include "consts/roomflags.h"
 #include "db.h"
 #include "interpreter.h"
 

@@ -8,10 +8,25 @@
 *****************************************************/
 #include "maputils.h"
 
+#include "character_impl.h"
+#include "character_db.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "object_api.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "room_db.h"
 #include "comm.h"
 #include "interpreter.h"
 #include "db.h"
 #include "vehicles.h"
+#include "random.h"
+#include "log.h"
+#include "consts/itemdata.h"
+#include "consts/roomflags.h"
+
+#include <cstring>
 
 
 extern struct room_data *world;  

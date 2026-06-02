@@ -1,6 +1,22 @@
 
 #include "comm.h"
 
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
+#include "log.h"
+#include "room_impl.h"
+#include "room_api.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/playerflags.h"
+#include "consts/maximums.h"
+
+#include <ctime>
+#include <cstring>
+
 /* log a death trap hit */
 void log_death_trap(struct char_data *ch)
 {

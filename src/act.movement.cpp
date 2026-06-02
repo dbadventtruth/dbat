@@ -29,6 +29,9 @@
 #include "fight.h"
 #include "spells.h"
 #include "oasis.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "room_db.h"
 
 #include "guild.h"
 #include "dg_scripts.h"

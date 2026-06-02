@@ -7,6 +7,27 @@
  * Written by Jason Goodwin.   jgoodwin@expert.cc.purdue.edu               *
  ************************************************************************ */
 #include "guild.h"
+#include "guild_impl.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "descriptor_impl.h"
+#include "flags.h"
+#include "log.h"
+#include "random.h"
+#include "search.h"
+#include "stringutils.h"
+#include "weather_db.h"
+#include "config_db.h"
+#include "skills.h"
+#include "consts/applies.h"
+#include "consts/mobflags.h"
+#include "consts/positions.h"
+#include "consts/races.h"
+#include "zone_impl.h"
+
+#include <cstring>
 #include "iterate.hpp"
 #include "config.h"
 #include "affect.h"

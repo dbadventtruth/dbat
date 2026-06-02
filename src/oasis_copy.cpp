@@ -7,6 +7,12 @@
 /******************************************************************************/
 
 #include "oasis_copy.h"
+#include "oasis.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_db.h"
+#include "descriptor_macros.h"
 #include "dg_comm.h"
 #include "dg_olc.h"
 #include "act.wizard.h"
@@ -19,6 +25,17 @@
 #include "genwld.h"
 #include "genshp.h"
 #include "dg_scripts.h"
+#include "room_db.h"
+#include "object_db.h"
+#include "shop_db.h"
+#include "character_db.h"
+#include "consts/constates.h"
+#include "consts/admlevel.h"
+#include "consts/mobflags.h"
+#include "log.h"
+#include "zone_db.h"
+
+#include <cstdlib>
 
 /******************************************************************************/
 /** Internal Functions                                                       **/

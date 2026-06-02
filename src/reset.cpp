@@ -12,6 +12,7 @@
  
 #include "db.h"
 #include "handler.h"
+#include "zone_impl.h"
 #include "reset.h" 
 #include "spec_procs.h"
 

@@ -1,4 +1,5 @@
 #include "room_impl.h"
+#include "room_db.h"
 
 
 /* returns the real number of the room with given virtual number */

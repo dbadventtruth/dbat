@@ -15,9 +15,16 @@
  * the appropriate new special cases for your new class.
  */
 #include "consts/maximums.h"
+#include "consts/prefflags.h"
+#include "consts/playerflags.h"
+#include "consts/skills.h"
 
 #include "class.h"
 
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_macros.h"
+#include "config_db.h"
 #include "db.h"
 #include "comm.h"
 #include "spells.h"
@@ -31,6 +38,7 @@
 #include "act.other.h"
 #include "random.h"
 #include "relocate.h"
+#include "races.h"
 
 #include "races_plus.h"
 #include "sensei.h"

@@ -9,6 +9,12 @@
  ************************************************************************ */
 
 #include "objsave.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "object_impl.h"
+#include "object_macros.h"
+#include "json.h"
+#include "log.h"
 #include "comm.h"
 #include "handler.h"
 #include "db.h"
@@ -21,13 +27,13 @@
 #include "act.item.h"
 #include "fileop.h"
 #include "consts/rents.h"
+#include "consts/itemdata.h"
 #include "config.h"
-#include "players.h"
-#include "objsave.h"
 
 #include <unistd.h>
 #include <errno.h>
 #include <cctype>
+#include <cstring>
 
 /* local functions */
 

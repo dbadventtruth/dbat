@@ -1,5 +1,27 @@
 
 #include "act.informative.h"
+#include "character_impl.h"
+#include "character_api.h"
+#include "character_db.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "object_impl.h"
+#include "object_db.h"
+#include "object_macros.h"
+#include "room_impl.h"
+#include "search.h"
+#include "stringutils.h"
+#include "util_macros.h"
+#include "flags.h"
+#include "consts/races.h"
+#include "consts/mobflags.h"
+#include "consts/maximums.h"
+
+#include <cctype>
+#include <cstddef>
+#include <cstring>
+#include <cstdlib>
+#include <strings.h>
 
 int is_name(const char *str, const char *namelist)
 {

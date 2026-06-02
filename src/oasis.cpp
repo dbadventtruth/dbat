@@ -7,6 +7,13 @@
 
 
 #include "dg_scripts.h"
+#include "character_impl.h"
+#include "character_macros.h"
+#include "descriptor_impl.h"
+#include "descriptor_macros.h"
+#include "object_impl.h"
+#include "zone_impl.h"
+#include "flags.h"
 #include "interpreter.h"
 #include "comm.h"
 #include "db.h"
@@ -19,6 +26,14 @@
 #include "dg_olc.h"
 #include "handler.h"
 #include "guild.h"
+#include "log.h"
+#include "search.h"
+#include "consts/admlevel.h"
+#include "consts/constates.h"
+#include "consts/mobflags.h"
+#include "consts/playerflags.h"
+#include "consts/prefflags.h"
+#include "consts/triggers.h"
 
 
 /******************************************************************************/

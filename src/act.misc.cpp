@@ -17,6 +17,8 @@
 #include "consts/fish.h"
 #include "consts/recipes.h"
 #include "consts/attacks.h"
+#include "consts/playerflags.h"
+#include "consts/skills.h"
 
 
 #include "random.h"
@@ -42,6 +44,9 @@
 #include "fight.h"
 #include "class.h"
 #include "races_plus.h"
+#include "character_macros.h"
+#include "character_utils.h"
+#include "affect.h"
 
 #include "search.hpp"
 

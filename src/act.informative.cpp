@@ -21,8 +21,10 @@
 #include "object_impl.h"
 #include "object_macros.h"
 #include "room_api.h"
+#include "room_impl.h"
 #include "flags.h"
 #include "stringutils.h"
+#include "util_macros.h"
 #include "consts/applies.h"
 #include "consts/itemdata.h"
 #include "consts/mobflags.h"
@@ -53,6 +55,11 @@
 #include "comm.h"
 #include "spells.h"
 #include "handler.h"
+#include "consts/pulse.h"
+#include "consts/positions.h"
+#include "room_db.h"
+#include "log.h"
+#include "character_utils.h"
 
 #include "boards.h"
 

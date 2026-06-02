@@ -1,4 +1,4 @@
-#include "assembly.h"
+#include "assembly_impl.h"
 #include <stdlib.h>
 
 void free_assembly(struct assembly_data *assembly)
