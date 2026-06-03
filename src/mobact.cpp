@@ -271,33 +271,32 @@ void mobile_activity(void) {
     if (MOB_FLAGGED(ch, MOB_AGGRESSIVE) && !IS_AFFECTED(ch, AFF_PARALYZE)) {
       int spot_roll = rand_number(1, GET_LEVEL(ch) + 10);
       found = FALSE;
-      for (vict = char_room_get(ch)->people; vict && !found;
-           vict = vict->next_in_room) {
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
         if (vict == ch)
-          continue;
+          return true;
         else if (FIGHTING(ch))
-          continue;
+          return true;
         else if (!CAN_SEE(ch, vict))
-          continue;
+          return true;
         else if (IS_NPC(vict))
-          continue;
+          return true;
         else if (PRF_FLAGGED(vict, PRF_NOHASSLE))
-          continue;
+          return true;
         else if (MOB_FLAGGED(ch, MOB_AGGR_EVIL) && GET_ALIGNMENT(vict) < 50)
-          continue;
+          return true;
         else if (MOB_FLAGGED(ch, MOB_AGGR_GOOD) && GET_ALIGNMENT(vict) > -50)
-          continue;
+          return true;
         else if (GET_LEVEL(vict) < 5)
-          continue;
+          return true;
         else if (AFF_FLAGGED(vict, AFF_HIDE) &&
                  GET_SKILL(vict, SKILL_HIDE) > spot_roll)
-          continue;
+          return true;
         else if (AFF_FLAGGED(vict, AFF_SNEAK) &&
                  GET_SKILL(vict, SKILL_MOVE_SILENTLY) > spot_roll)
-          continue;
+          return true;
         else if (ch->aggtimer < 8)
           ch->aggtimer += 1;
-        else {
+        else if (!found) {
           ch->aggtimer = 0;
           char tar[MAX_INPUT_LENGTH];
 
@@ -319,11 +318,11 @@ void mobile_activity(void) {
             if (AFF_FLAGGED(vict, AFF_FLYING) && !AFF_FLAGGED(ch, AFF_FLYING) &&
                 IS_HUMANOID(ch) && GET_LEVEL(ch) > 10) {
               do_fly(ch, 0, 0, 0);
-              continue;
+              return true;
             }
             if (!AFF_FLAGGED(vict, AFF_FLYING) && AFF_FLAGGED(ch, AFF_FLYING)) {
               do_fly(ch, 0, 0, 0);
-              continue;
+              return true;
             }
             do_punch(ch, tar, 0, 0);
           }
@@ -331,11 +330,11 @@ void mobile_activity(void) {
             if (AFF_FLAGGED(vict, AFF_FLYING) && !AFF_FLAGGED(ch, AFF_FLYING) &&
                 IS_HUMANOID(ch) && GET_LEVEL(ch) > 10) {
               do_fly(ch, 0, 0, 0);
-              continue;
+              return true;
             }
             if (!AFF_FLAGGED(vict, AFF_FLYING) && AFF_FLAGGED(ch, AFF_FLYING)) {
               do_fly(ch, 0, 0, 0);
-              continue;
+              return true;
             }
             if (!AFF_FLAGGED(vict, AFF_HIDE) && !AFF_FLAGGED(vict, AFF_SNEAK)) {
               act("@C$n @wgrowls viciously at you!@n", TRUE, ch, 0, vict,
@@ -354,7 +353,8 @@ void mobile_activity(void) {
           /*hit(ch, vict, TYPE_UNDEFINED);*/
           found = TRUE;
         }
-      }
+        return true;
+      });
     }
 
     if (GET_ORIGINAL(ch) && rand_number(1, 5) >= 4) {
@@ -377,14 +377,11 @@ void mobile_activity(void) {
 
     /* Be helpful */ /* - temporarily disabled by the first false check */
     if (false && IS_HUMANOID(ch) && !MOB_FLAGGED(ch, MOB_NOKILL)) {
-      struct char_data *vict, *next_v;
       int done = FALSE;
-      for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-        next_v = vict->next_in_room;
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
         if (vict == ch)
-          continue;
-        if (IS_NPC(vict) && race_is_people(vict->race) && FIGHTING(vict) &&
-            done == FALSE) {
+          return true;
+        if (!done && IS_NPC(vict) && race_is_people(vict->race) && FIGHTING(vict)) {
           if (!is_sparring(vict) && !is_sparring(ch) &&
               GET_HIT(vict) < GET_HIT(ch) * 0.6 && axion_dice(0) >= 90) {
             act("@c$n@C rushes to @c$N's@C aid!@n", TRUE, ch, 0, vict, TO_ROOM);
@@ -410,21 +407,19 @@ void mobile_activity(void) {
             }
           }
         }
-      } /* End of for */
+        return true;
+      });
     }
 
     /* Help those under attack! */ /* - temporarily disabled by the first false
                                       check */
     if (false && !FIGHTING(ch) && rand_number(1, 20) >= 14 && IS_HUMANOID(ch) &&
         !MOB_FLAGGED(ch, MOB_NOKILL)) {
-      struct char_data *vict, *next_v;
       int done = FALSE;
-      for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-        next_v = vict->next_in_room;
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
         if (vict == ch)
-          continue;
-        if (IS_NPC(vict) && race_is_people(vict->race) && FIGHTING(vict) &&
-            done == FALSE) {
+          return true;
+        if (!done && IS_NPC(vict) && race_is_people(vict->race) && FIGHTING(vict)) {
           if (!is_sparring(vict) && !is_sparring(ch) &&
               GET_HIT(vict) < GET_HIT(ch) * 0.6 && axion_dice(0) >= 70) {
             act("@c$n@C rushes to @c$N's@C aid!@n", TRUE, ch, 0, vict, TO_ROOM);
@@ -439,7 +434,8 @@ void mobile_activity(void) {
             }
           }
         }
-      } /* End of for */
+        return true;
+      });
     }
 
     /* Absorb protection */
@@ -482,15 +478,16 @@ void mobile_activity(void) {
     if (IS_HUMANOID(ch) && MEMORY(ch) && !MOB_FLAGGED(ch, MOB_DUMMY) &&
         !IS_AFFECTED(ch, AFF_PARALYZE)) {
       found = FALSE;
-      for (vict = char_room_get(ch)->people; vict && !found;
-           vict = vict->next_in_room) {
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
+        if (found)
+          return false;
         if (IS_NPC(vict) || !CAN_SEE(ch, vict) ||
             PRF_FLAGGED(vict, PRF_NOHASSLE))
-          continue;
+          return true;
         if (FIGHTING(ch))
-          continue;
+          return true;
         if (GET_HIT(ch) <= GET_MAX_HIT(ch) / 100)
-          continue;
+          return true;
 
         for (names = MEMORY(ch); names && !found; names = names->next) {
           if (names->id != GET_IDNUM(vict))
@@ -504,7 +501,8 @@ void mobile_activity(void) {
           sprintf(tar, "%s", GET_NAME(vict));
           do_punch(ch, tar, 0, 0);
         }
-      }
+        return true;
+      });
     }
 
     if (FIGHTING(ch) && rand_number(1, 30) >= 25) {
@@ -515,12 +513,13 @@ void mobile_activity(void) {
     if (MOB_FLAGGED(ch, MOB_HELPER) && !AFF_FLAGGED(ch, AFF_BLIND) &&
         !AFF_FLAGGED(ch, AFF_CHARM)) {
       found = FALSE;
-      for (vict = char_room_get(ch)->people; vict && !found;
-           vict = vict->next_in_room) {
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
+        if (found)
+          return false;
         if (ch == vict || !IS_NPC(vict) || !FIGHTING(vict))
-          continue;
+          return true;
         if (IS_NPC(FIGHTING(vict)) || ch == FIGHTING(vict))
-          continue;
+          return true;
 
         if (IS_HUMANOID(vict)) {
           act("$n jumps to the aid of $N!", FALSE, ch, 0, vict, TO_ROOM);
@@ -530,7 +529,8 @@ void mobile_activity(void) {
           do_punch(ch, tar, 0, 0);
           found = TRUE;
         }
-      }
+        return true;
+      });
     }
 
     /* Add new mobile actions here */
@@ -539,10 +539,12 @@ void mobile_activity(void) {
       struct shop_data *shop = NULL;
       found = FALSE;
       /* Is there a shopkeeper around? */
-      for (vict = char_room_get(ch)->people; vict && !found;
-           vict = vict->next_in_room) {
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
+        if (found)
+          return false;
         if (GET_MOB_SPEC(vict) == shop_keeper) {
           /* Ok, vict is a shop keeper.  Which shop is his? */
+          shop = NULL;
           shop_iterate([&](auto s) {
             if (SHOP_KEEPER(s) == vict->vnum) {
               shop = s;
@@ -561,26 +563,29 @@ void mobile_activity(void) {
          * the shopkeeper present who doesn't allow stealing.  Don't bother
          * running the next loop, since we can't steal from anyone anyway.
          */
-      }
-      for (vict = char_room_get(ch)->people; vict && !found;
-           vict = vict->next_in_room) {
+        return true;
+      });
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
+        if (found)
+          return false;
         if (vict == ch)
-          continue;
+          return true;
         if (MOB_FLAGGED(ch, MOB_WIMPY) && AWAKE(vict))
-          continue;
+          return true;
         if (!IS_HUMANOID(vict))
-          continue;
+          return true;
         if (IS_NPC(vict) && MOB_FLAGGED(vict, MOB_NOKILL))
-          continue;
+          return true;
         if (GET_MOB_VNUM(ch) == GET_MOB_VNUM(vict))
-          continue;
+          return true;
         if (GET_LEVEL(ch) >= GET_LEVEL(vict)) {
           if (roll_skill(ch, SKILL_SLEIGHT_OF_HAND)) {
             npc_steal(ch, vict);
             found = TRUE;
           }
         }
-      }
+        return true;
+      });
     }
 
   } /* end for() */

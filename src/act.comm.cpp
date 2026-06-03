@@ -53,6 +53,7 @@
 #include "dg_scripts.h"
 #include "improved-edit.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "random.h"
 #include "relocate.h"
 #include "search.h"
@@ -1275,47 +1276,47 @@ static void handle_whisper(char *buf, struct char_data *ch,
                            struct char_data *vict) {
   struct char_data *tch;
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (IS_NPC(tch)) {
-      continue;
+      return true;
     }
     if (tch == ch) {
-      continue;
+      return true;
     }
     if (tch == vict) {
-      continue;
+      return true;
     }
     if (!GET_SKILL(tch, SKILL_LISTEN)) {
-      continue;
+      return true;
     }
-    if (GET_SKILL(tch, SKILL_LISTEN)) {
-      int skill = GET_SKILL(tch, SKILL_LISTEN);
-      int roll1 = rand_number(10, 30);
-      int roll = rand_number(roll1, 110);
+    int skill = GET_SKILL(tch, SKILL_LISTEN);
+    int roll1 = rand_number(10, 30);
+    int roll = rand_number(roll1, 110);
 
-      if (skill >= roll) {
-        send_to_char(tch,
-                     "@WYou overhear everything whispered, @W'@m%s@W'@n\r\n",
-                     overhear(buf, 3));
-      } else if (skill + 10 >= roll) {
-        send_to_char(
-            tch, "@WYou overhear a lot of what is whispered, @W'@m%s@W'@n\r\n",
-            overhear(buf, 2));
-      } else if (skill + 20 >= roll) {
-        send_to_char(
-            tch, "@WYou overhear some of what is whispered, @W'@m%s@W'@n\r\n",
-            overhear(buf, 1));
-      } else if (skill + 30 >= roll) {
-        send_to_char(
-            tch, "@WYou overhear little of what is whispered, @W'@m%s@W'@n\r\n",
-            overhear(buf, 0));
-      } else {
-        send_to_char(
-            tch,
-            "@WYou were unable to overhear anything that was whispered.@n\r\n");
-      }
+    if (skill >= roll) {
+      send_to_char(tch,
+                   "@WYou overhear everything whispered, @W'@m%s@W'@n\r\n",
+                   overhear(buf, 3));
+    } else if (skill + 10 >= roll) {
+      send_to_char(
+          tch, "@WYou overhear a lot of what is whispered, @W'@m%s@W'@n\r\n",
+          overhear(buf, 2));
+    } else if (skill + 20 >= roll) {
+      send_to_char(
+          tch, "@WYou overhear some of what is whispered, @W'@m%s@W'@n\r\n",
+          overhear(buf, 1));
+    } else if (skill + 30 >= roll) {
+      send_to_char(
+          tch,
+          "@WYou overhear little of what is whispered, @W'@m%s@W'@n\r\n",
+          overhear(buf, 0));
+    } else {
+      send_to_char(
+          tch,
+          "@WYou were unable to overhear anything that was whispered.@n\r\n");
     }
-  }
+    return true;
+  });
 }
 
 static char *overhear(char *buf, int type) {

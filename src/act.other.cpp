@@ -90,6 +90,7 @@
 #include "guild.h"
 #include "handler.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "mail.h"
 #include "obj_edit.h"
 #include "objsave.h"
@@ -7656,25 +7657,22 @@ ACMD(do_solar) {
       "area!@n",
       TRUE, ch, 0, 0, TO_ROOM);
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
-
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch)
-      continue;
-    else if (PLR_FLAGGED(vict, PLR_EYEC))
-      continue;
-    else if (AFF_FLAGGED(vict, AFF_BLIND))
-      continue;
-    else if (GET_POS(vict) == POS_SLEEPING)
-      continue;
-    else {
-      int duration = 1;
-      assign_affect(vict, AFF_BLIND, SKILL_SOLARF, duration, 0, 0, 0, 0, 0, 0);
-      act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_CHAR);
-      act("@RYou are @YBLINDED@R!@n", TRUE, ch, 0, vict, TO_VICT);
-      act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    }
-  }
+      return true;
+    if (PLR_FLAGGED(vict, PLR_EYEC))
+      return true;
+    if (AFF_FLAGGED(vict, AFF_BLIND))
+      return true;
+    if (GET_POS(vict) == POS_SLEEPING)
+      return true;
+    int duration = 1;
+    assign_affect(vict, AFF_BLIND, SKILL_SOLARF, duration, 0, 0, 0, 0, 0, 0);
+    act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_CHAR);
+    act("@RYou are @YBLINDED@R!@n", TRUE, ch, 0, vict, TO_VICT);
+    act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+    return true;
+  });
   improve_skill(ch, SKILL_SOLARF, 0);
   decCurKI(ch, cost);
   WAIT_STATE(ch, PULSE_3SEC);

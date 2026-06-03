@@ -68,6 +68,8 @@
 #include "weather.h"
 #include "weather_db.h"
 
+#include "iterate.hpp"
+
 #include "extract.h"
 #include "fileop.h"
 #include "relocate.h"

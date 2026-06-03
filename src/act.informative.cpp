@@ -61,6 +61,7 @@
 #include "extract.h"
 #include "fileop.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "races_plus.h"
 #include "random.h"
 #include "relocate.h"
@@ -359,36 +360,37 @@ static void search_room(struct char_data *ch) {
   act("@y$n@Y begins searching the room carefully.@n", TRUE, ch, 0, 0, TO_ROOM);
   WAIT_STATE(ch, PULSE_1SEC);
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
-    if (AFF_FLAGGED(vict, AFF_HIDE) && vict != ch) {
-      if (GET_SUPPRESS(vict) >= 1) {
-        perc *= (GET_SUPPRESS(vict) * 0.01);
-      }
-      prob = GET_DEX(vict) + (GET_INT(vict) * 0.6) +
-             GET_SKILL(vict, SKILL_HIDE) + GET_SKILL(vict, SKILL_MOVE_SILENTLY);
-
-      if (AFF_FLAGGED(vict, AFF_LIQUEFIED)) {
-        prob *= 1.5;
-      }
-      if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 4 || GET_GENOME(ch, 1) == 4)) {
-        perc += 5;
-      }
-      if (IS_MUTANT(vict) &&
-          (GET_GENOME(vict, 0) == 5 || GET_GENOME(vict, 1) == 5)) {
-        prob += 10;
-      }
-      terrain += terrain_bonus(vict);
-      if (perc * bonus >= prob * terrain) { /* Found them. */
-        act("@YYou find @y$N@Y hiding nearby!@n", TRUE, ch, 0, vict, TO_CHAR);
-        act("@y$n@Y has found your hiding spot!@n", TRUE, ch, 0, vict, TO_VICT);
-        act("@y$n@Y has found @y$N's@Y hiding spot!@n", TRUE, ch, 0, vict,
-            TO_NOTVICT);
-        reveal_hiding(vict, 4);
-        found++;
-      }
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
+    if (!AFF_FLAGGED(vict, AFF_HIDE) || vict == ch) {
+      return true;
     }
-  }
+    if (GET_SUPPRESS(vict) >= 1) {
+      perc *= (GET_SUPPRESS(vict) * 0.01);
+    }
+    prob = GET_DEX(vict) + (GET_INT(vict) * 0.6) +
+           GET_SKILL(vict, SKILL_HIDE) + GET_SKILL(vict, SKILL_MOVE_SILENTLY);
+
+    if (AFF_FLAGGED(vict, AFF_LIQUEFIED)) {
+      prob *= 1.5;
+    }
+    if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 4 || GET_GENOME(ch, 1) == 4)) {
+      perc += 5;
+    }
+    if (IS_MUTANT(vict) &&
+        (GET_GENOME(vict, 0) == 5 || GET_GENOME(vict, 1) == 5)) {
+      prob += 10;
+    }
+    terrain += terrain_bonus(vict);
+    if (perc * bonus >= prob * terrain) { /* Found them. */
+      act("@YYou find @y$N@Y hiding nearby!@n", TRUE, ch, 0, vict, TO_CHAR);
+      act("@y$n@Y has found your hiding spot!@n", TRUE, ch, 0, vict, TO_VICT);
+      act("@y$n@Y has found @y$N's@Y hiding spot!@n", TRUE, ch, 0, vict,
+          TO_NOTVICT);
+      reveal_hiding(vict, 4);
+      found++;
+    }
+    return true;
+  });
 
   struct obj_data *obj = NULL;
 

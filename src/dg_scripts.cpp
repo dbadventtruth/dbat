@@ -142,8 +142,10 @@ int trgvar_in_room(room_vnum vnum) {
     return (-1);
   }
 
-  for (ch = room->people; ch != NULL; ch = ch->next_in_room)
+  room_people_iterate(room, [&](auto ch) {
     i++;
+    return true;
+  });
 
   return i;
 }
@@ -343,7 +345,7 @@ char_data *get_char(char *name) {
  * Finds a char in the same room as the object with the name 'name'
  */
 char_data *get_char_near_obj(obj_data *obj, char *name) {
-  char_data *ch;
+  char_data *ch = NULL;
 
   if (*name == UID_CHAR) {
     ch = find_char(atoi(name + 1));
@@ -351,12 +353,16 @@ char_data *get_char_near_obj(obj_data *obj, char *name) {
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
   } else {
-    room_rnum num;
     struct room_data *rm = obj_room(obj);
     if (rm)
-      for (ch = rm->people; ch; ch = ch->next_in_room)
-        if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-          return ch;
+      room_people_iterate(rm, [&](auto c) {
+        if (isname(name, c->name) && valid_dg_target(c, DG_ALLOW_GODS)) {
+          ch = c;
+          return false;
+        }
+        return true;
+      });
+      if (ch) return ch;
   }
 
   return NULL;
@@ -375,9 +381,16 @@ char_data *get_char_in_room(room_data *room, char *name) {
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
   } else {
-    for (ch = room->people; ch; ch = ch->next_in_room)
-      if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-        return ch;
+    ch = NULL;
+    room_people_iterate(room, [&](auto c) {
+      if (isname(name, c->name) && valid_dg_target(c, DG_ALLOW_GODS)) {
+        ch = c;
+        return false;
+      }
+      return true;
+    });
+    if (ch)
+      return ch;
   }
 
   return NULL;
@@ -421,9 +434,13 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
       return i;
 
     /* check peoples' inventory */
-    for (ch = rm->people; ch; ch = ch->next_in_room)
+    room_people_iterate(rm, [&](auto ch) {
       if ((i = get_object_in_equip(ch, name)))
-        return i;
+        return false;
+      return true;
+    });
+    if (i)
+      return i;
   }
   return NULL;
 }
@@ -494,9 +511,16 @@ char_data *get_char_by_room(room_data *room, char *name) {
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
   } else {
-    for (ch = room->people; ch; ch = ch->next_in_room)
-      if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-        return ch;
+    ch = NULL;
+    room_people_iterate(room, [&](auto c) {
+      if (isname(name, c->name) && valid_dg_target(c, DG_ALLOW_GODS)) {
+        ch = c;
+        return false;
+      }
+      return true;
+    });
+    if (ch)
+      return ch;
 
     for (ch = character_list; ch; ch = ch->next)
       if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
@@ -877,10 +901,14 @@ ACMD(do_attach) {
   if (is_abbrev(arg, "mobile") || is_abbrev(arg, "mtr")) {
     victim = get_char_vis(ch, targ_name, NULL, FIND_CHAR_WORLD);
     if (!victim) { /* search room for one with this vnum */
-      for (victim = char_room_get(ch)->people; victim;
-           victim = victim->next_in_room)
-        if (GET_MOB_VNUM(victim) == num_arg)
-          break;
+      victim = NULL;
+      room_people_iterate(char_room_get(ch), [&](auto v) {
+        if (GET_MOB_VNUM(v) == num_arg) {
+          victim = v;
+          return false;
+        }
+        return true;
+      });
 
       if (!victim) {
         send_to_char(ch, "That mob does not exist.\r\n");
@@ -1097,10 +1125,14 @@ ACMD(do_detach) {
     if (is_abbrev(arg1, "mobile") || !strcasecmp(arg1, "mtr")) {
       victim = get_char_vis(ch, arg2, NULL, FIND_CHAR_WORLD);
       if (!victim) { /* search room for one with this vnum */
-        for (victim = char_room_get(ch)->people; victim;
-             victim = victim->next_in_room)
-          if (GET_MOB_VNUM(victim) == num_arg)
-            break;
+        victim = NULL;
+        room_people_iterate(char_room_get(ch), [&](auto v) {
+          if (GET_MOB_VNUM(v) == num_arg) {
+            victim = v;
+            return false;
+          }
+          return true;
+        });
 
         if (!victim) {
           send_to_char(ch, "No such mobile around.\r\n");

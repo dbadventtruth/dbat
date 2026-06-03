@@ -185,12 +185,12 @@ OCMD(do_oforce) {
     if ((room = obj_room(obj)) == NULL)
       obj_log(obj, "oforce called by object in NOWHERE");
     else {
-      for (ch = room->people; ch; ch = next_ch) {
-        next_ch = ch->next_in_room;
+      room_people_iterate(room, [&](auto ch) {
         if (valid_dg_target(ch, 0)) {
           command_interpreter(ch, line);
         }
-      }
+        return true;
+      });
     }
   }
 
@@ -354,11 +354,11 @@ OCMD(do_opurge) {
   if (!*arg) {
     /* purge all */
     if ((room = obj_room(obj)) != NULL) {
-      for (ch = room->people; ch; ch = next_ch) {
-        next_ch = ch->next_in_room;
+      room_people_iterate(room, [&](auto ch) {
         if (IS_NPC(ch))
           extract_char(ch);
-      }
+        return true;
+      });
 
       for (o = room->contents; o; o = next_obj) {
         next_obj = o->next_content;
@@ -439,14 +439,14 @@ OCMD(do_oteleport) {
     if (target == room)
       obj_log(obj, "oteleport target is itself");
 
-    for (ch = room->people; ch; ch = next_ch) {
-      next_ch = ch->next_in_room;
+    room_people_iterate(room, [&](auto ch) {
       if (!valid_dg_target(ch, DG_ALLOW_GODS))
-        continue;
+        return true;
       char_from_room(ch);
       char_to_room(ch, target);
       enter_wtrigger(char_room_get(ch), ch, -1);
-    }
+      return true;
+    });
   }
 
   else {

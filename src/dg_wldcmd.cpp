@@ -362,14 +362,14 @@ WCMD(do_wteleport) {
       return;
     }
 
-    for (ch = room->people; ch; ch = next_ch) {
-      next_ch = ch->next_in_room;
+    room_people_iterate(room, [&](auto ch) {
       if (!valid_dg_target(ch, DG_ALLOW_GODS))
-        continue;
+        return true;
       char_from_room(ch);
       char_to_room(ch, target);
       enter_wtrigger(char_room_get(ch), ch, -1);
-    }
+      return true;
+    });
   }
 
   else {
@@ -398,13 +398,12 @@ WCMD(do_wforce) {
   }
 
   if (!strcasecmp(arg1, "all")) {
-    for (ch = room->people; ch; ch = next_ch) {
-      next_ch = ch->next_in_room;
-
+    room_people_iterate(room, [&](auto ch) {
       if (valid_dg_target(ch, 0)) {
         command_interpreter(ch, line);
       }
-    }
+      return true;
+    });
   }
 
   else {
@@ -429,11 +428,11 @@ WCMD(do_wpurge) {
 
   if (!*arg) {
     /* purge all */
-    for (ch = room->people; ch; ch = next_ch) {
-      next_ch = ch->next_in_room;
+    room_people_iterate(room, [&](auto ch) {
       if (IS_NPC(ch))
         extract_char(ch);
-    }
+      return true;
+    });
 
     for (obj = room->contents; obj; obj = next_obj) {
       next_obj = obj->next_content;

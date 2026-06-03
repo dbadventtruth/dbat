@@ -82,10 +82,6 @@ struct room_direction_data *room_dir_option_get(struct room_data *room,
 struct char_data *room_people_get(struct room_data *room);
 struct obj_data *room_contents_get(struct room_data *room);
 
-void room_contents_iterate(struct room_data *room, bool recursive,
-                           obj_iter_fn func, void *ctx);
-void room_people_iterate(struct room_data *room, char_iter_fn func, void *ctx);
-
 #ifdef __cplusplus
 }
 #endif

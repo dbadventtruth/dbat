@@ -31,6 +31,7 @@
 #include "affect.h"
 #include "extract.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "random.h"
 #include "relocate.h"
 #include "search.h"
@@ -479,8 +480,8 @@ static void resolve_song(struct char_data *ch) {
     return;
   }
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  bool stop_song = false;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     switch (GET_SONG(ch)) {
     case SONG_SAFETY:
       if ((ch->master == vict->master || ch == vict->master ||
@@ -555,7 +556,8 @@ static void resolve_song(struct char_data *ch) {
             ch, "You no longer have the ki necessary to play your song.\r\n");
         act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
         GET_SONG(ch) = 0;
-        return;
+        stop_song = true;
+        return false;
       }
       break;
     case SONG_SHADOW_STITCH:
@@ -563,7 +565,7 @@ static void resolve_song(struct char_data *ch) {
         if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
           if (ch == vict->master || ch->master == vict ||
               ch->master == vict->master) {
-            continue;
+            return true;
           } else if (skill > diceroll + 10) {
             apply_shadow_sitch(ch, vict, skill);
           }
@@ -578,12 +580,13 @@ static void resolve_song(struct char_data *ch) {
             ch, "You no longer have the ki necessary to play your song.\r\n");
         act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
         GET_SONG(ch) = 0;
-        return;
+        stop_song = true;
+        return false;
       }
       break;
     case SONG_TELEPORT_EARTH:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -605,7 +608,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_VEGETA:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -627,7 +630,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_FRIGID:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -649,7 +652,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_KONACK:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -671,7 +674,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_NAMEK:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -693,7 +696,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_ARLIA:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -715,7 +718,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_AETHER:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -737,7 +740,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_KANASSA:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -795,10 +798,15 @@ static void resolve_song(struct char_data *ch) {
             ch, "You no longer have the ki necessary to play your song.\r\n");
         act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
         GET_SONG(ch) = 0;
-        return;
+        stop_song = true;
+        return false;
       }
       break;
     }
+    return true;
+  });
+  if (stop_song) {
+    return;
   }
 
   if (GET_SONG(ch) >= 4 && skill > diceroll) {
@@ -1157,10 +1165,9 @@ ACMD(do_moondust) {
 
   struct char_data *vict = NULL, *next_v = NULL;
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_GROUP)) {
       if (ch->master == vict->master || vict->master == ch ||
@@ -1173,7 +1180,8 @@ ACMD(do_moondust) {
         send_to_char(vict, "@RHeal@Y: @C%s@n\r\n", add_commas(heal));
       }
     }
-  }
+    return true;
+  });
 }
 
 ACMD(do_shell) {
@@ -3439,10 +3447,9 @@ ACMD(do_hydromancy) {
         act(bun, TRUE, ch, 0, 0, TO_CHAR);
         act(bunn, TRUE, ch, 0, 0, TO_ROOM);
 
-        for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-          next_v = vict->next_in_room;
+        room_people_iterate(char_room_get(ch), [&](auto vict) {
           if (vict == ch)
-            continue;
+            return true;
           if (!can_kill(ch, vict, NULL, 1)) {
             act("@CYou are protected from the water!@n", TRUE, vict, 0, 0,
                 TO_VICT);
@@ -3473,7 +3480,8 @@ ACMD(do_hydromancy) {
             do_simple_move(vict, attempt, TRUE);
             hurt(0, 0, ch, vict, NULL, cost * 4, 1);
           }
-        }
+          return true;
+        });
         room_geffect_set(exit_dest_get(EXIT(ch, attempt)), -3);
         LASTATK(ch) = last;
         WAIT_STATE(ch, PULSE_2SEC);

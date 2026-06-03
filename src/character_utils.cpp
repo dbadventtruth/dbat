@@ -59,6 +59,8 @@
 #include "time_info.h"
 #include "weather_db.h"
 
+#include "iterate.hpp"
+
 #include <string>
 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
@@ -3206,18 +3208,19 @@ void handle_evolution(struct char_data *ch, int64_t dmg) {
 void demon_refill_lf(struct char_data *ch, int64_t num) {
   struct char_data *tch = NULL;
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (!IS_DEMON(tch))
-      continue;
+      return true;
     if ((getCurLF(tch)) >= (getMaxLF(tch)))
-      continue;
+      return true;
     else {
       incCurLF(ch, num);
       act("@CYou feel the life energy from @c$N@C's cursed body flow out and "
           "you draw it into yourself!@n",
           TRUE, tch, 0, ch, TO_CHAR);
     }
-  }
+    return true;
+  });
 }
 
 void mob_talk(struct char_data *ch, const char *speech) {
@@ -3229,13 +3232,13 @@ void mob_talk(struct char_data *ch, const char *speech) {
     return;
   }
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (!IS_NPC(tch))
-      continue;
+      return true;
     if (!IS_HUMANOID(tch))
-      continue;
+      return true;
     if (stop == 0)
-      continue;
+      return true;
     else {
       vict = tch;
       stop = mob_respond(ch, vict, speech);
@@ -3243,7 +3246,8 @@ void mob_talk(struct char_data *ch, const char *speech) {
         stop = 0;
       }
     }
-  } /* End for loop */
+    return true;
+  });
 } /* End Mob Talk */
 
 int mob_respond(struct char_data *ch, struct char_data *vict,

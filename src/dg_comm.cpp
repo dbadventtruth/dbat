@@ -49,6 +49,8 @@
 #include "stringutils.h"
 #include "util_macros.h"
 
+#include "iterate.hpp"
+
 #include <cstring>
 
 /* local functions */
@@ -217,9 +219,11 @@ void sub_write(char *arg, struct char_data *ch, int8_t find_invis,
     sub_write_to_char(ch, tokens, otokens, type);
 
   if (IS_SET(targets, TO_ROOM))
-    for (to = char_room_get(ch)->people; to; to = to->next_in_room)
+    room_people_iterate(char_room_get(ch), [&](auto to) {
       if (to != ch && SENDOK(to))
         sub_write_to_char(to, tokens, otokens, type);
+      return true;
+    });
 }
 
 void send_to_zone(char *messg, struct zone_data *zone) {

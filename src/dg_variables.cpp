@@ -500,9 +500,12 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
                        atoi(field));
             strcpy(str, "0");
           } else {
-            for (i = 0, ch = room->people; ch; ch = ch->next_in_room)
+            i = 0;
+            room_people_iterate(room, [&](auto ch) {
               if (GET_MOB_VNUM(ch) == mvnum)
                 i++;
+              return true;
+            });
 
             snprintf(str, slen, "%d", i);
           }
@@ -532,33 +535,38 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 
           if (type == MOB_TRIGGER) {
             ch = (char_data *)go;
-            for (c = char_room_get(ch)->people; c; c = c->next_in_room)
+            room_people_iterate(char_room_get(ch), [&](auto c) {
               if ((c != ch) && valid_dg_target(c, DG_ALLOW_GODS) &&
                   CAN_SEE(ch, c)) {
                 if (!rand_number(0, count))
                   rndm = c;
                 count++;
               }
+              return true;
+            });
           }
 
           else if (type == OBJ_TRIGGER) {
             struct room_data *rm = obj_room((obj_data *)go);
-            for (c = rm->people; c; c = c->next_in_room)
+            room_people_iterate(rm, [&](auto c) {
               if (valid_dg_target(c, DG_ALLOW_GODS)) {
                 if (!rand_number(0, count))
                   rndm = c;
                 count++;
               }
+              return true;
+            });
           }
 
           else if (type == WLD_TRIGGER) {
-            for (c = ((struct room_data *)go)->people; c; c = c->next_in_room)
+            room_people_iterate(((struct room_data *)go), [&](auto c) {
               if (valid_dg_target(c, DG_ALLOW_GODS)) {
-
                 if (!rand_number(0, count))
                   rndm = c;
                 count++;
               }
+              return true;
+            });
           }
 
           if (rndm)

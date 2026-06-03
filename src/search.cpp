@@ -17,6 +17,8 @@
 #include "stringutils.h"
 #include "util_macros.h"
 
+#include "iterate.hpp"
+
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
@@ -211,50 +213,37 @@ struct char_data *get_char_room_vis(struct char_data *ch, char *name,
   if (*number == 0)
     return (get_player_vis(ch, name, NULL, FIND_CHAR_ROOM));
 
-  for (i = char_room_get(ch)->people; i && *number; i = i->next_in_room) {
-    if (!strcasecmp(name, "last") && LASTHIT(i) != 0 &&
-        LASTHIT(i) == GET_IDNUM(ch)) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (isname(name, i->name) &&
-               (IS_NPC(i) || IS_NPC(ch) || GET_ADMLEVEL(i) > 0 ||
-                GET_ADMLEVEL(ch) > 0) &&
-               i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (isname(name, i->name) && i == ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !IS_NPC(ch) &&
-               !strcasecmp(get_i_name(ch, i), CAP(name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !IS_NPC(ch) &&
-               strstr(get_i_name(ch, i), CAP(name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !(strcmp(RACE(i), CAP(name))) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && strstr(RACE(i), CAP(name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !(strcmp(RACE(i), name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && strstr(RACE(i), name) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    }
+  {
+    struct char_data *found = NULL;
+    room_people_iterate(char_room_get(ch), [&](auto i) {
+      if (!*number) { return false; }
+      if (!strcasecmp(name, "last") && LASTHIT(i) != 0 &&
+          LASTHIT(i) == GET_IDNUM(ch)) {
+        if (CAN_SEE(ch, i))
+          if (--(*number) == 0) {
+            found = i;
+            return false;
+          }
+      } else if (isname(name, i->name) &&
+                 (IS_NPC(i) || IS_NPC(ch) || GET_ADMLEVEL(i) > 0 ||
+                  GET_ADMLEVEL(ch) > 0) &&
+                 i != ch) {
+        if (CAN_SEE(ch, i))
+          if (--(*number) == 0) {
+            found = i;
+            return false;
+          }
+      } else if (isname(name, i->name) && i == ch) {
+        if (CAN_SEE(ch, i))
+          if (--(*number) == 0) {
+            found = i;
+            return false;
+          }
+      }
+      return true;
+    });
+    if (found)
+      return found;
   }
   return (NULL);
 }

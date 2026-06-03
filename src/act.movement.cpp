@@ -2253,13 +2253,12 @@ static int perform_enter_obj(struct char_data *ch, struct obj_data *obj,
           GET_OBJ_VAL(obj, VAL_PORTAL_DEST) <= 45099) {
         struct char_data *tch, *next_v;
         int filled = FALSE;
-        for (tch = room_by_id(GET_OBJ_VAL(obj, VAL_PORTAL_DEST))->people; tch;
-             tch = next_v) {
-          next_v = tch->next_in_room;
+        room_people_iterate(room_by_id(GET_OBJ_VAL(obj, VAL_PORTAL_DEST)), [&](auto tch) {
           if (tch) {
             filled = TRUE;
           }
-        }
+          return true;
+        });
         if (filled == TRUE) {
           send_to_char(ch, "Only one person can fit in there at a time.\r\n");
           return (0);

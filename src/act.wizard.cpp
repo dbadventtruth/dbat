@@ -33,6 +33,7 @@
 #include "db.h"
 #include "flags.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "races.h"
 #include "room_macros.h"
 #include "time.h"
@@ -944,10 +945,9 @@ ACMD(do_echo) {
   int found = FALSE, trunc = 0;
   struct char_data *vict = NULL, *next_v = NULL, *tch = NULL;
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch)
-      continue;
+      return true;
     if (found == FALSE) {
       sprintf(name, "*%s", GET_NAME(vict));
       if (strstr(argument, CAP(name))) {
@@ -964,7 +964,8 @@ ACMD(do_echo) {
         }
       }
     }
-  }
+    return true;
+  });
 
   if (subcmd == SCMD_SMOTE) {
     if (!strstr(argument, "#")) {
@@ -1439,9 +1440,9 @@ static void do_stat_room(struct char_data *ch) {
 
   send_to_char(ch, "Chars present:");
   column = 14; /* ^^^ strlen ^^^ */
-  for (found = FALSE, k = rm->people; k; k = k->next_in_room) {
+  room_people_iterate(rm, [&](auto k) {
     if (!CAN_SEE(ch, k))
-      continue;
+      return true;
 
     column += send_to_char(ch, "%s @y%s@n(%s)", found++ ? "," : "", GET_NAME(k),
                            !IS_NPC(k) ? "PC" : (!IS_MOB(k) ? "NPC" : "MOB"));
@@ -1450,7 +1451,8 @@ static void do_stat_room(struct char_data *ch) {
       found = FALSE;
       column = 0;
     }
-  }
+    return true;
+  });
 
   if (rm->contents) {
     send_to_char(ch, "Contents:@g");
@@ -2444,9 +2446,9 @@ ACMD(do_purge) {
         0, TO_ROOM);
     send_to_room(char_room_get(ch), "The world seems a little cleaner.\r\n");
 
-    for (vict = char_room_get(ch)->people; vict; vict = vict->next_in_room) {
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (!IS_NPC(vict))
-        continue;
+        return true;
 
       delete_inv_backup(vict);
 
@@ -2461,7 +2463,8 @@ ACMD(do_purge) {
 
       /* Dump character. */
       extract_char(vict);
-    }
+      return true;
+    });
 
     /* Clear the ground. */
     while (char_room_get(ch)->contents)
@@ -2810,16 +2813,17 @@ void perform_immort_vis(struct char_data *ch) { GET_INVIS_LEV(ch) = 0; }
 static void perform_immort_invis(struct char_data *ch, int level) {
   struct char_data *tch;
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (tch == ch)
-      continue;
+      return true;
     if (GET_ADMLEVEL(tch) >= GET_INVIS_LEV(ch) && GET_ADMLEVEL(tch) < level)
       act("You blink and suddenly realize that $n is gone.", FALSE, ch, 0, tch,
           TO_VICT);
     if (GET_ADMLEVEL(tch) < GET_INVIS_LEV(ch) && GET_ADMLEVEL(tch) >= level)
       act("You suddenly realize that $n is standing beside you.", FALSE, ch, 0,
           tch, TO_VICT);
-  }
+    return true;
+  });
 
   GET_INVIS_LEV(ch) = level;
   send_to_char(ch, "Your invisibility level is %d.\r\n", level);
@@ -3132,13 +3136,13 @@ ACMD(do_force) {
            "(GC) %s forced room %d to %s", GET_NAME(ch), char_room_vnum_get(ch),
            to_force);
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_force) {
-      next_force = vict->next_in_room;
-      if (!IS_NPC(vict) && GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
-        continue;
-      act(buf1, TRUE, ch, NULL, vict, TO_VICT);
-      command_interpreter(vict, to_force);
-    }
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
+    if (!IS_NPC(vict) && GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
+      return true;
+    act(buf1, TRUE, ch, NULL, vict, TO_VICT);
+    command_interpreter(vict, to_force);
+    return true;
+  });
   } else { /* force all */
     send_to_char(ch, "%s", CONFIG_OK);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
@@ -4783,13 +4787,13 @@ ACMD(do_peace) {
   struct char_data *vict, *next_v;
   send_to_room(char_room_get(ch), "Everything is quite peaceful now.\r\n");
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch))
-      continue;
+      return true;
     stop_fighting(vict);
     GET_POS(vict) = POS_SITTING;
-  }
+    return true;
+  });
   stop_fighting(ch);
   GET_POS(ch) = POS_STANDING;
 }
@@ -4920,12 +4924,12 @@ ACMD(do_zpurge) {
   for (room = zone->bot; room <= zone->top; room++) {
     struct room_data *roomp = room_by_id(room);
     if (roomp) {
-      for (mob = roomp->people; mob; mob = next_mob) {
-        next_mob = mob->next_in_room;
+      room_people_iterate(roomp, [&](auto mob) {
         if (IS_NPC(mob)) {
           extract_char(mob);
         }
-      }
+        return true;
+      });
 
       for (obj = roomp->contents; obj; obj = next_obj) {
         next_obj = obj->next_content;

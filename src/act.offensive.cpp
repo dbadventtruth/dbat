@@ -25,6 +25,7 @@
 #include "combat.h"
 #include "comm.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "spells.h"
 
 #include "character_api.h"
@@ -2461,11 +2462,9 @@ ACMD(do_genki) {
     return;
   }
 
-  for (friend_char = char_room_get(ch)->people; friend_char;
-       friend_char = next_v) {
-    next_v = friend_char->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto friend_char) {
     if (friend_char == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(friend_char, AFF_GROUP) &&
         (friend_char->master == ch || ch->master == friend_char ||
@@ -2473,7 +2472,8 @@ ACMD(do_genki) {
       GET_CHARGE(ch) += (getCurKI(ch)) / 10;
       decCurKI(ch, getCurKI(ch) / 20);
     }
-  }
+    return true;
+  });
 
   int dista = 15 - (GET_INT(ch) * 0.1);
 
@@ -4584,35 +4584,34 @@ ACMD(do_kakusanha) {
 
   skill = init_skill(ch, SKILL_KAKUSANHA); /* Set skill value */
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (GET_HIT(vict) <= 0) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_GROUP) && !IS_NPC(vict)) {
       if (vict->master == ch) {
-        continue;
+        return true;
       } else if (ch->master == vict) {
-        continue;
+        return true;
       } else if (vict->master == ch->master) {
-        continue;
+        return true;
       }
     }
     if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-      continue;
+      return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-      continue;
-    } else {
-      count += 1;
+      return true;
     }
-  }
+    count += 1;
+    return true;
+  });
   if (count <= 0) {
     send_to_char(ch, "There is no one worth targeting around.\r\n");
     return;
@@ -4669,29 +4668,28 @@ ACMD(do_kakusanha) {
       dmg = (dmg / 100) * 60;
     }
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-      next_v = vict->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (vict == ch) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_GROUP) &&
           (vict->master == ch || ch->master == vict)) {
-        continue;
+        return true;
       }
       if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-        continue;
+        return true;
       }
       if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (GET_HIT(vict) <= 0) {
-        continue;
+        return true;
       }
       if (hits >= 5) {
-        continue;
+        return true;
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
@@ -4707,29 +4705,30 @@ ACMD(do_kakusanha) {
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
-        continue;
-      } else if (dge + rand_number(-10, 5) > skill) {
+        return true;
+      }
+      if (dge + rand_number(-10, 5) > skill) {
         hits++;
         act("@c$N@W manages to escape the attack!@n", TRUE, ch, 0, vict,
             TO_CHAR);
-        act("@WYou manage to escape the attack!@n", TRUE, ch, 0, vict, TO_VICT);
+        act("@WYou manage to escape the attack!@n", TRUE, ch, 0, vict,
+            TO_VICT);
         act("@c$N@W manages to escape the attack!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
         improve_skill(vict, SKILL_DODGE, 0);
         hurt(0, 0, ch, vict, NULL, 0, 1);
-        continue;
-      } else {
-        hits++;
-        act("@R$N@r is slammed by one of the beams!@n", TRUE, ch, 0, vict,
-            TO_CHAR);
-        act("@RYou are slammed by one of the beams!@n", TRUE, ch, 0, vict,
-            TO_VICT);
-        act("@R$N@r is slammed by one of the beams!@n", TRUE, ch, 0, vict,
-            TO_NOTVICT);
-        hurt(0, 0, ch, vict, NULL, dmg, 1);
-        continue;
+        return true;
       }
-    } /* Hitting targets! */
+      hits++;
+      act("@R$N@r is slammed by one of the beams!@n", TRUE, ch, 0, vict,
+          TO_CHAR);
+      act("@RYou are slammed by one of the beams!@n", TRUE, ch, 0, vict,
+          TO_VICT);
+      act("@R$N@r is slammed by one of the beams!@n", TRUE, ch, 0, vict,
+          TO_NOTVICT);
+      hurt(0, 0, ch, vict, NULL, dmg, 1);
+      return true;
+    }); /* Hitting targets! */
 
     if (count < 5 && !room_flagged(char_room_get(ch), ROOM_SPACE)) {
       send_to_room(char_room_get(ch),
@@ -4935,23 +4934,23 @@ ACMD(do_hellspear) {
 
   skill = init_skill(ch, SKILL_HELLSPEAR); /* Set skill value */
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-      continue;
+      return true;
     } else {
       count += 1;
     }
-  }
+    return true;
+  });
   if (count <= 0) {
     send_to_char(ch, "There is no one worth targeting around.\r\n");
     return;
@@ -4995,19 +4994,18 @@ ACMD(do_hellspear) {
 
     dmg = damtype(ch, 33, skill, attperc);
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-      next_v = vict->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (vict == ch) {
-        continue;
+        return true;
       }
       if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       dge = handle_dodge(vict);
 
@@ -5025,7 +5023,7 @@ ACMD(do_hellspear) {
             FALSE, ch, 0, vict, TO_NOTVICT);
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-        continue;
+        return true;
       } else if (dge + rand_number(-10, 5) > skill) {
         act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0, vict,
             TO_CHAR);
@@ -5035,7 +5033,7 @@ ACMD(do_hellspear) {
             TO_NOTVICT);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         improve_skill(vict, SKILL_DODGE, 0);
-        continue;
+        return true;
       } else {
         act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
@@ -5046,9 +5044,9 @@ ACMD(do_hellspear) {
           handle_knockdown(vict);
         }
         hurt(0, 0, ch, vict, NULL, dmg, 1);
-        continue;
+        return true;
       }
-    } /* Hitting targets! */
+    });
 
     pcost(ch, attperc, 0);
 
@@ -7528,27 +7526,27 @@ ACMD(do_baku) {
 
   skill = init_skill(ch, SKILL_BAKUHATSUHA); /* Set skill value */
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_GROUP) &&
         (vict->master == ch || ch->master == vict)) {
-      continue;
+      return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-      continue;
+      return true;
     } else {
       count += 1;
     }
-  }
+    return true;
+  });
   if (count <= 0) {
     send_to_char(ch, "There is no one worth targeting around.\r\n");
     return;
@@ -7604,24 +7602,23 @@ ACMD(do_baku) {
       dmg = (dmg / 100) * 25;
       break;
     }
-    for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-      next_v = vict->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (vict == ch) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_GROUP) &&
           (vict->master == ch || ch->master == vict ||
            vict->master == ch->master)) {
-        continue;
+        return true;
       }
       if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-        continue;
+        return true;
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
@@ -7639,7 +7636,7 @@ ACMD(do_baku) {
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
-        continue;
+        return true;
       } else if (dge + rand_number(-15, 5) > skill) {
         act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0, vict,
             TO_CHAR);
@@ -7649,7 +7646,7 @@ ACMD(do_baku) {
             TO_NOTVICT);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         improve_skill(vict, SKILL_DODGE, 0);
-        continue;
+        return true;
       } else {
         act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
@@ -7659,9 +7656,9 @@ ACMD(do_baku) {
           handle_knockdown(vict);
         }
         hurt(0, 0, ch, vict, NULL, dmg, 1);
-        continue;
+        return true;
       }
-    } /* Hitting targets! */
+    });
 
     pcost(ch, attperc, 0);
 
@@ -17018,11 +17015,16 @@ ACMD(do_assist) {
      */
     if (FIGHTING(helpee))
       opponent = FIGHTING(helpee);
-    else
-      for (opponent = char_room_get(ch)->people;
-           opponent && (FIGHTING(opponent) != helpee);
-           opponent = opponent->next_in_room)
-        ;
+    else {
+      opponent = NULL;
+      room_people_iterate(char_room_get(ch), [&](auto vict) {
+        if (FIGHTING(vict) == helpee) {
+          opponent = vict;
+          return false;
+        }
+        return true;
+      });
+    }
 
     if (!opponent)
       act("But nobody is fighting $M!", TRUE, ch, 0, helpee, TO_CHAR);

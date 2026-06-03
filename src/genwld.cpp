@@ -106,11 +106,11 @@ int delete_room(room_vnum vnum) {
     obj_from_room(obj);
     obj_to_room(obj, 0);
   }
-  for (ppl = room->people; ppl; ppl = next_ppl) {
-    next_ppl = ppl->next_in_room;
+  room_people_iterate(room, [&](auto ppl) {
     char_from_room(ppl);
     char_to_room(ppl, 0);
-  }
+    return true;
+  });
 
   free_room_strings(room);
   if (SCRIPT(room))

@@ -412,9 +412,9 @@ ACMD(do_radar) {
             found = TRUE;
           }
         }
-        for (tch = room_by_id(room)->people; tch; tch = tch->next_in_room) {
+        room_people_iterate(room_by_id(room), [&](auto tch) {
           if (tch == ch) {
-            continue;
+            return true;
           }
           for (obj = tch->carrying; obj; obj = next_obj) {
             next_obj = obj->next_content;
@@ -453,7 +453,8 @@ ACMD(do_radar) {
               found = TRUE;
             }
           }
-        }
+          return true;
+        });
       }
       num += 1;
       room += 1;

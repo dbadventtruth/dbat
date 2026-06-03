@@ -36,6 +36,8 @@
 #include "consts/affflags.h"
 #include "consts/positions.h"
 
+#include "iterate.hpp"
+
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
@@ -723,10 +725,19 @@ int special(struct char_data *ch, int cmd, char *arg) {
         return (1);
 
   /* special in mobile present? */
-  for (k = char_room_get(ch)->people; k; k = k->next_in_room)
-    if (!MOB_FLAGGED(k, MOB_NOTDEADYET))
-      if (GET_MOB_SPEC(k) && GET_MOB_SPEC(k)(ch, k, cmd, arg))
-        return (1);
+  {
+    bool found = false;
+    room_people_iterate(char_room_get(ch), [&](auto k) {
+      if (!MOB_FLAGGED(k, MOB_NOTDEADYET))
+        if (GET_MOB_SPEC(k) && GET_MOB_SPEC(k)(ch, k, cmd, arg)) {
+          found = true;
+          return false;
+        }
+      return true;
+    });
+    if (found)
+      return (1);
+  }
 
   /* special in object present? */
   for (i = char_room_get(ch)->contents; i; i = i->next_content)

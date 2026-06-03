@@ -6,6 +6,7 @@
 #include "dgscript_db.h"
 #include "guild_db.h"
 #include "object_db.h"
+#include "object_api.h"
 #include "room_db.h"
 #include "room_api.h"
 #include "shop_db.h"
@@ -134,6 +135,18 @@ template <typename Func> inline void room_people_iterate(struct room_data *room,
   for (auto c = room_people_get(room); c; c = next) {
     next = char_next_in_room_get(c);
     if (!func(c)) {
+      break;
+    }
+  }
+}
+
+template <typename Func> inline void room_contents_iterate(struct room_data *room, Func &&func) {
+  if(!room) return;
+
+  struct obj_data *next = nullptr;
+  for (auto o = room_contents_get(room); o; o = next) {
+    next = obj_next_content_get(o);
+    if (!func(o)) {
       break;
     }
   }

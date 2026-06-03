@@ -1774,59 +1774,60 @@ static void point_update_objects(void) {
       --;
       if (!strstr(j->name, "android") && !strstr(j->name, "Android") &&
           !OBJ_FLAGGED(j, ITEM_BURIED)) {
+            auto oroom = obj_room_get(j);
         if (GET_OBJ_TIMER(j) == 5) {
-          if ((obj_room_get(j) != NULL) && (obj_room_get(j)->people)) {
+          if ((oroom != NULL) && (oroom->people)) {
             act("@DFlies start to gather around $p@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_CHAR);
+                oroom->people, j, 0, TO_CHAR);
             act("@DFlies start to gather around $p@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_ROOM);
+                oroom->people, j, 0, TO_ROOM);
           }
         }
         if (GET_OBJ_TIMER(j) == 3) {
-          if ((obj_room_get(j) != NULL) && (obj_room_get(j)->people)) {
+          if ((oroom != NULL) && (oroom->people)) {
             act("@DA cloud of flies has formed over $p@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_CHAR);
+                oroom->people, j, 0, TO_CHAR);
             act("@DA cloud of flies has formed over $p@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_ROOM);
+                oroom->people, j, 0, TO_ROOM);
           }
         }
         if (GET_OBJ_TIMER(j) == 2) {
-          if ((obj_room_get(j) != NULL) && (obj_room_get(j)->people)) {
+          if ((oroom != NULL) && (oroom->people)) {
             act("@DMaggots can be seen crawling all over $p@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_CHAR);
+                oroom->people, j, 0, TO_CHAR);
             act("@DMaggots can be seen crawling all over $p@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_ROOM);
+                oroom->people, j, 0, TO_ROOM);
           }
         }
         if (GET_OBJ_TIMER(j) == 1) {
-          if ((obj_room_get(j) != NULL) && (obj_room_get(j)->people)) {
+          if ((oroom != NULL) && (oroom->people)) {
             act("@DMaggots have nearly stripped $p of all its flesh@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_CHAR);
+                oroom->people, j, 0, TO_CHAR);
             act("@DMaggots have nearly stripped $p of all its flesh@D.@n", TRUE,
-                obj_room_get(j)->people, j, 0, TO_ROOM);
+                oroom->people, j, 0, TO_ROOM);
           }
         }
       }
       if (!GET_OBJ_TIMER(j)) {
-
+        auto oroom = obj_room_get(j);
         if (j->carried_by) {
           if (!strstr(j->name, "android")) {
             act("$p decays in your hands.", FALSE, j->carried_by, j, 0,
                 TO_CHAR);
-            if ((obj_room_get(j) != NULL) && (obj_room_get(j)->people)) {
+            if ((oroom != NULL) && (oroom->people)) {
               act("A quivering horde of maggots consumes $p.", TRUE,
-                  obj_room_get(j)->people, j, 0, TO_ROOM);
+                  oroom->people, j, 0, TO_ROOM);
               act("A quivering horde of maggots consumes $p.", TRUE,
-                  obj_room_get(j)->people, j, 0, TO_CHAR);
+                  oroom->people, j, 0, TO_CHAR);
             }
           } else {
             act("$p decays in your hands.", FALSE, j->carried_by, j, 0,
                 TO_CHAR);
-            if ((obj_room_get(j) != NULL) && (obj_room_get(j)->people)) {
+            if ((oroom != NULL) && (oroom->people)) {
               act("$p breaks down completely into a pile of junk.", TRUE,
-                  obj_room_get(j)->people, j, 0, TO_ROOM);
+                  oroom->people, j, 0, TO_ROOM);
               act("$p breaks down completely into a pile of junk.", TRUE,
-                  obj_room_get(j)->people, j, 0, TO_CHAR);
+                  oroom->people, j, 0, TO_CHAR);
             }
           }
         }
@@ -1880,17 +1881,18 @@ static void point_update_objects(void) {
         continue;
       }
     } else if (OBJ_FLAGGED(j, ITEM_ICE)) {
+      auto oroom = obj_room_get(j);
       if (GET_OBJ_VNUM(j) == 79 && rand_number(1, 2) == 2) {
-        if (room_geffect_get(obj_room_get(j)) >= 1 &&
-            room_geffect_get(obj_room_get(j)) <= 5) {
-          send_to_room(obj_room_get(j),
+        if (room_geffect_get(oroom) >= 1 &&
+            room_geffect_get(oroom) <= 5) {
+          send_to_room(oroom,
                        "The heat from the lava melts a great deal of the "
                        "glacial wall and the lava cools a bit in turn.\r\n");
-          room_geffect_mod(obj_room_get(j), -1);
+          room_geffect_mod(oroom, -1);
           if (GET_OBJ_WEIGHT(j) - (5 + (GET_OBJ_WEIGHT(j) * 0.025)) > 0) {
             GET_OBJ_WEIGHT(j) -= 5 + (GET_OBJ_WEIGHT(j) * 0.025);
           } else {
-            send_to_room(obj_room_get(j),
+            send_to_room(oroom,
                          "The glacial wall blocking off the %s direction melts "
                          "completely away.\r\n",
                          dirs[GET_OBJ_COST(j)]);
@@ -1899,12 +1901,12 @@ static void point_update_objects(void) {
           }
         } else if (GET_OBJ_WEIGHT(j) - (5 + (GET_OBJ_WEIGHT(j) * 0.025)) > 0) {
           GET_OBJ_WEIGHT(j) -= 5 + (GET_OBJ_WEIGHT(j) * 0.025);
-          send_to_room(obj_room_get(j),
+          send_to_room(oroom,
                        "The glacial wall blocking off the %s direction melts "
                        "some what.\r\n",
                        dirs[GET_OBJ_COST(j)]);
         } else {
-          send_to_room(obj_room_get(j),
+          send_to_room(oroom,
                        "The glacial wall blocking off the %s direction melts "
                        "completely away.\r\n",
                        dirs[GET_OBJ_COST(j)]);
@@ -2005,20 +2007,21 @@ void timed_dt(struct char_data *ch) {
    *
    */
   if (room->timed == 0) {
-    for (vict = room->people; vict; vict = vict->next_in_room) {
+    room_people_iterate(room, [&](auto vict) {
       if (IS_NPC(vict))
-        continue;
+        return true;
       if (GET_ADMLEVEL(vict) >= ADMLVL_IMMORT)
-        continue;
+        return true;
 
       /* Skip those alread dead people */
       /* extract char() jest sets the bit*/
       if (PLR_FLAGGED(vict, PLR_NOTDEADYET))
-        continue;
+        return true;
 
       log_death_trap(vict);
       death_cry(vict);
       extract_char(vict);
-    }
+      return true;
+    });
   }
 }

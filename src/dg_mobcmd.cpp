@@ -575,11 +575,11 @@ ACMD(do_mpurge) {
     char_data *vnext;
     obj_data *obj_next;
 
-    for (victim = char_room_get(ch)->people; victim; victim = vnext) {
-      vnext = victim->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto victim) {
       if (IS_NPC(victim) && victim != ch)
         extract_char(victim);
-    }
+      return true;
+    });
 
     for (obj = char_room_get(ch)->contents; obj; obj = obj_next) {
       obj_next = obj->next_content;
@@ -729,15 +729,14 @@ ACMD(do_mteleport) {
       return;
     }
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_ch) {
-      next_ch = vict->next_in_room;
-
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (valid_dg_target(vict, DG_ALLOW_GODS)) {
         char_from_room(vict);
         char_to_room(vict, target);
         enter_wtrigger(char_room_get(ch), ch, -1);
       }
-    }
+      return true;
+    });
   } else {
     if (*arg1 == UID_CHAR) {
       if (!(vict = get_char(arg1))) {

@@ -64,6 +64,8 @@
 #include "room_utils.h"
 #include "stringutils.h"
 
+#include "iterate.hpp"
+
 /* local functions */
 void damage_weapon(struct char_data *ch, struct obj_data *obj,
                    struct char_data *vict) {
@@ -2100,32 +2102,30 @@ void huge_update() {
             dmg /= 2;
 
             /* Hit those in the current room. */
-            for (vict = obj_room_get(k)->people; vict; vict = next_v) {
-              next_v = vict->next_in_room;
-
+            room_people_iterate(obj_room_get(k), [&](auto vict) {
               if (vict == ch) {
-                continue;
+                return true;
               }
               if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-                continue;
+                return true;
               }
               if (vict == TARGET(k)) {
-                continue;
+                return true;
               }
               if (AFF_FLAGGED(vict, AFF_GROUP)) {
                 if (vict->master == ch) {
-                  continue;
+                  return true;
                 } else if (ch->master == vict) {
-                  continue;
+                  return true;
                 } else if (vict->master == ch->master) {
-                  continue;
+                  return true;
                 }
               }
               if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-                continue;
+                return true;
               }
               if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-                continue;
+                return true;
               }
               dge = handle_dodge(vict);
               if (((!IS_NPC(vict) && IS_ICER(vict) &&
@@ -2141,7 +2141,7 @@ void huge_update() {
                 REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
                 pcost(vict, 0, GET_MAX_HIT(vict) / 200);
                 hurt(0, 0, ch, vict, NULL, 0, 1);
-                continue;
+                return true;
               } else if (dge + rand_number(-10, 5) > skill) {
                 act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
                     vict, TO_CHAR);
@@ -2151,7 +2151,7 @@ void huge_update() {
                     vict, TO_NOTVICT);
                 hurt(0, 0, ch, vict, NULL, 0, 1);
                 improve_skill(vict, SKILL_DODGE, 0);
-                continue;
+                return true;
               } else {
                 count += 1;
                 if (IS_NPC(vict) && count > 10) {
@@ -2177,9 +2177,9 @@ void huge_update() {
                 act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
                     TO_NOTVICT);
                 hurt(0, 0, ch, vict, NULL, dmg, 1);
-                continue;
+                return true;
               }
-            }
+            });
             room_dmg_set(obj_room_get(k), 100);
             if (auto zone = char_zone_get(ch); zone) {
               send_to_zone("A MASSIVE explosion shakes the entire area!\r\n",
@@ -2214,24 +2214,22 @@ void huge_update() {
           dmg /= 2;
 
           /* Hit those in the current room. */
-          for (vict = obj_room_get(k)->people; vict; vict = next_v) {
-            next_v = vict->next_in_room;
-
+          room_people_iterate(obj_room_get(k), [&](auto vict) {
             if (vict == ch) {
-              continue;
+              return true;
             }
             if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-              continue;
+              return true;
             }
             if (AFF_FLAGGED(vict, AFF_GROUP) &&
                 (vict->master == ch || ch->master == vict)) {
-              continue;
+              return true;
             }
             if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-              continue;
+              return true;
             }
             if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-              continue;
+              return true;
             }
             dge = handle_dodge(vict);
             if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
@@ -2246,7 +2244,7 @@ void huge_update() {
               REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
               pcost(vict, 0, GET_MAX_HIT(vict) / 200);
               hurt(0, 0, ch, vict, NULL, 0, 1);
-              continue;
+              return true;
             } else if (dge + rand_number(-10, 5) > skill) {
               act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
                   vict, TO_CHAR);
@@ -2256,7 +2254,7 @@ void huge_update() {
                   vict, TO_NOTVICT);
               hurt(0, 0, ch, vict, NULL, 0, 1);
               improve_skill(vict, SKILL_DODGE, 0);
-              continue;
+              return true;
             } else {
               act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
                   TO_CHAR);
@@ -2265,9 +2263,9 @@ void huge_update() {
               act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
                   TO_NOTVICT);
               hurt(0, 0, ch, vict, NULL, dmg, 1);
-              continue;
+              return true;
             }
-          }
+          });
           room_dmg_set(obj_room_get(k), 100);
           auto zone = char_zone_get(ch);
           if (zone) {
@@ -2312,32 +2310,30 @@ void huge_update() {
             dmg /= 2;
 
             /* Hit those in the current room. */
-            for (vict = obj_room_get(k)->people; vict; vict = next_v) {
-              next_v = vict->next_in_room;
-
+            room_people_iterate(obj_room_get(k), [&](auto vict) {
               if (vict == ch) {
-                continue;
+                return true;
               }
               if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-                continue;
+                return true;
               }
               if (vict == TARGET(k)) {
-                continue;
+                return true;
               }
               if (AFF_FLAGGED(vict, AFF_GROUP)) {
                 if (vict->master == ch) {
-                  continue;
+                  return true;
                 } else if (ch->master == vict) {
-                  continue;
+                  return true;
                 } else if (vict->master == ch->master) {
-                  continue;
+                  return true;
                 }
               }
               if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-                continue;
+                return true;
               }
               if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-                continue;
+                return true;
               }
               dge = handle_dodge(vict);
               if (((!IS_NPC(vict) && IS_ICER(vict) &&
@@ -2352,7 +2348,7 @@ void huge_update() {
                     0, vict, TO_NOTVICT);
                 REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
                 pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-                continue;
+                return true;
               } else if (dge + rand_number(-10, 5) > skill) {
                 act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
                     vict, TO_CHAR);
@@ -2362,7 +2358,7 @@ void huge_update() {
                     vict, TO_NOTVICT);
                 hurt(0, 0, ch, vict, NULL, 0, 1);
                 improve_skill(vict, SKILL_DODGE, 0);
-                continue;
+                return true;
               } else {
                 count += 1;
                 if (IS_NPC(vict) && count > 10) {
@@ -2388,9 +2384,9 @@ void huge_update() {
                 act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
                     TO_NOTVICT);
                 hurt(0, 0, ch, vict, NULL, dmg, 1);
-                continue;
+                return true;
               }
-            }
+            });
             room_dmg_set(obj_room_get(k), 100);
             auto zone = char_zone_get(ch);
             if (zone) {
@@ -2425,24 +2421,22 @@ void huge_update() {
           dmg /= 2;
 
           /* Hit those in the current room. */
-          for (vict = obj_room_get(k)->people; vict; vict = next_v) {
-            next_v = vict->next_in_room;
-
+          room_people_iterate(obj_room_get(k), [&](auto vict) {
             if (vict == ch) {
-              continue;
+              return true;
             }
             if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-              continue;
+              return true;
             }
             if (AFF_FLAGGED(vict, AFF_GROUP) &&
                 (vict->master == ch || ch->master == vict)) {
-              continue;
+              return true;
             }
             if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-              continue;
+              return true;
             }
             if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-              continue;
+              return true;
             }
             dge = handle_dodge(vict);
             if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
@@ -2456,7 +2450,7 @@ void huge_update() {
                   vict, TO_NOTVICT);
               REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
               pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-              continue;
+              return true;
             } else if (dge + rand_number(-10, 5) > skill) {
               act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
                   vict, TO_CHAR);
@@ -2466,7 +2460,7 @@ void huge_update() {
                   vict, TO_NOTVICT);
               hurt(0, 0, ch, vict, NULL, 0, 1);
               improve_skill(vict, SKILL_DODGE, 0);
-              continue;
+              return true;
             } else {
               act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
                   TO_CHAR);
@@ -2475,9 +2469,9 @@ void huge_update() {
               act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
                   TO_NOTVICT);
               hurt(0, 0, ch, vict, NULL, dmg, 1);
-              continue;
+              return true;
             }
-          }
+          });
           room_dmg_set(obj_room_get(k), 100);
           auto zone = char_zone_get(ch);
           if (zone) {
@@ -2927,19 +2921,20 @@ void parry_ki(double attperc, struct char_data *ch, struct char_data *vict,
   int foundv = FALSE, foundo = FALSE;
   int64_t dmg = 0;
   struct obj_data *tob, *next_obj;
-  struct char_data *tch, *next_v;
+  struct char_data *tch;
+  bool parry_hit = false;
 
-  for (tch = char_room_get(ch)->people; tch; tch = next_v) {
-    next_v = tch->next_in_room;
-
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
+    if (parry_hit)
+      return false;
     if (tch == ch)
-      continue;
+      return true;
     if (tch == vict)
-      continue;
+      return true;
     if (!can_kill(ch, tch, NULL, 1))
-      continue;
+      return true;
 
-    if (rand_number(1, 101) >= 90 && foundv == FALSE) {
+    if (rand_number(1, 101) >= 90 && !foundv) {
       if (handle_parry(tch) > rand_number(1, 140)) {
         sprintf(buf, "@C$N@W deflects your %s, sending it flying away!@n",
                 sname);
@@ -2970,10 +2965,14 @@ void parry_ki(double attperc, struct char_data *ch, struct char_data *vict,
         act(buf3, TRUE, vict, 0, tch, TO_NOTVICT);
         dmg = damtype(ch, type, skill, attperc);
         hurt(0, 0, ch, tch, NULL, dmg, 1);
-        return;
+        parry_hit = true;
+        return false;
       }
     }
-  }
+    return true;
+  });
+  if (parry_hit)
+    return;
 
   for (tob = char_room_get(ch)->contents; tob; tob = next_obj) {
     next_obj = tob->next_content;

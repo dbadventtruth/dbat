@@ -44,6 +44,8 @@
 #include "spells.h"
 #include "weather_db.h"
 
+#include "iterate.hpp"
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -180,10 +182,10 @@ void greet_memory_mtrigger(char_data *actor) {
   if (!valid_dg_target(actor, DG_ALLOW_GODS))
     return;
 
-  for (ch = char_room_get(actor)->people; ch; ch = ch->next_in_room) {
+  room_people_iterate(char_room_get(actor), [&](auto ch) {
     if (!SCRIPT_MEM(ch) || !AWAKE(ch) || FIGHTING(ch) || (ch == actor) ||
         AFF_FLAGGED(ch, AFF_CHARM))
-      continue;
+      return true;
     /* find memory line with command only */
     for (mem = SCRIPT_MEM(ch); mem && SCRIPT_MEM(ch); mem = mem->next) {
       if (GET_ID(actor) != mem->id)
@@ -213,14 +215,15 @@ void greet_memory_mtrigger(char_data *actor) {
           prev = SCRIPT_MEM(ch);
           while (prev->next != mem)
             prev = prev->next;
-          prev->next = mem->next;
+              prev->next = mem->next;
+          }
+          if (mem->cmd)
+            free(mem->cmd);
+          free(mem);
         }
-        if (mem->cmd)
-          free(mem->cmd);
-        free(mem);
-      }
-    }
-  }
+      } /* for(mem) */
+    return true;
+  });
 }
 
 int greet_mtrigger(char_data *actor, int dir) {
@@ -232,12 +235,12 @@ int greet_mtrigger(char_data *actor, int dir) {
   if (!valid_dg_target(actor, DG_ALLOW_GODS))
     return TRUE;
 
-  for (ch = char_room_get(actor)->people; ch; ch = ch->next_in_room) {
+  room_people_iterate(char_room_get(actor), [&](auto ch) {
     if (!SCRIPT_CHECK(ch, MTRIG_GREET | MTRIG_GREET_ALL) || !AWAKE(ch) ||
         FIGHTING(ch) || (ch == actor) || AFF_FLAGGED(ch, AFF_CHARM))
-      continue;
+      return true;
     if (!SCRIPT_CHECK(ch, MTRIG_GREET_ALL) && IS_NPC(actor))
-      continue;
+      return true;
 
     for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
       if (((IS_SET(GET_TRIG_TYPE(t), MTRIG_GREET) && CAN_SEE(ch, actor)) ||
@@ -255,7 +258,8 @@ int greet_mtrigger(char_data *actor, int dir) {
         continue;
       }
     }
-  }
+    return true;
+  });
   return final;
 }
 
@@ -268,40 +272,42 @@ void entry_memory_mtrigger(char_data *ch) {
   if (!SCRIPT_MEM(ch) || AFF_FLAGGED(ch, AFF_CHARM))
     return;
 
-  for (actor = char_room_get(ch)->people; actor && SCRIPT_MEM(ch);
-       actor = actor->next_in_room) {
-    if (actor != ch && SCRIPT_MEM(ch)) {
-      for (mem = SCRIPT_MEM(ch); mem && SCRIPT_MEM(ch); mem = mem->next) {
-        if (GET_ID(actor) == mem->id) {
-          struct script_memory *prev;
-          if (mem->cmd)
-            command_interpreter(ch, mem->cmd);
-          else {
-            for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
-              if (TRIGGER_CHECK(t, MTRIG_MEMORY) &&
-                  (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
-                ADD_UID_VAR(buf, t, actor, "actor", 0);
-                script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
-                break;
-              }
+  room_people_iterate(char_room_get(ch), [&](auto actor) {
+    if (actor == ch)
+      return true;
+    if (!SCRIPT_MEM(ch))
+      return false;
+    for (mem = SCRIPT_MEM(ch); mem && SCRIPT_MEM(ch); mem = mem->next) {
+      if (GET_ID(actor) == mem->id) {
+        struct script_memory *prev;
+        if (mem->cmd)
+          command_interpreter(ch, mem->cmd);
+        else {
+          for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
+            if (TRIGGER_CHECK(t, MTRIG_MEMORY) &&
+                (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
+              ADD_UID_VAR(buf, t, actor, "actor", 0);
+              script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
+              break;
             }
           }
-          /* delete the memory */
-          if (SCRIPT_MEM(ch) == mem) {
-            SCRIPT_MEM(ch) = mem->next;
-          } else {
-            prev = SCRIPT_MEM(ch);
-            while (prev->next != mem)
-              prev = prev->next;
-            prev->next = mem->next;
-          }
-          if (mem->cmd)
-            free(mem->cmd);
-          free(mem);
         }
-      } /* for (mem =..... */
+        /* delete the memory */
+        if (SCRIPT_MEM(ch) == mem) {
+          SCRIPT_MEM(ch) = mem->next;
+        } else {
+          prev = SCRIPT_MEM(ch);
+          while (prev->next != mem)
+            prev = prev->next;
+          prev->next = mem->next;
+        }
+        if (mem->cmd)
+          free(mem->cmd);
+        free(mem);
+      }
     }
-  }
+    return true;
+  });
 }
 
 int entry_mtrigger(char_data *ch) {
@@ -330,9 +336,7 @@ int command_mtrigger(char_data *actor, char *cmd, char *argument) {
   if (!valid_dg_target(actor, 0))
     return 0;
 
-  for (ch = char_room_get(actor)->people; ch; ch = ch_next) {
-    ch_next = ch->next_in_room;
-
+  room_people_iterate(char_room_get(actor), [&](auto ch) {
     if (SCRIPT_CHECK(ch, MTRIG_COMMAND) && !AFF_FLAGGED(ch, AFF_CHARM) &&
         (actor != ch)) {
       for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
@@ -355,11 +359,12 @@ int command_mtrigger(char_data *actor, char *cmd, char *argument) {
           add_var(&GET_TRIG_VARS(t), "cmd", cmd, 0);
 
           if (script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW))
-            return 1;
+            return false;
         }
       }
     }
-  }
+    return true;
+  });
 
   return 0;
 }
@@ -369,31 +374,20 @@ void speech_mtrigger(char_data *actor, char *str) {
   trig_data *t;
   char buf[MAX_INPUT_LENGTH];
 
-  for (ch = char_room_get(actor)->people; ch; ch = ch_next) {
-    ch_next = ch->next_in_room;
-
+  room_people_iterate(char_room_get(actor), [&](auto ch) {
     if (SCRIPT_CHECK(ch, MTRIG_SPEECH) && AWAKE(ch) &&
         !AFF_FLAGGED(ch, AFF_CHARM) && (actor != ch))
       for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
         if (!TRIGGER_CHECK(t, MTRIG_SPEECH))
           continue;
 
-        if (!GET_TRIG_ARG(t) || !*GET_TRIG_ARG(t)) {
-          mudlog(NRM, ADMLVL_BUILDER, TRUE,
-                 "SYSERR: Speech Trigger #%d has no text argument!",
-                 GET_TRIG_VNUM(t));
-          continue;
-        }
-
-        if (((GET_TRIG_NARG(t) && word_check(str, GET_TRIG_ARG(t))) ||
-             (!GET_TRIG_NARG(t) && is_substring(GET_TRIG_ARG(t), str)))) {
-          ADD_UID_VAR(buf, t, actor, "actor", 0);
-          add_var(&GET_TRIG_VARS(t), "speech", str, 0);
-          script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
+        add_var(&GET_TRIG_VARS(t), "arg", str, 0);
+        ADD_UID_VAR(buf, t, actor, "actor", 0);
+        if (script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW))
           break;
-        }
       }
-  }
+    return true;
+  });
 }
 
 void act_mtrigger(const char_data *ch, char *str, char_data *actor,
@@ -584,10 +578,11 @@ int leave_mtrigger(char_data *actor, int dir) {
   if (!valid_dg_target(actor, DG_ALLOW_GODS))
     return 1;
 
-  for (ch = char_room_get(actor)->people; ch; ch = ch->next_in_room) {
+  int result = 1;
+  room_people_iterate(char_room_get(actor), [&](auto ch) {
     if (!SCRIPT_CHECK(ch, MTRIG_LEAVE) || !AWAKE(ch) || FIGHTING(ch) ||
         (ch == actor) || AFF_FLAGGED(ch, AFF_CHARM))
-      continue;
+      return true;
 
     for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
       if ((IS_SET(GET_TRIG_TYPE(t), MTRIG_LEAVE)) && !GET_TRIG_DEPTH(t) &&
@@ -597,22 +592,25 @@ int leave_mtrigger(char_data *actor, int dir) {
         else
           add_var(&GET_TRIG_VARS(t), "direction", "none", 0);
         ADD_UID_VAR(buf, t, actor, "actor", 0);
-        return script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
+        result = script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
+        return false;
       }
     }
-  }
-  return 1;
+    return true;
+  });
+  return result;
 }
 
 int door_mtrigger(char_data *actor, int subcmd, int dir) {
   trig_data *t;
   char_data *ch;
   char buf[MAX_INPUT_LENGTH];
+  int result = 1;
 
-  for (ch = char_room_get(actor)->people; ch; ch = ch->next_in_room) {
+  room_people_iterate(char_room_get(actor), [&](auto ch) {
     if (!SCRIPT_CHECK(ch, MTRIG_DOOR) || !AWAKE(ch) || FIGHTING(ch) ||
         (ch == actor) || AFF_FLAGGED(ch, AFF_CHARM))
-      continue;
+      return true;
 
     for (t = TRIGGERS(SCRIPT(ch)); t; t = t->next) {
       if (IS_SET(GET_TRIG_TYPE(t), MTRIG_DOOR) && CAN_SEE(ch, actor) &&
@@ -623,11 +621,13 @@ int door_mtrigger(char_data *actor, int subcmd, int dir) {
         else
           add_var(&GET_TRIG_VARS(t), "direction", "none", 0);
         ADD_UID_VAR(buf, t, actor, "actor", 0);
-        return script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
+        result = script_driver(&ch, t, MOB_TRIGGER, TRIG_NEW);
+        return false;
       }
     }
-  }
-  return 1;
+    return true;
+  });
+  return result;
 }
 
 void time_mtrigger(char_data *ch) {

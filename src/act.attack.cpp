@@ -40,6 +40,7 @@
 #include "fight.h"
 #include "flags.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "races_plus.h"
@@ -160,13 +161,13 @@ ACMD(do_lightgrenade) {
 
   dmg = damtype(ch, 57, skill, attperc);
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  bool exit_early = false;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_GROUP)) {
       if (vict->master == ch || ch->master == vict ||
@@ -174,14 +175,14 @@ ACMD(do_lightgrenade) {
         if (vict == targ) {
           send_to_char(ch, "Leave the group if you want to murder them.\r\n");
         }
-        continue;
+        return true;
       }
     }
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     dge = handle_dodge(vict);
     if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
@@ -201,11 +202,12 @@ ACMD(do_lightgrenade) {
       if (vict == targ) {
         pcost(ch, attperc, 0);
         handle_cooldown(ch, 9);
-        return;
-      } else {
-        continue;
+        exit_early = true;
+        return false;
       }
-    } else if (dge > axion_dice(skill * 0.5) && vict == targ) {
+      return true;
+    }
+    if (dge > axion_dice(skill * 0.5) && vict == targ) {
       send_to_char(ch, "DGE: %d\n", dge);
       act("@c$N@W manages to dodge the light grenade!@n", TRUE, ch, 0, vict,
           TO_CHAR);
@@ -217,8 +219,10 @@ ACMD(do_lightgrenade) {
       improve_skill(vict, SKILL_DODGE, 0);
       pcost(ch, attperc, 0);
       handle_cooldown(ch, 9);
-      return;
-    } else if (dge > axion_dice(skill * 0.5) && vict != targ) {
+      exit_early = true;
+      return false;
+    }
+    if (dge > axion_dice(skill * 0.5) && vict != targ) {
       act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0, vict,
           TO_CHAR);
       act("@WYou manage to escape the explosion!@n", TRUE, ch, 0, vict,
@@ -227,8 +231,9 @@ ACMD(do_lightgrenade) {
           TO_NOTVICT);
       hurt(0, 0, ch, vict, NULL, 0, 1);
       improve_skill(vict, SKILL_DODGE, 0);
-      continue;
-    } else if (vict == targ) {
+      return true;
+    }
+    if (vict == targ) {
       act("@R$N@r is hit by the light grenade which explodes all around $m!@n",
           TRUE, ch, 0, vict, TO_CHAR);
       act("@RYou are hit by the light grenade which explodes all around you!@n",
@@ -240,22 +245,24 @@ ACMD(do_lightgrenade) {
         handle_knockdown(vict);
       }
       hurt(0, 0, ch, vict, NULL, dmg, 1);
-      continue;
-    } else {
-      act("@R$N@r is caught by the light grenade's explosion!@n", TRUE, ch, 0,
-          vict, TO_CHAR);
-      act("@RYou are caught by the light grenade's explosion!@n", TRUE, ch, 0,
-          vict, TO_VICT);
-      act("@R$N@r is caught by the light grenade's explosion!@n", TRUE, ch, 0,
-          vict, TO_NOTVICT);
-      if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
-          rand_number(1, 4) == 4) {
-        handle_knockdown(vict);
-      }
-      hurt(0, 0, ch, vict, NULL, dmg * 0.5, 1);
-      continue;
+      return true;
     }
-  } /* Hitting targets! */
+    act("@R$N@r is caught by the light grenade's explosion!@n", TRUE, ch, 0,
+        vict, TO_CHAR);
+    act("@RYou are caught by the light grenade's explosion!@n", TRUE, ch, 0,
+        vict, TO_VICT);
+    act("@R$N@r is caught by the light grenade's explosion!@n", TRUE, ch, 0,
+        vict, TO_NOTVICT);
+    if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        rand_number(1, 4) == 4) {
+      handle_knockdown(vict);
+    }
+    hurt(0, 0, ch, vict, NULL, dmg * 0.5, 1);
+    return true;
+  }); /* Hitting targets! */
+  if (exit_early) {
+    return;
+  }
   pcost(ch, attperc, 0);
 
   improve_skill(ch, SKILL_LIGHTGRENADE, 0);
@@ -2319,27 +2326,26 @@ ACMD(do_nova) {
     skill += 5;
   }
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_GROUP) &&
         (vict->master == ch || ch->master == vict)) {
-      continue;
+      return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-      continue;
+      return true;
     }
     if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-      continue;
-    } else {
-      count += 1;
+      return true;
     }
-  }
+    count += 1;
+    return true;
+  });
   if (count <= 0) {
     send_to_char(ch, "There is no one worth targeting around.\r\n");
     return;
@@ -2392,23 +2398,22 @@ ACMD(do_nova) {
       dmg *= 1.4;
     }
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-      next_v = vict->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (vict == ch) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (AFF_FLAGGED(vict, AFF_GROUP) &&
           (vict->master == ch || ch->master == vict)) {
-        continue;
+        return true;
       }
       if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-        continue;
+        return true;
       }
       if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-        continue;
+        return true;
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
@@ -2426,8 +2431,9 @@ ACMD(do_nova) {
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
-        continue;
-      } else if (dge + rand_number(-15, 5) > skill) {
+        return true;
+      }
+      if (dge + rand_number(-15, 5) > skill) {
         act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0, vict,
             TO_CHAR);
         act("@WYou manage to escape the explosion!@n", TRUE, ch, 0, vict,
@@ -2436,19 +2442,18 @@ ACMD(do_nova) {
             TO_NOTVICT);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         improve_skill(vict, SKILL_DODGE, 0);
-        continue;
-      } else {
-        act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
-        act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
-        act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-            TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING) {
-          handle_knockdown(vict);
-        }
-        hurt(0, 0, ch, vict, NULL, dmg, 1);
-        continue;
+        return true;
       }
-    } /* Hitting targets! */
+      act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
+      act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
+      act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
+          TO_NOTVICT);
+      if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING) {
+        handle_knockdown(vict);
+      }
+      hurt(0, 0, ch, vict, NULL, dmg, 1);
+      return true;
+    }); /* Hitting targets! */
 
     if (GET_SKILL_PERF(ch, SKILL_STARNOVA) == 3 && attperc > minimum) {
       pcost(ch, attperc - 0.05, 0);
@@ -3939,24 +3944,22 @@ ACMD(do_selfd) {
         "surroundings for a large distance. The explosion takes on the shape "
         "of a large energy dome with $n at its center!@n",
         TRUE, ch, 0, 0, TO_ROOM);
-    for (tch = char_room_get(ch)->people; tch; tch = next_v) {
-      next_v = tch->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto tch) {
       if (tch == ch) {
-        continue;
+        return true;
       }
       if (!can_kill(ch, tch, NULL, 3)) {
-        continue;
+        return true;
       }
       if (MOB_FLAGGED(tch, MOB_NOKILL)) {
-        continue;
-      } else {
-        act("@r$N@R is caught in the explosion!@n", TRUE, ch, 0, tch, TO_CHAR);
-        act("@RYou are caught in the explosion!@n", TRUE, ch, 0, tch, TO_VICT);
-        act("@r$N@R is caught in the explosion!@n", TRUE, ch, 0, tch,
-            TO_NOTVICT);
-        hurt(0, 0, ch, tch, NULL, dmg, 1);
+        return true;
       }
-    }
+      act("@r$N@R is caught in the explosion!@n", TRUE, ch, 0, tch, TO_CHAR);
+      act("@RYou are caught in the explosion!@n", TRUE, ch, 0, tch, TO_VICT);
+      act("@r$N@R is caught in the explosion!@n", TRUE, ch, 0, tch, TO_NOTVICT);
+      hurt(0, 0, ch, tch, NULL, dmg, 1);
+      return true;
+    });
     if (PLR_FLAGGED(ch, PLR_IMMORTAL)) {
       GET_SDCOOLDOWN(ch) = 600;
     }
