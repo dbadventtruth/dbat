@@ -45,6 +45,7 @@
 #include "spells.h"
 #include "stringutils.h"
 #include "util_macros.h"
+#include "iterate.hpp"
 
 /* extern globals */
 
@@ -151,12 +152,13 @@ void say_spell(struct char_data *ch, int spellnum, struct char_data *tch,
   snprintf(buf1, sizeof(buf1), format, skill_name(spellnum));
   snprintf(buf2, sizeof(buf2), format, buf);
 
-  for (i = char_room_get(ch)->people; i; i = i->next_in_room) {
-    if (i == ch || i == tch || !i->desc || !AWAKE(i))
-      continue;
+  room_people_iterate(char_room_get(ch), [&](struct char_data *c) {
+    if (c == ch || c == tch || !c->desc || !AWAKE(c))
+      return true;
     /* This should really check spell type vs. target ranks */
     perform_act(buf2, ch, tobj, tch, i);
-  }
+    return true;
+  });
 }
 
 /*
@@ -364,19 +366,17 @@ void mag_objectmagic(struct char_data *ch, struct obj_data *obj,
        */
       if (HAS_SPELL_ROUTINE(GET_OBJ_VAL(obj, VAL_STAFF_SPELL),
                             MAG_MASSES | MAG_AREAS)) {
-        for (i = 0, tch = char_room_get(ch)->people; tch;
-             tch = tch->next_in_room)
-          i++;
-        while (i-- > 0)
-          call_magic(ch, NULL, NULL, GET_OBJ_VAL(obj, VAL_STAFF_SPELL), k,
+                              room_people_iterate(char_room_get(ch), [&](auto t) {
+                                call_magic(ch, NULL, NULL, GET_OBJ_VAL(obj, VAL_STAFF_SPELL), k,
                      CAST_STAFF, NULL);
+                                return true;
+                              });          
       } else {
-        for (tch = char_room_get(ch)->people; tch; tch = next_tch) {
-          next_tch = tch->next_in_room;
-          if (ch != tch)
-            call_magic(ch, tch, NULL, GET_OBJ_VAL(obj, VAL_STAFF_SPELL), k,
-                       CAST_STAFF, NULL);
-        }
+        room_people_iterate(char_room_get(ch), [&](auto t) {
+          call_magic(ch, t, NULL, GET_OBJ_VAL(obj, VAL_STAFF_SPELL), k,
+                     CAST_STAFF, NULL);
+          return true;
+        });
       }
     }
     break;

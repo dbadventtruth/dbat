@@ -659,18 +659,14 @@ void destroy_db(void) {
       extract_script(room, WLD_TRIGGER);
     /* free script proto list */
     free_proto_script(room, WLD_TRIGGER);
-
-    for (itr = 0; itr < NUM_OF_DIRS; itr++) {
-      struct room_direction_data *ex = room->dir_option[itr];
-      if (!ex)
-        continue;
-
-      if (ex->general_description)
-        free(ex->general_description);
-      if (ex->keyword)
-        free(ex->keyword);
-      free(ex);
-    }
+    room_exits_iterate(room, [&](auto i, auto exit) {
+      if (exit->general_description)
+        free(exit->general_description);
+      if (exit->keyword)
+        free(exit->keyword);
+      free(exit);
+      return true;
+    });
     return true;
   });
 

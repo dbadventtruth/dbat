@@ -137,18 +137,17 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
 
 int player_present(struct char_data *ch) {
 
-  struct char_data *vict, *next_v;
-  int found = FALSE;
+  auto room = char_room_get(ch);
+  if(!room) return 0;
 
-  if (char_room_get(ch) == NULL)
-    return 0;
-
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
-    if (!IS_NPC(vict)) {
+  bool found = FALSE;
+  room_people_iterate(room, [&](auto t) {
+    if (!IS_NPC(t)) {
       found = TRUE;
+      return false;
     }
-  }
+    return true;
+  });
 
   return (found);
 }

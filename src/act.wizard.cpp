@@ -850,17 +850,17 @@ ACMD(do_finddoor) {
     len = snprintf(buf, sizeof(buf), "Doors unlocked by key [%d] %s are:\r\n",
                    vnum, key_short);
     room_iterate([&](auto room) {
-      for (d = 0; d < NUM_OF_DIRS; d++) {
-        if (room->dir_option[d] && room->dir_option[d]->key &&
-            room->dir_option[d]->key == vnum) {
+      room_exits_iterate(room, [&](auto d, auto exit) {
+          if (exit->key == vnum) {
           nlen = snprintf(buf + len, sizeof(buf) - len,
                           "[%3d] Room %d, %s (%s)\r\n", ++num, room->number,
-                          dirs[d], room->dir_option[d]->keyword);
+                          dirs[d], exit->keyword);
           if (len + nlen >= sizeof(buf) || nlen < 0)
-            break;
+            return false;
           len += nlen;
         }
-      } /* for all directions */
+        return true;
+      });
       return true;
     }); /* for all rooms */
     if (num > 0)
@@ -1471,35 +1471,35 @@ static void do_stat_room(struct char_data *ch) {
     send_to_char(ch, "@n");
   }
 
-  for (i = 0; i < NUM_OF_DIRS; i++) {
-    char buf1[128];
+  room_exits_iterate(rm, [&](auto i, auto exit) {
+      char buf1[128];
 
-    if (!rm->dir_option[i])
-      continue;
+      auto dest = exit_dest_get(exit);
 
-    if (rm->dir_option[i]->to_room == NOWHERE)
-      snprintf(buf1, sizeof(buf1), " @cNONE@n");
-    else
-      snprintf(buf1, sizeof(buf1), "@c%5d@n", rm->dir_option[i]->to_room);
+      if (!dest)
+        snprintf(buf1, sizeof(buf1), " @cNONE@n");
+      else
+        snprintf(buf1, sizeof(buf1), "@c%5d (%s)@n", room_vnum_get(dest), room_name_get(dest));
 
-    sprintbit(rm->dir_option[i]->exit_info, exit_bits, buf2, sizeof(buf2));
+      sprintbit(exit->exit_info, exit_bits, buf2, sizeof(buf2));
 
-    send_to_char(
-        ch,
-        "Exit @c%-5s@n:  To: [%s], Key: [%5d], Keywrd: %s, Type: %s\r\n  DC "
-        "Lock: [%2d], DC Hide: [%2d], DC Skill: [%4s], DC Move: [%2d]\r\n%s",
-        dirs[i], buf1,
-        rm->dir_option[i]->key == NOTHING ? -1 : rm->dir_option[i]->key,
-        rm->dir_option[i]->keyword ? rm->dir_option[i]->keyword : "None", buf2,
-        rm->dir_option[i]->dclock, rm->dir_option[i]->dchide,
-        rm->dir_option[i]->dcskill == 0
-            ? "None"
-            : spell_info[rm->dir_option[i]->dcskill].name,
-        rm->dir_option[i]->dcmove,
-        rm->dir_option[i]->general_description
-            ? rm->dir_option[i]->general_description
-            : "  No exit description.\r\n");
-  }
+      send_to_char(
+          ch,
+          "Exit @c%-5s@n:  To: [%s], Key: [%5d], Keywrd: %s, Type: %s\r\n  DC "
+          "Lock: [%2d], DC Hide: [%2d], DC Skill: [%4s], DC Move: [%2d]\r\n%s",
+          dirs[i], buf1,
+          exit->key,
+          exit->keyword ? exit->keyword : "None", buf2,
+          exit->dclock, exit->dchide,
+          exit->dcskill == 0
+              ? "None"
+              : spell_info[exit->dcskill].name,
+          exit->dcmove,
+          exit->general_description
+              ? exit->general_description
+              : "  No exit description.\r\n");
+      return true;
+    }); /* for all exits */
 
   /* check the room for a script */
   do_sstat_room(ch, rm);
@@ -3660,20 +3660,15 @@ ACMD(do_show) {
   case 5:
     len = strlcpy(buf, "Errant Rooms\r\n------------\r\n", sizeof(buf));
     room_iterate([&](auto room) {
-      for (j = 0; j < NUM_OF_DIRS; j++) {
-
-        room_vnum v = room_vnum_get(room);
-
-        struct room_direction_data *exit = R_EXIT(room, j);
-        if (!exit)
-          continue;
+      room_vnum v = room_vnum_get(room);
+      room_exits_iterate(room, [&](auto j, auto exit) {
         if (exit->to_room == 0) {
           nlen = snprintf(buf + len, sizeof(buf) - len,
                           "%2d: (void   ) [%5d] %-*s%s (%s)\r\n", ++k, v,
                           count_color_chars(room->name) + 40, room->name, QNRM,
                           dirs[j]);
           if (len + nlen >= sizeof(buf) || nlen < 0)
-            break;
+            return false;
           len += nlen;
         }
         if (!exit_dest_get(exit) && !exit->general_description) {
@@ -3682,10 +3677,11 @@ ACMD(do_show) {
                           count_color_chars(room->name) + 40, room->name, QNRM,
                           dirs[j]);
           if (len + nlen >= sizeof(buf) || nlen < 0)
-            break;
+            return false;
           len += nlen;
         }
-      }
+        return true;
+      });
       return true;
     });
     send_to_char(ch, "%s", buf);
@@ -5310,86 +5306,86 @@ ACMD(do_zcheck) {
   /************** Check rooms *****************/
   send_to_char(ch, "\r\nChecking Rooms for limits...\r\n");
   room_iterate([&](auto room) {
-    if (room->zone == zone->number) {
-      for (j = 0; j < NUM_OF_DIRS; j++) {
-        /*check for exit, but ignore off limits if you're in an offlimit zone*/
-        auto dest = exit_dest_get(room->dir_option[j]);
-        if (!dest)
-          continue;
-        if (dest->zone == zone->number)
-          continue;
-        if (dest->zone == room->zone)
-          continue;
+    if(room->zone != zone->number) return true;
+    room_exits_iterate(room, [&](auto j, auto exit) {
+      /*check for exit, but ignore off limits if you're in an offlimit zone*/
+      auto dest = exit_dest_get(exit);
+      if (!dest)
+        return true;
+      if (dest->zone == zone->number)
+        return true;
+      if (dest->zone == room->zone)
+        return true;
 
-        for (k = 0; offlimit_zones[k] != -1; k++) {
-          if (dest->zone == real_zone(offlimit_zones[k]) && (found = 1))
-            len += snprintf(
-                buf + len, sizeof(buf) - len,
-                "- Exit %s cannot connect to %d (zone off limits).\r\n",
-                dirs[j], dest->number);
-        } /* for (k.. */
-      } /* cycle directions */
-
-      if (room_flagged(room, ROOM_ATRIUM | ROOM_HOUSE | ROOM_HOUSE_CRASH |
-                                 ROOM_OLC | ROOM_BFS_MARK))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Has illegal affection bits set (%s %s %s %s %s)\r\n",
-                        room_flagged(room, ROOM_ATRIUM) ? "ATRIUM" : "",
-                        room_flagged(room, ROOM_HOUSE) ? "HOUSE" : "",
-                        room_flagged(room, ROOM_HOUSE_CRASH) ? "HCRSH" : "",
-                        room_flagged(room, ROOM_OLC) ? "OLC" : "",
-                        room_flagged(room, ROOM_BFS_MARK) ? "*" : "");
-
-      if ((MIN_ROOM_DESC_LENGTH) &&
-          strlen(room->description) < MIN_ROOM_DESC_LENGTH && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Room description is too short. (%4.4" SZT
-                        " of min. %d characters).\r\n",
-                        strlen(room->description), MIN_ROOM_DESC_LENGTH);
-
-      if (strncmp(room->description, "   ", 3) && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Room description not formatted with indent (/fi in "
-                        "the editor).\r\n");
-
-      /* strcspan = size of text in first arg before any character in second arg
-       */
-      if ((strcspn(room->description, "\r\n") > MAX_COLOUMN_WIDTH) &&
-          (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Room description not wrapped at %d chars (/fi in "
-                        "the editor).\r\n",
-                        MAX_COLOUMN_WIDTH);
-
-      for (ext2 = NULL, ext = room->ex_description; ext; ext = ext->next)
-        if (strncmp(ext->description, "   ", 3))
-          ext2 = ext;
-
-      if (ext2 && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- has unformatted extra description\r\n");
-
-      if (found) {
-        send_to_char(ch, "[%5d] %-30s: \r\n%s", room->number,
-                     room->name ? room->name : "An unnamed room", buf);
-        strcpy(buf, "");
-        len = 0;
-        found = 0;
+      for (k = 0; offlimit_zones[k] != -1; k++) {
+        if (dest->zone == real_zone(offlimit_zones[k]) && (found = 1))
+          len += snprintf(
+              buf + len, sizeof(buf) - len,
+              "- Exit %s cannot connect to %d (zone off limits).\r\n",
+              dirs[j], dest->number);
       }
-    } /*is room in this zone?*/
+      return true;
+    });
+
+    if (room_flagged(room, ROOM_ATRIUM | ROOM_HOUSE | ROOM_HOUSE_CRASH |
+                                ROOM_OLC | ROOM_BFS_MARK))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Has illegal affection bits set (%s %s %s %s %s)\r\n",
+                      room_flagged(room, ROOM_ATRIUM) ? "ATRIUM" : "",
+                      room_flagged(room, ROOM_HOUSE) ? "HOUSE" : "",
+                      room_flagged(room, ROOM_HOUSE_CRASH) ? "HCRSH" : "",
+                      room_flagged(room, ROOM_OLC) ? "OLC" : "",
+                      room_flagged(room, ROOM_BFS_MARK) ? "*" : "");
+
+    if ((MIN_ROOM_DESC_LENGTH) &&
+        strlen(room->description) < MIN_ROOM_DESC_LENGTH && (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Room description is too short. (%4.4" SZT
+                      " of min. %d characters).\r\n",
+                      strlen(room->description), MIN_ROOM_DESC_LENGTH);
+
+    if (strncmp(room->description, "   ", 3) && (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Room description not formatted with indent (/fi in "
+                      "the editor).\r\n");
+
+    /* strcspan = size of text in first arg before any character in second arg
+      */
+    if ((strcspn(room->description, "\r\n") > MAX_COLOUMN_WIDTH) &&
+        (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Room description not wrapped at %d chars (/fi in "
+                      "the editor).\r\n",
+                      MAX_COLOUMN_WIDTH);
+
+    for (ext2 = NULL, ext = room->ex_description; ext; ext = ext->next)
+      if (strncmp(ext->description, "   ", 3))
+        ext2 = ext;
+
+    if (ext2 && (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- has unformatted extra description\r\n");
+
+    if (found) {
+      send_to_char(ch, "[%5d] %-30s: \r\n%s", room->number,
+                    room->name ? room->name : "An unnamed room", buf);
+      strcpy(buf, "");
+      len = 0;
+      found = 0;
+    }
     return true;
   }); /*checking rooms*/
 
   room_iterate([&](auto room) {
-    if (room->zone == zone->number) {
-      m++;
-      for (j = 0, k = 0; j < NUM_OF_DIRS; j++)
-        if (!room->dir_option[j])
-          k++;
+    if(room->zone != zone->number) return true;
+    m++;
+    room_exits_iterate(room, [&](auto j, auto exit) {
+      k++;
+      return true;
+    });
 
-      if (k == NUM_OF_DIRS)
-        l++;
-    }
+    if (k == NUM_OF_DIRS)
+      l++;
     return true;
   });
   if (l * 3 > m)

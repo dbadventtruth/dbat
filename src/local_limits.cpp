@@ -1977,10 +1977,12 @@ void timed_dt(struct char_data *ch) {
       if (IS_NPC(vict))
         continue;
 
-      if (char_room_get(vict) == NULL)
+      auto room = char_room_get(vict);
+
+      if (room == NULL)
         continue;
 
-      if (!room_flagged(char_room_get(vict), ROOM_TIMED_DT))
+      if (!room_flagged(room, ROOM_TIMED_DT))
         continue;
 
       timed_dt(vict);
@@ -1993,17 +1995,17 @@ void timed_dt(struct char_data *ch) {
   /*if the room wasn't triggered (i.e timed wasn't set), just set it
     and return again.
   */
-
-  if (char_room_get(ch)->timed < 0) {
-    char_room_get(ch)->timed = rand_number(2, 5);
+  auto room = char_room_get(ch);
+  if (room->timed < 0) {
+    room->timed = rand_number(2, 5);
     return;
   }
 
   /* We know ch is in a dt room with timed >= 0 - see if its the end.
    *
    */
-  if (char_room_get(ch)->timed == 0) {
-    for (vict = char_room_get(ch)->people; vict; vict = vict->next_in_room) {
+  if (room->timed == 0) {
+    for (vict = room->people; vict; vict = vict->next_in_room) {
       if (IS_NPC(vict))
         continue;
       if (GET_ADMLEVEL(vict) >= ADMLVL_IMMORT)

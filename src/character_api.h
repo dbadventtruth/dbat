@@ -31,6 +31,8 @@ void char_title_set(struct char_data *ch, const char *value);
 
 bool char_is_npc(struct char_data *ch);
 
+struct char_data* char_next_in_room_get(struct char_data *ch);
+
 int char_class_get(struct char_data *ch);
 void char_class_set(struct char_data *ch, int chclass);
 int char_race_get(struct char_data *ch);

@@ -17,13 +17,17 @@
 #include "object_macros.h"
 #include "weather_db.h"
 
+#include "iterate.hpp"
+
 int num_pc_in_room(struct room_data *room) {
   int i = 0;
-  struct char_data *ch;
 
-  for (ch = room->people; ch != NULL; ch = ch->next_in_room)
-    if (!IS_NPC(ch))
+  room_people_iterate(room, [&](struct char_data *ch) {
+    if (!IS_NPC(ch)) {
       i++;
+    }
+    return true;
+  });
 
   return (i);
 }
@@ -39,6 +43,7 @@ bool cook_element(struct room_data *room) {
       found = 1;
     } else if (GET_OBJ_VNUM(obj) == 19093) {
       found = 2;
+      break;
     }
   }
   return (found);

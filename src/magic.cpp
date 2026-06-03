@@ -520,15 +520,7 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
  * No spells of this class currently implemented.
  */
 void mag_masses(int level, struct char_data *ch, int spellnum) {
-  struct char_data *tch, *tch_next;
-
-  for (tch = char_room_get(ch)->people; tch; tch = tch_next) {
-    tch_next = tch->next_in_room;
-    if (tch == ch)
-      continue;
-
-    switch (spellnum) {}
-  }
+  
 }
 
 /*
@@ -540,50 +532,7 @@ void mag_masses(int level, struct char_data *ch, int spellnum) {
  *  area spells have limited targets within the room.
  */
 void mag_areas(int level, struct char_data *ch, int spellnum) {
-  struct char_data *tch, *next_tch;
-  const char *to_char = NULL, *to_room = NULL;
 
-  if (ch == NULL)
-    return;
-
-  /*
-   * to add spells to this fn, just add the message here plus an entry
-   * in mag_damage for the damaging part of the spell.
-   */
-  switch (spellnum) {
-  case SPELL_EARTHQUAKE:
-    to_char = "You gesture and the earth begins to shake all around you!";
-    to_room = "$n gracefully gestures and the earth begins to shake violently!";
-    break;
-  }
-
-  if (to_char != NULL)
-    act(to_char, FALSE, ch, 0, 0, TO_CHAR);
-  if (to_room != NULL)
-    act(to_room, FALSE, ch, 0, 0, TO_ROOM);
-
-  for (tch = char_room_get(ch)->people; tch; tch = next_tch) {
-    next_tch = tch->next_in_room;
-
-    /*
-     * The skips: 1: the caster
-     *            2: immortals
-     *            3: if no pk on this mud, skips over all players
-     *            4: pets (charmed NPCs)
-     */
-
-    if (tch == ch)
-      continue;
-    if (ADM_FLAGGED(tch, ADM_NODAMAGE))
-      continue;
-    if (!CONFIG_PK_ALLOWED && !IS_NPC(ch) && !IS_NPC(tch))
-      continue;
-    if (!IS_NPC(ch) && IS_NPC(tch) && AFF_FLAGGED(tch, AFF_CHARM))
-      continue;
-
-    /* Doesn't matter if they die here so we don't check. -gg 6/24/98 */
-    mag_damage(level, ch, tch, spellnum);
-  }
 }
 
 /*

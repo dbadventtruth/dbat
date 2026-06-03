@@ -67,6 +67,9 @@
 #include "descriptor_macros.h"
 #include "log.h"
 #include "time_info.h"
+
+#include "iterate.hpp"
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -258,10 +261,22 @@ ACMD(do_say) {
       strcpy(verb, "say");
     }
 
-    for (tch = room->people; tch; tch = tch->next_in_room) {
-      if (tch != ch && tch->desc) {
-        char sayto[100];
-        sprintf(sayto, "to %s ", GET_NAME(tch));
+    room_people_iterate(room, [&](auto tch) {
+      if(tch == ch) return true;
+      if(!tch->desc) return true;
+      char sayto[100];
+      sprintf(sayto, "to %s ", GET_NAME(tch));
+      if (strstr(argument, sayto)) {
+        char saytoo[200];
+        *verb = '\0';
+        sprintf(saytoo, "says to @g%s@W", GET_NAME(tch));
+        search_replace(argument, sayto, "");
+        strcpy(verb, saytoo);
+        sch = tch;
+      } else if (!IS_NPC(tch) && !IS_NPC(ch)) {
+        if (readIntro(ch, tch) == 1) {
+          sprintf(sayto, "to %s ", get_i_name(ch, tch));
+        }
         if (strstr(argument, sayto)) {
           char saytoo[200];
           *verb = '\0';
@@ -269,21 +284,10 @@ ACMD(do_say) {
           search_replace(argument, sayto, "");
           strcpy(verb, saytoo);
           sch = tch;
-        } else if (!IS_NPC(tch) && !IS_NPC(ch)) {
-          if (readIntro(ch, tch) == 1) {
-            sprintf(sayto, "to %s ", get_i_name(ch, tch));
-          }
-          if (strstr(argument, sayto)) {
-            char saytoo[200];
-            *verb = '\0';
-            sprintf(saytoo, "says to @g%s@W", GET_NAME(tch));
-            search_replace(argument, sayto, "");
-            strcpy(verb, saytoo);
-            sch = tch;
-          }
         }
       }
-    }
+      return true;
+    });
     if (!sch) {
       snprintf(buf, sizeof(buf), "@w$n @W%ss, '@C%s@W'@n", verb, argument);
       act(buf, TRUE, ch, 0, 0, TO_ROOM);

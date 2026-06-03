@@ -92,6 +92,8 @@
 #include "mail.h"
 #include "screen.h"
 
+#include "iterate.hpp"
+
 /* local functions */
 static void gen_map(struct char_data *ch, int num);
 static void bringdesc(struct char_data *ch, struct char_data *tch);
@@ -128,7 +130,7 @@ static void display_scroll(struct char_data *ch, struct obj_data *obj);
 static void space_to_minus(char *str);
 static void free_history(struct char_data *ch, int type);
 static int yesrace(int num);
-static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
+static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
                           struct char_data *ch);
 // definitions
 ACMD(do_evolve) {
@@ -1617,19 +1619,14 @@ static void bringdesc(struct char_data *ch, struct char_data *tch) {
   }
 }
 
-static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
+static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
                           struct char_data *ch) {
-  int door;
-  struct room_data *room = room_by_id(vnum);
+  
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = exit_dest_get(exit);
+    if (!dest) return true;
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *exit = room->dir_option[door];
-    if (!exit)
-      continue;
-    struct room_data *dest = exit_dest_get(exit);
-    if (!dest)
-      continue;
-    int sect = room_sector_type_get(dest);
+        int sect = room_sector_type_get(dest);
     int geffect = room_geffect_get(dest);
     bool sunken = room_is_sunken(dest);
     if ((EXIT_FLAGGED(exit, EX_CLOSED) && !EXIT_FLAGGED(exit, EX_SECRET))) {
@@ -2135,7 +2132,8 @@ static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
         break;
       }
     }
-  }
+    return true;
+  });
 }
 
 ACMD(do_map) { gen_map(ch, 1); }
@@ -2175,38 +2173,40 @@ static void gen_map(struct char_data *ch, int num) {
   struct room_data *room = char_room_get(ch);
 
   /* print out exits */
-  map_draw_room(map, 4, 4, ch->in_room, ch);
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    if (R_EXIT(room, door) && R_EXIT(room, door)->to_room != NOWHERE &&
-        !EXIT_FLAGGED(R_EXIT(room, door), EX_CLOSED)) {
-      switch (door) {
+  map_draw_room(map, 4, 4, room, ch);
+
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = char_can_go_exit(ch, exit);
+    if(!dest) return true;
+    switch (door) {
       case NORTH:
-        map_draw_room(map, 4, 3, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 4, 3, dest, ch);
         break;
       case EAST:
-        map_draw_room(map, 5, 4, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 5, 4, dest, ch);
         break;
       case SOUTH:
-        map_draw_room(map, 4, 5, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 4, 5, dest, ch);
         break;
       case WEST:
-        map_draw_room(map, 3, 4, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 3, 4, dest, ch);
         break;
       case NORTHEAST:
-        map_draw_room(map, 5, 3, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 5, 3, dest, ch);
         break;
       case NORTHWEST:
-        map_draw_room(map, 3, 3, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 3, 3, dest, ch);
         break;
       case SOUTHEAST:
-        map_draw_room(map, 5, 5, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 5, 5, dest, ch);
         break;
       case SOUTHWEST:
-        map_draw_room(map, 3, 5, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 3, 5, dest, ch);
         break;
       }
-    }
-  }
+
+    return true;
+  });
 
   /* make it obvious what room they are in */
   map[4][4] = 'x';
@@ -4136,14 +4136,13 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
   bool door_found = false;
   char exit_lines[NUM_OF_DIRS][500] = {};
 
-  for (int door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *exit = room_dir_option_get(room, door);
-    if (!exit || exit->to_room == NOWHERE)
-      continue;
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    struct room_data *destination = exit_dest_get(exit);
+    if(!destination) return true;
 
     char direction[32];
     capitalize_direction(direction, sizeof(direction), door);
-    struct room_data *destination = exit_dest_get(exit);
+
     char *line = exit_lines[door];
 
     if (immortal_view) {
@@ -4153,7 +4152,7 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
                room_name_get(destination));
       if (!append_immortal_exit_door_details(line, sizeof(exit_lines[door]), ch,
                                              door, exit))
-        return;
+        return false;
     } else if (!IS_SET(exit->exit_info, EX_CLOSED)) {
       door_found = true;
       const char *destination_name =
@@ -4169,7 +4168,9 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
                "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", direction,
                exit_keyword_or_opening(exit));
     }
-  }
+
+    return true;
+  });
 
   if (!door_found)
     send_to_char(ch, " None.\r\n");
@@ -4182,23 +4183,22 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
   show_auto_exit_room_details(target_room, ch);
 }
 
-static void do_auto_exits2(struct room_data *target_room,
+static void do_auto_exits2(struct room_data *room,
                            struct char_data *ch) {
-  int door, slen = 0;
-  struct room_data *room = target_room;
+  int slen = 0;
 
   send_to_char(ch, "\nExits: ");
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *exit = room_dir_option_get(room, door);
-    if (!exit || exit->to_room == NOWHERE)
-      continue;
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = exit_dest_get(exit);
+    if(!dest) return true;
     if (EXIT_FLAGGED(exit, EX_CLOSED))
-      continue;
+      return true;
 
     send_to_char(ch, "%s ", abbr_dirs[door]);
     slen++;
-  }
+    return true;
+  });
 
   send_to_char(ch, "%s\r\n", slen ? "" : "None!");
 }
@@ -5029,18 +5029,15 @@ static void look_out_window(struct char_data *ch, char *arg) {
       /* We are looking out of the room */
       if (GET_OBJ_VAL(viewport, VAL_WINDOW_UNUSED4) < 0) {
         /* Look for the default "outside" room */
-        for (door = 0; door < NUM_OF_DIRS; door++) {
-          struct room_direction_data *exit = EXIT(ch, door);
-          if (!exit)
-            continue;
-          struct room_data *dest = exit_dest_get(exit);
-          if (!dest)
-            continue;
-          if (!room_flagged(dest, ROOM_INDOORS)) {
-            target_room = dest;
-            continue;
-          }
-        }
+        room_exits_iterate(char_room_get(ch), [&](auto door, auto exit) {
+           auto dest = exit_dest_get(exit);
+           if (!dest) return true;
+           if (!room_flagged(dest, ROOM_INDOORS)) {
+             target_room = dest;
+             return false;
+           }
+           return true;
+         });
       } else {
         target_room = room_by_id(GET_OBJ_VAL(viewport, VAL_WINDOW_UNUSED4));
       }

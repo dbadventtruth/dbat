@@ -12,6 +12,7 @@
 #include "object_impl.h"
 #include "room_impl.h"
 
+
 namespace dbat::game::search {
 
 template <typename Fn> bool object_list_each(obj_data *head, Fn &&fn) {

@@ -77,8 +77,10 @@
 #include "util_macros.h"
 
 #include "search.hpp"
+#include "iterate.hpp"
 
 #include <cstdlib>
+#include <vector>
 
 /* local functions  */
 static void generate_multiform(struct char_data *ch, int count);
@@ -225,29 +227,28 @@ ACMD(do_multiform) {
     return;
   }
 
-  struct char_data *tch = NULL, *next_v = NULL;
-  int count = 0;
+  std::vector<struct char_data *> multiforms;
 
-  for (tch = char_room_get(ch)->people; tch; tch = next_v) {
-    next_v = tch->next_in_room;
+  auto room = char_room_get(ch);
+  room_people_iterate(room, [&](auto tch) {
     if (tch == ch || !IS_NPC(tch)) {
-      continue;
+      return true;
     }
     if (GET_MOB_VNUM(tch) == 25 && GET_ORIGINAL(tch) == ch) {
-      count++;
+      multiforms.push_back(tch);
     }
-  }
+    return true;
+  });
 
   char arg[MAX_INPUT_LENGTH];
   one_argument(argument, arg);
 
   if (!strcasecmp(arg, "merge")) {
-    if (count == 0) {
+    if (multiforms.empty()) {
       send_to_char(ch, "You have no multiforms present to merge with!\r\n");
       return;
     }
-    for (tch = char_room_get(ch)->people; tch; tch = next_v) {
-      next_v = tch->next_in_room;
+    for (auto tch : multiforms) {
       if (tch == ch || !IS_NPC(tch)) {
         continue;
       }
@@ -312,7 +313,7 @@ static void generate_multiform(struct char_data *ch, int count) {
   sprintf(blamo, "p.%s", GET_NAME(ch));
   struct mob_proto_data *proto = mob_proto_by_id(25);
   if (!proto) {
-    send_to_imm("Multiform Clone doesn't exist!");
+    send_to_imm("Multiform Clone prototype doesn't exist!");
     return;
   }
 

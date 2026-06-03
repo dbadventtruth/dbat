@@ -60,6 +60,8 @@
 #include <cstring>
 #include <strings.h>
 
+#include "iterate.hpp"
+
 /* Utility functions */
 
 /*
@@ -584,9 +586,10 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
           } else {
             doors = 0;
             room = in_room;
-            for (i = 0; i < NUM_OF_DIRS; i++)
-              if (R_EXIT(room, i))
-                doors++;
+            room_exits_iterate(room, [&](auto dir, auto exit) {
+              doors++;
+              return true;
+            });
 
             if (!doors) {
               *str = '\0';

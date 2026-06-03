@@ -76,6 +76,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <strings.h>
+
+#include "iterate.hpp"
 /*
  * Local functions.
  */
@@ -146,17 +148,15 @@ ACMD(do_masound) {
   skip_spaces(&argument);
 
   was_in_room = char_room_get(ch);
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    auto ex = char_exit_dir(ch, door);
-    if (!ex)
-      continue;
+  room_exits_iterate(was_in_room, [&](auto door, auto ex) {
     auto dest = exit_dest_get(ex);
     if (!dest)
-      continue;
+      return true;
 
     IN_ROOM(ch) = dest->number;
     sub_write(argument, ch, TRUE, TO_ROOM);
-  }
+    return true;
+  });
 
   IN_ROOM(ch) = room_vnum_get(was_in_room);
 }

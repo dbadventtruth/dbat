@@ -244,12 +244,8 @@ int save_rooms(struct zone_data *zone) {
     /*
      * Now you write out the exits for the room.
      */
-    for (j = 0; j < NUM_OF_DIRS; j++) {
-      auto ex = R_EXIT(room, j);
-      if (!ex)
-        continue;
-
-      int dflag;
+     room_exits_iterate(room, [&](auto j, auto ex) {
+            int dflag;
       if (ex->general_description) {
         strncpy(buf, ex->general_description, sizeof(buf) - 1);
         strip_cr(buf);
@@ -288,7 +284,8 @@ int save_rooms(struct zone_data *zone) {
               j, buf, buf1, dflag, ex->key, ex->to_room, ex->dclock, ex->dchide,
               ex->dcskill, ex->dcmove, ex->failsavetype, ex->dcfailsave,
               ex->failroom, ex->totalfailroom);
-    }
+      return true;
+     });
 
     if (room->ex_description) {
       struct extra_descr_data *xdesc;
@@ -390,16 +387,14 @@ int free_room_strings(struct room_data *room) {
     free_ex_descriptions(room->ex_description);
 
   /* Free exits. */
-  for (i = 0; i < NUM_OF_DIRS; i++) {
-    if (room->dir_option[i]) {
-      if (room->dir_option[i]->general_description)
-        free(room->dir_option[i]->general_description);
-      if (room->dir_option[i]->keyword)
-        free(room->dir_option[i]->keyword);
-      free(room->dir_option[i]);
-      room->dir_option[i] = NULL;
-    }
-  }
+  room_exits_iterate(room, [&](auto dir, auto exit) {
+    if (exit->general_description)
+      free(exit->general_description);
+    if (exit->keyword)
+      free(exit->keyword);
+    free(exit);
+    return true;
+  });
 
   return TRUE;
 }

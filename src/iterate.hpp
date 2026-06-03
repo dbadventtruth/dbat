@@ -2,6 +2,7 @@
 #include "consts/directions.h"
 
 #include "character_db.h"
+#include "character_api.h"
 #include "dgscript_db.h"
 #include "guild_db.h"
 #include "object_db.h"
@@ -122,6 +123,18 @@ template <typename Func> inline void room_exits_iterate(struct room_data *room, 
       if(!func(i, exit)) {
         break;
       }
+    }
+  }
+}
+
+template <typename Func> inline void room_people_iterate(struct room_data *room, Func &&func) {
+  if(!room) return;
+
+  struct char_data *next = nullptr;
+  for (auto c = room_people_get(room); c; c = next) {
+    next = char_next_in_room_get(c);
+    if (!func(c)) {
+      break;
     }
   }
 }

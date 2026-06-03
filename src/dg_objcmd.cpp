@@ -42,6 +42,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "iterate.hpp"
+
 /*
  * Local functions
  */
@@ -603,14 +605,14 @@ OCMD(do_oasound) {
     return;
   }
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *ex = room->dir_option[door];
-    struct room_data *dest = exit_dest_get(ex);
-    if (dest && dest->people) {
+  room_exits_iterate(room, [&](auto dir, auto exit) {
+    auto dest = exit_dest_get(exit);
+    if(dest && dest->people) {
       sub_write(argument, dest->people, TRUE, TO_ROOM);
       sub_write(argument, dest->people, TRUE, TO_CHAR);
     }
-  }
+    return true;
+  });
 }
 
 OCMD(do_odoor) {

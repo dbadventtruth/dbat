@@ -71,6 +71,8 @@
 #include "zone_api.h"
 #include "zone_impl.h"
 
+#include "iterate.hpp"
+
 /* local functions */
 static void handle_fall(struct char_data *ch);
 static int check_swim(struct char_data *ch);
@@ -1595,7 +1597,7 @@ ACMD(do_move) {
 
 static int find_door(struct char_data *ch, const char *type, char *dir,
                      const char *cmdname) {
-  int door;
+  int door = NOTHING;
 
   if (*dir) { /* a direction was specified */
     if ((door = search_block(dir, dirs, FALSE)) < 0 &&
@@ -1623,11 +1625,17 @@ static int find_door(struct char_data *ch, const char *type, char *dir,
       send_to_char(ch, "What is it you want to %s?\r\n", cmdname);
       return (-1);
     }
-    for (door = 0; door < NUM_OF_DIRS; door++)
-      if (EXIT(ch, door))
-        if (EXIT(ch, door)->keyword)
-          if (is_name(type, EXIT(ch, door)->keyword))
-            return (door);
+    room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
+      if(!exit->keyword) return true;
+      if(is_name(type, exit->keyword)) {
+        door = dir;
+        return false;
+      }
+      return true;
+    });
+    if(door != NOTHING) {
+      return door;
+    }
 
     send_to_char(ch,
                  "There doesn't seem to be %s %s that could be manipulated in "
@@ -2295,11 +2303,16 @@ ACMD(do_enter) {
       perform_enter_obj(ch, obj, 0);
     /* Is there a door to enter? */
     else {
-      for (door = 0; door < NUM_OF_DIRS; door++)
-        if (EXIT(ch, door))
-          if (EXIT(ch, door)->keyword)
-            if (isname(buf, EXIT(ch, door)->keyword))
-              move_dir = door;
+      room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
+        auto dest = exit_dest_get(exit);
+        if(!dest) return true;
+        if(!exit->keyword) return true;
+        if(!isname(buf, exit->keyword)) {
+          move_dir = door;
+          return false;
+        }
+        return true;
+      });
       /* Did we find what they wanted to enter. */
       if (move_dir > -1)
         perform_move(ch, move_dir, 1);
@@ -2311,11 +2324,15 @@ ACMD(do_enter) {
     send_to_char(ch, "You are already indoors.\r\n");
   } else {
     /* try to locate an entrance */
-    for (door = 0; door < NUM_OF_DIRS; door++)
-      if (auto ex = EXIT(ch, door); ex)
-        if (auto dest = exit_dest_get(ex); dest)
-          if (!EXIT_FLAGGED(ex, EX_CLOSED) && room_flagged(dest, ROOM_INDOORS))
-            move_dir = door;
+    room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
+      auto dest = exit_dest_get(exit);
+      if(!dest) return true;
+      if(!EXIT_FLAGGED(exit, EX_CLOSED) && room_flagged(dest, ROOM_INDOORS)) {
+        move_dir = dir;
+        return false;
+      }
+      return true;
+    });
     if (move_dir > -1)
       perform_move(ch, move_dir, 1);
     else
@@ -2537,15 +2554,19 @@ ACMD(do_leave) {
   if (OUTSIDE(ch))
     send_to_char(ch, "You are outside.. where do you want to go?\r\n");
   else {
-    for (door = 0; door < NUM_OF_DIRS; door++)
-      if (auto ex = EXIT(ch, door); ex)
-        if (auto dest = exit_dest_get(ex); dest)
-          if (!EXIT_FLAGGED(ex, EX_CLOSED) &&
-              !room_flagged(dest, ROOM_INDOORS)) {
-            perform_move(ch, door, 1);
-            return;
-          }
-    send_to_char(ch, "I see no obvious exits to the outside.\r\n");
+    bool moved = false;
+    room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
+      auto dest = char_can_go_exit(ch, exit);
+      if(!dest) return true;
+      if(!room_flagged(dest, ROOM_INDOORS)) {
+        perform_move(ch, dir, 1);
+        moved = true;
+        return false;
+      }
+      return true;
+    });
+    if (!moved)
+      send_to_char(ch, "I see no obvious exits to the outside.\r\n");
   }
 }
 
