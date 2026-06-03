@@ -5,4 +5,9 @@ return {
     abbreviation = "Dem",
     size = "medium",
     pc_ok = true,
+    modifiers = function()
+        return {
+            { target = { "derived", "lifeforce" }, kind = "multiplier", value = 7500, label = "Demon" },
+        }
+    end,
 }

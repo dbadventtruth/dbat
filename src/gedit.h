@@ -1,0 +1,22 @@
+#pragma once
+#include "consts/types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void gedit_setup_new(struct descriptor_data *d);
+void gedit_setup_existing(struct descriptor_data *d, guild_vnum num);
+void gedit_parse(struct descriptor_data *d, char *arg);
+void gedit_disp_menu(struct descriptor_data *d);
+void gedit_no_train_menu(struct descriptor_data *d);
+void gedit_save_internally(struct descriptor_data *d);
+void gedit_save_to_disk(struct zone_data *zone);
+void copy_guild(struct guild_data *tgm, struct guild_data *fgm);
+void free_guild_strings(struct guild_data *guild);
+void free_guild(struct guild_data *guild);
+void gedit_modify_string(char **str, char *new_g);
+
+#ifdef __cplusplus
+}
+#endif

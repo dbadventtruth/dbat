@@ -1,0 +1,30 @@
+#pragma once
+#include "consts/maximums.h"
+#include "consts/senseis.h"
+#include "consts/types.h"
+#include <time.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern const char *config_sect[NUM_CONFIG_SECTIONS + 1];
+extern const int class_hit_die_size[NUM_CLASSES];
+
+// functions
+void do_start(struct char_data *ch);
+int invalid_class(struct char_data *ch, struct obj_data *obj);
+int64_t level_exp(struct char_data *ch, int level);
+int load_levels();
+void cedit_creation(struct char_data *ch);
+void advance_level(struct char_data *ch, int whichclass);
+int8_t ability_mod_value(int abil);
+int8_t dex_mod_capped(const struct char_data *ch);
+int highest_skill_value(int level, int type);
+int calc_penalty_exp(struct char_data *ch, int gain);
+time_t birth_age(struct char_data *ch);
+time_t max_age(struct char_data *ch);
+
+#ifdef __cplusplus
+}
+#endif

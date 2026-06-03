@@ -1,0 +1,15 @@
+return {
+    id = "oozaru",
+    name = "@ROozaru@n",
+    alias = { "ape", "great ape" },
+    races = { 1, 7 },
+    sort_order = 10,
+    family = "oozaru",
+    tier = 1,
+    bonus = 10000,
+    mult = 2.0,
+    drain = 0.0,
+    requires_pl = 0,
+    msg_transform_self = "@WYou howl as the power of the full moon washes over you! Your body grows massive amounts of hair, your face pushes out into a muzzle, and your tail grows back if it was missing. You are now the @RGreat @ROozaru@W!@n",
+    msg_transform_others = "@C$n@W howls as a wave of power washes over $m! $s body grows massive amounts of hair, $s face pushes out into a muzzle, and $s tail grows back if it was missing. $e is now the @RGreat @ROozaru@W!@n",
+}

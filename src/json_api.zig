@@ -1,0 +1,635 @@
+const std = @import("std");
+const cdb = @import("cdb");
+const rooms_json = @import("room_json.zig");
+const exits_json = @import("exits_json.zig");
+const characters_json = @import("character_json.zig");
+const objects_json = @import("object_json.zig");
+const zones_json = @import("zone_json.zig");
+const shops_json = @import("shop_json.zig");
+const guilds_json = @import("guild_json.zig");
+const dgscripts_json = @import("dgscript_json.zig");
+
+var global_io: std.Io = undefined;
+var has_io = false;
+
+extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
+
+pub fn init(io: std.Io) void {
+    global_io = io;
+    has_io = true;
+}
+
+pub export fn json_export_room(vnum: cdb.room_vnum, filename: ?[*:0]const u8) c_int {
+    exportRoom(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_rooms(folder: ?[*:0]const u8) c_int {
+    exportRooms(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_room_exits(vnum: cdb.room_vnum, filename: ?[*:0]const u8) c_int {
+    exportRoomExits(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_all_room_exits(folder: ?[*:0]const u8) c_int {
+    exportAllRoomExits(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_npc_prototype(vnum: cdb.mob_vnum, filename: ?[*:0]const u8) c_int {
+    exportNpcPrototype(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_npc_prototypes(folder: ?[*:0]const u8) c_int {
+    exportNpcPrototypes(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_obj_prototype(vnum: cdb.obj_vnum, filename: ?[*:0]const u8) c_int {
+    exportObjPrototype(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_obj_prototypes(folder: ?[*:0]const u8) c_int {
+    exportObjPrototypes(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_zone(vnum: cdb.zone_vnum, filename: ?[*:0]const u8) c_int {
+    exportZone(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_zones(folder: ?[*:0]const u8) c_int {
+    exportZones(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_shop(vnum: cdb.shop_vnum, filename: ?[*:0]const u8) c_int {
+    exportShop(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_shops(folder: ?[*:0]const u8) c_int {
+    exportShops(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_guild(vnum: cdb.guild_vnum, filename: ?[*:0]const u8) c_int {
+    exportGuild(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_guilds(folder: ?[*:0]const u8) c_int {
+    exportGuilds(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_dgscript(vnum: cdb.trig_vnum, filename: ?[*:0]const u8) c_int {
+    exportDgScript(vnum, cString(filename)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_dgscripts(folder: ?[*:0]const u8) c_int {
+    exportDgScripts(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_export_all(folder: ?[*:0]const u8) c_int {
+    exportAll(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_all(folder: ?[*:0]const u8) void {
+    importAll(cString(folder)) catch return;
+}
+
+pub export fn json_import_zones(folder: ?[*:0]const u8) c_int {
+    importZones(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_rooms(folder: ?[*:0]const u8) c_int {
+    importRooms(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_room_exits(folder: ?[*:0]const u8) c_int {
+    importRoomExits(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_dgscripts(folder: ?[*:0]const u8) c_int {
+    importDgScripts(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_npc_prototypes(folder: ?[*:0]const u8) c_int {
+    importNpcPrototypes(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_obj_prototypes(folder: ?[*:0]const u8) c_int {
+    importObjPrototypes(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_shops(folder: ?[*:0]const u8) c_int {
+    importShops(cString(folder)) catch return -1;
+    return 0;
+}
+
+pub export fn json_import_guilds(folder: ?[*:0]const u8) c_int {
+    importGuilds(cString(folder)) catch return -1;
+    return 0;
+}
+
+fn exportRoom(vnum: cdb.room_vnum, filename: []const u8) !void {
+    const room = cdb.room_by_id(vnum);
+    if (room == null) return error.NotFound;
+    try writeJsonFile(filename, rooms_json.serializeRoom, .{room});
+}
+
+fn exportRooms(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.room_iterator_create() orelse return;
+    defer cdb.room_iterator_free(iterator);
+
+    while (cdb.room_next(iterator)) |room| {
+        const path = try assetPath(folder, room.*.number);
+        defer std.heap.page_allocator.free(path);
+        try exportRoom(room.*.number, path);
+    }
+}
+
+fn exportRoomExits(vnum: cdb.room_vnum, filename: []const u8) !void {
+    const room = cdb.room_by_id(vnum);
+    if (room == null) return error.NotFound;
+    try writeJsonFile(filename, exits_json.serializeRoomExits, .{room});
+}
+
+fn exportAllRoomExits(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.room_iterator_create() orelse return;
+    defer cdb.room_iterator_free(iterator);
+
+    while (cdb.room_next(iterator)) |room| {
+        const path = try assetPath(folder, room.*.number);
+        defer std.heap.page_allocator.free(path);
+        try exportRoomExits(room.*.number, path);
+    }
+}
+
+fn exportNpcPrototype(vnum: cdb.mob_vnum, filename: []const u8) !void {
+    const mob = cdb.mob_proto_by_id(vnum);
+    if (mob == null) return error.NotFound;
+    try writeJsonFile(filename, characters_json.serializeMobPrototype, .{mob});
+}
+
+fn exportNpcPrototypes(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.mob_proto_iterator_create() orelse return;
+    defer cdb.mob_proto_iterator_free(iterator);
+
+    while (cdb.mob_proto_next(iterator)) |mob| {
+        const vnum = mob.*.vnum;
+        if (vnum == cdb.NOTHING) continue;
+        const path = try assetPath(folder, vnum);
+        defer std.heap.page_allocator.free(path);
+        try exportNpcPrototype(vnum, path);
+    }
+}
+
+fn exportObjPrototype(vnum: cdb.obj_vnum, filename: []const u8) !void {
+    const obj = cdb.obj_proto_by_id(vnum);
+    if (obj == null) return error.NotFound;
+    try writeJsonFile(filename, objects_json.serializeObjectPrototype, .{obj});
+}
+
+fn exportObjPrototypes(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.obj_proto_iterator_create() orelse return;
+    defer cdb.obj_proto_iterator_free(iterator);
+
+    while (cdb.obj_proto_next(iterator)) |obj| {
+        const vnum = obj.*.vnum;
+        if (vnum == cdb.NOTHING) continue;
+        const path = try assetPath(folder, vnum);
+        defer std.heap.page_allocator.free(path);
+        try exportObjPrototype(vnum, path);
+    }
+}
+
+fn exportZone(vnum: cdb.zone_vnum, filename: []const u8) !void {
+    const zone = cdb.zone_by_id(vnum);
+    if (zone == null) return error.NotFound;
+    try writeJsonFile(filename, zones_json.serializeZone, .{zone});
+}
+
+fn exportZones(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.zone_iterator_create() orelse return;
+    defer cdb.zone_iterator_free(iterator);
+
+    while (cdb.zone_next(iterator)) |zone| {
+        const path = try assetPath(folder, zone.*.number);
+        defer std.heap.page_allocator.free(path);
+        try exportZone(zone.*.number, path);
+    }
+}
+
+fn exportShop(vnum: cdb.shop_vnum, filename: []const u8) !void {
+    const shop = cdb.shop_by_id(vnum);
+    if (shop == null) return error.NotFound;
+    try writeJsonFile(filename, shops_json.serializeShop, .{shop});
+}
+
+fn exportShops(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.shop_iterator_create() orelse return;
+    defer cdb.shop_iterator_free(iterator);
+
+    while (cdb.shop_next(iterator)) |shop| {
+        const path = try assetPath(folder, shop.*.vnum);
+        defer std.heap.page_allocator.free(path);
+        try exportShop(shop.*.vnum, path);
+    }
+}
+
+fn exportGuild(vnum: cdb.guild_vnum, filename: []const u8) !void {
+    const guild = cdb.guild_by_id(vnum);
+    if (guild == null) return error.NotFound;
+    try writeJsonFile(filename, guilds_json.serializeGuild, .{guild});
+}
+
+fn exportGuilds(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.guild_iterator_create() orelse return;
+    defer cdb.guild_iterator_free(iterator);
+
+    while (cdb.guild_next(iterator)) |guild| {
+        const path = try assetPath(folder, guild.*.vnum);
+        defer std.heap.page_allocator.free(path);
+        try exportGuild(guild.*.vnum, path);
+    }
+}
+
+fn exportDgScript(vnum: cdb.trig_vnum, filename: []const u8) !void {
+    const trigger = cdb.trig_proto_by_id(vnum) orelse return error.NotFound;
+    try writeJsonFile(filename, dgscripts_json.serializeTrigger, .{trigger});
+}
+
+fn exportDgScripts(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const iterator = cdb.trig_proto_iterator_create() orelse return;
+    defer cdb.trig_proto_iterator_free(iterator);
+
+    while (cdb.trig_proto_next(iterator)) |trigger| {
+        const vnum = trigger.*.vnum;
+        if (vnum == cdb.NOTHING) continue;
+        const path = try assetPath(folder, vnum);
+        defer std.heap.page_allocator.free(path);
+        try exportDgScript(vnum, path);
+    }
+}
+
+fn exportAll(folder: []const u8) !void {
+    try ensureFolder(folder);
+    const rooms = try childPath(folder, "rooms");
+    defer std.heap.page_allocator.free(rooms);
+    const exits = try childPath(folder, "exits");
+    defer std.heap.page_allocator.free(exits);
+    const npc_prototypes = try childPath(folder, "npc_prototypes");
+    defer std.heap.page_allocator.free(npc_prototypes);
+    const obj_prototypes = try childPath(folder, "obj_prototypes");
+    defer std.heap.page_allocator.free(obj_prototypes);
+    const zones = try childPath(folder, "zones");
+    defer std.heap.page_allocator.free(zones);
+    const shops = try childPath(folder, "shops");
+    defer std.heap.page_allocator.free(shops);
+    const guilds = try childPath(folder, "guilds");
+    defer std.heap.page_allocator.free(guilds);
+    const dgscripts = try childPath(folder, "dgscripts");
+    defer std.heap.page_allocator.free(dgscripts);
+
+    try exportRooms(rooms);
+    try exportAllRoomExits(exits);
+    try exportNpcPrototypes(npc_prototypes);
+    try exportObjPrototypes(obj_prototypes);
+    try exportZones(zones);
+    try exportShops(shops);
+    try exportGuilds(guilds);
+    try exportDgScripts(dgscripts);
+}
+
+fn importAll(folder: []const u8) !void {
+    const zones = try childPath(folder, "zones");
+    defer std.heap.page_allocator.free(zones);
+    const rooms = try childPath(folder, "rooms");
+    defer std.heap.page_allocator.free(rooms);
+    const exits = try childPath(folder, "exits");
+    defer std.heap.page_allocator.free(exits);
+    const dgscripts = try childPath(folder, "dgscripts");
+    defer std.heap.page_allocator.free(dgscripts);
+    const npc_prototypes = try childPath(folder, "npc_prototypes");
+    defer std.heap.page_allocator.free(npc_prototypes);
+    const obj_prototypes = try childPath(folder, "obj_prototypes");
+    defer std.heap.page_allocator.free(obj_prototypes);
+    const shops = try childPath(folder, "shops");
+    defer std.heap.page_allocator.free(shops);
+    const guilds = try childPath(folder, "guilds");
+    defer std.heap.page_allocator.free(guilds);
+
+    try importZones(zones);
+    try importRooms(rooms);
+    try importRoomExits(exits);
+    try importDgScripts(dgscripts);
+    try importNpcPrototypes(npc_prototypes);
+    try importObjPrototypes(obj_prototypes);
+    try importShops(shops);
+    try importGuilds(guilds);
+}
+
+const JsonFile = struct {
+    vnum: cdb.IDXTYPE,
+    path: []const u8,
+};
+
+const Progress = struct {
+    label: []const u8,
+    total: usize,
+    next_percent: usize = 10,
+
+    fn init(label: []const u8, total: usize) Progress {
+        std.log.info("JSON import {s}: {d} files", .{ label, total });
+        if (total == 0) std.log.info("JSON import {s}: complete", .{label});
+        return .{ .label = label, .total = total };
+    }
+
+    fn tick(self: *Progress, index: usize) void {
+        if (self.total == 0) return;
+        const done = index + 1;
+        const percent = done * 100 / self.total;
+        while (percent >= self.next_percent and self.next_percent <= 100) : (self.next_percent += 10) {
+            std.log.info("JSON import {s}: {d}% ({d}/{d})", .{ self.label, self.next_percent, done, self.total });
+        }
+    }
+};
+
+fn logImportFileError(label: []const u8, file: JsonFile, err: anyerror) void {
+    std.log.err("JSON import {s} failed for {s} (vnum {d}): {s}", .{ label, file.path, file.vnum, @errorName(err) });
+}
+
+fn importZones(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("zones", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("zones", file, err);
+            return err;
+        };
+        const zone = try allocCOne(cdb.zone_data);
+        zones_json.deserializeZone(zone, .{}, value) catch |err| {
+            logImportFileError("zones", file, err);
+            return err;
+        };
+        cdb.zone_put(zone.number, zone);
+        progress.tick(index);
+    }
+}
+
+fn importRooms(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("rooms", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("rooms", file, err);
+            return err;
+        };
+        const room = try allocCOne(cdb.room_data);
+        room.number = @intCast(file.vnum);
+        room.zone = cdb.virtual_zone_by_thing(room.number);
+        rooms_json.deserializeRoom(room, .{}, value) catch |err| {
+            logImportFileError("rooms", file, err);
+            return err;
+        };
+        room.zone = cdb.virtual_zone_by_thing(room.number);
+        cdb.room_put(room.number, room);
+        progress.tick(index);
+    }
+}
+
+fn importRoomExits(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("exits", files.len);
+    for (files, 0..) |file, index| {
+        const room = cdb.room_by_id(@intCast(file.vnum));
+        if (room == null) continue;
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("exits", file, err);
+            return err;
+        };
+        exits_json.deserializeRoomExits(room, value) catch |err| {
+            logImportFileError("exits", file, err);
+            return err;
+        };
+        progress.tick(index);
+    }
+}
+
+fn importDgScripts(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("dgscripts", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("dgscripts", file, err);
+            return err;
+        };
+
+        const trigger = try allocCOne(cdb.trig_data);
+        dgscripts_json.deserializeTrigger(trigger, value) catch |err| {
+            logImportFileError("dgscripts", file, err);
+            return err;
+        };
+        cdb.trig_proto_put(@intCast(file.vnum), trigger);
+        progress.tick(index);
+    }
+}
+
+fn importNpcPrototypes(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("npc_prototypes", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("npc_prototypes", file, err);
+            return err;
+        };
+        const mob = try allocCOne(cdb.mob_proto_data);
+        mob.vnum = @intCast(file.vnum);
+        characters_json.deserializeMobPrototype(mob, .{ .mode = .npc_prototype }, value) catch |err| {
+            logImportFileError("npc_prototypes", file, err);
+            return err;
+        };
+        mob.vnum = @intCast(file.vnum);
+        cdb.mob_proto_put(@intCast(file.vnum), mob);
+        progress.tick(index);
+    }
+}
+
+fn importObjPrototypes(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("obj_prototypes", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("obj_prototypes", file, err);
+            return err;
+        };
+        const obj = try allocCOne(cdb.obj_proto_data);
+        obj.vnum = @intCast(file.vnum);
+        objects_json.deserializeObjectPrototype(obj, .{ .mode = .prototype }, value) catch |err| {
+            logImportFileError("obj_prototypes", file, err);
+            return err;
+        };
+        obj.vnum = @intCast(file.vnum);
+        cdb.obj_proto_put(@intCast(file.vnum), obj);
+        progress.tick(index);
+    }
+}
+
+fn importShops(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("shops", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("shops", file, err);
+            return err;
+        };
+        const shop = try allocCOne(cdb.shop_data);
+        shop.vnum = @intCast(file.vnum);
+        shops_json.deserializeShop(shop, .{}, value) catch |err| {
+            logImportFileError("shops", file, err);
+            return err;
+        };
+        cdb.shop_put(@intCast(file.vnum), shop);
+        progress.tick(index);
+    }
+}
+
+fn importGuilds(folder: []const u8) !void {
+    const files = try listJsonFiles(folder);
+    var progress = Progress.init("guilds", files.len);
+
+    for (files, 0..) |file, index| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const value = readJsonValue(arena.allocator(), file.path) catch |err| {
+            logImportFileError("guilds", file, err);
+            return err;
+        };
+        const guild = try allocCOne(cdb.guild_data);
+        guild.vnum = @intCast(file.vnum);
+        guilds_json.deserializeGuild(guild, .{}, value) catch |err| {
+            logImportFileError("guilds", file, err);
+            return err;
+        };
+        cdb.guild_put(@intCast(file.vnum), guild);
+        progress.tick(index);
+    }
+}
+
+fn writeJsonFile(filename: []const u8, comptime serializer: anytype, args: anytype) !void {
+    if (!has_io) return error.NotInitialized;
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    const value = try @call(.auto, serializer, .{allocator} ++ args);
+
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    try std.json.Stringify.value(value, .{ .whitespace = .indent_2 }, &out.writer);
+    try out.writer.writeByte('\n');
+    try std.Io.Dir.cwd().writeFile(global_io, .{ .sub_path = filename, .data = out.written() });
+}
+
+fn readJsonValue(allocator: std.mem.Allocator, path: []const u8) !std.json.Value {
+    if (!has_io) return error.NotInitialized;
+    const bytes = try std.Io.Dir.cwd().readFileAlloc(global_io, path, allocator, .unlimited);
+    return try std.json.parseFromSliceLeaky(std.json.Value, allocator, bytes, .{});
+}
+
+fn listJsonFiles(folder: []const u8) ![]JsonFile {
+    if (!has_io) return error.NotInitialized;
+    var dir = try std.Io.Dir.cwd().openDir(global_io, folder, .{ .iterate = true });
+    defer dir.close(global_io);
+
+    var list = std.array_list.Managed(JsonFile).init(std.heap.page_allocator);
+    var iter = dir.iterate();
+    while (try iter.next(global_io)) |entry| {
+        if (entry.kind != .file) continue;
+        if (!std.mem.endsWith(u8, entry.name, ".json")) continue;
+        const stem = entry.name[0 .. entry.name.len - ".json".len];
+        const vnum = std.fmt.parseInt(cdb.IDXTYPE, stem, 10) catch continue;
+        try list.append(.{ .vnum = vnum, .path = try childPath(folder, entry.name) });
+    }
+    const files = try list.toOwnedSlice();
+    std.mem.sort(JsonFile, files, {}, jsonFileLessThan);
+    return files;
+}
+
+fn jsonFileLessThan(_: void, lhs: JsonFile, rhs: JsonFile) bool {
+    return lhs.vnum < rhs.vnum;
+}
+
+fn allocCArray(comptime T: type, count: usize) ![*c]T {
+    if (count == 0) return null;
+    return @ptrCast(@alignCast(calloc(count, @sizeOf(T)) orelse return error.OutOfMemory));
+}
+
+fn allocCOne(comptime T: type) !*T {
+    return @ptrCast(@alignCast(calloc(1, @sizeOf(T)) orelse return error.OutOfMemory));
+}
+
+fn ptrAt(comptime T: type, ptr: [*c]T, index: usize) *T {
+    return @ptrCast(&ptr[index]);
+}
+
+fn ensureFolder(folder: []const u8) !void {
+    if (!has_io) return error.NotInitialized;
+    try std.Io.Dir.cwd().createDirPath(global_io, folder);
+}
+
+fn assetPath(folder: []const u8, vnum: anytype) ![]const u8 {
+    return try std.fmt.allocPrint(std.heap.page_allocator, "{s}/{}.json", .{ folder, vnum });
+}
+
+fn childPath(folder: []const u8, child: []const u8) ![]const u8 {
+    return try std.fmt.allocPrint(std.heap.page_allocator, "{s}/{s}", .{ folder, child });
+}
+
+fn cString(value: ?[*:0]const u8) []const u8 {
+    if (value) |ptr| return std.mem.span(ptr);
+    return "";
+}
