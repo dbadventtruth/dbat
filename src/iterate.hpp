@@ -1,10 +1,12 @@
 #pragma once
+#include "consts/directions.h"
 
 #include "character_db.h"
 #include "dgscript_db.h"
 #include "guild_db.h"
 #include "object_db.h"
 #include "room_db.h"
+#include "room_api.h"
 #include "shop_db.h"
 #include "zone_db.h"
 
@@ -110,6 +112,18 @@ inline void room_iterate(bool (*func)(struct room_data *room)) {
     return;
   }
   room_iterate([&](struct room_data *room) { return func(room); });
+}
+
+template <typename Func> inline void room_exits_iterate(struct room_data *room, Func &&func) {
+  if(!room) return;
+
+  for(auto i = 0; i < NUM_OF_DIRS; i++) {
+    if(auto exit = room_dir_option_get(room, i); exit) {
+      if(!func(i, exit)) {
+        break;
+      }
+    }
+  }
 }
 
 template <typename Func> inline void zone_iterate(Func &&func) {

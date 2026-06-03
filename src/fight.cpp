@@ -63,6 +63,8 @@
 #include "util_macros.h"
 #include "weather_db.h"
 
+#include "iterate.hpp"
+
 #include <string.h>
 
 /* Structures */
@@ -735,10 +737,14 @@ static void shadow_dragons_live() {
 
 /* For announcing the sounds of battle to nearby rooms */
 void impact_sound(struct char_data *ch, char *mssg) {
-  int door;
-  for (door = 0; door < NUM_OF_DIRS; door++)
-    if (CAN_GO(ch, door))
-      send_to_room(exit_dest_get(char_exit_dir(ch, door)), "%s", mssg);
+  auto room = char_room_get(ch);
+  if(!room) return;
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    if (auto dest = char_can_go_exit(ch, exit)) {
+      send_to_room(dest, "%s", mssg);
+    }
+    return true;
+  });
 }
 
 /* For removing body parts */
@@ -2022,11 +2028,16 @@ static void change_alignment(struct char_data *ch, struct char_data *victim) {
 }
 
 void death_cry(struct char_data *ch) {
-  int door;
-  for (door = 0; door < NUM_OF_DIRS; door++)
-    if (CAN_GO(ch, door))
-      send_to_room(exit_dest_get(char_exit_dir(ch, door)),
+  auto room = char_room_get(ch);
+  if(!room) return;
+
+  room_exits_iterate(room, [&](auto dir, auto exit) {
+    if (auto dest = char_can_go_exit(ch, exit)) {
+      send_to_room(dest,
                    "Your blood freezes as you hear someone's death cry.\r\n");
+    }
+    return true;
+  });
 }
 
 /* Let's clean up necessary things after "death" */

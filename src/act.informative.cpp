@@ -8369,9 +8369,7 @@ ACMD(do_scan) {
         send_to_char(ch, "%s: DARK\n\r", dirnames[i]);
         continue;
       }
-      if (CAN_GO(ch, i)) {
-        newroom = EXIT(ch, i)->to_room;
-        struct room_data *nrm = exit_dest_get(EXIT(ch, i));
+      if (auto nrm = CAN_GO(ch, i); nrm) {
         send_to_char(ch, "@w-----------------------------------------@n\r\n");
         send_to_char(ch, "          %s%s: %s %s\n\r", CCCYN(ch, C_NRM),
                      dirnames[i],
@@ -8390,8 +8388,8 @@ ACMD(do_scan) {
                        "@RLava@r covers pretty much the entire area!@n\r\n");
         }
         /* Check 2nd room away */
-        if (_2ND_EXIT(ch, i) && _2ND_EXIT(ch, i)->to_room) {
-          newroom = _2ND_EXIT(ch, i)->to_room;
+        if (auto nrm2 = _2ND_EXIT(ch, i); nrm2 && nrm2->to_room) {
+          newroom = nrm2->to_room;
 
           if ((newroom != NOWHERE) &&
               (!IS_SET(_2ND_EXIT(ch, i)->exit_info, EX_CLOSED))) {

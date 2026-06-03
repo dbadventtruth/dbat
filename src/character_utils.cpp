@@ -4966,22 +4966,26 @@ struct room_direction_data *char_exit_dir_3rd(struct char_data *ch, int dir) {
   return dest->dir_option[dir];
 }
 
-bool char_can_go_dir(struct char_data *ch, int dir) {
-
-  struct room_direction_data *exit = char_exit_dir(ch, dir);
+struct room_data* char_can_go_exit(struct char_data *ch, struct room_direction_data *exit) {
   if (!exit)
-    return false;
+    return NULL;
 
   if (EXIT_FLAGGED(exit, EX_CLOSED)) {
-    return false;
+    return NULL;
   }
 
   struct room_data *dest = exit_dest_get(exit);
   if (!dest) {
-    return false;
+    return NULL;
   }
 
-  return true;
+  return dest;
+}
+
+struct room_data* char_can_go_dir(struct char_data *ch, int dir) {
+
+  struct room_direction_data *exit = char_exit_dir(ch, dir);
+  return char_can_go_exit(ch, exit);
 }
 
 #define SELF(sub, obj) ((sub) == (obj))

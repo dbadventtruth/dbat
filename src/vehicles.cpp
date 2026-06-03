@@ -52,6 +52,8 @@
 #include "search.h"
 #include "stringutils.h"
 
+#include "iterate.hpp"
+
 #include <strings.h>
 
 static int ship_land_location(struct char_data *ch, struct obj_data *vehicle,
@@ -505,14 +507,15 @@ static void drive_outof_vehicle(struct char_data *ch,
           TRUE, ch, 0, 0, TO_ROOM);
     send_to_char(ch, "@wThe ship flies onward:\r\n");
     look_at_room(obj_room_get(vehicle), ch, 0);
-    int door;
-    for (door = 0; door < NUM_OF_DIRS; door++) {
-      if (CAN_GO(ch, door)) {
-        send_to_room(exit_dest_get(char_exit_dir(ch, door)),
+    auto room = char_room_get(ch);
+    room_exits_iterate(room, [&](auto dir, auto exit) {
+      if (char_can_go_exit(ch, exit)) {
+        send_to_room(exit_dest_get(exit),
                      "@wThe @De@Wn@wg@Di@wn@We@Ds@w of the ship @rr@Ro@ra@Rr@w "
                      "as it moves.\r\n");
       }
-    }
+      return true;
+    });
     sprintf(buf, "%s @wflies out of %s.\r\n", vehicle->short_description,
             vehicle_in_out->short_description);
     send_to_room(obj_room_get(vehicle), buf);
@@ -587,14 +590,15 @@ void drive_in_direction(struct char_data *ch, struct obj_data *vehicle,
                                                : "@r",
                    add_commas(GET_FUEL(controls)));
     }
-    int door;
-    for (door = 0; door < NUM_OF_DIRS; door++) {
-      if (CAN_GO(ch, door)) {
-        send_to_room(exit_dest_get(char_exit_dir(ch, door)),
+    auto room = char_room_get(ch);
+    room_exits_iterate(room, [&](auto dir, auto exit) {
+      if (char_can_go_exit(ch, exit)) {
+        send_to_room(exit_dest_get(exit),
                      "@wThe @De@Wn@wg@Di@wn@We@Ds@w of the ship @rr@Ro@ra@Rr@w "
                      "as it moves.\r\n");
       }
-    }
+      return true;
+    });
     sprintf(buf, "%s @wflies in from the %s.\r\n", vehicle->short_description,
             dirs[rev_dir[dir]]);
 

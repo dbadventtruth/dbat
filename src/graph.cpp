@@ -144,12 +144,13 @@ int find_first_step(struct room_data *src, struct room_data *target) {
   });
   MARK(src);
   /* first, enqueue the first steps, saving which direction we're going. */
-  for (curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++) {
-    if (VALID_EDGE(src, curr_dir)) {
-      MARK(TOROOM(src, curr_dir));
-      bfs_enqueue(TOROOM(src, curr_dir), curr_dir);
+  room_exits_iterate(src, [&](auto dir, auto exit) {
+    if (VALID_EDGE(src, dir)) {
+      MARK(TOROOM(src, dir));
+      bfs_enqueue(TOROOM(src, dir), dir);
     }
-  }
+    return true;
+  });
   /* now, do the classic BFS. */
   while (bfs_queue_head) {
     if (bfs_queue_head->room == target) {
@@ -157,12 +158,13 @@ int find_first_step(struct room_data *src, struct room_data *target) {
       bfs_clear_queue();
       return (curr_dir);
     } else {
-      for (curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++)
-        if (VALID_EDGE(bfs_queue_head->room, curr_dir)) {
-          MARK(TOROOM(bfs_queue_head->room, curr_dir));
-          bfs_enqueue(TOROOM(bfs_queue_head->room, curr_dir),
-                      bfs_queue_head->dir);
+      room_exits_iterate(bfs_queue_head->room, [&](auto dir, auto exit) {
+        if (VALID_EDGE(bfs_queue_head->room, dir)) {
+          MARK(TOROOM(bfs_queue_head->room, dir));
+          bfs_enqueue(TOROOM(bfs_queue_head->room, dir), bfs_queue_head->dir);
         }
+        return true;
+      });
       bfs_dequeue();
     }
   }

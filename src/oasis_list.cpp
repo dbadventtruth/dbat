@@ -158,21 +158,19 @@ ACMD(do_oasis_links) {
   first = zone->bot;
 
   send_to_char(ch, "Zone %d is linked to the following zones:\r\n", zvnum);
-  room_iterate([&](auto room) {
-    if (room_vnum_get(room) >= first) {
-      for (j = 0; j < NUM_OF_DIRS; j++) {
-        if (room->dir_option[j]) {
-          struct room_data *trm = exit_dest_get(room->dir_option[j]);
-          if (!trm)
-            continue;
-          auto tz = room_zone_get(trm);
-          send_to_char(ch, "%3d %-30s at %5d (%-5s) ---> %5d\r\n", tz->number,
-                       tz->name, room_vnum_get(room), dirs[j], trm->number);
-        }
+  for(int i = first; i <= last; i++) {
+    auto room = room_by_id(i);
+    if (!room) continue;
+    room_exits_iterate(room, [&](auto dir, auto exit) {
+      auto dest = exit_dest_get(exit);
+      if (!dest) return true;
+      if (dest->zone != room->zone) {
+        send_to_char(ch, "  %s (%d) via %s\r\n", zone_by_id(dest->zone)->name,
+                     zone_by_id(dest->zone)->number, dirs[dir]);
       }
-    }
-    return true;
-  });
+      return true;
+    });
+  }
 }
 
 /******************************************************************************/
@@ -211,17 +209,15 @@ void list_rooms(struct char_data *ch, struct zone_data *zone, room_vnum vmin,
                  count_color_chars(rm->name) + 44, rm->name,
                  rm->proto_script ? "[TRIG] " : "");
 
-    for (j = 0; j < NUM_OF_DIRS; j++) {
-      struct room_direction_data *exit = rm->dir_option[j];
-      if (exit == NULL)
-        continue;
+    room_exits_iterate(rm, [&](auto dir, auto exit) {
       struct room_data *dest = exit_dest_get(exit);
       if (!dest)
-        continue;
+        return true;
 
       if (dest->zone != rm->zone)
         send_to_char(ch, "(@y%d@n)", dest->number);
-    }
+      return true;
+    });
 
     send_to_char(ch, "\r\n");
   }

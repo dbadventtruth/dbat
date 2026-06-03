@@ -118,26 +118,24 @@ int delete_room(room_vnum vnum) {
   free_proto_script(room, WLD_TRIGGER);
 
   room_iterate([&](auto other_room) {
-    for (j = 0; j < NUM_OF_DIRS; j++) {
-      auto ex = R_EXIT(other_room, j);
-      if (!ex)
-        continue;
-      if (ex->to_room != vnum)
-        continue;
-      if ((!ex->keyword || !*ex->keyword) &&
-          (!ex->general_description || !*ex->general_description)) {
+    room_exits_iterate(other_room, [&](auto dir, auto exit) {
+      if (exit->to_room != vnum)
+        return true;
+      if ((!exit->keyword || !*exit->keyword) &&
+          (!exit->general_description || !*exit->general_description)) {
         /* no description, remove exit completely */
-        if (ex->keyword)
-          free(ex->keyword);
-        if (ex->general_description)
-          free(ex->general_description);
-        free(ex);
+        if (exit->keyword)
+          free(exit->keyword);
+        if (exit->general_description)
+          free(exit->general_description);
+        free(exit);
         R_EXIT(other_room, j) = NULL;
       } else {
         /* description is set, just point to nowhere */
-        ex->to_room = NOWHERE;
+        exit->to_room = NOWHERE;
       }
-    }
+      return true;
+    });
     return true;
   });
 

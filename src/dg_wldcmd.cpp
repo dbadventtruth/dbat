@@ -35,6 +35,8 @@
 #include "room_macros.h"
 #include "zone_db.h"
 
+#include "iterate.hpp"
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -165,15 +167,13 @@ WCMD(do_wasound) {
     return;
   }
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    auto ex = R_EXIT(room, door);
-    if (!ex)
-      continue;
-    auto dest = exit_dest_get(ex);
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = exit_dest_get(exit);
     if (!dest)
-      continue;
+      return true;
     act_to_room(argument, dest);
-  }
+    return true;
+  });
 }
 
 WCMD(do_wecho) {
