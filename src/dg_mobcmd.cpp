@@ -573,7 +573,6 @@ ACMD(do_mpurge) {
   if (!*arg) {
     /* 'purge' */
     char_data *vnext;
-    obj_data *obj_next;
 
     room_people_iterate(char_room_get(ch), [&](auto victim) {
       if (IS_NPC(victim) && victim != ch)
@@ -581,10 +580,10 @@ ACMD(do_mpurge) {
       return true;
     });
 
-    for (obj = char_room_get(ch)->contents; obj; obj = obj_next) {
-      obj_next = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       extract_obj(obj);
-    }
+      return true;
+    });
 
     return;
   }

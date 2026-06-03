@@ -430,7 +430,7 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     return i;
   else if ((rm = obj_room(obj)) != NULL) {
     /* check the floor */
-    if ((i = get_obj_in_list(name, rm->contents)))
+    if ((i = get_obj_in_list(name, room_contents_get(rm))))
       return i;
 
     /* check peoples' inventory */
@@ -557,7 +557,7 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
     return i;
 
   if (((rm = obj_room(obj)) != NULL) &&
-      (i = get_obj_in_list(name, rm->contents)))
+      (i = get_obj_in_list(name, room_contents_get(rm))))
     return i;
 
   return get_obj(name);
@@ -565,35 +565,49 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
 
 /* only searches the room */
 obj_data *get_obj_in_room(room_data *room, char *name) {
-  obj_data *obj;
   long id;
+  obj_data *found = NULL;
 
   if (*name == UID_CHAR) {
     id = atoi(name + 1);
-    for (obj = room->contents; obj; obj = obj->next_content)
-      if (id == GET_ID(obj))
-        return obj;
+    room_contents_iterate(room, [&](auto obj) {
+      if (id == GET_ID(obj)) {
+        found = obj;
+        return false;
+      }
+      return true;
+    });
   } else {
-    for (obj = room->contents; obj; obj = obj->next_content)
-      if (isname(name, obj->name))
-        return obj;
+    room_contents_iterate(room, [&](auto obj) {
+      if (isname(name, obj->name)) {
+        found = obj;
+        return false;
+      }
+      return true;
+    });
   }
 
+  if (found) return found;
   return NULL;
 }
 
 /* returns obj with name - searches room, then world */
 obj_data *get_obj_by_room(room_data *room, char *name) {
-  obj_data *obj;
+  obj_data *found = NULL;
 
   if (*name == UID_CHAR)
     return find_obj(atoi(name + 1));
 
-  for (obj = room->contents; obj; obj = obj->next_content)
-    if (isname(name, obj->name))
-      return obj;
+  room_contents_iterate(room, [&](auto obj) {
+    if (isname(name, obj->name)) {
+      found = obj;
+      return false;
+    }
+    return true;
+  });
+  if (found) return found;
 
-  for (obj = object_list; obj; obj = obj->next)
+  for (obj_data *obj = object_list; obj; obj = obj->next)
     if (isname(name, obj->name))
       return obj;
 
@@ -941,10 +955,14 @@ ACMD(do_attach) {
   else if (is_abbrev(arg, "object") || is_abbrev(arg, "otr")) {
     object = get_obj_vis(ch, targ_name, NULL);
     if (!object) { /* search room for one with this vnum */
-      for (object = char_room_get(ch)->contents; object;
-           object = object->next_content)
-        if (GET_OBJ_VNUM(object) == num_arg)
-          break;
+      object = NULL;
+      room_contents_iterate(char_room_get(ch), [&](auto o) {
+        if (GET_OBJ_VNUM(o) == num_arg) {
+          object = o;
+          return false;
+        }
+        return true;
+      });
 
       if (!object) { /* search inventory for one with this vnum */
         for (object = ch->carrying; object; object = object->next_content)
@@ -1149,10 +1167,14 @@ ACMD(do_detach) {
     else if (is_abbrev(arg1, "object") || !strcasecmp(arg1, "otr")) {
       object = get_obj_vis(ch, arg2, NULL);
       if (!object) { /* search room for one with this vnum */
-        for (object = char_room_get(ch)->contents; object;
-             object = object->next_content)
-          if (GET_OBJ_VNUM(object) == num_arg)
-            break;
+        object = NULL;
+        room_contents_iterate(char_room_get(ch), [&](auto o) {
+          if (GET_OBJ_VNUM(o) == num_arg) {
+            object = o;
+            return false;
+          }
+          return true;
+        });
 
         if (!object) { /* search inventory for one with this vnum */
           for (object = ch->carrying; object; object = object->next_content)
@@ -1179,7 +1201,7 @@ ACMD(do_detach) {
       else if ((victim = get_char_room_vis(ch, arg1, NULL)))
         ;
       else if ((object = get_obj_in_list_vis(ch, arg1, NULL,
-                                             char_room_get(ch)->contents)))
+                                             room_contents_get(char_room_get(ch)))))
         ;
       else if ((victim = get_char_vis(ch, arg1, NULL, FIND_CHAR_WORLD)))
         ;
@@ -1973,7 +1995,7 @@ void makeuid_var(void *go, struct script_data *sc, trig_data *trig, int type,
             NULL)
           o = get_obj_in_list_vis(
               (struct char_data *)go, name, NULL,
-              char_room_get((struct char_data *)go)->contents);
+              room_contents_get(char_room_get((struct char_data *)go)));
         break;
       }
       if (o)

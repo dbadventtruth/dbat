@@ -376,7 +376,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         else if (char_room_get(ch) != NULL &&
                  (c = get_char_in_room(char_room_get(ch), name)))
           ;
-        else if ((o = get_obj_in_list(name, char_room_get(ch)->contents)))
+        else if ((o = get_obj_in_list(name, room_contents_get(char_room_get(ch)))))
           ;
         else if ((c = get_char(name)))
           ;
@@ -525,7 +525,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             strcpy(str, "0");
           } else {
             /* item_in_list looks within containers as well. */
-            snprintf(str, slen, "%d", item_in_list(subfield, room->contents));
+            snprintf(str, slen, "%d", item_in_list(subfield, room_contents_get(room)));
           }
         }
       } else if (!strcasecmp(var, "random")) {
@@ -1503,18 +1503,24 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         }
       } else if (!strcasecmp(field, "contents")) {
         if (subfield && *subfield) {
-          for (obj = r->contents; obj; obj = obj->next_content) {
-            if (GET_OBJ_VNUM(obj) == atoi(subfield)) {
-              /* arg given, found */
-              snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(obj));
+          {
+            int found = 0;
+            room_contents_iterate(r, [&](auto obj) {
+              if (GET_OBJ_VNUM(obj) == atoi(subfield)) {
+                /* arg given, found */
+                snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(obj));
+                found = 1;
+                return false;
+              }
+              return true;
+            });
+            if (found)
               return;
-            }
-          }
-          if (!obj)
             *str = '\0'; /* arg given, not found */
+          }
         } else {         /* no arg given */
-          if (r->contents) {
-            snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(r->contents));
+          if (auto contents = room_contents_get(r)) {
+            snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(contents));
           } else {
             *str = '\0';
           }
@@ -1522,8 +1528,8 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
       }
 
       else if (!strcasecmp(field, "people")) {
-        if (r->people)
-          snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(r->people));
+        if (auto people = room_people_get(r))
+          snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(people));
         else
           *str = '\0';
       } else if (!strcasecmp(field, "id")) {

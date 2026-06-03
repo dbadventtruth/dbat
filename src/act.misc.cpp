@@ -2677,11 +2677,9 @@ ACMD(do_scry) {
 }
 
 void ash_burn(struct char_data *ch) {
-  struct obj_data *obj, *next_obj;
 
   if (ch && char_room_get(ch) != NULL) {
-    for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       if (GET_OBJ_VNUM(obj) == 1306) {
         if (axion_dice(0) > GET_CON(ch)) {
           if (!IS_ANDROID(ch) && !IS_DEMON(ch) && !IS_ICER(ch)) {
@@ -2708,7 +2706,8 @@ void ash_burn(struct char_data *ch) {
           }
         }
       }
-    }
+      return true;
+    });
   }
 }
 
@@ -2741,12 +2740,12 @@ ACMD(do_ashcloud) {
 
   struct room_data *room = char_room_get(ch);
 
-  for (obj = room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 1306) {
       there = TRUE;
     }
-  }
+    return true;
+  });
 
   if (there == TRUE) {
     send_to_char(ch, "You can not pile more ash into the air without causing "
@@ -3900,14 +3899,14 @@ ACMD(do_bury) {
     return;
   }
 
-  struct obj_data *obj = NULL, *buried = NULL, *fobj = NULL, *next_obj;
+  struct obj_data *obj = NULL, *fobj = NULL;
 
-  for (buried = char_room_get(ch)->contents; buried; buried = next_obj) {
-    next_obj = buried->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto buried) {
     if (OBJ_FLAGGED(buried, ITEM_BURIED)) {
       fobj = buried;
     }
-  }
+    return true;
+  });
 
   if (!strcasecmp(arg, "bury")) {
     if (!*arg2) {
@@ -6283,7 +6282,6 @@ ACMD(do_obstruct) {
     improve_skill(ch, SKILL_HYOGA_KABE, 0);
     return;
   } else {
-    struct obj_data *obj;
     auto ex = EXIT(ch, dir);
     int newroom = ex->to_room;
     struct room_data *nrm = exit_dest_get(ex);
@@ -6293,7 +6291,8 @@ ACMD(do_obstruct) {
       return;
     }
 
-    for (obj = nrm->contents; obj; obj = obj->next_content) {
+    bool found_wall = false;
+    room_contents_iterate(nrm, [&](auto obj) {
       if (GET_OBJ_VNUM(obj) == 79) {
         if (GET_OBJ_COST(obj) == dir2) {
           if (skill < prob) {
@@ -6314,10 +6313,13 @@ ACMD(do_obstruct) {
             decCurKI(ch, cost / 2);
             extract_obj(obj);
           }
-          return;
+          found_wall = true;
+          return false;
         }
       }
-    }
+      return true;
+    });
+    if (found_wall) return;
 
     struct obj_data *obj2, *obj3;
 
@@ -6545,7 +6547,7 @@ ACMD(do_spoil) {
   }
 
   if (!(obj =
-            get_obj_in_list_vis(ch, arg, NULL, char_room_get(ch)->contents))) {
+            get_obj_in_list_vis(ch, arg, NULL, room_contents_get(char_room_get(ch))))) {
     send_to_char(ch, "No corpse around here by that name.\r\n");
     return;
   }

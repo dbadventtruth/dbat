@@ -2920,7 +2920,6 @@ void parry_ki(double attperc, struct char_data *ch, struct char_data *vict,
   char buf3[200];
   int foundv = FALSE, foundo = FALSE;
   int64_t dmg = 0;
-  struct obj_data *tob, *next_obj;
   struct char_data *tch;
   bool parry_hit = false;
 
@@ -2974,27 +2973,33 @@ void parry_ki(double attperc, struct char_data *ch, struct char_data *vict,
   if (parry_hit)
     return;
 
-  for (tob = char_room_get(ch)->contents; tob; tob = next_obj) {
-    next_obj = tob->next_content;
-    if (OBJ_FLAGGED(tob, ITEM_UNBREAKABLE))
-      continue;
-    if (foundo == TRUE)
-      continue;
-    if (rand_number(1, 101) >= 80) {
-      foundo = TRUE;
-      sprintf(buf,
-              "@WYou watch as the deflected %s slams into @g$p@W, exploding "
-              "with a roar of blinding light!@n",
-              sname);
-      sprintf(buf2,
-              "@c$n@W watches as the deflected %s slams into @g$p@W, exploding "
-              "with a roar of blinding light!@n",
-              sname);
-      act(buf, TRUE, vict, tob, 0, TO_CHAR);
-      act(buf2, TRUE, vict, tob, 0, TO_ROOM);
-      hurt(0, 0, ch, NULL, tob, 25, 1);
+  {
+    bool hit_obj = false;
+    room_contents_iterate(char_room_get(ch), [&](auto tob) {
+      if (OBJ_FLAGGED(tob, ITEM_UNBREAKABLE))
+        return true;
+      if (foundo == TRUE)
+        return true;
+      if (rand_number(1, 101) >= 80) {
+        foundo = TRUE;
+        sprintf(buf,
+                "@WYou watch as the deflected %s slams into @g$p@W, exploding "
+                "with a roar of blinding light!@n",
+                sname);
+        sprintf(buf2,
+                "@c$n@W watches as the deflected %s slams into @g$p@W, exploding "
+                "with a roar of blinding light!@n",
+                sname);
+        act(buf, TRUE, vict, tob, 0, TO_CHAR);
+        act(buf2, TRUE, vict, tob, 0, TO_ROOM);
+        hurt(0, 0, ch, NULL, tob, 25, 1);
+        hit_obj = true;
+        return false;
+      }
+      return true;
+    });
+    if (hit_obj)
       return;
-    }
   }
 
   if ((foundo == FALSE || foundv == FALSE) &&

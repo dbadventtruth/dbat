@@ -392,9 +392,7 @@ static void search_room(struct char_data *ch) {
     return true;
   });
 
-  struct obj_data *obj = NULL;
-
-  for (obj = char_room_get(ch)->contents; obj; obj = obj->next_content) {
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (OBJ_FLAGGED(obj, ITEM_BURIED) && perc * bonus > rand_number(50, 200)) {
       act("@YYou uncover @y$p@Y, which had been burried here.@n", TRUE, ch, obj,
           0, TO_CHAR);
@@ -403,7 +401,8 @@ static void search_room(struct char_data *ch) {
       REMOVE_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_BURIED);
       found++;
     }
-  }
+    return true;
+  });
   decCurSTPercent(ch, .001);
 
   if (found == 0) {
@@ -563,7 +562,7 @@ ACMD(do_table) {
   }
 
   if (!(obj =
-            get_obj_in_list_vis(ch, arg, NULL, char_room_get(ch)->contents))) {
+            get_obj_in_list_vis(ch, arg, NULL, room_contents_get(char_room_get(ch))))) {
     send_to_char(ch, "You don't see that table here.\r\n");
     return;
   }
@@ -657,10 +656,9 @@ ACMD(do_shuffle) {
     obj_to_room(obj2, room_by_id(48));
   }
   while (count > 0) {
-    for (obj2 = room_by_id(48)->contents; obj2; obj2 = next_obj) {
-      next_obj = obj2->next_content;
+    room_contents_iterate(room_by_id(48), [&](auto obj2) {
       if (!OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
-        continue;
+        return true;
       }
       if (obj2 && count > 1 && rand_number(1, 4) == 3) {
         count -= 1;
@@ -671,7 +669,8 @@ ACMD(do_shuffle) {
         obj_from_room(obj2);
         obj_to_obj(obj2, obj);
       }
-    }
+      return true;
+    });
   }
   send_to_char(ch, "You shuffle the cards carefully.\r\n");
   act("$n shuffles their deck.", TRUE, ch, 0, 0, TO_ROOM);
@@ -794,7 +793,7 @@ ACMD(do_post) {
     return;
   } else {
     if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL,
-                                     char_room_get(ch)->contents))) {
+                                     room_contents_get(char_room_get(ch))))) {
       send_to_char(
           ch, "You can't seem to find the thing you want to post it on.\r\n");
       return;
@@ -843,7 +842,7 @@ ACMD(do_play) {
     return;
   }
 
-  struct obj_data *obj = NULL, *obj2 = NULL, *obj3 = NULL, *next_obj = NULL;
+  struct obj_data *obj = NULL, *obj2 = NULL;
   char arg[MAX_INPUT_LENGTH];
   one_argument(argument, arg);
 
@@ -857,12 +856,12 @@ ACMD(do_play) {
     return;
   }
 
-  for (obj3 = char_room_get(ch)->contents; obj3; obj3 = next_obj) {
-    next_obj = obj3->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj3) {
     if (GET_OBJ_VNUM(obj3) == GET_OBJ_VNUM(SITS(ch)) - 4) {
       obj2 = obj3;
     }
-  }
+    return true;
+  });
 
   if (obj2 == NULL) {
     send_to_char(
@@ -902,16 +901,16 @@ ACMD(do_nickname) {
   }
 
   if (!strcasecmp(arg, "ship")) {
-    struct obj_data *ship = NULL, *next_obj = NULL, *ship2 = NULL;
+    struct obj_data *ship = NULL, *ship2 = NULL;
     int found = FALSE;
-    for (ship = char_room_get(ch)->contents; ship; ship = next_obj) {
-      next_obj = ship->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto ship) {
       if (GET_OBJ_VNUM(ship) >= 45000 && GET_OBJ_VNUM(ship) <= 45999 &&
           found == FALSE) {
         found = TRUE;
         ship2 = ship;
       }
-    }
+      return true;
+    });
     if (found == TRUE) {
       if (strstr(arg2, "@")) {
         send_to_char(
@@ -4813,12 +4812,14 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
       }
     }
     if (!obj) {
-      for (obj = char_room_get(ch)->contents; obj; obj = obj->next_content) {
-        if (GET_OBJ_TYPE(obj) == ITEM_BOARD) {
+      room_contents_iterate(char_room_get(ch), [&](auto content) {
+        if (GET_OBJ_TYPE(content) == ITEM_BOARD) {
           found = TRUE;
-          break;
+          obj = content;
+          return false;
         }
-      }
+        return true;
+      });
     }
     if (obj) {
       arg = one_argument(arg, number);
@@ -4931,8 +4932,8 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
     }
 
     /* Does the argument match an extra desc of an object in the room? */
-    for (obj = char_room_get(ch)->contents; obj && !found;
-         obj = obj->next_content)
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
+      if (found) return true;
       if (CAN_SEE_OBJ(ch, obj))
         if ((desc = find_exdesc(arg, obj->ex_description)) != NULL &&
             ++i == fnum) {
@@ -4974,7 +4975,10 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
                          add_commas(GET_OBJ_WEIGHT(obj)));
           }
           found = TRUE;
+          return false;
         }
+      return true;
+    });
 
     /* If an object was found back in generic_find */
     if (bits) {
@@ -5013,11 +5017,12 @@ static void look_out_window(struct char_data *ch, char *arg) {
     return;
   } else {
     /* Look for any old window in the room */
-    for (i = char_room_get(ch)->contents; i; i = i->next_content)
+    room_contents_iterate(char_room_get(ch), [&](auto i) {
       if ((GET_OBJ_TYPE(i) == ITEM_WINDOW) && isname("window", i->name)) {
         viewport = i;
-        continue;
       }
+      return true;
+    });
   }
   if (!viewport) {
     /* Nothing suitable to look through */
@@ -5318,7 +5323,7 @@ ACMD(do_look) {
   else if (IS_DARK(char_room_get(ch)) && !CAN_SEE_IN_DARK(ch) &&
            !PLR_FLAGGED(ch, PLR_AURALIGHT)) {
     send_to_char(ch, "It is pitch black...\r\n");
-    list_char_to_char(char_room_get(ch)->people, ch); /* glowing red eyes */
+    list_char_to_char(room_people_get(char_room_get(ch)), ch); /* glowing red eyes */
   } else {
     char arg[MAX_INPUT_LENGTH], arg2[200];
 
@@ -8377,8 +8382,8 @@ ACMD(do_scan) {
                      CCNRM(ch, C_NRM));
         send_to_char(ch, "@W          -----------------          @n\r\n");
 
-        list_obj_to_char(nrm->contents, ch, SHOW_OBJ_LONG, FALSE);
-        list_char_to_char(nrm->people, ch);
+        list_obj_to_char(room_contents_get(nrm), ch, SHOW_OBJ_LONG, FALSE);
+        list_char_to_char(room_people_get(nrm), ch);
         if (room_geffect_get(nrm) >= 1 && room_geffect_get(nrm) <= 5) {
           send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");
         }
@@ -8403,8 +8408,8 @@ ACMD(do_scan) {
                            CCNRM(ch, C_NRM));
               send_to_char(ch, "@W          -----------------          @n\r\n");
 
-              list_obj_to_char(nrm->contents, ch, SHOW_OBJ_LONG, FALSE);
-              list_char_to_char(nrm->people, ch);
+              list_obj_to_char(room_contents_get(nrm), ch, SHOW_OBJ_LONG, FALSE);
+              list_char_to_char(room_people_get(nrm), ch);
               if (room_geffect_get(nrm) >= 1 && room_geffect_get(nrm) <= 5) {
                 send_to_char(ch,
                              "@rLava@w is pooling in someplaces here...@n\r\n");

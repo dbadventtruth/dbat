@@ -5,6 +5,7 @@
 #include "techniques.h"
 
 #include "character_api.h"
+#include "room_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
@@ -19,7 +20,7 @@
 #include "consts/sex.h"
 #include "flags.h"
 #include "random.h"
-#include "room_impl.h"
+//#include "room_impl.h"
 #include "search.h"
 #include "spells.h"
 
@@ -115,7 +116,7 @@ bool tech_handle_targeting(char_data *ch, char *arg, char_data **vict,
       *vict = FIGHTING(ch);
       return true;
     } else if (!(*obj = get_obj_in_list_vis(ch, arg, nullptr,
-                                            char_room_get(ch)->contents))) {
+                                            room_contents_get(char_room_get(ch))))) {
       send_to_char(ch, "Nothing around here by that name.\r\n");
       return false;
     }

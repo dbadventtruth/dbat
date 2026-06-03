@@ -71,21 +71,23 @@ SPECIAL(dump) {
   struct obj_data *k;
   int value = 0;
 
-  for (k = char_room_get(ch)->contents; k; k = char_room_get(ch)->contents) {
+  room_contents_iterate(char_room_get(ch), [&](auto k) {
     act("$p vanishes in a puff of smoke!", FALSE, 0, k, 0, TO_ROOM);
     extract_obj(k);
-  }
+    return true;
+  });
 
   if (!CMD_IS("drop"))
     return (FALSE);
 
   do_drop(ch, argument, cmd, SCMD_DROP);
 
-  for (k = char_room_get(ch)->contents; k; k = char_room_get(ch)->contents) {
+  room_contents_iterate(char_room_get(ch), [&](auto k) {
     act("$p vanishes in a puff of smoke!", FALSE, 0, k, 0, TO_ROOM);
     value += MAX(1, MIN(50, GET_OBJ_COST(k) / 10));
     extract_obj(k);
-  }
+    return true;
+  });
 
   if (value) {
     send_to_char(ch, "You are awarded for outstanding performance.\r\n");
@@ -143,7 +145,7 @@ bool check_obj_in_room(obj_vnum obj, room_vnum room) {
   bool found = FALSE;
   struct room_data *r_room = room_by_id(room);
 
-  list = r_room->contents;
+  list = room_contents_get(r_room);
 
   for (i = list; i; i = i->next_content) {
     if (GET_OBJ_VNUM(i) == obj)
@@ -212,15 +214,20 @@ SPECIAL(janitor) {
   if (cmd || !AWAKE(ch))
     return (FALSE);
 
-  for (i = char_room_get(ch)->contents; i; i = i->next_content) {
-    if (!CAN_WEAR(i, ITEM_WEAR_TAKE))
-      continue;
-    if (GET_OBJ_TYPE(i) == ITEM_DRINKCON || GET_OBJ_COST(i) >= 100)
-      continue;
-    act("$n picks up some trash.", FALSE, ch, 0, 0, TO_ROOM);
-    obj_from_room(i);
-    obj_to_char(i, ch);
-    return (TRUE);
+  {
+    bool found = false;
+    room_contents_iterate(char_room_get(ch), [&](auto i) {
+      if (!CAN_WEAR(i, ITEM_WEAR_TAKE))
+        return true;
+      if (GET_OBJ_TYPE(i) == ITEM_DRINKCON || GET_OBJ_COST(i) >= 100)
+        return true;
+      act("$n picks up some trash.", FALSE, ch, 0, 0, TO_ROOM);
+      obj_from_room(i);
+      obj_to_char(i, ch);
+      found = true;
+      return false;
+    });
+    if (found) return (TRUE);
   }
 
   return (FALSE);
@@ -237,8 +244,7 @@ SPECIAL(auction) {
 
   if (CMD_IS("cancel")) {
 
-    for (obj = auct_room->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(auct_room, [&](auto obj) {
       if (obj && GET_AUCTER(obj) == GET_ID(ch)) {
         obj2 = obj;
         found = TRUE;
@@ -255,7 +261,7 @@ SPECIAL(auction) {
                        "minute%s.\r\n",
                        day, day > 1 ? "s" : "", hour, hour > 1 ? "s" : "", minu,
                        minu > 1 ? "s" : "");
-          continue;
+          return true;
         }
 
         send_to_char(
@@ -281,7 +287,8 @@ SPECIAL(auction) {
         obj_to_char(obj2, ch);
         auc_save();
       }
-    }
+      return true;
+    });
 
     if (found == FALSE) {
       send_to_char(ch, "There are no items being auctioned by you.\r\n");
@@ -292,14 +299,13 @@ SPECIAL(auction) {
     struct descriptor_data *d;
     int founded = FALSE;
 
-    for (obj = auct_room->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(auct_room, [&](auto obj) {
       if (obj && GET_CURBID(obj) == GET_ID(ch)) {
         obj2 = obj;
         found = TRUE;
 
         if (GET_AUCTER(obj) <= 0) {
-          continue;
+          return true;
         }
 
         if (GET_BID(obj2) > GET_GOLD(ch)) {
@@ -307,7 +313,7 @@ SPECIAL(auction) {
               ch,
               "Unable to purchase %s, you don't have enough money on hand.\r\n",
               obj2->short_description);
-          continue;
+          return true;
         }
 
         if (GET_AUCTIME(obj2) + 86400 > time(0)) {
@@ -319,7 +325,7 @@ SPECIAL(auction) {
                        "hours. %d hour%s and %d minute%s remain.\r\n",
                        obj2->short_description, hour, hour > 1 ? "s" : "", minu,
                        minu > 1 ? "s" : "");
-          continue;
+          return true;
         }
 
         char_stat_mod(ch, "money", -GET_BID(obj2));
@@ -364,7 +370,7 @@ SPECIAL(auction) {
             is_file = TRUE;
           } else {
             free_char(vict);
-            continue;
+            return true;
           }
           char_stat_mod(vict, "money_bank", GET_BID(obj2));
 
@@ -374,7 +380,8 @@ SPECIAL(auction) {
             free_char(vict);
         }
       }
-    }
+      return true;
+    });
 
     if (found == FALSE) {
       send_to_char(ch, "There are no items that you have bid on.\r\n");
@@ -464,13 +471,12 @@ SPECIAL(healtank) {
   char arg[MAX_INPUT_LENGTH];
   one_argument(argument, arg);
 
-  for (i = char_room_get(ch)->contents; i; i = i->next_content) {
+  room_contents_iterate(char_room_get(ch), [&](auto i) {
     if (GET_OBJ_VNUM(i) == 65) {
       htank = i;
-    } else {
-      continue;
     }
-  }
+    return true;
+  });
 
   if (CMD_IS("htank")) {
     if (!htank) {
@@ -746,13 +752,12 @@ SPECIAL(gravity) {
   int match = FALSE;
 
   one_argument(argument, arg);
-  for (i = char_room_get(ch)->contents; i; i = i->next_content) {
+  room_contents_iterate(char_room_get(ch), [&](auto i) {
     if (GET_OBJ_VNUM(i) == 11) {
       obj = i;
-    } else {
-      continue;
     }
-  }
+    return true;
+  });
   if (CMD_IS("gravity") || CMD_IS("generator")) {
     if (!*arg) {
       send_to_char(ch, "@WGravity Commands:@n\r\n");
@@ -1078,13 +1083,12 @@ SPECIAL(bank) {
 
   struct obj_data *i, *obj = NULL;
 
-  for (i = char_room_get(ch)->contents; i; i = i->next_content) {
+  room_contents_iterate(char_room_get(ch), [&](auto i) {
     if (GET_OBJ_VNUM(i) == 3034) {
       obj = i;
-    } else {
-      continue;
     }
-  }
+    return true;
+  });
 
   if (CMD_IS("balance")) {
     if (OBJ_FLAGGED(obj, ITEM_BROKEN)) {

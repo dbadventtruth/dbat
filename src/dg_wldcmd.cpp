@@ -90,7 +90,7 @@ void wld_log(room_data *room, const char *format, ...) {
 /* sends str to room */
 void act_to_room(char *str, room_data *room) {
   /* no one is in the room */
-  if (!room->people)
+  if (!room_people_get(room))
     return;
 
   /*
@@ -98,8 +98,8 @@ void act_to_room(char *str, room_data *room) {
    * TO_ROOM and TO_CHAR for some char in the room.
    * (just dont use $n or you might get strange results)
    */
-  act(str, FALSE, room->people, 0, 0, TO_ROOM);
-  act(str, FALSE, room->people, 0, 0, TO_CHAR);
+  act(str, FALSE, room_people_get(room), 0, 0, TO_ROOM);
+  act(str, FALSE, room_people_get(room), 0, 0, TO_CHAR);
 }
 
 /* World commands */
@@ -422,7 +422,7 @@ WCMD(do_wforce) {
 WCMD(do_wpurge) {
   char arg[MAX_INPUT_LENGTH];
   char_data *ch, *next_ch;
-  obj_data *obj, *next_obj;
+  obj_data *obj;
 
   one_argument(argument, arg);
 
@@ -434,10 +434,10 @@ WCMD(do_wpurge) {
       return true;
     });
 
-    for (obj = room->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(room, [&](auto obj) {
       extract_obj(obj);
-    }
+      return true;
+    });
 
     return;
   }

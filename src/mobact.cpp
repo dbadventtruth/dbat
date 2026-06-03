@@ -185,14 +185,16 @@ void mobile_activity(void) {
     if (IS_HUMANOID(ch) && !FIGHTING(ch) && AWAKE(ch) &&
         !MOB_FLAGGED(ch, MOB_NOSCAVENGER) && !MOB_FLAGGED(ch, MOB_NOKILL) &&
         (!player_present(ch) || axion_dice(0) > 118))
-      if (char_room_get(ch)->contents && rand_number(1, 100) >= 95) {
+      if (room_contents_get(char_room_get(ch)) && rand_number(1, 100) >= 95) {
         max = 1;
         best_obj = NULL;
-        for (obj = char_room_get(ch)->contents; obj; obj = obj->next_content)
+        room_contents_iterate(char_room_get(ch), [&](auto obj) {
           if (CAN_GET_OBJ(ch, obj) && GET_OBJ_COST(obj) > max) {
             best_obj = obj;
             max = GET_OBJ_COST(obj);
           }
+          return true;
+        });
         if (best_obj != NULL && CAN_GET_OBJ(ch, best_obj) &&
             GET_OBJ_TYPE(best_obj) != ITEM_BED && !GET_OBJ_POSTED(best_obj) &&
             !OBJ_FLAGGED(best_obj, ITEM_NOPICKUP)) {
@@ -239,14 +241,12 @@ void mobile_activity(void) {
     }
 
     /* RESPOND TO A HUGE ATTACK */
-    struct obj_data *hugeatk = NULL, *next_huge = NULL;
-    for (hugeatk = char_room_get(ch)->contents; hugeatk; hugeatk = next_huge) {
-      next_huge = hugeatk->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto hugeatk) {
       if (FIGHTING(ch)) {
-        continue;
+        return true;
       }
       if (MOB_FLAGGED(ch, MOB_NOKILL)) {
-        continue;
+        return true;
       }
       if (GET_OBJ_VNUM(hugeatk) == 82 || GET_OBJ_VNUM(hugeatk) == 83) {
         if (USER(hugeatk) != NULL) {
@@ -265,7 +265,8 @@ void mobile_activity(void) {
           }
         }
       }
-    }
+      return true;
+    });
 
     /* Aggressive Mobs */
     if (MOB_FLAGGED(ch, MOB_AGGRESSIVE) && !IS_AFFECTED(ch, AFF_PARALYZE)) {

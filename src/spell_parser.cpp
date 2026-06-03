@@ -660,7 +660,7 @@ ACMD(do_cast) {
     }
     if (!target && IS_SET(SINFO.targets, TAR_OBJ_ROOM))
       if ((tobj = get_obj_in_list_vis(ch, t, NULL,
-                                      char_room_get(ch)->contents)) != NULL)
+                                      room_contents_get(char_room_get(ch)))) != NULL)
         target = TRUE;
 
     if (!target && IS_SET(SINFO.targets, TAR_OBJ_WORLD))

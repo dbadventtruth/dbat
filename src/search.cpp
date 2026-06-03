@@ -356,7 +356,7 @@ struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number) {
 
   /* scan room */
   if ((i = get_obj_in_list_vis(ch, name, number,
-                               char_room_get(ch)->contents)) != NULL)
+                               room_contents_get(char_room_get(ch)))) != NULL)
     return (i);
 
   /* ok.. no luck yet. scan the entire obj list   */
@@ -486,7 +486,7 @@ int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
 
   if (IS_SET(bitvector, FIND_OBJ_ROOM)) {
     if ((*tar_obj = get_obj_in_list_vis(ch, name, &number,
-                                        char_room_get(ch)->contents)) != NULL)
+                                        room_contents_get(char_room_get(ch)))) != NULL)
       return (FIND_OBJ_ROOM);
   }
 

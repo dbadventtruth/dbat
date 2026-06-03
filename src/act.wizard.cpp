@@ -1454,13 +1454,14 @@ static void do_stat_room(struct char_data *ch) {
     return true;
   });
 
-  if (rm->contents) {
+  if (room_contents_get(rm)) {
     send_to_char(ch, "Contents:@g");
     column = 9; /* ^^^ strlen ^^^ */
 
-    for (found = 0, j = rm->contents; j; j = j->next_content) {
+    found = 0;
+    room_contents_iterate(rm, [&](auto j) {
       if (!CAN_SEE_OBJ(ch, j))
-        continue;
+        return true;
 
       column +=
           send_to_char(ch, "%s %s", found++ ? "," : "", j->short_description);
@@ -1469,7 +1470,8 @@ static void do_stat_room(struct char_data *ch) {
         found = FALSE;
         column = 0;
       }
-    }
+      return true;
+    });
     send_to_char(ch, "@n");
   }
 
@@ -2099,7 +2101,7 @@ ACMD(do_stat) {
     else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_ROOM)) != NULL)
       do_stat_character(ch, victim);
     else if ((object = get_obj_in_list_vis(
-                  ch, name, &number, char_room_get(ch)->contents)) != NULL)
+                  ch, name, &number, room_contents_get(char_room_get(ch)))) != NULL)
       do_stat_object(ch, object);
     else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_WORLD)) !=
              NULL)
@@ -2430,7 +2432,7 @@ ACMD(do_purge) {
       }
       extract_char(vict);
     } else if ((obj = get_obj_in_list_vis(
-                    ch, buf, NULL, char_room_get(ch)->contents)) != NULL) {
+                    ch, buf, NULL, room_contents_get(char_room_get(ch)))) != NULL) {
       act("$n destroys $p.", FALSE, ch, obj, 0, TO_ROOM);
       extract_obj(obj);
     } else {
@@ -2467,8 +2469,8 @@ ACMD(do_purge) {
     });
 
     /* Clear the ground. */
-    while (char_room_get(ch)->contents)
-      extract_obj(char_room_get(ch)->contents);
+    while (room_contents_get(char_room_get(ch)))
+      extract_obj(room_contents_get(char_room_get(ch)));
   }
 }
 
@@ -4931,10 +4933,10 @@ ACMD(do_zpurge) {
         return true;
       });
 
-      for (obj = roomp->contents; obj; obj = next_obj) {
-        next_obj = obj->next_content;
+      room_contents_iterate(roomp, [&](auto obj) {
         extract_obj(obj);
-      }
+        return true;
+      });
     }
   }
 

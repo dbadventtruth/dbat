@@ -56,7 +56,7 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   if (room_vnum_get(rm) == 80) {
     auc_load(object);
   }
-  object->next_content = rm->contents;
+  object->next_content = room_contents_get(rm);
   rm->contents = object;
   IN_ROOM(object) = room_vnum_get(rm);
   object->carried_by = NULL;
@@ -174,7 +174,10 @@ void obj_from_room(struct obj_data *object) {
     GET_OBJ_POSTTYPE(object) = 0;
   }
 
-  REMOVE_FROM_LIST(object, rm->contents, next_content, temp);
+  {
+    auto contents = room_contents_get(rm);
+    REMOVE_FROM_LIST(object, contents, next_content, temp);
+  }
 
   if (room_flagged(rm, ROOM_HOUSE))
     room_flag_set(rm, ROOM_HOUSE_CRASH, TRUE);
@@ -275,7 +278,10 @@ void char_from_room(struct char_data *ch) {
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     char_room_get(ch)->light--;
 
-  REMOVE_FROM_LIST(ch, char_room_get(ch)->people, next_in_room, temp);
+  {
+    auto people = room_people_get(char_room_get(ch));
+    REMOVE_FROM_LIST(ch, people, next_in_room, temp);
+  }
   IN_ROOM(ch) = NOWHERE;
   ch->next_in_room = NULL;
 }
@@ -290,7 +296,7 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   }
 
   struct room_data *rm = room;
-  ch->next_in_room = rm->people;
+  ch->next_in_room = room_people_get(rm);
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
 

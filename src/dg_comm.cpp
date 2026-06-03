@@ -191,7 +191,7 @@ void sub_write(char *arg, struct char_data *ch, int8_t find_invis,
       if (find_invis)
         obj = get_obj_in_room(char_room_get(ch), name);
       else if (!(obj = get_obj_in_list_vis(ch, name, NULL,
-                                           char_room_get(ch)->contents)))
+                                           room_contents_get(char_room_get(ch)))))
         ;
       else if (!(obj = get_obj_in_equip_vis(ch, name, &tmp, ch->equipment)))
         ;

@@ -1101,13 +1101,13 @@ void dispel_ash(struct char_data *ch) {
   struct obj_data *obj, *next_obj, *ash = nullptr;
   int there = FALSE;
 
-  for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 1306) {
       there = TRUE;
       ash = obj;
     }
-  }
+    return true;
+  });
 
   if (ash) {
     int roll = axion_dice(0);
@@ -3763,17 +3763,16 @@ int planet_check(struct char_data *ch, struct char_data *vict) {
 void purge_homing(struct char_data *ch) {
 
   struct obj_data *obj = NULL, *next_obj = NULL;
-  for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 80 || GET_OBJ_VNUM(obj) == 81) {
       if (TARGET(obj) == ch || USER(obj) == ch) {
         act("$p @wloses its target and flies off into the distance.@n", TRUE, 0,
             obj, 0, TO_ROOM);
         extract_obj(obj);
-        continue;
       }
     }
-  }
+    return true;
+  });
 }
 
 void improve_skill(struct char_data *ch, int skill, int num) {

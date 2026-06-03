@@ -1477,7 +1477,7 @@ ACMD(do_write) {
   char *papername, *penname;
   char buf1[MAX_STRING_LENGTH], buf2[MAX_STRING_LENGTH];
   if (!(obj = char_inventory_search_type(ch, ITEM_BOARD, FALSE, 0))) {
-    obj = obj_contents_search_type(char_room_get(ch)->contents, ITEM_BOARD,
+    obj = obj_contents_search_type(room_contents_get(char_room_get(ch)), ITEM_BOARD,
                                    FALSE, 0);
   }
 
@@ -1826,7 +1826,7 @@ ACMD(do_respond) {
   }
 
   if (!(obj = char_inventory_search_type(ch, ITEM_BOARD, FALSE, 0))) {
-    if (!(obj = obj_contents_search_type(char_room_get(ch)->contents,
+    if (!(obj = obj_contents_search_type(room_contents_get(char_room_get(ch)),
                                          ITEM_BOARD, FALSE, 0))) {
       send_to_char(
           ch, "Sorry, you may only reply to messages posted on a board.\r\n");

@@ -13306,7 +13306,7 @@ ACMD(do_bite) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           char_room_get(ch)->contents))) {
+                                           room_contents_get(char_room_get(ch))))) {
       return;
     }
   }
@@ -17106,13 +17106,12 @@ ACMD(do_flee) {
 
   if (!IS_NPC(ch)) {
     int fail = FALSE;
-    struct obj_data *obj, *next_obj;
-    for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       if (KICHARGE(obj) > 0 && USER(obj) == ch) {
         fail = TRUE;
       }
-    }
+      return true;
+    });
     if (fail == TRUE) {
       send_to_char(ch, "You are too busy controlling your attack!\r\n");
       return;
@@ -17142,16 +17141,19 @@ ACMD(do_flee) {
       }
       was_fighting = FIGHTING(ch);
 
-      struct obj_data *wall;
-      for (wall = char_room_get(ch)->contents; wall;
-           wall = wall->next_content) {
-        if (GET_OBJ_VNUM(wall) == 79) {
-          if (GET_OBJ_COST(wall) == attempt) {
-            send_to_char(ch,
-                         "That direction has a glacial wall blocking it.\r\n");
-            return;
+      {
+        bool hit_wall = false;
+        room_contents_iterate(char_room_get(ch), [&](auto wall) {
+          if (GET_OBJ_VNUM(wall) == 79) {
+            if (GET_OBJ_COST(wall) == attempt) {
+              hit_wall = true;
+              return false;
+            }
           }
-        }
+          return true;
+        });
+        if (hit_wall)
+          return;
       }
 
       if (!block_calc(ch)) {

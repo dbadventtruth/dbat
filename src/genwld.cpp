@@ -55,8 +55,8 @@ room_vnum add_room(struct room_data *room) {
   if (auto irm = room_by_id(room->number)) {
     if (SCRIPT(irm))
       extract_script(irm, WLD_TRIGGER);
-    tch = irm->people;
-    tobj = irm->contents;
+    tch = room_people_get(irm);
+    tobj = room_contents_get(irm);
     copy_room(irm, room);
     irm->people = tch;
     irm->contents = tobj;
@@ -101,11 +101,11 @@ int delete_room(room_vnum vnum) {
    * Dump the contents of this room into the Void.  We could also just
    * extract the people, mobs, and objects here.
    */
-  for (obj = room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     obj_from_room(obj);
     obj_to_room(obj, 0);
-  }
+    return true;
+  });
   room_people_iterate(room, [&](auto ppl) {
     char_from_room(ppl);
     char_to_room(ppl, 0);

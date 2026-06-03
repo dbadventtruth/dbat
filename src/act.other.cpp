@@ -9098,7 +9098,7 @@ ACMD(do_meditate) {
       return;
     }
   } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                         char_room_get(ch)->contents))) {
+                                         room_contents_get(char_room_get(ch))))) {
     send_to_char(ch, "Syntax: meditate (object)\nSyntax: meditate "
                      "expand\nSyntax: meditate break\r\n");
     return;

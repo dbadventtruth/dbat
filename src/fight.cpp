@@ -253,14 +253,20 @@ static int pick_n_throw(struct char_data *ch, char *buf) {
     return (FALSE);
   }
 
-  for (cont = char_room_get(ch)->contents; cont; cont = cont->next_content) {
-    if (GET_OBJ_WEIGHT(cont) <= CAN_CARRY_W(ch) + IS_CARRYING_W(ch)) {
-      sprintf(buf2, "%s", cont->name);
-      do_get(ch, buf2, 0, 0);
-      sprintf(buf3, "%s %s", buf2, buf);
-      do_throw(ch, buf3, 0, 0);
-      return (TRUE);
-    }
+  {
+    bool thrown = false;
+    room_contents_iterate(char_room_get(ch), [&](auto cont) {
+      if (GET_OBJ_WEIGHT(cont) <= CAN_CARRY_W(ch) + IS_CARRYING_W(ch)) {
+        sprintf(buf2, "%s", cont->name);
+        do_get(ch, buf2, 0, 0);
+        sprintf(buf3, "%s %s", buf2, buf);
+        do_throw(ch, buf3, 0, 0);
+        thrown = true;
+        return false;
+      }
+      return true;
+    });
+    if (thrown) return (TRUE);
   }
 
   return (FALSE);

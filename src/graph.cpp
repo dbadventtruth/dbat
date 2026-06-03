@@ -376,10 +376,9 @@ ACMD(do_radar) {
         TO_ROOM);
     while (num < 20000) {
       if (room_by_id(room)) {
-        for (obj = room_by_id(room)->contents; obj; obj = next_obj) {
-          next_obj = obj->next_content;
+        room_contents_iterate(room_by_id(room), [&](auto obj) {
           if (OBJ_FLAGGED(obj, ITEM_FORGED)) {
-            continue;
+            return true;
           } else if (GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 ||
                      GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 ||
                      GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 ||
@@ -411,7 +410,8 @@ ACMD(do_radar) {
             }
             found = TRUE;
           }
-        }
+          return true;
+        });
         room_people_iterate(room_by_id(room), [&](auto tch) {
           if (tch == ch) {
             return true;

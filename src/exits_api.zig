@@ -33,6 +33,22 @@ pub export fn exit_info_set(exit: *cdb.room_direction_data, info: i16) void {
     exit.exit_info = info;
 }
 
+pub export fn exit_flagged(exit: *cdb.room_direction_data, pos: i16) bool {
+    return (exit.exit_info & pos) != 0;
+}
+
+pub export fn exit_flag_toggle(exit: *cdb.room_direction_data, pos: i16) bool {
+    exit.exit_info ^= pos;
+    return (exit.exit_info & pos) != 0;
+}
+
+pub export fn exit_flag_set(exit: *cdb.room_direction_data, pos: i16, value: bool) void {
+    if (value)
+        exit.exit_info |= pos
+    else
+        exit.exit_info &= ~pos;
+}
+
 pub export fn exit_key_get(exit: *cdb.room_direction_data) cdb.obj_vnum {
     return exit.key;
 }

@@ -46,7 +46,6 @@
 #include "relocate.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "room_macros.h"
 #include "room_utils.h"
 #include "search.h"
@@ -430,7 +429,7 @@ struct obj_data *find_control(struct char_data *ch) {
   struct obj_data *controls, *obj;
   int j;
 
-  controls = get_obj_in_list_type(ITEM_CONTROL, char_room_get(ch)->contents);
+  controls = get_obj_in_list_type(ITEM_CONTROL, room_contents_get(char_room_get(ch)));
   if (!controls)
     for (obj = ch->carrying; obj && !controls; obj = obj->next_content)
       if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_TYPE(obj) == ITEM_CONTROL)
@@ -453,7 +452,7 @@ static void drive_into_vehicle(struct char_data *ch, struct obj_data *vehicle,
   if (!*arg) {
     send_to_char(ch, "@wDrive into what?\r\n");
   } else if (!(vehicle_in_out = get_obj_in_list_vis(
-                   ch, arg, NULL, obj_room_get(vehicle)->contents))) {
+                   ch, arg, NULL, room_contents_get(obj_room_get(vehicle))))) {
     send_to_char(ch, "@wNothing here by that name!\r\n");
   } else if (GET_OBJ_TYPE(vehicle_in_out) != ITEM_VEHICLE) {
     send_to_char(ch, "@wThat's not a ship.\r\n");
@@ -489,7 +488,7 @@ static void drive_outof_vehicle(struct char_data *ch,
   char buf[MAX_INPUT_LENGTH];
 
   if (!(hatch = get_obj_in_list_type(ITEM_HATCH,
-                                     obj_room_get(vehicle)->contents))) {
+                                     room_contents_get(obj_room_get(vehicle))))) {
     send_to_char(ch, "@wNowhere to pilot out of.\r\n");
   } else if (!(vehicle_in_out = find_vehicle_by_vnum(GET_OBJ_VAL(hatch, 0)))) {
     send_to_char(ch, "@wYou can't pilot out anywhere!\r\n");
@@ -528,19 +527,26 @@ void drive_in_direction(struct char_data *ch, struct obj_data *vehicle,
   char buf[MAX_INPUT_LENGTH];
 
   auto exit = obj_exit_dir(vehicle, dir);
-
-  if (!exit || exit->to_room == NOWHERE) {
+  if(!exit) {
     send_to_char(ch, "@wApparently %s doesn't exist there.\r\n", dirs[dir]);
-  } else if (IS_SET(exit->exit_info, EX_CLOSED)) {
+    return;
+  }
+  auto dest = exit_dest_get(exit);
+  if(!dest) {
+    send_to_char(ch, "@wApparently %s doesn't exist there.\r\n", dirs[dir]);
+    return;
+  }
+
+  if (exit_flagged(exit, EX_CLOSED)) {
     /* But the door is closed */
-    if (exit->keyword)
+    if (auto kw = exit_keyword_get(exit))
       send_to_char(ch, "@wThe %s seems to be closed.\r\n",
-                   fname(obj_exit_dir(vehicle, dir)->keyword));
+                   fname(kw));
     else
       send_to_char(ch, "@wIt seems to be closed.\r\n");
 
-  } else if (!room_flagged(exit_dest_get(exit), ROOM_VEHICLE) &&
-             !room_flagged(exit_dest_get(exit), ROOM_SPACE)) {
+  } else if (!room_flagged(dest, ROOM_VEHICLE) &&
+             !room_flagged(dest, ROOM_SPACE)) {
     /* But the vehicle can't go that way*/
     send_to_char(ch, "@wThe ship can't fit there!\r\n");
   } else {
@@ -552,7 +558,7 @@ void drive_in_direction(struct char_data *ch, struct obj_data *vehicle,
 
     was_in = obj_room_get(vehicle);
     obj_from_room(vehicle);
-    obj_to_room(vehicle, exit_dest_get(was_in->dir_option[dir]));
+    obj_to_room(vehicle, exit_dest_get(room_dir_option_get(was_in, dir)));
     struct obj_data *controls;
     if ((controls = find_control(ch))) {
       if (GET_FUELCOUNT(controls) < 5) {
@@ -566,14 +572,12 @@ void drive_in_direction(struct char_data *ch, struct obj_data *vehicle,
       }
     }
 
-    struct obj_data *hatch = NULL;
-
-    for (hatch = room_by_id(GET_OBJ_VAL(vehicle, 0))->contents; hatch;
-         hatch = hatch->next_content) {
+    room_contents_iterate(room_by_id(GET_OBJ_VAL(vehicle, 0)), [&](auto hatch) {
       if (GET_OBJ_TYPE(hatch) == ITEM_HATCH) {
         GET_OBJ_VAL(hatch, 3) = obj_room_vnum_get(vehicle);
       }
-    }
+      return true;
+    });
 
     is_in = obj_room_get(vehicle);
 
@@ -1677,11 +1681,10 @@ ACMD(do_ship_fire) {
     return;
   }
 
-  struct obj_data *obj = NULL, *obj2 = NULL, *next_obj = NULL;
+  struct obj_data *obj2 = NULL;
   int shot = FALSE;
 
-  for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (shot == FALSE) {
       if (GET_OBJ_TYPE(obj) == ITEM_VEHICLE && obj != vehicle) {
         if (!strcasecmp(arg1, obj->name)) {
@@ -1690,5 +1693,6 @@ ACMD(do_ship_fire) {
         }
       }
     }
-  }
+    return true;
+  });
 }

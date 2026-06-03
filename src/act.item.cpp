@@ -23,6 +23,7 @@
 
 #include "affect.h"
 #include "extract.h"
+#include "iterate.hpp"
 #include "interpreter.h"
 #include "random.h"
 #include "relocate.h"
@@ -524,7 +525,7 @@ ACMD(do_garden) {
       return;
     }
   } else {
-    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, room->contents))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, room_contents_get(room)))) {
       send_to_char(ch, "That plant doesn't seem to be here.\r\n");
       return;
     }
@@ -811,7 +812,7 @@ ACMD(do_pack) {
   }
 
   if (!(obj =
-            get_obj_in_list_vis(ch, arg, NULL, char_room_get(ch)->contents))) {
+            get_obj_in_list_vis(ch, arg, NULL, room_contents_get(char_room_get(ch))))) {
     send_to_char(ch, "That house item doesn't seem to be around.\r\n");
     return;
   } else {
@@ -873,8 +874,8 @@ ACMD(do_pack) {
           }
           money = 65000;
           while (count < 4) {
-            while (room_by_id(rnum)->contents)
-              extract_obj(room_by_id(rnum)->contents);
+            while (room_contents_get(room_by_id(rnum)))
+              extract_obj(room_contents_get(room_by_id(rnum)));
             count++;
             rnum++;
           }
@@ -882,8 +883,8 @@ ACMD(do_pack) {
           rnum = rnum - 1;
           money = 150000;
           while (count < 4) {
-            while (room_by_id(rnum)->contents)
-              extract_obj(room_by_id(rnum)->contents);
+            while (room_contents_get(room_by_id(rnum)))
+              extract_obj(room_contents_get(room_by_id(rnum)));
             count++;
             rnum++;
           }
@@ -891,8 +892,8 @@ ACMD(do_pack) {
           rnum = rnum - 1;
           money = 1000000;
           while (count < 4) {
-            while (room_by_id(rnum)->contents)
-              extract_obj(room_by_id(rnum)->contents);
+            while (room_contents_get(room_by_id(rnum)))
+              extract_obj(room_contents_get(room_by_id(rnum)));
             count++;
             rnum++;
           }
@@ -953,13 +954,13 @@ int check_saveroom_count(struct char_data *ch, struct obj_data *cont) {
   else if (!(char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_HOUSE)))
     return 0;
 
-  for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     count++;
     if (!OBJ_FLAGGED(obj, ITEM_CARDCASE)) {
       count += check_insidebag(obj, 0.5);
     }
-  }
+    return true;
+  });
 
   was = count;
 
@@ -1082,12 +1083,12 @@ ACMD(do_deploy) {
   int final = rnum + 99;
 
   while (giveup == FALSE && cont == FALSE) {
-    for (obj3 = room_by_id(rnum)->contents; obj3; obj3 = next_obj) {
-      next_obj = obj3->next_content;
+    room_contents_iterate(room_by_id(rnum), [&](auto obj3) {
       if (GET_OBJ_VNUM(obj3) == 18801) {
         found = TRUE;
       }
-    }
+      return true;
+    });
     if (found == TRUE && rnum < final) {
       if (type == 0) {
         rnum += 4;
@@ -1824,12 +1825,12 @@ ACMD(do_bid) {
                      "appraise (list number)\r\n");
     return;
   }
-  for (obj = auct_room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(auct_room, [&](auto obj) {
     if (obj) {
       list++;
     }
-  }
+    return true;
+  });
   masterList = list;
   list = 0;
 
@@ -1837,11 +1838,10 @@ ACMD(do_bid) {
     send_to_char(ch, "@Y                                   Auction@n\r\n");
     send_to_char(ch, "@c-------------------------------------------------------"
                      "-----------------------@n\r\n");
-    for (obj = auct_room->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(auct_room, [&](auto obj) {
       if (obj) {
         if (GET_AUCTER(obj) <= 0) {
-          continue;
+          return true;
         }
         list++;
         if (GET_AUCTIME(obj) + 86400 > time(0) && GET_CURBID(obj) <= -1) {
@@ -1895,7 +1895,8 @@ ACMD(do_bid) {
         }
         found = TRUE;
       }
-    }
+      return true;
+    });
     if (found == FALSE) {
       send_to_char(ch, "No items are currently being auctioned.\r\n");
     }
@@ -1914,18 +1915,18 @@ ACMD(do_bid) {
       return;
     }
 
-    for (obj = auct_room->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(auct_room, [&](auto obj) {
       if (obj) {
         if (GET_AUCTER(obj) <= 0) {
-          continue;
+          return true;
         }
         list++;
         if (atoi(arg2) == list) {
           obj2 = obj;
         }
       }
-    }
+      return true;
+    });
     if (!obj2) {
       send_to_char(ch, "That item number is not found.\r\n");
       return;
@@ -2058,18 +2059,18 @@ ACMD(do_bid) {
       return;
     }
 
-    for (obj = auct_room->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(auct_room, [&](auto obj) {
       if (obj) {
         if (GET_AUCTER(obj) <= 0) {
-          continue;
+          return true;
         }
         list++;
         if (atoi(arg) == list) {
           obj2 = obj;
         }
       }
-    }
+      return true;
+    });
 
     if (!obj2) {
       send_to_char(ch, "That item number is not found.\r\n");
@@ -2904,7 +2905,7 @@ static void get_from_room(struct char_data *ch, char *arg, int howmany) {
              arg, char_room_get(ch)->ex_description)) != NULL)
       send_to_char(ch, "%s: you can't take that!\r\n", fname(descword));
     else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                         char_room_get(ch)->contents)))
+                                         room_contents_get(char_room_get(ch)))))
       send_to_char(ch, "You don't see %s %s here.\r\n", AN(arg), arg);
     else {
       struct obj_data *obj_next;
@@ -2919,14 +2920,14 @@ static void get_from_room(struct char_data *ch, char *arg, int howmany) {
       send_to_char(ch, "Get all of what?\r\n");
       return;
     }
-    for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       if (CAN_SEE_OBJ(ch, obj) &&
           (dotmode == FIND_ALL || isname(arg, obj->name))) {
         found = 1;
         perform_get_from_room(ch, obj);
       }
-    }
+      return true;
+    });
     if (!found) {
       if (dotmode == FIND_ALL)
         send_to_char(ch, "There doesn't seem to be anything here.\r\n");
@@ -2995,7 +2996,7 @@ ACMD(do_get) {
             act("$p is not a container.", FALSE, ch, cont, 0, TO_CHAR);
           }
         }
-      for (cont = char_room_get(ch)->contents; cont; cont = cont->next_content)
+      room_contents_iterate(char_room_get(ch), [&](auto cont) {
         if (CAN_SEE_OBJ(ch, cont) &&
             (cont_dotmode == FIND_ALL || isname(arg2, cont->name))) {
           if (GET_OBJ_TYPE(cont) == ITEM_CONTAINER) {
@@ -3006,6 +3007,8 @@ ACMD(do_get) {
             found = 1;
           }
         }
+        return true;
+      });
       if (!found) {
         if (cont_dotmode == FIND_ALL)
           send_to_char(ch, "You can't seem to find any containers.\r\n");
@@ -3767,7 +3770,7 @@ ACMD(do_drink) {
   }
   if (!(temp = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
     if (!(temp = get_obj_in_list_vis(ch, arg, NULL,
-                                     char_room_get(ch)->contents))) {
+                                     room_contents_get(char_room_get(ch))))) {
       send_to_char(ch, "You can't find it!\r\n");
       return;
     } else
@@ -4210,7 +4213,7 @@ ACMD(do_pour) {
       return;
     }
     if (!(from_obj = get_obj_in_list_vis(ch, arg2, NULL,
-                                         char_room_get(ch)->contents))) {
+                                         room_contents_get(char_room_get(ch))))) {
       send_to_char(ch, "There doesn't seem to be %s %s here.\r\n", AN(arg2),
                    arg2);
       return;
@@ -4795,7 +4798,7 @@ ACMD(do_remove) {
   }
 
   if (!(obj = char_inventory_search_type(ch, ITEM_BOARD, FALSE, 0))) {
-    obj = obj_contents_search_type(char_room_get(ch)->contents, ITEM_BOARD,
+    obj = obj_contents_search_type(room_contents_get(char_room_get(ch)), ITEM_BOARD,
                                    FALSE, 0);
   }
   found = obj ? 1 : 0;
@@ -4858,7 +4861,7 @@ ACMD(do_sac) {
     return;
   }
 
-  if (!(j = get_obj_in_list_vis(ch, arg, NULL, char_room_get(ch)->contents)) &&
+  if (!(j = get_obj_in_list_vis(ch, arg, NULL, room_contents_get(char_room_get(ch)))) &&
       (!(j = get_obj_in_list_vis(ch, arg, NULL, ch->carrying)))) {
     send_to_char(ch, "It doesn't seem to be here.\n\r");
     return;

@@ -338,13 +338,13 @@ ACMD(do_breath) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           char_room_get(ch)->contents))) {
+                                           room_contents_get(char_room_get(ch))))) {
       return;
     }
   }
-  handle_cooldown(ch, 10);
+  handle_cooldown(ch, 4);
   if (vict) {
-    if (!can_kill(ch, vict, NULL, 1)) {
+    if (!can_kill(ch, vict, NULL, 0)) {
       return;
     }
     if (handle_defender(vict, ch)) {
@@ -600,7 +600,7 @@ ACMD(do_ram) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           char_room_get(ch)->contents))) {
+                                           room_contents_get(char_room_get(ch))))) {
       return;
     }
   }
@@ -797,7 +797,7 @@ ACMD(do_strike) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           char_room_get(ch)->contents))) {
+                                           room_contents_get(char_room_get(ch))))) {
       return;
     }
   }

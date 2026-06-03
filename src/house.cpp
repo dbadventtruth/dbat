@@ -159,12 +159,12 @@ void House_crashsave(room_vnum vnum) {
     perror("SYSERR: Error saving house file");
     return;
   }
-  if (!House_save(room->contents, fp, 0)) {
+  if (!House_save(room_contents_get(room), fp, 0)) {
     fclose(fp);
     return;
   }
   fclose(fp);
-  House_restore_weight(room->contents);
+  House_restore_weight(room_contents_get(room));
   room_flag_set(room, ROOM_HOUSE_CRASH, FALSE);
 }
 

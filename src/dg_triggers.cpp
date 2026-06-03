@@ -767,10 +767,19 @@ int command_otrigger(char_data *actor, char *cmd, char *argument) {
         !OBJ_FLAGGED(obj, ITEM_FORGED))
       return 1;
 
-  for (obj = char_room_get(actor)->contents; obj; obj = obj->next_content)
-    if (cmd_otrig(obj, actor, cmd, argument, OCMD_ROOM) &&
-        !OBJ_FLAGGED(obj, ITEM_FORGED))
+  {
+    int found = 0;
+    room_contents_iterate(char_room_get(actor), [&](auto obj) {
+      if (cmd_otrig(obj, actor, cmd, argument, OCMD_ROOM) &&
+          !OBJ_FLAGGED(obj, ITEM_FORGED)) {
+        found = 1;
+        return false;
+      }
+      return true;
+    });
+    if (found)
       return 1;
+  }
 
   return 0;
 }
@@ -934,15 +943,13 @@ int leave_otrigger(room_data *room, char_data *actor, int dir) {
   trig_data *t;
   char buf[MAX_INPUT_LENGTH];
   int temp, final = 1;
-  obj_data *obj, *obj_next;
 
   if (!valid_dg_target(actor, DG_ALLOW_GODS))
     return 1;
 
-  for (obj = room->contents; obj; obj = obj_next) {
-    obj_next = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     if (!SCRIPT_CHECK(obj, OTRIG_LEAVE))
-      continue;
+      return true;
 
     for (t = TRIGGERS(SCRIPT(obj)); t; t = t->next) {
       if (TRIGGER_CHECK(t, OTRIG_LEAVE) &&
@@ -957,7 +964,8 @@ int leave_otrigger(room_data *room, char_data *actor, int dir) {
           final = 0;
       }
     }
-  }
+    return true;
+  });
 
   return final;
 }

@@ -159,9 +159,9 @@ OCMD(do_oecho) {
     obj_log(obj, "oecho called with no args");
 
   else if ((room = obj_room(obj)) != NULL) {
-    if (room->people) {
-      sub_write(argument, room->people, TRUE, TO_ROOM);
-      sub_write(argument, room->people, TRUE, TO_CHAR);
+    if (auto people = room_people_get(room)) {
+      sub_write(argument, people, TRUE, TO_ROOM);
+      sub_write(argument, people, TRUE, TO_CHAR);
     }
   }
 
@@ -346,7 +346,7 @@ OCMD(do_dupe) { SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_DUPLICATE); }
 OCMD(do_opurge) {
   char arg[MAX_INPUT_LENGTH];
   char_data *ch, *next_ch;
-  obj_data *o, *next_obj;
+  obj_data *o;
   struct room_data *room = NULL;
 
   one_argument(argument, arg);
@@ -360,11 +360,11 @@ OCMD(do_opurge) {
         return true;
       });
 
-      for (o = room->contents; o; o = next_obj) {
-        next_obj = o->next_content;
+      room_contents_iterate(room, [&](auto o) {
         if (o != obj)
           extract_obj(o);
-      }
+        return true;
+      });
     }
 
     return;
@@ -607,9 +607,9 @@ OCMD(do_oasound) {
 
   room_exits_iterate(room, [&](auto dir, auto exit) {
     auto dest = exit_dest_get(exit);
-    if(dest && dest->people) {
-      sub_write(argument, dest->people, TRUE, TO_ROOM);
-      sub_write(argument, dest->people, TRUE, TO_CHAR);
+    if(dest && room_people_get(dest)) {
+      sub_write(argument, room_people_get(dest), TRUE, TO_ROOM);
+      sub_write(argument, room_people_get(dest), TRUE, TO_CHAR);
     }
     return true;
   });

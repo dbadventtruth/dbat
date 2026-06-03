@@ -16,6 +16,7 @@
 #include "consts/roomflags.h"
 #include "db.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "log.h"
 #include "object_api.h"
 #include "object_impl.h"
@@ -69,14 +70,15 @@ int checkship(struct room_data *room, int vnum) {
 
   struct room_data *rm = room;
 
-  for (i = rm->contents; i; i = i->next_content) {
+  room_contents_iterate(rm, [&](auto i) {
     if (!room_flagged(rm, ROOM_NEBULA)) {
       if (GET_OBJ_TYPE(i) == ITEM_VEHICLE && there != TRUE) {
         there = TRUE;
         ping_ship(GET_OBJ_VNUM(i), vnum);
       }
     }
-  }
+    return true;
+  });
 
   i = NULL;
 

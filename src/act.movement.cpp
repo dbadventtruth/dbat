@@ -1199,15 +1199,21 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
     send_to_char(ch, "Report this direction, it is illegal.\r\n");
   } else {
 
-    struct obj_data *wall;
-    for (wall = char_room_get(ch)->contents; wall; wall = wall->next_content) {
-      if (GET_OBJ_VNUM(wall) == 79) {
-        if (GET_OBJ_COST(wall) == dir) {
-          send_to_char(ch,
-                       "That direction has a glacial wall blocking it.\r\n");
-          return (0);
+    {
+      int wall_found = 0;
+      room_contents_iterate(char_room_get(ch), [&](auto wall) {
+        if (GET_OBJ_VNUM(wall) == 79) {
+          if (GET_OBJ_COST(wall) == dir) {
+            send_to_char(ch,
+                         "That direction has a glacial wall blocking it.\r\n");
+            wall_found = 1;
+            return false;
+          }
         }
-      }
+        return true;
+      });
+      if (wall_found)
+        return (0);
     }
 
     if (!ch->followers)
@@ -1363,13 +1369,12 @@ ACMD(do_move) {
   }
   if (!IS_NPC(ch)) {
     int fail = FALSE;
-    struct obj_data *obj, *next_obj;
-    for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       if (KICHARGE(obj) > 0 && USER(obj) == ch) {
         fail = TRUE;
       }
-    }
+      return true;
+    });
     if (fail == TRUE) {
       send_to_char(ch, "You are too busy controlling your attack!\r\n");
       return;
@@ -1710,12 +1715,12 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door,
       char_from_room(ch);
       char_to_room(ch, room_by_id(GET_OBJ_VAL(obj, VAL_PORTAL_DEST)));
     }
-    for (obj2 = char_room_get(ch)->contents; obj2; obj2 = next_obj) {
-      next_obj = obj2->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj2) {
       if (GET_OBJ_TYPE(obj2) == ITEM_HATCH) {
         hatch = obj2;
       }
-    }
+      return true;
+    });
     obj2 = NULL;
   }
 
@@ -2290,7 +2295,7 @@ ACMD(do_enter) {
 
   if (*buf) { /* an argument was supplied, search for door keyword */
     /* Is the object in the room? */
-    obj = get_obj_in_list_vis(ch, buf, NULL, char_room_get(ch)->contents);
+    obj = get_obj_in_list_vis(ch, buf, NULL, room_contents_get(char_room_get(ch)));
     /* Is the object in the character's inventory? */
     if (!obj)
       obj = get_obj_in_list_vis(ch, buf, NULL, ch->carrying);
@@ -2543,12 +2548,20 @@ ACMD(do_leave) {
     return;
   }
 
-  for (obj = char_room_get(ch)->contents; obj; obj = obj->next_content)
-    if (CAN_SEE_OBJ(ch, obj))
-      if (GET_OBJ_TYPE(obj) == ITEM_HATCH || GET_OBJ_TYPE(obj) == ITEM_PORTAL) {
-        perform_leave_obj(ch, obj, 0);
-        return;
-      }
+  {
+    int found = 0;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
+      if (CAN_SEE_OBJ(ch, obj))
+        if (GET_OBJ_TYPE(obj) == ITEM_HATCH || GET_OBJ_TYPE(obj) == ITEM_PORTAL) {
+          perform_leave_obj(ch, obj, 0);
+          found = 1;
+          return false;
+        }
+      return true;
+    });
+    if (found)
+      return;
+  }
 
   if (OUTSIDE(ch))
     send_to_char(ch, "You are outside.. where do you want to go?\r\n");
@@ -3251,16 +3264,12 @@ ACMD(do_sit) {
       return;
     }
     if (!(chair = get_obj_in_list_vis(ch, arg, NULL,
-                                      char_room_get(ch)->contents))) {
+                                      room_contents_get(char_room_get(ch))))) {
       send_to_char(ch, "That isn't here.\r\n");
       return;
     }
     if (GET_OBJ_VNUM(chair) == 65) {
       send_to_char(ch, "You can't get on that!\r\n");
-      return;
-    }
-    if (SITTING(chair)) {
-      send_to_char(ch, "Someone is already on that one!\r\n");
       return;
     }
     if (GET_OBJ_TYPE(chair) != ITEM_CHAIR && GET_OBJ_TYPE(chair) != ITEM_BED) {
@@ -3399,20 +3408,12 @@ ACMD(do_rest) {
       return;
     }
     if (!(chair = get_obj_in_list_vis(ch, arg, NULL,
-                                      char_room_get(ch)->contents))) {
+                                      room_contents_get(char_room_get(ch))))) {
       send_to_char(ch, "That isn't here.\r\n");
       return;
     }
     if (GET_OBJ_VNUM(chair) == 65) {
       send_to_char(ch, "You can't get on that!\r\n");
-      return;
-    }
-    if (SITTING(chair)) {
-      send_to_char(ch, "Someone is already on that one!\r\n");
-      return;
-    }
-    if (GET_OBJ_TYPE(chair) != ITEM_BED) {
-      send_to_char(ch, "You can't lay on that!\r\n");
       return;
     }
     if (GET_OBJ_SIZE(chair) + 1 < get_size(ch)) {
@@ -3571,7 +3572,7 @@ ACMD(do_sleep) {
       return;
     }
     if (!(chair = get_obj_in_list_vis(ch, arg, NULL,
-                                      char_room_get(ch)->contents))) {
+                                      room_contents_get(char_room_get(ch))))) {
       send_to_char(ch, "That isn't here.\r\n");
       return;
     }

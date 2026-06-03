@@ -18,6 +18,7 @@
 #include "flags.h"
 #include "handler.h"
 #include "object_db.h"
+#include "room_api.h"
 #include "object_impl.h"
 #include "object_macros.h"
 
@@ -260,7 +261,7 @@ bool assemblyCheckComponents(long lVnum, struct char_data *pCharacter,
     else {
       if (pAssembly->pComponents[i].bInRoom) {
         if ((ppComponentObjects[i] = get_obj_in_list_num(
-                 lRnum, char_room_get(pCharacter)->contents)) == NULL)
+                 lRnum, room_contents_get(char_room_get(pCharacter)))) == NULL)
           bOk = FALSE;
         else {
           obj_from_room(ppComponentObjects[i]);

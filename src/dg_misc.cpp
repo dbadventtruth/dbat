@@ -7,6 +7,7 @@
  *  $Revision: 1.0.14 $                                                    *
  **************************************************************************/
 #include "character_api.h"
+#include "room_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
@@ -149,7 +150,7 @@ void do_dg_cast(void *go, struct script_data *sc, trig_data *trig, int type,
       caster->short_descr = strdup(((struct obj_data *)go)->short_description);
     else if (type == WLD_TRIGGER)
       caster->short_descr = strdup("The gods");
-    caster->next_in_room = caster_room->people;
+    caster->next_in_room = room_people_get(caster_room);
     caster_room->people = caster;
     IN_ROOM(caster) = caster_room->number;
     call_magic(caster, tch, tobj, spellnum, DG_SPELL_LEVEL, CAST_SPELL, t);

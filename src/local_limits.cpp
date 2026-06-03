@@ -1776,35 +1776,35 @@ static void point_update_objects(void) {
           !OBJ_FLAGGED(j, ITEM_BURIED)) {
             auto oroom = obj_room_get(j);
         if (GET_OBJ_TIMER(j) == 5) {
-          if ((oroom != NULL) && (oroom->people)) {
+          if ((oroom != NULL) && (room_people_get(oroom))) {
             act("@DFlies start to gather around $p@D.@n", TRUE,
-                oroom->people, j, 0, TO_CHAR);
+                room_people_get(oroom), j, 0, TO_CHAR);
             act("@DFlies start to gather around $p@D.@n", TRUE,
-                oroom->people, j, 0, TO_ROOM);
+                room_people_get(oroom), j, 0, TO_ROOM);
           }
         }
         if (GET_OBJ_TIMER(j) == 3) {
-          if ((oroom != NULL) && (oroom->people)) {
+          if ((oroom != NULL) && (room_people_get(oroom))) {
             act("@DA cloud of flies has formed over $p@D.@n", TRUE,
-                oroom->people, j, 0, TO_CHAR);
+                room_people_get(oroom), j, 0, TO_CHAR);
             act("@DA cloud of flies has formed over $p@D.@n", TRUE,
-                oroom->people, j, 0, TO_ROOM);
+                room_people_get(oroom), j, 0, TO_ROOM);
           }
         }
         if (GET_OBJ_TIMER(j) == 2) {
-          if ((oroom != NULL) && (oroom->people)) {
+          if ((oroom != NULL) && (room_people_get(oroom))) {
             act("@DMaggots can be seen crawling all over $p@D.@n", TRUE,
-                oroom->people, j, 0, TO_CHAR);
+                room_people_get(oroom), j, 0, TO_CHAR);
             act("@DMaggots can be seen crawling all over $p@D.@n", TRUE,
-                oroom->people, j, 0, TO_ROOM);
+                room_people_get(oroom), j, 0, TO_ROOM);
           }
         }
         if (GET_OBJ_TIMER(j) == 1) {
-          if ((oroom != NULL) && (oroom->people)) {
+          if ((oroom != NULL) && (room_people_get(oroom))) {
             act("@DMaggots have nearly stripped $p of all its flesh@D.@n", TRUE,
-                oroom->people, j, 0, TO_CHAR);
+                room_people_get(oroom), j, 0, TO_CHAR);
             act("@DMaggots have nearly stripped $p of all its flesh@D.@n", TRUE,
-                oroom->people, j, 0, TO_ROOM);
+                room_people_get(oroom), j, 0, TO_ROOM);
           }
         }
       }
@@ -1814,20 +1814,20 @@ static void point_update_objects(void) {
           if (!strstr(j->name, "android")) {
             act("$p decays in your hands.", FALSE, j->carried_by, j, 0,
                 TO_CHAR);
-            if ((oroom != NULL) && (oroom->people)) {
+            if ((oroom != NULL) && (room_people_get(oroom))) {
               act("A quivering horde of maggots consumes $p.", TRUE,
-                  oroom->people, j, 0, TO_ROOM);
+                  room_people_get(oroom), j, 0, TO_ROOM);
               act("A quivering horde of maggots consumes $p.", TRUE,
-                  oroom->people, j, 0, TO_CHAR);
+                  room_people_get(oroom), j, 0, TO_CHAR);
             }
           } else {
             act("$p decays in your hands.", FALSE, j->carried_by, j, 0,
                 TO_CHAR);
-            if ((oroom != NULL) && (oroom->people)) {
+            if ((oroom != NULL) && (room_people_get(oroom))) {
               act("$p breaks down completely into a pile of junk.", TRUE,
-                  oroom->people, j, 0, TO_ROOM);
+                  room_people_get(oroom), j, 0, TO_ROOM);
               act("$p breaks down completely into a pile of junk.", TRUE,
-                  oroom->people, j, 0, TO_CHAR);
+                  room_people_get(oroom), j, 0, TO_CHAR);
             }
           }
         }
@@ -1861,9 +1861,9 @@ static void point_update_objects(void) {
 
       if (GET_OBJ_TIMER(j) == 0) {
         act("A glowing portal fades from existence.", TRUE,
-            obj_room_get(j)->people, j, 0, TO_ROOM);
+            room_people_get(obj_room_get(j)), j, 0, TO_ROOM);
         act("A glowing portal fades from existence.", TRUE,
-            obj_room_get(j)->people, j, 0, TO_CHAR);
+            room_people_get(obj_room_get(j)), j, 0, TO_CHAR);
         extract_obj(j);
         continue;
       }
@@ -1874,9 +1874,9 @@ static void point_update_objects(void) {
 
       if (GET_OBJ_TIMER(j) == 0) {
         act("The $p@n settles to the ground and goes out.", TRUE,
-            obj_room_get(j)->people, j, 0, TO_ROOM);
+            room_people_get(obj_room_get(j)), j, 0, TO_ROOM);
         act("A $p@n settles to the ground and goes out.", TRUE,
-            obj_room_get(j)->people, j, 0, TO_CHAR);
+            room_people_get(obj_room_get(j)), j, 0, TO_CHAR);
         extract_obj(j);
         continue;
       }

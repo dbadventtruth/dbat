@@ -37,15 +37,15 @@ bool cook_element(struct room_data *room) {
   struct obj_data *obj, *next_obj;
   int found = FALSE;
 
-  for (obj = room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     if (GET_OBJ_TYPE(obj) == ITEM_CAMPFIRE) {
       found = 1;
     } else if (GET_OBJ_VNUM(obj) == 19093) {
       found = 2;
-      break;
+      return false;
     }
-  }
+    return true;
+  });
   return (found);
 }
 

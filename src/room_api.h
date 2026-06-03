@@ -35,6 +35,9 @@ void exit_failroom_set(struct room_direction_data *exit, room_vnum failroom);
 int exit_totalfailroom_get(struct room_direction_data *exit);
 void exit_totalfailroom_set(struct room_direction_data *exit,
                             room_vnum totalfailroom);
+bool exit_flagged(struct room_direction_data *exit, int pos);
+bool exit_flag_toggle(struct room_direction_data *exit, int pos);
+void exit_flag_set(struct room_direction_data *exit, int pos, bool value);
 
 // Rooms API functions, implemented in rooms_api.zig
 room_vnum room_id_get(struct room_data *room);

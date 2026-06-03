@@ -740,10 +740,18 @@ int special(struct char_data *ch, int cmd, char *arg) {
   }
 
   /* special in object present? */
-  for (i = char_room_get(ch)->contents; i; i = i->next_content)
-    if (GET_OBJ_SPEC(i) != NULL)
-      if (GET_OBJ_SPEC(i)(ch, i, cmd, arg))
-        return (1);
+  {
+    int spec_result = 0;
+    room_contents_iterate(char_room_get(ch), [&](auto i) {
+      if (GET_OBJ_SPEC(i) != NULL)
+        if (GET_OBJ_SPEC(i)(ch, i, cmd, arg)) {
+          spec_result = 1;
+          return false;
+        }
+      return true;
+    });
+    if (spec_result) return (1);
+  }
 
   return (0);
 }
