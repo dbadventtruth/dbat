@@ -2,6 +2,8 @@
 
 #include "consts/types.h"
 
+#include <unistd.h>
+
 #include "consts/applies.h"
 #include "consts/constates.h"
 #include "consts/mobflags.h"
@@ -21,7 +23,16 @@
 #include "descriptor_impl.h"
 #include "descriptor_api.h"
 #include "descriptor_db.h"
+#include "db.h"
+#include "comm.h"
+#include "log.h"
+#include "fileop.h"
+#include "random.h"
+#include "interpreter.h"
+#include "objsave.h"
+#include "genolc.h"
 #include "dg_comm.h"
+#include "dg_event.h"
 #include "dgscript_impl.h"
 #include "dgscript_db.h"
 #include "extradesc_impl.h"
@@ -32,6 +43,7 @@
 #include "object_impl.h"
 #include "object_api.h"
 #include "object_db.h"
+#include "dg_scripts.h"
 #include "player_impl.h"
 #include "player_db.h"
 #include "room_impl.h"
@@ -46,5 +58,3 @@
 #include "zone_impl.h"
 #include "zone_api.h"
 #include "zone_db.h"
-
-#include "dg_scripts.h"

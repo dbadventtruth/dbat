@@ -90,6 +90,9 @@ extern const char CCODE[];
 extern char *ANSI[];
 
 // functions
+void load_race_sensei();
+void load_spacemap();
+void copyover_recover();
 void free_user(struct descriptor_data *d);
 void reread_wizlists(int sig);
 void unrestrict_game(int sig);
@@ -103,11 +106,11 @@ void echo_off(struct descriptor_data *d);
 void echo_on(struct descriptor_data *d);
 void circle_sleep(struct timeval *timeout);
 int get_from_q(struct txt_q *queue, char *dest, int *aliased);
-void init_game(uint16_t port);
 void signal_setup(void);
 void game_loop(socklen_t mother_desc);
 socklen_t init_socket(uint16_t port);
 int new_descriptor(socklen_t s);
+extern int max_players;
 int get_max_players(void);
 int process_output(struct descriptor_data *t);
 int process_input(struct descriptor_data *t);
@@ -122,6 +125,8 @@ void check_idle_passwords(void);
 void check_idle_menu(void);
 void heartbeat(int heart_pulse);
 struct in_addr *get_bind_addr(void);
+
+void cleanup_game_world();
 
 int set_sendbuf(socklen_t s);
 void free_bufpool(void);

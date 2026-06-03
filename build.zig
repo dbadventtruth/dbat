@@ -62,7 +62,7 @@ pub fn build(b: *std.Build) void {
 
     const mod_cdb = translate_dbat.createModule();
 
-    // Native DBAT library: Zig API/runtime plus legacy C++ host code.
+    // Native DBAT module: Zig API/runtime plus legacy C++ host code.
     const mod_dbat = b.createModule(.{
         .target = target,
         .optimize = optimize,
@@ -80,43 +80,21 @@ pub fn build(b: *std.Build) void {
     const dbat_files = getSourceFiles(b, "src", ".cpp");
     mod_dbat.addCSourceFiles(.{ .files = dbat_files, .flags = &[_][]const u8{ "-std=gnu++23", "-w", "-g", "-DPATH_MAX=4096" } });
 
-    const mod_dbat_zig = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-        .link_libcpp = true,
-        .root_source_file = b.path("src/root.zig"),
-        .imports = &.{
-            .{ .name = "cdb", .module = mod_cdb },
-            .{ .name = "zlua", .module = zlua_module },
-        },
-    });
-    mod_dbat_zig.addIncludePath(b.path("include"));
-    mod_dbat_zig.addIncludePath(b.path("src"));
-
-    const dbat = b.addLibrary(.{
-        .name = "dbat",
-        .linkage = .static,
-        .root_module = mod_dbat,
-    });
-
-    // Executable - Zig entrypoint with legacy C++ runner.
+    // Executable - Zig entrypoint.
     const circle_mod = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
         .link_libcpp = true,
-        .root_source_file = b.path("apps/server/main.zig"),
+        .root_source_file = b.path("src/main.zig"),
         .imports = &.{
-            .{ .name = "db", .module = mod_dbat_zig },
+            .{ .name = "db", .module = mod_dbat },
+            .{ .name = "cdb", .module = mod_cdb },
             .{ .name = "zlua", .module = zlua_module },
         },
     });
     circle_mod.addIncludePath(b.path("include"));
     circle_mod.addIncludePath(b.path("src"));
-    circle_mod.addCSourceFiles(.{ .files = &[_][]const u8{"apps/server/run.cpp"}, .flags = &[_][]const u8{ "-std=gnu++23", "-w", "-g", "-DPATH_MAX=4096" } });
-    circle_mod.linkLibrary(dbat);
-
     const exe = b.addExecutable(.{
         .name = "dbat",
         .root_module = circle_mod,
@@ -124,7 +102,6 @@ pub fn build(b: *std.Build) void {
 
     targets.append(b.allocator, exe) catch @panic("OOM");
 
-    b.installArtifact(dbat);
     b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");
