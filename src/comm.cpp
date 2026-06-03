@@ -23,8 +23,10 @@
 #include "act.misc.h"
 #include "act.other.h"
 #include "act.wizard.h"
+#include "act.social.h"
 #include "ban.h"
 #include "ban_impl.h"
+#include "boards.h"
 #include "character_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
@@ -219,38 +221,10 @@ void copyover_recover() {
   fclose(fp);
 }
 
-/* Init sockets, run game, and cleanup sockets */
-void init_game(uint16_t cmport) {
-  /* We don't want to restart if we crash before we get up. */
-  touch(KILLSCRIPT_FILE);
-
-  circle_srandom(time(0));
-
-  log("Finding player limit.");
-  max_players = get_max_players();
-
-  if (!fCopyOver) { /* If copyover mother_desc is already set up */
-    log("Opening mother connection.");
-    mother_desc = init_socket(cmport);
-  }
-
-  event_init();
-
-  /* set up hash table for find_char() */
-  init_lookup_table();
-
-  dbat::race::load_races();
-  dbat::sensei::load_sensei();
-
-  boot_db();
-
+void load_spacemap() {
   FILE *mapfile;
   int rowcounter, colcounter;
   int vnum_read;
-
-  log("Signal trapping.");
-  signal_setup();
-
   log("Loading Space Map. ");
 
   // Load the map vnums from a file into an array
@@ -264,39 +238,11 @@ void init_game(uint16_t cmport) {
   }
 
   fclose(mapfile);
+}
 
-  /* Load the toplist */
-  topLoad();
-
-  /* If we made it this far, we will be able to restart without problem. */
-  remove(KILLSCRIPT_FILE);
-
-  if (fCopyOver) /* reload players */
-    copyover_recover();
-
-  log("Entering game loop.");
-
-  game_loop(mother_desc);
-
-  Crash_save_all();
-
-  log("Closing all sockets.");
-  while (descriptor_list)
-    close_socket(descriptor_list);
-
-  close(mother_desc);
-
-  if (circle_reboot != 2)
-    save_all();
-
-  log("Saving current MUD time.");
-  save_mud_time(&time_info);
-
-  if (circle_reboot) {
-    log("Rebooting.");
-    exit(52); /* what's so great about HHGTTG, anyhow? */
-  }
-  log("Normal termination of game.");
+void load_race_sensei() {
+  dbat::race::load_races();
+  dbat::sensei::load_sensei();
 }
 
 /*
@@ -3519,4 +3465,33 @@ int passcomm(struct char_data *ch, char *comm) {
   } else {
     return FALSE;
   }
+}
+
+void cleanup_game_world() {
+  log("Clearing game world.");
+  destroy_db();
+
+  log("Clearing other memory.");
+  free_bufpool();                        /* comm.c */
+  free_player_index();                   /* players.c */
+  clear_free_list();                     /* mail.c */
+  free_mail_index();                     /* mail.c */
+  free_text_files();                     /* db.c */
+  clear_boards();                        /* boards.c */
+  free(cmd_sort_info);                   /* act.informative.c */
+  free_command_list();                   /* act.informative.c */
+  free_social_messages();                /* act.social.c */
+  free_help_table();                     /* db.c */
+  Free_Invalid_List();                   /* ban.c */
+  free_strings(&config_info, OASIS_CFG); /* oasis_delete.c */
+  free_disabled();                       /* interpreter.c */
+  free_save_list();                      /* genolc.c */
+
+  if (last_act_message)
+    free(last_act_message);
+
+  /* probably should free the entire config here.. */
+  free(CONFIG_CONFFILE);
+
+  log("Done.");
 }
