@@ -8,6 +8,8 @@
 #include "consts/playerflags.h"
 #include "consts/sizes.h"
 
+#include "flags.h"
+
 #include "character_impl.h"
 #include "character_api.h"
 #include "character_db.h"

@@ -1,6 +1,4 @@
-local transform = require("lua.transform_condition")
-
-return transform.condition({
+return {
     id = "oozaru",
     name = "@ROozaru@n",
     family = "oozaru",
@@ -10,4 +8,4 @@ return transform.condition({
     mult = 2.0,
     drain = 0.0,
     requires_pl = 0,
-})
+}

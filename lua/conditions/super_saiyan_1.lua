@@ -8,9 +8,6 @@ local function data(ch)
         return { bonus = 900000, mult = 20000, name = "@YSuper @CSaiyan @WFirst@n" }
     end
     if race == RACE_SAIYAN then
-        if ch:player_flagged(PLR_LSSJ) then
-            return { bonus = 800000, mult = 20000, name = "@YSuper @CSaiyan @WFirst@n" }
-        end
         return { bonus = 800000, mult = 20000, name = "@YSuper @CSaiyan @WFirst@n" }
     end
     return nil

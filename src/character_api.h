@@ -29,6 +29,8 @@ void char_long_description_set(struct char_data *ch, const char *value);
 const char *char_title_get(struct char_data *ch);
 void char_title_set(struct char_data *ch, const char *value);
 
+bool char_is_npc(struct char_data *ch);
+
 int char_class_get(struct char_data *ch);
 void char_class_set(struct char_data *ch, int chclass);
 int char_race_get(struct char_data *ch);

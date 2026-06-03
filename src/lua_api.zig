@@ -34,6 +34,7 @@ const categories = [_][]const u8{
 const bootstrap: [:0]const u8 =
     \\local dbat = require("dbat")
     \\dbat.registry = dbat.registry or {}
+    \\dbat.lib = require("lua.lib")
     \\
     \\function dbat._register(category, slug, path, value)
     \\  if value == nil then

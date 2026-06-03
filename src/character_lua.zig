@@ -53,6 +53,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     lua.setField(-2, "__index");
 
     addMethod(lua, "__tostring", luaCharacterToString);
+    addMethod(lua, "is_npc", luaCharacterIsNpc);
     addMethod(lua, "valid", luaCharacterValid);
     addMethod(lua, "is_same", luaCharacterIsSame);
     addMethod(lua, "send", luaCharacterSend);
@@ -249,6 +250,12 @@ fn pushCString(lua: *Lua, value: [*c]const u8) void {
 
 fn intCastOrError(lua: *Lua, comptime T: type, value: zlua.Integer, label: [:0]const u8) T {
     return std.math.cast(T, value) orelse lua.raiseErrorStr("%s out of range", .{label.ptr});
+}
+
+fn luaCharacterIsNpc(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    lua.pushBoolean(cdb.char_is_npc(ch));
+    return 1;
 }
 
 fn luaCharacterValid(lua: *Lua) i32 {

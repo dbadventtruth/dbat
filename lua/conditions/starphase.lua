@@ -1,5 +1,3 @@
-local transform = require("lua.transform_condition")
-
 local function current_phase()
     local time = require("dbat").time()
     if time.day <= 15 then return "birth" end
@@ -18,7 +16,7 @@ local function form(ch)
     return nil
 end
 
-return transform.condition({
+return {
     id = "starphase",
     name = "Starphase",
     family = "starphase",
@@ -26,4 +24,4 @@ return transform.condition({
     exclusive_tags = {},
     persistent = true,
     form = form,
-})
+}

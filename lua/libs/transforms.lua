@@ -1,8 +1,25 @@
 local M = {}
 
+local function text()
+    return require("dbat").lib.text
+end
+
 local function call_or_value(value, ch, def)
     if type(value) == "function" then return value(ch, def) end
     return value
+end
+
+local function transform_id(def)
+    return assert(def.id, "transformation is missing id")
+end
+
+local function condition_id(def)
+    if def.condition == false then return nil end
+    return def.condition
+end
+
+local function reason(value)
+    return false, value
 end
 
 local function available(def, ch)
@@ -23,17 +40,19 @@ local function available(def, ch)
     return result and true or false
 end
 
-local function transform_id(def)
-    return assert(def.id, "transformation is missing id")
+local function alias_matches(alias, needle)
+    if alias == nil then return false end
+    if type(alias) == "table" then
+        for _, value in ipairs(alias) do
+            if text().normalize_key(value) == needle then return true end
+        end
+        return false
+    end
+    return text().normalize_key(alias) == needle
 end
 
-local function condition_id(def)
-    if def.condition == false then return nil end
-    return def.condition
-end
-
-local function reason(text)
-    return false, text
+function M.display_name(def, ch)
+    return def.display_name and def.display_name(ch) or def.name or def.id
 end
 
 function M.visible(def, ch)
@@ -69,6 +88,7 @@ function M.active(def, ch)
 end
 
 function M.can_enter(def, ch)
+    if ch:is_npc() then return true end
     if def.can_enter ~= nil then return def.can_enter(ch, def) end
     if not M.visible(def, ch) then return reason("You do not know of that transformation.") end
     if not M.is_unlocked(def, ch) then return reason("That transformation is not unlocked.") end
@@ -109,6 +129,45 @@ function M.revert(def, ch, reason_text)
     if condition ~= nil then return ch:condition_remove(condition, reason_text or "reverted") end
     ch:transform_number_set(transform_id(def), "active", 0)
     return true
+end
+
+function M.visible_list(ch)
+    local dbat = require("dbat")
+    local visible = {}
+
+    for id, def in pairs(dbat.category("transformations")) do
+        if M.visible(def, ch) then
+            visible[#visible + 1] = { id = id, def = def }
+        end
+    end
+
+    table.sort(visible, function(a, b)
+        local a_order = a.def.sort_order or 100000
+        local b_order = b.def.sort_order or 100000
+        if a_order ~= b_order then return a_order < b_order end
+        return (a.def.name or a.id) < (b.def.name or b.id)
+    end)
+
+    return visible
+end
+
+function M.resolve(ch, input)
+    local dbat = require("dbat")
+    local exact = dbat.get("transformations", input)
+
+    if exact ~= nil and M.visible(exact, ch) then return exact end
+
+    local needle = text().normalize_key(input)
+    for id, def in pairs(dbat.category("transformations")) do
+        if M.visible(def, ch) then
+            local display_name = M.display_name(def, ch)
+            if text().normalize_key(id) == needle or text().normalize_key(def.name) == needle or text().normalize_key(display_name) == needle or alias_matches(def.alias, needle) then
+                return def
+            end
+        end
+    end
+
+    return nil
 end
 
 return M

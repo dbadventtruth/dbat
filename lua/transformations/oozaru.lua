@@ -1,6 +1,4 @@
-local transform = require("lua.transform_condition")
-
-return transform.transformation({
+return {
     id = "oozaru",
     name = "@ROozaru@n",
     alias = { "ape", "great ape" },
@@ -14,4 +12,4 @@ return transform.transformation({
     requires_pl = 0,
     msg_transform_self = "@WYou howl as the power of the full moon washes over you! Your body grows massive amounts of hair, your face pushes out into a muzzle, and your tail grows back if it was missing. You are now the @RGreat @ROozaru@W!@n",
     msg_transform_others = "@C$n@W howls as a wave of power washes over $m! $s body grows massive amounts of hair, $s face pushes out into a muzzle, and $s tail grows back if it was missing. $e is now the @RGreat @ROozaru@W!@n",
-})
+}

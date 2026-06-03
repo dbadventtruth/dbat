@@ -1246,3 +1246,7 @@ fn emitConditionModifiers(ch: *cdb.char_data, zigdata: *CharacterData) void {
     var it = zigdata.conditions.iterator();
     while (it.next()) |entry| lua_api.emitConditionModifiers(ch, &zigdata.modifiers, entry.key_ptr.*);
 }
+
+pub export fn char_is_npc(ch: *cdb.char_data) bool {
+    return cdb.flag_test(@ptrCast(&ch.act), cdb.MOB_ISNPC) != 0;
+}
