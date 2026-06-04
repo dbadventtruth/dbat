@@ -838,7 +838,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         break;
       case 'i':
         if (!strcasecmp(field, "id"))
-          snprintf(str, slen, "%d", GET_ID(c));
+          snprintf(str, slen, "%cC%d", UID_CHAR, GET_ID(c));
 
         /* new check for pc/npc status */
         else if (!strcasecmp(field, "is_pc")) {
@@ -1290,7 +1290,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         break;
       case 'i':
         if (!strcasecmp(field, "id"))
-          snprintf(str, slen, "%d", GET_ID(o));
+          snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(o));
 
         else if (!strcasecmp(field, "is_inroom")) {
           if (obj_room_get(o) != NULL)
@@ -1539,7 +1539,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
       } else if (!strcasecmp(field, "id")) {
         struct room_data *room = room_by_id(r->number);
         if (room)
-          snprintf(str, slen, "%d", room->number);
+          snprintf(str, slen, "%cR%d", UID_CHAR, room->number);
         else
           *str = '\0';
       } else if (!strcasecmp(field, "weather")) {
