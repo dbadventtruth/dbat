@@ -1800,7 +1800,7 @@ void process_attach(void *go, struct script_data *sc, trig_data *trig, int type,
     return;
   }
 
-  if (!id_p || !*id_p || atoi(id_p) == 0) {
+  if (!id_p || !*id_p) {
     script_log("Trigger: %s, VNum %d. attach invalid id arg: '%s'",
                GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
     return;
@@ -1872,7 +1872,7 @@ void process_detach(void *go, struct script_data *sc, trig_data *trig, int type,
     return;
   }
 
-  if (!id_p || !*id_p || atoi(id_p) == 0) {
+  if (!id_p || !*id_p) {
     script_log("Trigger: %s, VNum %d. detach invalid id arg: '%s'",
                GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
     return;
