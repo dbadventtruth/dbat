@@ -7,10 +7,15 @@ const zones_lua = @import("zone_lua.zig");
 
 const Lua = zlua.Lua;
 const character_metatable = "dbat.Character";
+const mob_proto_metatable = "dbat.MobPrototype";
 const condition_metatable = "dbat.Condition";
 
 const CharacterHandle = extern struct {
     id: i64,
+};
+
+const MobProtoHandle = extern struct {
+    vnum: cdb.mob_vnum,
 };
 
 const ConditionHandle = extern struct {
@@ -20,12 +25,18 @@ const ConditionHandle = extern struct {
 
 pub fn register(lua: *Lua) void {
     registerCharacterMetatable(lua);
+    registerMobProtoMetatable(lua);
     registerConditionMetatable(lua);
 
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaCharacterById));
     lua.setField(-2, "by_id");
     lua.setField(-2, "characters");
+
+    lua.newTable();
+    lua.pushFunction(zlua.wrap(luaMobProtoById));
+    lua.setField(-2, "by_id");
+    lua.setField(-2, "mob_protos");
 }
 
 fn luaCharacterById(lua: *Lua) i32 {
@@ -65,6 +76,9 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "room_vnum_get", luaCharacterRoomVnumGet);
     addMethod(lua, "room_vnum_set", luaCharacterRoomVnumSet);
     addMethod(lua, "room_get", luaCharacterRoomGet);
+    addMethod(lua, "from_room", luaCharacterFromRoom);
+    addMethod(lua, "to_room", luaCharacterToRoom);
+    addMethod(lua, "unequip", luaCharacterUnequip);
     addMethod(lua, "zone_vnum_get", luaCharacterZoneVnumGet);
     addMethod(lua, "zone_get", luaCharacterZoneGet);
     addMethod(lua, "reveal_hiding", luaCharacterRevealHiding);
@@ -158,6 +172,23 @@ fn registerCharacterMetatable(lua: *Lua) void {
     lua.pop(1);
 }
 
+fn registerMobProtoMetatable(lua: *Lua) void {
+    lua.newMetatable(mob_proto_metatable) catch {
+        lua.pop(1);
+        return;
+    };
+
+    lua.pushValue(-1);
+    lua.setField(-2, "__index");
+
+    addMethod(lua, "__tostring", luaMobProtoToString);
+    addMethod(lua, "valid", luaMobProtoValid);
+    addMethod(lua, "vnum_get", luaMobProtoVnumGet);
+    addMethod(lua, "spawn", luaMobProtoSpawn);
+
+    lua.pop(1);
+}
+
 fn registerConditionMetatable(lua: *Lua) void {
     lua.newMetatable(condition_metatable) catch {
         lua.pop(1);
@@ -190,6 +221,13 @@ pub fn pushCharacter(lua: *Lua, id: i64) void {
     lua.setMetatable(-2);
 }
 
+pub fn pushMobProto(lua: *Lua, vnum: cdb.mob_vnum) void {
+    const handle = lua.newUserdata(MobProtoHandle, 0);
+    handle.* = .{ .vnum = vnum };
+    _ = lua.getMetatableRegistry(mob_proto_metatable);
+    lua.setMetatable(-2);
+}
+
 pub fn pushCondition(lua: *Lua, character_id: i64, condition: []const u8) void {
     const handle = lua.newUserdata(ConditionHandle, 0);
     handle.character_id = character_id;
@@ -206,10 +244,29 @@ fn checkCharacterHandle(lua: *Lua) *CharacterHandle {
     };
 }
 
-fn checkCharacter(lua: *Lua) *cdb.char_data {
-    const handle = checkCharacterHandle(lua);
+pub fn checkCharacter(lua: *Lua) *cdb.char_data {
+    return checkCharacterAt(lua, 1);
+}
+
+pub fn checkCharacterAt(lua: *Lua, index: i32) *cdb.char_data {
+    const handle = lua.testUserdata(CharacterHandle, index, character_metatable) catch {
+        lua.raiseErrorStr("expected dbat.Character", .{});
+    };
     return cdb.char_by_id(handle.id) orelse {
         lua.raiseErrorStr("stale dbat.Character handle for character %d", .{handle.id});
+    };
+}
+
+fn checkMobProtoHandle(lua: *Lua) *MobProtoHandle {
+    return lua.testUserdata(MobProtoHandle, 1, mob_proto_metatable) catch {
+        lua.raiseErrorStr("expected dbat.MobPrototype", .{});
+    };
+}
+
+fn checkMobProto(lua: *Lua) *cdb.mob_proto_data {
+    const handle = checkMobProtoHandle(lua);
+    return cdb.mob_proto_by_id(handle.vnum) orelse {
+        lua.raiseErrorStr("stale dbat.MobPrototype handle for mobile prototype %d", .{handle.vnum});
     };
 }
 
@@ -332,6 +389,85 @@ fn luaCharacterRoomGet(lua: *Lua) i32 {
         return 1;
     }
     rooms_lua.pushRoom(lua, room.*.number);
+    return 1;
+}
+
+fn luaCharacterFromRoom(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    if (cdb.char_room_get(ch) != null) cdb.char_from_room(ch);
+    return 0;
+}
+
+fn luaCharacterToRoom(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const room = rooms_lua.checkRoomAt(lua, 2);
+    if (cdb.char_room_get(ch) != null) cdb.char_from_room(ch);
+    cdb.char_to_room(ch, room);
+    return 0;
+}
+
+fn luaCharacterUnequip(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const pos = intCastOrError(lua, c_int, integer(lua, 2), "equipment position");
+    const obj = cdb.unequip_char(ch, pos);
+    if (obj == null) {
+        lua.pushNil();
+        return 1;
+    }
+    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    return 1;
+}
+
+fn luaMobProtoById(lua: *Lua) i32 {
+    const vnum = lua.toInteger(1) catch {
+        lua.pushNil();
+        return 1;
+    };
+    const mob_vnum = std.math.cast(cdb.mob_vnum, vnum) orelse {
+        lua.pushNil();
+        return 1;
+    };
+    if (cdb.mob_proto_by_id(mob_vnum) == null) {
+        lua.pushNil();
+        return 1;
+    }
+    pushMobProto(lua, mob_vnum);
+    return 1;
+}
+
+fn luaMobProtoToString(lua: *Lua) i32 {
+    const handle = checkMobProtoHandle(lua);
+    _ = checkMobProto(lua);
+    _ = lua.pushFString("dbat.MobPrototype(%d)", .{handle.vnum});
+    return 1;
+}
+
+fn luaMobProtoValid(lua: *Lua) i32 {
+    const handle = checkMobProtoHandle(lua);
+    lua.pushBoolean(cdb.mob_proto_by_id(handle.vnum) != null);
+    return 1;
+}
+
+fn luaMobProtoVnumGet(lua: *Lua) i32 {
+    lua.pushInteger(checkMobProtoHandle(lua).vnum);
+    return 1;
+}
+
+fn luaMobProtoSpawn(lua: *Lua) i32 {
+    const handle = checkMobProtoHandle(lua);
+    _ = checkMobProto(lua);
+    const mob = cdb.mob_spawn(handle.vnum);
+    if (mob == null) {
+        lua.pushNil();
+        return 1;
+    }
+
+    if (!lua.isNoneOrNil(2)) {
+        const room = rooms_lua.checkRoomAt(lua, 2);
+        cdb.char_to_room(mob, room);
+    }
+
+    pushCharacter(lua, cdb.char_id_get(mob));
     return 1;
 }
 

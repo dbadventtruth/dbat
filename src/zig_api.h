@@ -28,6 +28,7 @@
 #include "log.h"
 #include "fileop.h"
 #include "random.h"
+#include "relocate.h"
 #include "interpreter.h"
 #include "objsave.h"
 #include "genolc.h"

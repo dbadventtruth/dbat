@@ -109,16 +109,24 @@ pub fn pushRoom(lua: *Lua, vnum: cdb.room_vnum) void {
 }
 
 fn checkRoomHandle(lua: *Lua) *RoomHandle {
-    return lua.testUserdata(RoomHandle, 1, room_metatable) catch {
+    return checkRoomHandleAt(lua, 1);
+}
+
+pub fn checkRoomHandleAt(lua: *Lua, index: i32) *RoomHandle {
+    return lua.testUserdata(RoomHandle, index, room_metatable) catch {
         lua.raiseErrorStr("expected dbat.Room", .{});
     };
 }
 
-fn checkRoom(lua: *Lua) *cdb.room_data {
-    const handle = checkRoomHandle(lua);
+pub fn checkRoomAt(lua: *Lua, index: i32) *cdb.room_data {
+    const handle = checkRoomHandleAt(lua, index);
     return cdb.room_by_id(handle.vnum) orelse {
         lua.raiseErrorStr("stale dbat.Room handle for room %d", .{handle.vnum});
     };
+}
+
+pub fn checkRoom(lua: *Lua) *cdb.room_data {
+    return checkRoomAt(lua, 1);
 }
 
 fn luaRoomValid(lua: *Lua) i32 {
