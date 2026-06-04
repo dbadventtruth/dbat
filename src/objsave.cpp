@@ -764,12 +764,14 @@ void Crash_idlesave(struct char_data *ch) {
       return true;
     });
 
-    while ((cost > GET_GOLD(ch) + GET_BANK_GOLD(ch)) && ch->carrying) {
-      Crash_extract_expensive(ch->carrying);
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (cost <= GET_GOLD(ch) + GET_BANK_GOLD(ch)) return false;
+      Crash_extract_expensive(obj);
       cost = 0;
       Crash_calculate_rent(ch->carrying, &cost);
       cost *= 2;
-    }
+      return true;
+    });
   }
 
   if (ch->carrying == NULL) {

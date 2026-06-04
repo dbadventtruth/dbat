@@ -1153,8 +1153,10 @@ void fight_stack() {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G flees in terror and you lose sight of $m!", TRUE, ch, 0, 0,
               TO_ROOM);
-          while (ch->carrying)
-            extract_obj(ch->carrying);
+          char_inventory_iterate(ch, [&](auto obj) {
+            extract_obj(obj);
+            return true;
+          });
 
           extract_char(ch);
           continue;
@@ -1165,8 +1167,10 @@ void fight_stack() {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G turns and runs away. You lose sight of $m!", TRUE, ch, 0, 0,
               TO_ROOM);
-          while (ch->carrying)
-            extract_obj(ch->carrying);
+          char_inventory_iterate(ch, [&](auto obj) {
+            extract_obj(obj);
+            return true;
+          });
           extract_char(ch);
           continue;
         }
@@ -1717,24 +1721,20 @@ static void make_pcorpse(struct char_data *ch) {
   GET_OBJ_TIMER(corpse) = CONFIG_MAX_PC_CORPSE_TIME;
   SET_BIT_AR(GET_OBJ_EXTRA(corpse), ITEM_UNIQUE_SAVE);
 
-  struct obj_data *obj, *next_obj;
-
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
-
+  char_inventory_iterate(ch, [&](auto obj) {
     if (obj && GET_OBJ_VNUM(obj) < 19900 && GET_OBJ_VNUM(obj) != 17998) {
       if ((GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 18999) ||
           (GET_OBJ_VNUM(obj) >= 19100 && GET_OBJ_VNUM(obj) <= 19199)) {
-        continue;
+        return true;
       } else {
         obj_from_char(obj);
         obj_to_obj(obj, corpse);
-        continue;
+        return true;
       }
     } else {
-      continue;
+      return true;
     }
-  }
+  });
 
   /* transfer gold */
   if (GET_GOLD(ch) > 0) {
@@ -1878,7 +1878,7 @@ static void handle_corpse_condition(struct obj_data *corpse,
 static void make_corpse(struct char_data *ch, struct char_data *tch) {
   struct obj_data *corpse, *o;
   struct obj_data *money;
-  struct obj_data *obj, *next_obj, *meat;
+  struct obj_data *meat;
   int x, y;
 
   corpse = create_obj();
@@ -1958,11 +1958,11 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
   SET_BIT_AR(GET_OBJ_EXTRA(corpse), ITEM_UNIQUE_SAVE);
 
   if (MOB_FLAGGED(ch, MOB_HUSK)) {
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    char_inventory_iterate(ch, [&](auto obj) {
       obj_from_char(obj);
       extract_obj(obj);
-    }
+      return true;
+    });
   }
 
   if (!MOB_FLAGGED(ch, MOB_HUSK)) {

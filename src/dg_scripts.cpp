@@ -149,22 +149,34 @@ int trgvar_in_room(room_vnum vnum) {
   return i;
 }
 
-obj_data *get_obj_in_list(char *name, obj_data *list) {
-  obj_data *i;
+obj_data *get_obj_in_list(char *name, struct inventory_data list) {
+  obj_data *result = NULL;
   long id;
 
-  if (*name == UID_CHAR) {
-    id = atoi(name + 1);
-    for (i = list; i; i = i->next_content)
-      if (id == GET_ID(i))
-        return i;
-  } else {
-    for (i = list; i; i = i->next_content)
-      if (isname(name, i->name))
-        return i;
-  }
+  auto handler = [&](auto i) {
+    if (*name == UID_CHAR) {
+      if (id == GET_ID(i)) {
+        result = i;
+        return false;
+      }
+    } else {
+      if (isname(name, i->name)) {
+        result = i;
+        return false;
+      }
+    }
+    return true;
+  };
 
-  return NULL;
+  if (*name == UID_CHAR)
+    id = atoi(name + 1);
+
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
+  }
+  return result;
 }
 
 obj_data *get_object_in_equip(char_data *ch, char *name) {
@@ -415,7 +427,7 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     return obj;
 
   /* is it inside ? */
-  if (obj->contains && (i = get_obj_in_list(name, obj->contains)))
+  if ((i = get_obj_in_list(name, inv_for_obj(obj))))
     return i;
 
   /* or outside ? */
@@ -433,11 +445,11 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
     return i;
   /* or carried ? */
   else if (obj->carried_by &&
-           (i = get_obj_in_list(name, obj->carried_by->carrying)))
+           (i = get_obj_in_list(name, inv_for_char(obj->carried_by))))
     return i;
   else if ((rm = obj_room(obj)) != NULL) {
     /* check the floor */
-    if ((i = get_obj_in_list(name, room_contents_get(rm))))
+    if ((i = get_obj_in_list(name, inv_for_room(rm))))
       return i;
 
     /* check peoples' inventory */
@@ -551,7 +563,7 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
   if (!strcasecmp(name, "self") || !strcasecmp(name, "me"))
     return obj;
 
-  if (obj->contains && (i = get_obj_in_list(name, obj->contains)))
+  if ((i = get_obj_in_list(name, inv_for_obj(obj))))
     return i;
 
   if (obj->in_obj && isname(name, obj->in_obj->name))
@@ -560,11 +572,11 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
   if (obj->worn_by && (i = get_object_in_equip(obj->worn_by, name)))
     return i;
 
-  if (obj->carried_by && (i = get_obj_in_list(name, obj->carried_by->carrying)))
+  if (obj->carried_by && (i = get_obj_in_list(name, inv_for_char(obj->carried_by))))
     return i;
 
   if (((rm = obj_room(obj)) != NULL) &&
-      (i = get_obj_in_list(name, room_contents_get(rm))))
+      (i = get_obj_in_list(name, inv_for_room(rm))))
     return i;
 
   return get_obj(name);
@@ -973,9 +985,13 @@ ACMD(do_attach) {
       });
 
       if (!object) { /* search inventory for one with this vnum */
-        for (object = ch->carrying; object; object = object->next_content)
-          if (GET_OBJ_VNUM(object) == num_arg)
-            break;
+        char_inventory_iterate(ch, [&](auto o) {
+          if (GET_OBJ_VNUM(o) == num_arg) {
+            object = o;
+            return false;
+          }
+          return true;
+        });
 
         if (!object) {
           send_to_char(ch, "That object does not exist.\r\n");
@@ -1185,9 +1201,13 @@ ACMD(do_detach) {
         });
 
         if (!object) { /* search inventory for one with this vnum */
-          for (object = ch->carrying; object; object = object->next_content)
-            if (GET_OBJ_VNUM(object) == num_arg)
-              break;
+          char_inventory_iterate(ch, [&](auto o) {
+            if (GET_OBJ_VNUM(o) == num_arg) {
+              object = o;
+              return false;
+            }
+            return true;
+          });
 
           if (!object) { /* give up */
             send_to_char(ch, "No such object around.\r\n");
@@ -1204,12 +1224,12 @@ ACMD(do_detach) {
       /* Thanks to Carlos Myers for fixing the line below */
       if ((object = get_obj_in_equip_vis(ch, arg1, NULL, ch->equipment)))
         ;
-      else if ((object = get_obj_in_list_vis(ch, arg1, NULL, ch->carrying)))
+      else if ((object = get_obj_in_list_vis(ch, arg1, NULL, inv_for_char(ch))))
         ;
       else if ((victim = get_char_room_vis(ch, arg1, NULL)))
         ;
       else if ((object = get_obj_in_list_vis(ch, arg1, NULL,
-                                             room_contents_get(char_room_get(ch)))))
+                                             inv_for_room(char_room_get(ch)))))
         ;
       else if ((victim = get_char_vis(ch, arg1, NULL, FIND_CHAR_WORLD)))
         ;
@@ -1998,11 +2018,11 @@ void makeuid_var(void *go, struct script_data *sc, trig_data *trig, int type,
         break;
       case MOB_TRIGGER:
         if ((o = get_obj_in_list_vis((struct char_data *)go, name, NULL,
-                                     ((struct char_data *)go)->carrying)) ==
+                                     inv_for_char((struct char_data *)go))) ==
             NULL)
           o = get_obj_in_list_vis(
               (struct char_data *)go, name, NULL,
-              room_contents_get(char_room_get((struct char_data *)go)));
+              inv_for_room(char_room_get((struct char_data *)go)));
         break;
       }
       if (o)

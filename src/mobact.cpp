@@ -458,7 +458,6 @@ void mobile_activity(void) {
       diff = time(0) - GET_LPLAY(ch);
 
       if (diff > 86400) {
-        struct obj_data *sobj, *next_obj;
         int shop_nr;
         struct shop_data *shop = NULL;
 
@@ -470,13 +469,13 @@ void mobile_activity(void) {
           }
           return true;
         });
-        for (sobj = ch->carrying; sobj; sobj = next_obj) {
-          next_obj = sobj->next_content;
+        char_inventory_iterate(ch, [&](auto sobj) {
           if (sobj != NULL && (!shop || !shop_producing(sobj, shop))) {
             char_stat_mod(ch, "money", GET_OBJ_COST(sobj));
             extract_obj(sobj);
           }
-        }
+          return true;
+        });
       }
     }
 

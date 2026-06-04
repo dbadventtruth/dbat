@@ -125,38 +125,34 @@ char *skill_percent(struct char_data *ch, char *skill) {
    Now returns the number of matching objects -- Welcor 02/04
 */
 
-int item_in_list(char *item, obj_data *list) {
-  obj_data *i;
+int item_in_list(char *item, struct inventory_data list) {
   int count = 0;
 
   if (!item || !*item)
     return 0;
 
-  if (*item == UID_CHAR) {
-    long id = atol(item + 1);
-
-    for (i = list; i; i = i->next_content) {
+  auto handler = [&](auto i) {
+    if (*item == UID_CHAR) {
+      long id = atol(item + 1);
       if (id == GET_ID(i))
         count++;
-      if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
-        count += item_in_list(item, i->contains);
-    }
-  } else if (is_number(item) > -1) { /* check for vnum */
-    obj_vnum ovnum = atoi(item);
-
-    for (i = list; i; i = i->next_content) {
+    } else if (is_number(item) > -1) {
+      obj_vnum ovnum = atoi(item);
       if (GET_OBJ_VNUM(i) == ovnum)
         count++;
-      if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
-        count += item_in_list(item, i->contains);
-    }
-  } else {
-    for (i = list; i; i = i->next_content) {
+    } else {
       if (isname(item, i->name))
         count++;
-      if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
-        count += item_in_list(item, i->contains);
     }
+    if (GET_OBJ_TYPE(i) == ITEM_CONTAINER)
+      count += item_in_list(item, inv_for_obj(i));
+    return true;
+  };
+
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
   }
   return count;
 }
@@ -177,7 +173,7 @@ int char_has_item(char *item, struct char_data *ch) {
   if (get_object_in_equip(ch, item) != NULL)
     return 1;
 
-  if (item_in_list(item, ch->carrying) == 0)
+  if (item_in_list(item, inv_for_char(ch)) == 0)
     return 0;
   else
     return 1;
@@ -371,12 +367,12 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 
         if ((o = get_object_in_equip(ch, name)))
           ;
-        else if ((o = get_obj_in_list(name, ch->carrying)))
+        else if ((o = get_obj_in_list(name, inv_for_char(ch))))
           ;
         else if (char_room_get(ch) != NULL &&
                  (c = get_char_in_room(char_room_get(ch), name)))
           ;
-        else if ((o = get_obj_in_list(name, room_contents_get(char_room_get(ch)))))
+        else if ((o = get_obj_in_list(name, inv_for_room(char_room_get(ch)))))
           ;
         else if ((c = get_char(name)))
           ;
@@ -525,7 +521,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             strcpy(str, "0");
           } else {
             /* item_in_list looks within containers as well. */
-            snprintf(str, slen, "%d", item_in_list(subfield, room_contents_get(room)));
+            snprintf(str, slen, "%d", item_in_list(subfield, inv_for_room(room)));
           }
         }
       } else if (!strcasecmp(var, "random")) {
@@ -853,15 +849,20 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 
         else if (!strcasecmp(field, "inventory")) {
           if (subfield && *subfield) {
-            for (obj = c->carrying; obj; obj = obj->next_content) {
-              if (GET_OBJ_VNUM(obj) == atoi(subfield)) {
+            obj = NULL;
+            char_inventory_iterate(c, [&](auto o) {
+              if (GET_OBJ_VNUM(o) == atoi(subfield)) {
                 snprintf(str, slen, "%c%d", UID_CHAR,
-                         GET_ID(obj)); /* arg given, found */
-                return;
+                         GET_ID(o)); /* arg given, found */
+                obj = o;
+                return false;
               }
-            }
+              return true;
+            });
             if (!obj)
               *str = '\0'; /* arg given, not found */
+            else
+              return;
           } else {         /* no arg given */
             if (c->carrying) {
               snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(c->carrying));
@@ -1238,15 +1239,15 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         }
 
         else if (!strcasecmp(field, "contents")) {
-          if (o->contains)
-            snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(o->contains));
+          if (auto first = o->contains)
+            snprintf(str, slen, "%c%d", UID_CHAR, GET_ID(first));
           else
             *str = '\0';
         }
         /* thanks to Jamie Nelson (Mordecai of 4 Dimensions MUD) */
         else if (!strcasecmp(field, "count")) {
           if (GET_OBJ_TYPE(o) == ITEM_CONTAINER)
-            snprintf(str, slen, "%d", item_in_list(subfield, o->contains));
+            snprintf(str, slen, "%d", item_in_list(subfield, inv_for_obj(o)));
           else
             strcpy(str, "0");
         }
@@ -1270,7 +1271,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         if (!strcasecmp(field, "has_in")) {
           if (GET_OBJ_TYPE(o) == ITEM_CONTAINER)
             snprintf(str, slen, "%s",
-                     (item_in_list(subfield, o->contains) ? "1" : "0"));
+                     (item_in_list(subfield, inv_for_obj(o)) ? "1" : "0"));
           else
             strcpy(str, "0");
         }

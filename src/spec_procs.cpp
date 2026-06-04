@@ -401,7 +401,7 @@ SPECIAL(auction) {
 
     value = atoi(arg2);
 
-    if (!(obj2 = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+    if (!(obj2 = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You don't have that item to auction.\r\n");
       return (TRUE);
     }

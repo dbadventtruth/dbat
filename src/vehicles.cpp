@@ -414,14 +414,21 @@ struct obj_data *find_hatch_by_vnum(int vnum) {
 }
 
 /* Search the given list for an object type, and return a ptr to that obj*/
-struct obj_data *get_obj_in_list_type(int type, struct obj_data *list) {
-  struct obj_data *i;
-
-  for (i = list; i; i = i->next_content)
-    if (GET_OBJ_TYPE(i) == type)
-      return i;
-
-  return NULL;
+struct obj_data *get_obj_in_list_type(int type, struct inventory_data list) {
+  struct obj_data *result = NULL;
+  auto handler = [&](auto i) {
+    if (GET_OBJ_TYPE(i) == type) {
+      result = i;
+      return false;
+    }
+    return true;
+  };
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
+  }
+  return result;
 }
 
 /* Search the player's room, inventory and equipment for a control */
@@ -429,11 +436,15 @@ struct obj_data *find_control(struct char_data *ch) {
   struct obj_data *controls, *obj;
   int j;
 
-  controls = get_obj_in_list_type(ITEM_CONTROL, room_contents_get(char_room_get(ch)));
+  controls = get_obj_in_list_type(ITEM_CONTROL, inv_for_room(char_room_get(ch)));
   if (!controls)
-    for (obj = ch->carrying; obj && !controls; obj = obj->next_content)
-      if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_TYPE(obj) == ITEM_CONTROL)
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_TYPE(obj) == ITEM_CONTROL) {
         controls = obj;
+        return false;
+      }
+      return true;
+    });
   if (!controls)
     char_equipment_iterate(ch, [&](auto j, auto eq) {
       if (CAN_SEE_OBJ(ch, eq) && GET_OBJ_TYPE(eq) == ITEM_CONTROL) {
@@ -455,7 +466,7 @@ static void drive_into_vehicle(struct char_data *ch, struct obj_data *vehicle,
   if (!*arg) {
     send_to_char(ch, "@wDrive into what?\r\n");
   } else if (!(vehicle_in_out = get_obj_in_list_vis(
-                   ch, arg, NULL, room_contents_get(obj_room_get(vehicle))))) {
+                   ch, arg, NULL, inv_for_room(obj_room_get(vehicle))))) {
     send_to_char(ch, "@wNothing here by that name!\r\n");
   } else if (GET_OBJ_TYPE(vehicle_in_out) != ITEM_VEHICLE) {
     send_to_char(ch, "@wThat's not a ship.\r\n");
@@ -491,7 +502,7 @@ static void drive_outof_vehicle(struct char_data *ch,
   char buf[MAX_INPUT_LENGTH];
 
   if (!(hatch = get_obj_in_list_type(ITEM_HATCH,
-                                     room_contents_get(obj_room_get(vehicle))))) {
+                                     inv_for_room(obj_room_get(vehicle))))) {
     send_to_char(ch, "@wNowhere to pilot out of.\r\n");
   } else if (!(vehicle_in_out = find_vehicle_by_vnum(GET_OBJ_VAL(hatch, 0)))) {
     send_to_char(ch, "@wYou can't pilot out anywhere!\r\n");

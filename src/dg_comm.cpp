@@ -190,12 +190,12 @@ void sub_write(char *arg, struct char_data *ch, int8_t find_invis,
       if (find_invis)
         obj = get_obj_in_room(char_room_get(ch), name);
       else if (!(obj = get_obj_in_list_vis(ch, name, NULL,
-                                           room_contents_get(char_room_get(ch)))))
+                                           inv_for_room(char_room_get(ch)))))
         ;
       else if (!(obj = get_obj_in_equip_vis(ch, name, &tmp, ch->equipment)))
         ;
       else
-        obj = get_obj_in_list_vis(ch, name, NULL, ch->carrying);
+        obj = get_obj_in_list_vis(ch, name, NULL, inv_for_char(ch));
 
       otokens[i] = (void *)obj;
       tokens[++i] = ++s;

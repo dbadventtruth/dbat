@@ -13306,7 +13306,7 @@ ACMD(do_bite) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           room_contents_get(char_room_get(ch))))) {
+                                           inv_for_room(char_room_get(ch))))) {
       return;
     }
   }

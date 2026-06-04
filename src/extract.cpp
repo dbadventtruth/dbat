@@ -213,11 +213,11 @@ void extract_char_final(struct char_data *ch) {
   }
 
   /* transfer objects to room, if any */
-  while (ch->carrying) {
-    obj = ch->carrying;
+  char_inventory_iterate(ch, [&](auto obj) {
     obj_from_char(obj);
     obj_to_room(obj, char_room_get(ch));
-  }
+    return true;
+  });
 
   /* transfer equipment to room, if any */
   char_equipment_iterate(ch, [&](auto i, auto eq) {
@@ -288,11 +288,11 @@ void extract_char(struct char_data *ch) {
         (char_room_get(foll->follower) == char_room_get(ch) ||
          char_room_vnum_get(ch) == 1)) {
       /* transfer objects to char, if any */
-      while (foll->follower->carrying) {
-        obj = foll->follower->carrying;
+      char_inventory_iterate(foll->follower, [&](auto obj) {
         obj_from_char(obj);
         obj_to_char(obj, ch);
-      }
+        return true;
+      });
 
       /* transfer equipment to char, if any */
       char_equipment_iterate(foll->follower, [&](auto i, auto eq) {

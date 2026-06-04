@@ -9,6 +9,7 @@
 #include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
+#include "iterate.hpp"
 #include "config_db.h"
 #include "consts/admlevel.h"
 #include "consts/constates.h"
@@ -90,17 +91,17 @@ ACMD(do_oasis_redit) {
     return;
   }
 
-  struct obj_data *capsule = NULL, *next_obj = NULL, *remove = NULL;
+  struct obj_data *remove = NULL;
   int remodeling = FALSE;
 
-  for (capsule = ch->carrying; capsule; capsule = next_obj) {
-    next_obj = capsule->next_content;
+  char_inventory_iterate(ch, [&](auto capsule) {
     if (remove != NULL) {
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(capsule) == 19094) {
       remove = capsule;
     }
-  }
+    return true;
+  });
 
   if (remove == NULL && GET_ADMLEVEL(ch) < 1) {
     send_to_char(ch,

@@ -351,15 +351,15 @@ ACMD(do_sradar) {
 ACMD(do_radar) {
   int room = 0, dir, num = 0, found = FALSE, found2 = FALSE, fcount = 0;
   struct char_data *tch;
-  struct obj_data *obj, *obj2, *next_obj;
 
-  for (obj2 = ch->carrying; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
+
+  char_inventory_iterate(ch, [&](auto obj2) {
     if (GET_OBJ_VNUM(obj2) == 12 && (!OBJ_FLAGGED(obj2, ITEM_BROKEN)) &&
         (!OBJ_FLAGGED(obj2, ITEM_FORGED))) {
       found2 = TRUE;
     }
-  }
+    return true;
+  });
   if (found2 == FALSE) {
     send_to_char(ch, "You do not even have a dragon radar!\r\n");
     return;
@@ -416,10 +416,9 @@ ACMD(do_radar) {
           if (tch == ch) {
             return true;
           }
-          for (obj = tch->carrying; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+          char_inventory_iterate(tch, [&](auto obj) {
             if (OBJ_FLAGGED(obj, ITEM_FORGED)) {
-              continue;
+              return true;
             } else if (GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 ||
                        GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 ||
                        GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 ||
@@ -452,7 +451,8 @@ ACMD(do_radar) {
               }
               found = TRUE;
             }
-          }
+            return true;
+          });
           return true;
         });
       }

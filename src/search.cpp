@@ -109,14 +109,22 @@ int get_number(char **name) {
 }
 
 /* Search a given list for an object number, and return a ptr to that obj */
-struct obj_data *get_obj_in_list_num(int num, struct obj_data *list) {
-  struct obj_data *i;
+struct obj_data *get_obj_in_list_num(int num, struct inventory_data list) {
+  struct obj_data *result = NULL;
 
-  for (i = list; i; i = i->next_content)
-    if (GET_OBJ_RNUM(i) == num)
-      return (i);
-
-  return (NULL);
+  auto handler = [&](auto o) {
+    if (GET_OBJ_RNUM(o) == num) {
+      result = o;
+      return false;
+    }
+    return true;
+  };
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
+  }
+  return result;
 }
 
 /* search the entire world for an object number, and return a pointer  */
@@ -315,8 +323,7 @@ struct char_data *get_char_vis(struct char_data *ch, char *name, int *number,
 }
 
 struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name,
-                                     int *number, struct obj_data *list) {
-  struct obj_data *i;
+                                     int *number, struct inventory_data list) {
   int num;
 
   if (!number) {
@@ -327,13 +334,23 @@ struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name,
   if (*number == 0)
     return (NULL);
 
-  for (i = list; i && *number; i = i->next_content)
+  struct obj_data *result = NULL;
+
+  auto handler = [&](auto i) {
     if (isname(name, i->name))
       if (CAN_SEE_OBJ(ch, i) || (GET_OBJ_TYPE(i) == ITEM_LIGHT))
-        if (--(*number) == 0)
-          return (i);
-
-  return (NULL);
+        if (--(*number) == 0) {
+          result = i;
+          return false;
+        }
+    return true;
+  };
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
+  }
+  return result;
 }
 
 /* search the entire world for an object, and return a pointer  */
@@ -350,12 +367,12 @@ struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number) {
     return (NULL);
 
   /* scan items carried */
-  if ((i = get_obj_in_list_vis(ch, name, number, ch->carrying)) != NULL)
+  if ((i = get_obj_in_list_vis(ch, name, number, inv_for_char(ch))) != NULL)
     return (i);
 
   /* scan room */
   if ((i = get_obj_in_list_vis(ch, name, number,
-                               room_contents_get(char_room_get(ch)))) != NULL)
+                                inv_for_room(char_room_get(ch)))) != NULL)
     return (i);
 
   /* ok.. no luck yet. scan the entire obj list   */
@@ -482,14 +499,14 @@ int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
   }
 
   if (IS_SET(bitvector, FIND_OBJ_INV)) {
-    if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, ch->carrying)) !=
+    if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, inv_for_char(ch))) !=
         NULL)
       return (FIND_OBJ_INV);
   }
 
   if (IS_SET(bitvector, FIND_OBJ_ROOM)) {
     if ((*tar_obj = get_obj_in_list_vis(ch, name, &number,
-                                        room_contents_get(char_room_get(ch)))) != NULL)
+                                        inv_for_room(char_room_get(ch)))) != NULL)
       return (FIND_OBJ_ROOM);
   }
 

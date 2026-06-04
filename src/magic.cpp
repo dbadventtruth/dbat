@@ -100,10 +100,9 @@ void affect_update(void) {
  */
 int mag_materials(struct char_data *ch, int item0, int item1, int item2,
                   int extract, int verbose) {
-  struct obj_data *tobj;
   struct obj_data *obj0 = NULL, *obj1 = NULL, *obj2 = NULL;
 
-  for (tobj = ch->carrying; tobj; tobj = tobj->next_content) {
+  char_inventory_iterate(ch, [&](auto tobj) {
     if ((item0 > 0) && (GET_OBJ_VNUM(tobj) == item0)) {
       obj0 = tobj;
       item0 = -1;
@@ -114,7 +113,8 @@ int mag_materials(struct char_data *ch, int item0, int item1, int item2,
       obj2 = tobj;
       item2 = -1;
     }
-  }
+    return true;
+  });
   if ((item0 > 0) || (item1 > 0) || (item2 > 0)) {
     if (verbose) {
       switch (rand_number(0, 2)) {

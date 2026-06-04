@@ -749,8 +749,6 @@ int cmd_otrig(obj_data *obj, char_data *actor, char *cmd, char *argument,
 }
 
 int command_otrigger(char_data *actor, char *cmd, char *argument) {
-  obj_data *obj;
-
   /* prevent people we like from becoming trapped :P */
   if (!valid_dg_target(actor, 0))
     return 0;
@@ -769,10 +767,18 @@ int command_otrigger(char_data *actor, char *cmd, char *argument) {
       return 1;
   }
 
-  for (obj = actor->carrying; obj; obj = obj->next_content)
-    if (cmd_otrig(obj, actor, cmd, argument, OCMD_INVEN) &&
-        !OBJ_FLAGGED(obj, ITEM_FORGED))
-      return 1;
+  {
+    bool found = false;
+    char_inventory_iterate(actor, [&](auto obj) {
+      if (cmd_otrig(obj, actor, cmd, argument, OCMD_INVEN) &&
+          !OBJ_FLAGGED(obj, ITEM_FORGED)) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    if (found) return 1;
+  }
 
   {
     int found = 0;

@@ -1501,16 +1501,16 @@ ACMD(do_write) {
     return;
   }
   if (*penname) { /* there were two arguments */
-    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, ch->carrying))) {
+    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You have no %s.\r\n", papername);
       return;
     }
-    if (!(pen = get_obj_in_list_vis(ch, penname, NULL, ch->carrying))) {
+    if (!(pen = get_obj_in_list_vis(ch, penname, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You have no %s.\r\n", penname);
       return;
     }
   } else { /* there was one arg.. let's see what we can find */
-    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, ch->carrying))) {
+    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "There is no %s in your inventory.\r\n", papername);
       return;
     }

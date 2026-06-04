@@ -273,7 +273,6 @@ ACMD(do_mjunk) {
   char arg[MAX_INPUT_LENGTH];
   int pos, junk_all = 0;
   obj_data *obj;
-  obj_data *obj_next;
 
   if (!MOB_OR_IMPL(ch)) {
     send_to_char(ch, "Huh?!?\r\n");
@@ -299,16 +298,16 @@ ACMD(do_mjunk) {
       extract_obj(unequip_char(ch, pos));
       return;
     }
-    if ((obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying)) != NULL)
+    if ((obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch))) != NULL)
       extract_obj(obj);
     return;
   } else {
-    for (obj = ch->carrying; obj != NULL; obj = obj_next) {
-      obj_next = obj->next_content;
+    char_inventory_iterate(ch, [&](auto obj) {
       if (arg[3] == '\0' || isname(arg + 4, obj->name)) {
         extract_obj(obj);
       }
-    }
+      return true;
+    });
     /* Thanks to Carlos Myers for fixing the line below */
     while ((pos = get_obj_pos_in_equip_vis(ch, arg, NULL, ch->equipment)) >= 0)
       extract_obj(unequip_char(ch, pos));

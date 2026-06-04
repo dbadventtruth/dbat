@@ -337,7 +337,7 @@ ACMD(do_breath) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           room_contents_get(char_room_get(ch))))) {
+                                           inv_for_room(char_room_get(ch))))) {
       return;
     }
   }
@@ -599,7 +599,7 @@ ACMD(do_ram) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           room_contents_get(char_room_get(ch))))) {
+                                           inv_for_room(char_room_get(ch))))) {
       return;
     }
   }
@@ -796,7 +796,7 @@ ACMD(do_strike) {
     if (FIGHTING(ch) && char_room_get(FIGHTING(ch)) == char_room_get(ch)) {
       vict = FIGHTING(ch);
     } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                           room_contents_get(char_room_get(ch))))) {
+                                           inv_for_room(char_room_get(ch))))) {
       return;
     }
   }
@@ -3294,7 +3294,7 @@ ACMD(do_throw) {
     two_arguments(chunk, arg2, arg3);
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     if (!(tch = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
       send_to_char(ch,
                    "You do not have that object or character to throw!\r\n");

@@ -4822,16 +4822,15 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
             TRUE, ch, 0, vict, TO_CHAR);
         act("@c$N@w admits defeat to $n, stops sparring, and stumbles away.@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        struct obj_data *rew, *next_rew;
         int founded = 0;
-        for (rew = vict->carrying; rew; rew = next_rew) {
-          next_rew = rew->next_content;
+        char_inventory_iterate(vict, [&](auto rew) {
           if (rew) {
             obj_from_char(rew);
             obj_to_room(rew, char_room_get(vict));
             founded = 1;
           }
-        }
+          return true;
+        });
         if (founded == 1) {
           act("@c$N@w leaves a reward behind out of respect.@n", TRUE, ch, 0,
               vict, TO_CHAR);

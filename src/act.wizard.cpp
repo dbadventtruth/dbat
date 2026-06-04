@@ -731,7 +731,7 @@ ACMD(do_transobj) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You want to send what?\r\n");
     return;
   } else if (!strcasecmp("all", arg2)) {
@@ -1874,10 +1874,13 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
   }
 
   int counts = 0, total = 0;
-  for (i = 0, j = k->carrying; j; j = j->next_content, i++) {
+  i = 0;
+  char_inventory_iterate(k, [&](auto j) {
     counts += check_insidebag(j, 0.5);
     counts++;
-  }
+    i++;
+    return true;
+  });
   total = counts;
   total += i;
   i2 = 0;
@@ -2098,13 +2101,13 @@ ACMD(do_stat) {
     if ((object = get_obj_in_equip_vis(ch, name, &number, ch->equipment)) !=
         NULL)
       do_stat_object(ch, object);
-    else if ((object = get_obj_in_list_vis(ch, name, &number, ch->carrying)) !=
+    else if ((object = get_obj_in_list_vis(ch, name, &number, inv_for_char(ch))) !=
              NULL)
       do_stat_object(ch, object);
     else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_ROOM)) != NULL)
       do_stat_character(ch, victim);
     else if ((object = get_obj_in_list_vis(
-                  ch, name, &number, room_contents_get(char_room_get(ch)))) != NULL)
+                  ch, name, &number, inv_for_room(char_room_get(ch)))) != NULL)
       do_stat_object(ch, object);
     else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_WORLD)) !=
              NULL)
@@ -2435,7 +2438,7 @@ ACMD(do_purge) {
       }
       extract_char(vict);
     } else if ((obj = get_obj_in_list_vis(
-                    ch, buf, NULL, room_contents_get(char_room_get(ch)))) != NULL) {
+                    ch, buf, NULL, inv_for_room(char_room_get(ch)))) != NULL) {
       act("$n destroys $p.", FALSE, ch, obj, 0, TO_ROOM);
       extract_obj(obj);
     } else {
@@ -2458,8 +2461,10 @@ ACMD(do_purge) {
       delete_inv_backup(vict);
 
       /* Dump inventory. */
-      while (vict->carrying)
-        extract_obj(vict->carrying);
+      char_inventory_iterate(vict, [&](auto obj) {
+        extract_obj(obj);
+        return true;
+      });
 
       /* Dump equipment. */
       char_equipment_iterate(vict, [&](auto i, auto eq) {
@@ -4884,9 +4889,9 @@ ACMD(do_chown) {
       return true;
     });
 
-    if (!(obj = get_obj_in_list_vis(victim, buf2, NULL, victim->carrying))) {
+    if (!(obj = get_obj_in_list_vis(victim, buf2, NULL, inv_for_char(victim)))) {
       if (!k &&
-          !(obj = get_obj_in_list_vis(victim, buf2, NULL, victim->carrying))) {
+          !(obj = get_obj_in_list_vis(victim, buf2, NULL, inv_for_char(victim)))) {
         send_to_char(ch, "%s does not appear to have the %s.\r\n",
                      GET_NAME(victim), buf2);
         return;

@@ -1812,10 +1812,10 @@ ACMD(do_iedit) {
 
   if ((k = get_obj_in_equip_vis(ch, arg, NULL, ch->equipment))) {
     found = 1;
-  } else if ((k = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  } else if ((k = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     found = 1;
   } else if ((k = get_obj_in_list_vis(ch, arg, NULL,
-                                      room_contents_get(char_room_get(ch))))) {
+                                      inv_for_room(char_room_get(ch))))) {
     found = 1;
   } else if ((k = get_obj_vis(ch, arg, NULL))) {
     found = 1;

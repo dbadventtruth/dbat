@@ -1254,3 +1254,7 @@ pub export fn char_is_npc(ch: *cdb.char_data) bool {
 pub export fn char_next_in_room_get(ch: *cdb.char_data) [*c]cdb.char_data {
     return ch.next_in_room;
 }
+
+pub export fn char_carrying_get(ch: *cdb.char_data) [*c]cdb.obj_data {
+    return ch.carrying;
+}

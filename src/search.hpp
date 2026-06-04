@@ -11,6 +11,7 @@
 #include "object_api.h"
 #include "object_impl.h"
 #include "room_impl.h"
+#include "iterate.hpp"
 
 
 namespace dbat::game::search {
@@ -18,7 +19,7 @@ namespace dbat::game::search {
 template <typename Fn> bool object_list_each(obj_data *head, Fn &&fn) {
   auto *current = head;
   while (current) {
-    auto *next = current->next_content;
+    auto *next = obj_next_content_get(current);
     if (!fn(current)) {
       return false;
     }
@@ -34,7 +35,7 @@ template <typename Fn> bool object_tree_each(obj_data *head, Fn &&fn) {
       return false;
     }
 
-    return object_tree_each(obj->contains, fn);
+    return object_tree_each(obj_contains_get(obj), fn);
   });
 }
 
@@ -45,10 +46,10 @@ bool room_objects_each(room_data *room, bool recursive, Fn &&fn) {
   }
 
   if (recursive) {
-    return object_tree_each(room->contents, std::forward<Fn>(fn));
+    return object_tree_each(room_contents_get(room), std::forward<Fn>(fn));
   }
 
-  return object_list_each(room->contents, std::forward<Fn>(fn));
+  return object_list_each(room_contents_get(room), std::forward<Fn>(fn));
 }
 
 template <typename Fn>
@@ -58,10 +59,10 @@ bool object_inventory_each(obj_data *obj, bool recursive, Fn &&fn) {
   }
 
   if (recursive) {
-    return object_tree_each(obj->contains, std::forward<Fn>(fn));
+    return object_tree_each(obj_contains_get(obj), std::forward<Fn>(fn));
   }
 
-  return object_list_each(obj->contains, std::forward<Fn>(fn));
+  return object_list_each(obj_contains_get(obj), std::forward<Fn>(fn));
 }
 
 template <typename Fn>
@@ -71,10 +72,10 @@ bool character_inventory_each(char_data *ch, bool recursive, Fn &&fn) {
   }
 
   if (recursive) {
-    return object_tree_each(ch->carrying, std::forward<Fn>(fn));
+    return object_tree_each(char_carrying_get(ch), std::forward<Fn>(fn));
   }
 
-  return object_list_each(ch->carrying, std::forward<Fn>(fn));
+  return object_list_each(char_carrying_get(ch), std::forward<Fn>(fn));
 }
 
 template <typename Fn> bool room_people_each(room_data *room, Fn &&fn) {
@@ -82,16 +83,16 @@ template <typename Fn> bool room_people_each(room_data *room, Fn &&fn) {
     return true;
   }
 
-  auto *current = room->people;
-  while (current) {
-    auto *next = current->next_in_room;
-    if (!fn(current)) {
+  bool complete = true;
+  room_people_iterate(room, [&](char_data *ch) {
+    if (!fn(ch)) {
+      complete = false;
       return false;
     }
-    current = next;
-  }
+    return true;
+  });
 
-  return true;
+  return complete;
 }
 
 template <typename Fn> bool character_equipment_each(char_data *ch, Fn &&fn) {
@@ -99,14 +100,16 @@ template <typename Fn> bool character_equipment_each(char_data *ch, Fn &&fn) {
     return true;
   }
 
-  for (std::size_t pos = 0; pos < NUM_WEARS; ++pos) {
-    auto *obj = ch->equipment[pos];
-    if (obj && !fn(obj, pos)) {
+  bool complete = true;
+  char_equipment_iterate(ch, [&](std::size_t pos, obj_data *obj) {
+    if (!fn(obj, pos)) {
+      complete = false;
       return false;
     }
-  }
+    return true;
+  });
 
-  return true;
+  return complete;
 }
 
 template <typename Each, typename Pred>

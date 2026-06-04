@@ -680,8 +680,6 @@ static int has_boat(struct char_data *ch) {
 
 /* simple function to determine if char can fly */
 static int has_flight(struct char_data *ch) {
-  struct obj_data *obj;
-
   if (ADM_FLAGGED(ch, ADM_WALKANYWHERE))
     return (1);
 
@@ -710,9 +708,17 @@ static int has_flight(struct char_data *ch) {
   }
 
   /* non-wearable flying items in inventory will do it */
-  for (obj = ch->carrying; obj; obj = obj->next_content)
-    if (OBJAFF_FLAGGED(obj, AFF_FLYING) && (find_eq_pos(ch, obj, NULL) < 0))
-      return (1);
+  {
+    bool found = false;
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (OBJAFF_FLAGGED(obj, AFF_FLYING) && (find_eq_pos(ch, obj, NULL) < 0)) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    if (found) return (1);
+  }
 
   /* anything worn as wings will do */
   return (0);
@@ -1658,15 +1664,21 @@ static int find_door(struct char_data *ch, const char *type, char *dir,
 }
 
 static int has_key(struct char_data *ch, obj_vnum key) {
-  struct obj_data *o;
-
   if (key == 1) {
     return (1);
   }
 
-  for (o = ch->carrying; o; o = o->next_content)
-    if (GET_OBJ_VNUM(o) == key)
-      return (1);
+  {
+    bool found = false;
+    char_inventory_iterate(ch, [&](auto o) {
+      if (GET_OBJ_VNUM(o) == key) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    if (found) return (1);
+  }
 
   {
     bool found_key = false;
@@ -2308,10 +2320,10 @@ ACMD(do_enter) {
 
   if (*buf) { /* an argument was supplied, search for door keyword */
     /* Is the object in the room? */
-    obj = get_obj_in_list_vis(ch, buf, NULL, room_contents_get(char_room_get(ch)));
+    obj = get_obj_in_list_vis(ch, buf, NULL, inv_for_room(char_room_get(ch)));
     /* Is the object in the character's inventory? */
     if (!obj)
-      obj = get_obj_in_list_vis(ch, buf, NULL, ch->carrying);
+      obj = get_obj_in_list_vis(ch, buf, NULL, inv_for_char(ch));
     /* Is the character carrying the object? */
     if (!obj)
       obj = get_obj_in_equip_vis(ch, buf, NULL, ch->equipment);
@@ -3277,7 +3289,7 @@ ACMD(do_sit) {
       return;
     }
     if (!(chair = get_obj_in_list_vis(ch, arg, NULL,
-                                      room_contents_get(char_room_get(ch))))) {
+                                      inv_for_room(char_room_get(ch))))) {
       send_to_char(ch, "That isn't here.\r\n");
       return;
     }
@@ -3421,7 +3433,7 @@ ACMD(do_rest) {
       return;
     }
     if (!(chair = get_obj_in_list_vis(ch, arg, NULL,
-                                      room_contents_get(char_room_get(ch))))) {
+                                      inv_for_room(char_room_get(ch))))) {
       send_to_char(ch, "That isn't here.\r\n");
       return;
     }
@@ -3585,7 +3597,7 @@ ACMD(do_sleep) {
       return;
     }
     if (!(chair = get_obj_in_list_vis(ch, arg, NULL,
-                                      room_contents_get(char_room_get(ch))))) {
+                                      inv_for_room(char_room_get(ch))))) {
       send_to_char(ch, "That isn't here.\r\n");
       return;
     }

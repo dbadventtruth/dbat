@@ -589,7 +589,7 @@ ACMD(do_rpp) {
             ch,
             "You need at least 1 RPP to initiate an equipment restring.\r\n");
         return;
-      } else if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, ch->carrying))) {
+      } else if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
         send_to_char(ch, "You don't have a that equipment to restring in your "
                          "inventory.\r\n");
         send_to_char(ch, "Syntax: rpp 14 (obj name)\r\n");
@@ -4628,7 +4628,7 @@ ACMD(do_upgrade) {
                    "You need to be at least level 80 to use these kits.\r\n");
       return;
     }
-    if (!(obj = get_obj_in_list_vis(ch, "Augmentation", NULL, ch->carrying))) {
+    if (!(obj = get_obj_in_list_vis(ch, "Augmentation", NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You don't have a Circuit Augmentation Kit.\r\n");
       return;
     } else {
@@ -7044,7 +7044,7 @@ ACMD(do_plant) {
       GET_ADMLEVEL(ch) < 5)
     roll = -10; /* Failure */
 
-  if (!(obj = get_obj_in_list_vis(ch, obj_name, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, obj_name, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have that to plant on them.\r\n");
     return;
   }
@@ -7098,7 +7098,7 @@ ACMD(do_plant) {
 ACMD(do_forgery) {
 
   struct obj_data *obj2, *obj3 = NULL;
-  struct obj_data *obj, *obj4 = NULL, *next_obj;
+  struct obj_data *obj4 = NULL;
   int found = FALSE;
   char arg[MAX_INPUT_LENGTH];
 
@@ -7117,19 +7117,19 @@ ACMD(do_forgery) {
     return;
   }
 
-  if (!(obj2 = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj2 = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You want to make a fake copy of what?\r\n");
     return;
   }
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (found == FALSE && GET_OBJ_VNUM(obj) == 19 &&
         (!OBJ_FLAGGED(obj, ITEM_BROKEN) && !OBJ_FLAGGED(obj, ITEM_FORGED))) {
       found = TRUE;
       obj4 = obj;
     }
-  }
+    return true;
+  });
 
   if (found == FALSE || obj4 == NULL) {
     send_to_char(ch, "You need a forgery kit.\r\n");
@@ -7249,7 +7249,7 @@ ACMD(do_appraise) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You want to appraise what?\r\n");
     return;
   }
@@ -8438,7 +8438,6 @@ ACMD(do_summon) {
   int summoned = FALSE, count = 0;
   int dball[7] = {20, 21, 22, 23, 24, 25, 26};
   int dball2[7] = {20, 21, 22, 23, 24, 25, 26};
-  struct obj_data *obj, *next_obj;
   struct char_data *mob = NULL;
   struct mob_proto_data *proto = NULL;
 
@@ -8459,43 +8458,42 @@ ACMD(do_summon) {
     return;
   }
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (OBJ_FLAGGED(obj, ITEM_FORGED)) {
-      continue;
+      return true;
     }
     if (GET_OBJ_VNUM(obj) == dball[0]) {
       dball[0] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[1]) {
       dball[1] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[2]) {
       dball[2] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[3]) {
       dball[3] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[4]) {
       dball[4] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[5]) {
       dball[5] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[6]) {
       dball[6] = -1;
       count++;
-      continue;
+      return true;
     } else {
-      continue;
-    } // end if
-  } // end repeat for
+      return true;
+    }
+  });
 
   if (count == 7) {
     summoned = TRUE;
@@ -8521,48 +8519,46 @@ ACMD(do_summon) {
 
     DRAGONZ = virtual_zone_by_thing(DRAGONR);
 
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
-
+    char_inventory_iterate(ch, [&](auto obj) {
       if (GET_OBJ_VNUM(obj) == dball2[0]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[0] = -1;
-        continue;
+        return true;
       } else if (GET_OBJ_VNUM(obj) == dball2[1]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[1] = -1;
-        continue;
+        return true;
       } else if (GET_OBJ_VNUM(obj) == dball2[2]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[2] = -1;
-        continue;
+        return true;
       } else if (GET_OBJ_VNUM(obj) == dball2[3]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[3] = -1;
-        continue;
+        return true;
       } else if (GET_OBJ_VNUM(obj) == dball2[4]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[4] = -1;
-        continue;
+        return true;
       } else if (GET_OBJ_VNUM(obj) == dball2[5]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[5] = -1;
-        continue;
+        return true;
       } else if (GET_OBJ_VNUM(obj) == dball2[6]) {
         obj_from_char(obj);
         extract_obj(obj);
         dball2[6] = -1;
-        continue;
+        return true;
       } else {
-        continue;
+        return true;
       }
-    }
+    });
     if (!(proto = mob_proto_by_id(21))) {
       send_to_imm("Shenron doesn't exist!");
       return;
@@ -9094,7 +9090,7 @@ ACMD(do_meditate) {
       return;
     }
   } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
-                                         room_contents_get(char_room_get(ch))))) {
+                                         inv_for_room(char_room_get(ch))))) {
     send_to_char(ch, "Syntax: meditate (object)\nSyntax: meditate "
                      "expand\nSyntax: meditate break\r\n");
     return;
@@ -10176,15 +10172,14 @@ void base_update(void) {
 }
 
 static int has_scanner(struct char_data *ch) {
-  struct obj_data *obj, *next_obj;
   int success = 0;
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (obj && GET_OBJ_VNUM(obj) == 13600) {
       success = 1;
     }
-  }
+    return true;
+  });
 
   return (success);
 }
@@ -10750,42 +10745,40 @@ int dball_count(struct char_data *ch) {
 
   int dball[7] = {20, 21, 22, 23, 24, 25, 26};
   int count = 0;
-  struct obj_data *obj = NULL, *next_obj = NULL;
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == dball[0]) {
       dball[0] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[1]) {
       dball[1] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[2]) {
       dball[2] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[3]) {
       dball[3] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[4]) {
       dball[4] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[5]) {
       dball[5] = -1;
       count++;
-      continue;
+      return true;
     } else if (GET_OBJ_VNUM(obj) == dball[6]) {
       dball[6] = -1;
       count++;
-      continue;
+      return true;
     } else {
-      continue;
-    } // end if
-  } // end repeat for
+      return true;
+    }
+  });
 
   if (count >= 1) {
     return 1;
@@ -11102,7 +11095,7 @@ ACMD(do_steal) {
         return;
       }
     } else { /* It's an object... */
-      if (!(obj = get_obj_in_list_vis(ch, arg, NULL, vict->carrying))) {
+      if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(vict)))) {
         for (eq_pos = 0; eq_pos < NUM_WEARS; eq_pos++)
           if (GET_EQ(vict, eq_pos) &&
               (isname(arg, GET_EQ(vict, eq_pos)->name)) &&
@@ -11683,13 +11676,13 @@ ACMD(do_use) {
     switch (subcmd) {
     case SCMD_RECITE:
     case SCMD_QUAFF:
-      if (!(mag_item = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+      if (!(mag_item = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
         send_to_char(ch, "You don't seem to have %s %s.\r\n", AN(arg), arg);
         return;
       }
       break;
     case SCMD_USE:
-      if (!(mag_item = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+      if (!(mag_item = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
         send_to_char(ch, "You don't seem to have %s %s.\r\n", AN(arg), arg);
         return;
       }
@@ -12523,7 +12516,7 @@ ACMD(do_break) {
 
 ACMD(do_fix) {
   char arg[MAX_INPUT_LENGTH];
-  struct obj_data *obj, *obj4 = NULL, *rep, *next_obj;
+  struct obj_data *obj, *obj4 = NULL;
   struct char_data *dummy = NULL;
   int cmbrk, found = FALSE, self = FALSE, custom = FALSE;
 
@@ -12581,8 +12574,7 @@ ACMD(do_fix) {
     }
   }
 
-  for (rep = ch->carrying; rep; rep = next_obj) {
-    next_obj = rep->next_content;
+  char_inventory_iterate(ch, [&](auto rep) {
     if (custom == FALSE) {
       if (found == FALSE && GET_OBJ_VNUM(rep) == 48 &&
           (!OBJ_FLAGGED(rep, ITEM_BROKEN) && !OBJ_FLAGGED(rep, ITEM_FORGED))) {
@@ -12596,7 +12588,8 @@ ACMD(do_fix) {
         obj4 = rep;
       }
     }
-  }
+    return true;
+  });
 
   if (found == FALSE && custom == FALSE) {
     send_to_char(ch, "You do not even have a repair kit.\r\n");
@@ -13424,7 +13417,7 @@ ACMD(do_clan) {
 
 ACMD(do_aid) {
   struct char_data *vict;
-  struct obj_data *obj = NULL, *aid_obj = NULL, *aid_prod = NULL, *next_obj;
+  struct obj_data *aid_obj = NULL, *aid_prod = NULL;
   char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
   int dc = 0, found = FALSE, num = 47, num2 = 0, survival = 0;
 
@@ -13460,14 +13453,14 @@ ACMD(do_aid) {
     num2 = 385;
   }
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (found == FALSE && GET_OBJ_VNUM(obj) == num &&
         (!OBJ_FLAGGED(obj, ITEM_BROKEN) && !OBJ_FLAGGED(obj, ITEM_FORGED))) {
       found = TRUE;
       aid_obj = obj;
     }
-  }
+    return true;
+  });
 
   if (found == FALSE || aid_obj == NULL) {
     if (num == 47) {

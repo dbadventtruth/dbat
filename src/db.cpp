@@ -3983,7 +3983,7 @@ static bool reset_command_remove(struct reset_context *ctx, room_vnum rv,
   struct obj_data *obj = nullptr;
   if (!room)
     goto finish;
-  obj = get_obj_in_list_num(vnum, room_contents_get(room));
+  obj = get_obj_in_list_num(vnum, inv_for_room(room));
   if (obj)
     extract_obj(obj);
 

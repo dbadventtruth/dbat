@@ -115,7 +115,7 @@ bool tech_handle_targeting(char_data *ch, char *arg, char_data **vict,
       *vict = FIGHTING(ch);
       return true;
     } else if (!(*obj = get_obj_in_list_vis(ch, arg, nullptr,
-                                            room_contents_get(char_room_get(ch))))) {
+                                            inv_for_room(char_room_get(ch))))) {
       send_to_char(ch, "Nothing around here by that name.\r\n");
       return false;
     }

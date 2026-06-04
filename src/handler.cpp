@@ -52,10 +52,10 @@ static void update_object(struct obj_data *obj, int use) {
   /* dont update objects with a timer trigger */
   if (!SCRIPT_CHECK(obj, OTRIG_TIMER) && (GET_OBJ_TIMER(obj) > 0))
     GET_OBJ_TIMER(obj) -= use;
-  if (obj->contains)
-    update_object(obj->contains, use);
-  if (obj->next_content)
-    update_object(obj->next_content, use);
+  obj_contents_iterate(obj, [&](auto i) {
+    update_object(i, use);
+    return true;
+  });
 }
 
 void update_char_objects(struct char_data *ch) {

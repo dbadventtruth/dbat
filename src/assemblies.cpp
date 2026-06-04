@@ -261,14 +261,14 @@ bool assemblyCheckComponents(long lVnum, struct char_data *pCharacter,
     else {
       if (pAssembly->pComponents[i].bInRoom) {
         if ((ppComponentObjects[i] = get_obj_in_list_num(
-                 lRnum, room_contents_get(char_room_get(pCharacter)))) == NULL)
+                 lRnum, inv_for_room(char_room_get(pCharacter)))) == NULL)
           bOk = FALSE;
         else {
           obj_from_room(ppComponentObjects[i]);
         }
       } else {
         if ((ppComponentObjects[i] =
-                 get_obj_in_list_num(lRnum, pCharacter->carrying)) == NULL)
+                 get_obj_in_list_num(lRnum, inv_for_char(pCharacter))) == NULL)
           bOk = FALSE;
         else {
           obj_from_char(ppComponentObjects[i]);

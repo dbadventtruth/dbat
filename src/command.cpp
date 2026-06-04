@@ -701,7 +701,6 @@ int command_pass(char *cmd, struct char_data *ch) {
 }
 
 int special(struct char_data *ch, int cmd, char *arg) {
-  struct obj_data *i;
   struct char_data *k;
 
   struct room_data *room = char_room_get(ch);
@@ -727,10 +726,18 @@ int special(struct char_data *ch, int cmd, char *arg) {
   }
 
   /* special in inventory? */
-  for (i = ch->carrying; i; i = i->next_content)
-    if (GET_OBJ_SPEC(i) != NULL)
-      if (GET_OBJ_SPEC(i)(ch, i, cmd, arg))
-        return (1);
+  {
+    bool found = false;
+    char_inventory_iterate(ch, [&](auto i) {
+      if (GET_OBJ_SPEC(i) != NULL)
+        if (GET_OBJ_SPEC(i)(ch, i, cmd, arg)) {
+          found = true;
+          return false;
+        }
+      return true;
+    });
+    if (found) return (1);
+  }
 
   /* special in mobile present? */
   {

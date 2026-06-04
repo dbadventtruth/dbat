@@ -993,7 +993,7 @@ static struct obj_data *get_selling_obj(struct char_data *ch, char *name,
   struct obj_data *obj;
   int result;
 
-  if (!(obj = get_obj_in_list_vis(ch, name, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, name, NULL, inv_for_char(ch)))) {
     if (msg) {
       char tbuf[MAX_INPUT_LENGTH];
 
@@ -1084,7 +1084,7 @@ static void sort_keeper_objs(struct char_data *keeper, struct shop_data *shop) {
     temp = list;
     list = list->next_content;
     if (shop_producing(temp, shop) &&
-        !get_obj_in_list_num(GET_OBJ_RNUM(temp), keeper->carrying)) {
+        !get_obj_in_list_num(GET_OBJ_RNUM(temp), inv_for_char(keeper))) {
       obj_to_char(temp, keeper);
       shop->lastsort++;
     } else
@@ -1279,7 +1279,7 @@ static char *list_object(struct obj_data *obj, int cnt, int aindex,
 static void shopping_list(char *arg, struct char_data *ch,
                           struct char_data *keeper, struct shop_data *shop) {
   char buf[MAX_STRING_LENGTH * 4], name[MAX_INPUT_LENGTH];
-  struct obj_data *obj, *last_obj = NULL;
+  struct obj_data *last_obj = NULL;
   int cnt = 0, lindex = 0, found = FALSE;
   size_t len;
   /* cnt is the number of that particular object available */
@@ -1298,28 +1298,29 @@ static void shopping_list(char *arg, struct char_data *ch,
                 "--------------------------------------------------------------"
                 "--------\r\n",
                 sizeof(buf));
-  if (keeper->carrying)
-    for (obj = keeper->carrying; obj; obj = obj->next_content)
-      if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_COST(obj) > 0) {
-        if (!last_obj) {
-          last_obj = obj;
-          cnt = 1;
-        } else if (same_obj(last_obj, obj))
-          cnt++;
-        else {
-          lindex++;
-          if (!*name || isname(name, last_obj->name)) {
-            strncat(buf, list_object(last_obj, cnt, lindex, shop, keeper, ch),
-                    sizeof(buf) - len - 1); /* strncat: OK */
-            len = strlen(buf);
-            if (len + 1 >= sizeof(buf))
-              break;
-            found = TRUE;
-          }
-          cnt = 1;
-          last_obj = obj;
+  char_inventory_iterate(keeper, [&](auto obj) {
+    if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_COST(obj) > 0) {
+      if (!last_obj) {
+        last_obj = obj;
+        cnt = 1;
+      } else if (same_obj(last_obj, obj))
+        cnt++;
+      else {
+        lindex++;
+        if (!*name || isname(name, last_obj->name)) {
+          strncat(buf, list_object(last_obj, cnt, lindex, shop, keeper, ch),
+                  sizeof(buf) - len - 1); /* strncat: OK */
+          len = strlen(buf);
+          if (len + 1 >= sizeof(buf))
+            return false;
+          found = TRUE;
         }
+        cnt = 1;
+        last_obj = obj;
       }
+    }
+    return true;
+  });
   lindex++;
   if (!last_obj) /* we actually have nothing in our list for sale, period */
     send_to_char(ch, "Currently, there is nothing for sale.\r\n");

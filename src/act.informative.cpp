@@ -107,8 +107,8 @@ static void print_object_location(int num, struct obj_data *obj,
                                   struct char_data *ch, int recur);
 static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
                              int mode);
-static void list_obj_to_char(struct obj_data *list, struct char_data *ch,
-                             int mode, int show);
+static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
+                             int mode, bool show);
 static void trans_check(struct char_data *ch, struct char_data *vict);
 static int show_obj_modifiers(struct obj_data *obj, struct char_data *ch);
 static void perform_mortal_where(struct char_data *ch, char *arg);
@@ -117,7 +117,7 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch);
 static void diag_obj_to_char(struct obj_data *obj, struct char_data *ch);
 static void look_at_char(struct char_data *i, struct char_data *ch);
 static void list_one_char(struct char_data *i, struct char_data *ch);
-static void list_char_to_char(struct char_data *list, struct char_data *ch);
+static void list_char_to_char(struct room_data *room, struct char_data *ch);
 static void look_in_direction(struct char_data *ch, int dir);
 static void look_in_obj(struct char_data *ch, char *arg);
 static void look_out_window(struct char_data *ch, char *arg);
@@ -562,12 +562,12 @@ ACMD(do_table) {
   }
 
   if (!(obj =
-            get_obj_in_list_vis(ch, arg, NULL, room_contents_get(char_room_get(ch))))) {
+            get_obj_in_list_vis(ch, arg, NULL, inv_for_room(char_room_get(ch))))) {
     send_to_char(ch, "You don't see that table here.\r\n");
     return;
   }
 
-  if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL, obj->contains))) {
+  if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL, inv_for_obj(obj)))) {
     send_to_char(ch, "That card doesn't seem to be on that table.\r\n");
     return;
   }
@@ -594,7 +594,7 @@ ACMD(do_draw) {
   struct obj_data *obj = NULL, *obj2 = NULL, *obj3 = NULL, *next_obj = NULL;
   int drawn = FALSE;
 
-  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have a case.\r\n");
     return;
   }
@@ -633,7 +633,7 @@ ACMD(do_shuffle) {
   struct obj_data *obj = NULL, *obj2 = NULL, *next_obj = NULL;
   int count = 0;
 
-  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have a case.\r\n");
     return;
   }
@@ -679,7 +679,6 @@ ACMD(do_shuffle) {
 
 ACMD(do_hand) {
 
-  struct obj_data *obj, *next_obj;
   char arg[MAX_INPUT_LENGTH];
   int count = 0;
 
@@ -693,16 +692,14 @@ ACMD(do_hand) {
   if (!strcasecmp("look", arg)) {
     send_to_char(
         ch, "@CYour hand contains:\r\n@D---------------------------@n\r\n");
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
-      if (obj && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
-        continue;
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (!OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
+        return true;
       }
-      if (obj) {
-        count += 1;
-        send_to_char(ch, "%s\r\n", obj->short_description);
-      }
-    }
+      count += 1;
+      send_to_char(ch, "%s\r\n", obj->short_description);
+      return true;
+    });
     act("$n looks at $s hand.", TRUE, ch, 0, 0, TO_ROOM);
     if (count == 0) {
       send_to_char(ch, "No cards.");
@@ -720,16 +717,14 @@ ACMD(do_hand) {
     send_to_char(ch, "You show off your hand to the room.\r\n");
     act("@C$n's hand contains:\r\n@D---------------------------@n", TRUE, ch, 0,
         0, TO_ROOM);
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
-      if (obj && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
-        continue;
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (!OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
+        return true;
       }
-      if (obj) {
-        count += 1;
-        act("$p", TRUE, ch, obj, 0, TO_ROOM);
-      }
-    }
+      count += 1;
+      act("$p", TRUE, ch, obj, 0, TO_ROOM);
+      return true;
+    });
     if (count == 0) {
       act("No cards.", TRUE, ch, 0, 0, TO_ROOM);
     }
@@ -758,7 +753,7 @@ ACMD(do_post) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't seem to have that.\r\n");
     return;
   }
@@ -792,7 +787,7 @@ ACMD(do_post) {
     return;
   } else {
     if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL,
-                                     room_contents_get(char_room_get(ch))))) {
+                                     inv_for_room(char_room_get(ch))))) {
       send_to_char(
           ch, "You can't seem to find the thing you want to post it on.\r\n");
       return;
@@ -850,7 +845,7 @@ ACMD(do_play) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have that card to play.\r\n");
     return;
   }
@@ -888,7 +883,7 @@ ACMD(do_nickname) {
   }
 
   if (strcasecmp(arg, "ship")) {
-    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You don't have that item to nickname.\r\n");
       return;
     }
@@ -984,7 +979,7 @@ ACMD(do_showoff) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't seem to have that.\r\n");
     return;
   } else if (!(vict = get_player_vis(ch, arg2, NULL, FIND_CHAR_ROOM))) {
@@ -2891,14 +2886,27 @@ static int show_obj_modifiers(struct obj_data *obj, struct char_data *ch) {
   return (found);
 }
 
-static void list_obj_to_char(struct obj_data *list, struct char_data *ch,
-                             int mode, int show) {
+static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
+                             int mode, bool show) {
   struct obj_data *i, *j, *d;
   bool found = FALSE;
   int num;
+  struct obj_data *obj_list = NULL;
+
+  switch (list.entity_type) {
+  case ENT_CHAR:
+    obj_list = char_carrying_get(list.entity.ch);
+    break;
+  case ENT_OBJ:
+    obj_list = list.entity.obj->contains;
+    break;
+  case ENT_ROOM:
+    obj_list = room_contents_get(list.entity.room);
+    break;
+  }
 
   /* Loop through all objects in the list */
-  for (i = list; i; i = i->next_content) {
+  for (i = obj_list; i; i = i->next_content) {
     if (i->description == NULL)
       continue;
     if (strcasecmp(i->description, "undefined") == 0)
@@ -2906,7 +2914,7 @@ static void list_obj_to_char(struct obj_data *list, struct char_data *ch,
     num = 0;
     d = i;
     if (CONFIG_STACK_OBJS) {
-      for (j = list; j != i; j = j->next_content)
+      for (j = obj_list; j != i; j = j->next_content)
         if ((!strcasecmp(j->short_description, i->short_description) &&
              !strcasecmp(j->description, i->description)) &&
             (j->vnum == i->vnum) &&
@@ -3042,7 +3050,6 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch) {
 static void look_at_char(struct char_data *i, struct char_data *ch) {
   int found, clan = FALSE;
   char buf[100];
-  struct obj_data *tmp_obj;
 
   if (!ch->desc) {
     return;
@@ -3337,14 +3344,15 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
           i, TO_VICT);
     if (GET_SKILL(ch, SKILL_KEEN) > axion_dice(0) &&
         (!IS_NPC(i) || GET_ADMLEVEL(ch) > 1)) {
-      for (tmp_obj = i->carrying; tmp_obj; tmp_obj = tmp_obj->next_content) {
+      char_inventory_iterate(i, [&](auto tmp_obj) {
         if (CAN_SEE_OBJ(ch, tmp_obj) &&
             (ADM_FLAGGED(ch, ADM_SEEINV) ||
              (rand_number(0, 20) < GET_LEVEL(ch)))) {
           show_obj_to_char(tmp_obj, ch, SHOW_OBJ_SHORT);
           found = TRUE;
         }
-      }
+        return true;
+      });
       improve_skill(ch, SKILL_KEEN, 1);
     } else if (IS_NPC(i) && GET_ADMLEVEL(ch) < 2) {
       return;
@@ -3876,17 +3884,15 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
   }
 }
 
-static void list_char_to_char(struct char_data *list, struct char_data *ch) {
-  struct char_data *i, *j;
+static void list_char_to_char(struct room_data *room, struct char_data *ch) {
   struct hide_node {
     struct hide_node *next;
     struct char_data *hidden;
   } *hideinfo, *lasthide, *tmphide;
-  int num;
 
   hideinfo = lasthide = NULL;
 
-  for (i = list; i; i = i->next_in_room) {
+  room_people_iterate(room, [&](auto i) {
     if (AFF_FLAGGED(i, AFF_HIDE) &&
         roll_resisted(i, SKILL_HIDE, ch, SKILL_SPOT)) {
       if (GET_SKILL(i, SKILL_HIDE) && !IS_NPC(ch) && i != ch) {
@@ -3901,28 +3907,30 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
         lasthide->next = tmphide;
         lasthide = tmphide;
       }
-      continue;
     }
-  }
+    return true;
+  });
 
-  for (i = list; i; i = i->next_in_room) {
+  room_people_iterate(room, [&](auto i) {
     /* hide npcs whose description starts with a '.' from non-holylighted people
     - Idea from Elaseth of TBA */
     if ((ch == i) || (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_HOLYLIGHT) &&
                       IS_NPC(i) && i->long_descr && *i->long_descr == '.'))
-      continue;
+      return true;
 
     for (tmphide = hideinfo; tmphide; tmphide = tmphide->next)
       if (tmphide->hidden == i)
         break;
     if (tmphide)
-      continue;
+      return true;
 
+    struct char_data *j;
+    int num;
     if (CAN_SEE(ch, i)) {
       num = 0;
       if (CONFIG_STACK_MOBS) {
         /* How many other occurences of this mob are there? */
-        for (j = list; j != i; j = j->next_in_room)
+        for (j = room_people_get(room); j != i; j = j->next_in_room)
           if ((i->vnum == j->vnum) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
               (AFF_FLAGS(i)[1] == AFF_FLAGS(j)[1]) &&
@@ -3942,7 +3950,7 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
            * mob for an earlier "i".  The continue pops us out of
            * the main "i" for loop.
            */
-          continue;
+          return true;
         for (j = i; j; j = j->next_in_room)
           if ((i->vnum == j->vnum) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
@@ -3970,7 +3978,8 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
              AFF_FLAGGED(i, AFF_INFRAVISION))
       send_to_char(
           ch, "@wYou see a pair of glowing red eyes looking your way.@n\r\n");
-  } /* loop through all characters in room */
+    return true;
+  }); /* loop through all characters in room */
 }
 
 static void capitalize_direction(char *out, size_t out_size, int door) {
@@ -4500,8 +4509,7 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
   const int geffect = room_geffect_get(trm);
   const char *name = room_name_get(trm);
   const char *description = room_description_get(trm);
-  struct obj_data *contents = room_contents_get(trm);
-  struct char_data *people = room_people_get(trm);
+
   trig_data *t;
 
   if (!ch->desc)
@@ -4606,8 +4614,8 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
     send_to_char(ch, "@D[@GItems Stored@D: @g%d@D]@n\r\n",
                  check_saveroom_count(ch, NULL));
   }
-  list_obj_to_char(contents, ch, SHOW_OBJ_LONG, FALSE);
-  list_char_to_char(people, ch);
+  list_obj_to_char(inv_for_room(trm), ch, SHOW_OBJ_LONG, FALSE);
+  list_char_to_char(trm, ch);
 }
 
 static void look_in_direction(struct char_data *ch, int dir) {
@@ -4726,7 +4734,7 @@ static void look_in_obj(struct char_data *ch, char *arg) {
         break;
       }
 
-      list_obj_to_char(obj->contains, ch, SHOW_OBJ_SHORT, TRUE);
+      list_obj_to_char(inv_for_obj(obj), ch, SHOW_OBJ_SHORT, TRUE);
     }
   } else { /* item must be a fountain or drink container */
     if (GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) <= 0 &&
@@ -4789,7 +4797,7 @@ char *find_exdesc(char *word, struct extra_descr_data *list) {
 static void look_at_target(struct char_data *ch, char *arg, int cmread) {
   int bits, found = FALSE, fnum, i = 0, msg = 1;
   struct char_data *found_char = NULL;
-  struct obj_data *obj, *found_obj = NULL;
+  struct obj_data *obj = NULL, *found_obj = NULL;
   char *desc;
   char number[MAX_STRING_LENGTH];
 
@@ -4802,12 +4810,14 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
   }
 
   if (cmread) {
-    for (obj = ch->carrying; obj; obj = obj->next_content) {
-      if (GET_OBJ_TYPE(obj) == ITEM_BOARD) {
+    char_inventory_iterate(ch, [&](auto inv_obj) {
+      if (GET_OBJ_TYPE(inv_obj) == ITEM_BOARD) {
         found = TRUE;
-        break;
+        obj = inv_obj;
+        return false;
       }
-    }
+      return true;
+    });
     if (!obj) {
       room_contents_iterate(char_room_get(ch), [&](auto content) {
         if (GET_OBJ_TYPE(content) == ITEM_BOARD) {
@@ -4900,7 +4910,8 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
     });
 
     /* Does the argument match an extra desc in the char's inventory? */
-    for (obj = ch->carrying; obj && !found; obj = obj->next_content) {
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (found) return false;
       if (CAN_SEE_OBJ(ch, obj))
         if ((desc = find_exdesc(arg, obj->ex_description)) != NULL &&
             ++i == fnum) {
@@ -4928,8 +4939,10 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
             }
           }
           found = TRUE;
+          return false;
         }
-    }
+      return true;
+    });
 
     /* Does the argument match an extra desc of an object in the room? */
     room_contents_iterate(char_room_get(ch), [&](auto obj) {
@@ -5323,7 +5336,7 @@ ACMD(do_look) {
   else if (IS_DARK(char_room_get(ch)) && !CAN_SEE_IN_DARK(ch) &&
            !PLR_FLAGGED(ch, PLR_AURALIGHT)) {
     send_to_char(ch, "It is pitch black...\r\n");
-    list_char_to_char(room_people_get(char_room_get(ch)), ch); /* glowing red eyes */
+    list_char_to_char(char_room_get(ch), ch); /* glowing red eyes */
   } else {
     char arg[MAX_INPUT_LENGTH], arg2[200];
 
@@ -6833,7 +6846,7 @@ ACMD(do_inventory) {
       return;
     }
   }
-  list_obj_to_char(ch->carrying, ch, SHOW_OBJ_SHORT, TRUE);
+  list_obj_to_char(inv_for_char(ch), ch, SHOW_OBJ_SHORT, TRUE);
   send_to_char(ch, "\n");
 }
 
@@ -8375,8 +8388,8 @@ ACMD(do_scan) {
                      CCNRM(ch, C_NRM));
         send_to_char(ch, "@W          -----------------          @n\r\n");
 
-        list_obj_to_char(room_contents_get(nrm), ch, SHOW_OBJ_LONG, FALSE);
-        list_char_to_char(room_people_get(nrm), ch);
+        list_obj_to_char(inv_for_room(nrm), ch, SHOW_OBJ_LONG, FALSE);
+        list_char_to_char(nrm, ch);
         if (room_geffect_get(nrm) >= 1 && room_geffect_get(nrm) <= 5) {
           send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");
         }
@@ -8400,8 +8413,8 @@ ACMD(do_scan) {
                            CCNRM(ch, C_NRM));
               send_to_char(ch, "@W          -----------------          @n\r\n");
 
-              list_obj_to_char(room_contents_get(nrm2), ch, SHOW_OBJ_LONG, FALSE);
-              list_char_to_char(room_people_get(nrm2), ch);
+              list_obj_to_char(inv_for_room(nrm2), ch, SHOW_OBJ_LONG, FALSE);
+              list_char_to_char(nrm2, ch);
               if (room_geffect_get(nrm2) >= 1 && room_geffect_get(nrm2) <= 5) {
                 send_to_char(ch,
                              "@rLava@w is pooling in someplaces here...@n\r\n");
