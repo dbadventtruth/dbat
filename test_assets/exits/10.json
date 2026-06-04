@@ -1,0 +1,3 @@
+{
+  "west": { "description": "The test corridor leads west.\r\n", "keyword": "west", "flags": 0, "key": -1, "to_room": 9, "dclock": 0, "dchide": 0, "dcskill": 0, "dcmove": 0, "failsavetype": 0, "dcfailsave": 0, "failroom": -1, "totalfailroom": -1 }
+}

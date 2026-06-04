@@ -1,0 +1,3 @@
+{
+  "east": { "description": "The test corridor continues east.\r\n", "keyword": "east", "flags": 0, "key": -1, "to_room": 2, "dclock": 0, "dchide": 0, "dcskill": 0, "dcmove": 0, "failsavetype": 0, "dcfailsave": 0, "failroom": -1, "totalfailroom": -1 }
+}

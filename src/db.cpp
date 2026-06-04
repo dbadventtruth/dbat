@@ -831,7 +831,32 @@ static void load_assets(void) {
 }
 
 static void load_test_assets() {
+  log("Loading TEST JSON zone table.");
+  json_import_or_die("zones", json_import_zones("test_assets/zones"));
 
+  log("Loading TEST JSON rooms.");
+  json_import_or_die("rooms", json_import_rooms("test_assets/rooms"));
+
+  log("Loading TEST JSON exits.");
+  json_import_or_die("exits", json_import_room_exits("test_assets/exits"));
+
+  log("Loading TEST JSON triggers and generating index.");
+  json_import_or_die("dgscripts",
+                      json_import_dgscripts("test_assets/dgscripts"));
+
+  log("Loading TEST JSON mobs and generating index.");
+  json_import_or_die("npc_prototypes", json_import_npc_prototypes(
+                                            "test_assets/npc_prototypes"));
+
+  log("Loading TEST JSON objs and generating index.");
+  json_import_or_die("obj_prototypes", json_import_obj_prototypes(
+                                            "test_assets/obj_prototypes"));
+
+  log("Loading TEST JSON shops.");
+  json_import_or_die("shops", json_import_shops("test_assets/shops"));
+
+  log("Loading TEST JSON guild masters.");
+  json_import_or_die("guilds", json_import_guilds("test_assets/guilds"));
 }
 
 /* body of the booting system */
@@ -910,27 +935,33 @@ void boot_db(void) {
 
   log("Assigning function pointers:");
 
-  log("   Mobiles.");
-  assign_mobiles();
+  if(!config_info.test_mode) {
+    log("   Mobiles.");
+    assign_mobiles();
+    log("   Objects.");
+    assign_objects();
+    log("   Rooms.");
+    assign_rooms();
+  }
+
   log("   Shopkeepers.");
   assign_the_shopkeepers();
-  log("   Objects.");
-  assign_objects();
-  log("   Rooms.");
-  assign_rooms();
   log("   Guildmasters.");
   assign_the_guilds();
-
-  log("Booting assembled objects.");
-  assemblyBootAssemblies();
 
   log("Sorting command list and spells.");
   sort_commands();
   sort_spells();
   sort_feats();
 
-  log("Booting boards system.");
-  init_boards();
+  if(!config_info.test_mode) {
+
+    log("Booting assembled objects.");
+    assemblyBootAssemblies();
+
+    log("Booting boards system.");
+    init_boards();
+  }
 
   log("Reading banned site and invalid-name list.");
   load_banned();
@@ -943,7 +974,7 @@ void boot_db(void) {
   }
 
   /* Moved here so the object limit code works. -gg 6/24/98 */
-  if (!mini_mud) {
+  if (!config_info.test_mode) {
     log("Booting houses.");
     House_boot();
   }

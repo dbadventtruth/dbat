@@ -2,6 +2,50 @@ const std = @import("std");
 const db = @import("db");
 const cdb = @import("cdb");
 
+fn parseRuntimeOptions(init: std.process.Init) void {
+    if (init.environ_map.get("DBAT_TEST_MODE")) |value| {
+        if (std.mem.eql(u8, value, "1")) cdb.config_info.test_mode = true;
+    }
+
+    if (init.environ_map.get("DBAT_TELNET_PORT")) |value| {
+        cdb.port = std.fmt.parseInt(@TypeOf(cdb.port), value, 10) catch {
+            std.process.fatal("invalid DBAT_TELNET_PORT: {s}", .{value});
+        };
+    }
+
+    var args = std.process.Args.Iterator.initAllocator(init.minimal.args, init.gpa) catch {
+        std.process.fatal("failed to initialize argument parser", .{});
+    };
+    defer args.deinit();
+
+    _ = args.skip();
+    while (args.next()) |arg| {
+        if (std.mem.eql(u8, arg, "-t") or std.mem.eql(u8, arg, "--test")) {
+            cdb.config_info.test_mode = true;
+        } else if (std.mem.eql(u8, arg, "-C")) {
+            const value = args.next() orelse std.process.fatal("-C requires a descriptor argument", .{});
+            cdb.fCopyOver = true;
+            cdb.mother_desc = std.fmt.parseInt(@TypeOf(cdb.mother_desc), value, 10) catch {
+                std.process.fatal("invalid -C descriptor: {s}", .{value});
+            };
+        } else if (std.mem.startsWith(u8, arg, "-C")) {
+            const value = arg[2..];
+            if (value.len == 0) std.process.fatal("-C requires a descriptor argument", .{});
+            cdb.fCopyOver = true;
+            cdb.mother_desc = std.fmt.parseInt(@TypeOf(cdb.mother_desc), value, 10) catch {
+                std.process.fatal("invalid -C descriptor: {s}", .{value});
+            };
+        } else {
+            std.process.fatal("unknown argument: {s}", .{arg});
+        }
+    }
+
+    if (cdb.config_info.test_mode) {
+        cdb.fCopyOver = false;
+        cdb.mother_desc = 0;
+    }
+}
+
 pub fn main(init: std.process.Init) u8 {
     db.init(init.gpa, init.io) catch {
         std.process.fatal("failed to initialize database", .{});
@@ -13,6 +57,7 @@ pub fn main(init: std.process.Init) u8 {
     cdb.load_config();
 
     cdb.port = cdb.CONFIG_DFLT_PORT();
+    parseRuntimeOptions(init);
 
     cdb.setup_log(cdb.CONFIG_LOGNAME(), cdb.STDERR_FILENO);
 
@@ -27,7 +72,7 @@ pub fn main(init: std.process.Init) u8 {
     cdb.log("Finding player limit.");
     cdb.max_players = cdb.get_max_players();
 
-    if (!cdb.fCopyOver) {
+    if (!cdb.fCopyOver and !cdb.config_info.test_mode) {
         cdb.log("Opening mother connection on port %d.", cdb.port);
         cdb.mother_desc = cdb.init_socket(cdb.port);
     }
@@ -47,28 +92,34 @@ pub fn main(init: std.process.Init) u8 {
         cdb.copyover_recover();
     }
 
-    cdb.log("Entering game loop.");
-    cdb.game_loop(cdb.mother_desc);
+    if (cdb.config_info.test_mode) {
+        // Running game in test mode.
 
-    cdb.Crash_save_all();
+    } else {
+        // Running normal gameplay loop.
+        cdb.log("Entering game loop.");
+        cdb.game_loop(cdb.mother_desc);
 
-    cdb.log("Closing all sockets.");
-    while (cdb.descriptor_list != null) {
-        cdb.close_socket(cdb.descriptor_list);
-    }
+        cdb.Crash_save_all();
 
-    _ = cdb.close(@intCast(cdb.mother_desc));
+        cdb.log("Closing all sockets.");
+        while (cdb.descriptor_list != null) {
+            cdb.close_socket(cdb.descriptor_list);
+        }
 
-    if (cdb.circle_reboot != 2) {
-        _ = cdb.save_all();
-    }
+        _ = cdb.close(@intCast(cdb.mother_desc));
 
-    cdb.log("Saving current MUD time.");
-    cdb.save_mud_time(&cdb.time_info);
+        if (cdb.circle_reboot != 2) {
+            _ = cdb.save_all();
+        }
 
-    if (cdb.circle_reboot != 0) {
-        cdb.log("Rebooting.");
-        return 52;
+        cdb.log("Saving current MUD time.");
+        cdb.save_mud_time(&cdb.time_info);
+
+        if (cdb.circle_reboot != 0) {
+            cdb.log("Rebooting.");
+            return 52;
+        }
     }
 
     cdb.log("Normal termination of game.");

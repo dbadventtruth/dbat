@@ -1,0 +1,8 @@
+{
+  "kind": "room",
+  "id": 0,
+  "sector": 0,
+  "name": "The Test Void",
+  "description": "    This isolated room exists because the engine requires room 0. Nothing links to it and it links to nothing.\r\n",
+  "flags": [3, 11, 13]
+}

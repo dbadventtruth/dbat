@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile seven",
+  "description": "A seventh simple test mobile stands here.\r\n",
+  "short_description": "a seventh test mobile",
+  "long_description": "A seventh test mobile waits without drama.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 7,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 7,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 70, "ki": 70, "stamina": 70, "strength": 14, "intelligence": 11, "wisdom": 11, "agility": 14, "constitution": 14, "speed": 14, "height": 172, "weight": 73, "alignment": 0 }
+}

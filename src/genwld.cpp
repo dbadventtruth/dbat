@@ -14,6 +14,7 @@
 #include "consts/triggers.h"
 #include "flags.h"
 #include "log.h"
+#include "config_db.h"
 #include "object_db.h"
 #include "relocate.h"
 #include "room_api.h"
@@ -190,6 +191,7 @@ int delete_room(room_vnum vnum) {
 }
 
 int save_rooms(struct zone_data *zone) {
+  if(config_info.test_mode) return TRUE;
   int i;
   FILE *sf;
   char filename[128];

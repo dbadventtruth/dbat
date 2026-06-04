@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile three",
+  "description": "A third simple test mobile stands here.\r\n",
+  "short_description": "a third test mobile",
+  "long_description": "A third test mobile waits quietly.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 3,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 3,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 30, "ki": 30, "stamina": 30, "strength": 10, "intelligence": 9, "wisdom": 9, "agility": 10, "constitution": 10, "speed": 10, "height": 172, "weight": 73, "alignment": 0 }
+}

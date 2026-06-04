@@ -363,7 +363,10 @@ void oedit_save_internally(struct descriptor_data *d) {
 
 /*------------------------------------------------------------------------*/
 
-void oedit_save_to_disk(struct zone_data *zone) { save_objects(zone); }
+void oedit_save_to_disk(struct zone_data *zone) { 
+  if(config_info.test_mode) return;
+  save_objects(zone);
+ }
 
 /**************************************************************************
  Menu functions

@@ -9,7 +9,7 @@
 #include "genolc.h"
 #include "genzon.h"
 #include "shop.h"
-
+#include "config_db.h"
 #include "dg_olc.h"
 #include "dgscript_impl.h"
 #include "extract.h"
@@ -239,6 +239,7 @@ int update_objects(struct obj_proto_data *refobj) {
  */
 
 int save_objects(struct zone_data *zone) {
+  if(config_info.test_mode) return TRUE;
   char cmfname[128], buf[MAX_STRING_LENGTH];
   char ebuf1[MAX_STRING_LENGTH], ebuf2[MAX_STRING_LENGTH];
   char ebuf3[MAX_STRING_LENGTH], ebuf4[MAX_STRING_LENGTH];

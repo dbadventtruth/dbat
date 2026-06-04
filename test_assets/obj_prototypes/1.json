@@ -1,0 +1,15 @@
+{
+  "kind": "object_prototype",
+  "proto_id": 1,
+  "type": 10,
+  "level": 1,
+  "weight": 1,
+  "cost": 1,
+  "timer": 0,
+  "size": 0,
+  "name": "test token one",
+  "description": "A test token is lying here.",
+  "short_description": "a test token",
+  "values": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "wear_flags": [0]
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile eight",
+  "description": "An eighth simple test mobile stands here.\r\n",
+  "short_description": "an eighth test mobile",
+  "long_description": "An eighth test mobile keeps the fixture busy.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 8,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 8,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 80, "ki": 80, "stamina": 80, "strength": 15, "intelligence": 11, "wisdom": 11, "agility": 15, "constitution": 15, "speed": 15, "height": 172, "weight": 73, "alignment": 0 }
+}

@@ -1,0 +1,15 @@
+{
+  "kind": "object_prototype",
+  "proto_id": 9,
+  "type": 10,
+  "level": 5,
+  "weight": 1,
+  "cost": 9,
+  "timer": 0,
+  "size": 0,
+  "name": "test token nine",
+  "description": "A ninth test token is lying here.",
+  "short_description": "a ninth test token",
+  "values": [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "wear_flags": [0]
+}

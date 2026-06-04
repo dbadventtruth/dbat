@@ -9,6 +9,7 @@
  ************************************************************************ */
 #include "players.h"
 
+#include "config_db.h"
 #include "affect.h"
 #include "affected_impl.h"
 #include "character_api.h"
@@ -829,6 +830,7 @@ void kill_ems(char *str) {
  */
 /* This is the ASCII Player Files save routine */
 void save_char(struct char_data *ch) {
+  if(config_info.test_mode) return;
   FILE *fl = NULL;
   char fname[40], buf[MAX_STRING_LENGTH];
   int i, id, save_index = FALSE;

@@ -7,7 +7,7 @@
 #include "guild.h"
 #include "iterate.hpp"
 #include "shop.h"
-
+#include "config_db.h"
 #include "affect.h"
 #include "character_api.h"
 #include "character_db.h"
@@ -399,6 +399,7 @@ int mobile_free_editor(struct char_data *mob) {
 int free_mobile(struct char_data *mob) { return mobile_free_editor(mob); }
 
 int save_mobiles(struct zone_data *zone) {
+  if(config_info.test_mode) return TRUE;
   FILE *mobfd;
   room_vnum i;
   mob_rnum rmob;

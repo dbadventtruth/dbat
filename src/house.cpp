@@ -10,6 +10,7 @@
 #include "house.h"
 #include "comm.h"
 #include "db.h"
+#include "config_db.h"
 #include "handler.h"
 #include "interpreter.h"
 
@@ -509,6 +510,8 @@ ACMD(do_house) {
 
 /* crash-save all the houses */
 void House_save_all(void) {
+  if(config_info.test_mode) return;
+
   int i;
   struct room_data *real_house = NULL;
 

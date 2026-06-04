@@ -1,0 +1,7 @@
+{
+  "kind": "room",
+  "id": 1,
+  "sector": 0,
+  "name": "Test Room 1",
+  "description": "    The first room in the linked test corridor.\r\n"
+}

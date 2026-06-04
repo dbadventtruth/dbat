@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile four",
+  "description": "A fourth simple test mobile stands here.\r\n",
+  "short_description": "a fourth test mobile",
+  "long_description": "A fourth test mobile watches the corridor.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 4,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 4,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 40, "ki": 40, "stamina": 40, "strength": 11, "intelligence": 9, "wisdom": 9, "agility": 11, "constitution": 11, "speed": 11, "height": 172, "weight": 73, "alignment": 0 }
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile nine",
+  "description": "A ninth simple test mobile stands here.\r\n",
+  "short_description": "a ninth test mobile",
+  "long_description": "A ninth test mobile has no special behavior.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 9,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 9,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 90, "ki": 90, "stamina": 90, "strength": 16, "intelligence": 12, "wisdom": 12, "agility": 16, "constitution": 16, "speed": 16, "height": 172, "weight": 73, "alignment": 0 }
+}

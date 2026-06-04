@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile two",
+  "description": "A second simple test mobile stands here.\r\n",
+  "short_description": "a second test mobile",
+  "long_description": "A second test mobile waits for reset validation.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 2,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 2,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 20, "ki": 20, "stamina": 20, "strength": 9, "intelligence": 8, "wisdom": 8, "agility": 9, "constitution": 9, "speed": 9, "height": 172, "weight": 73, "alignment": 0 }
+}
