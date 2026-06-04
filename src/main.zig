@@ -34,7 +34,6 @@ pub fn main(init: std.process.Init) u8 {
 
     cdb.event_init();
 
-    cdb.init_lookup_table();
     cdb.load_race_sensei();
 
     cdb.boot_db();

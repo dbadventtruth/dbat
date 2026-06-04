@@ -53,8 +53,8 @@
 #define PULSES_PER_MUD_HOUR (SECS_PER_MUD_HOUR * PASSES_PER_SEC)
 
 /* Local functions not used elsewhere */
-obj_data *find_obj(long n);
-room_data *find_room(long n);
+obj_data *find_obj(char *name);
+room_data *find_room(char *name);
 void do_stat_trigger(struct char_data *ch, trig_data *trig);
 void script_stat(char_data *ch, struct script_data *sc);
 int remove_trigger(struct script_data *sc, char *name);
@@ -79,8 +79,6 @@ void process_attach(void *go, struct script_data *sc, trig_data *trig, int type,
                     char *cmd);
 void process_detach(void *go, struct script_data *sc, trig_data *trig, int type,
                     char *cmd);
-void makeuid_var(void *go, struct script_data *sc, trig_data *trig, int type,
-                 char *cmd);
 int process_return(trig_data *trig, char *cmd);
 void process_unset(struct script_data *sc, trig_data *trig, char *cmd);
 void process_remote(struct script_data *sc, trig_data *trig, char *cmd);
@@ -95,8 +93,6 @@ struct cmdlist_element *find_case(struct trig_data *trig,
                                   struct script_data *sc, int type, char *cond);
 struct cmdlist_element *find_done(struct cmdlist_element *cl);
 int fgetline(FILE *file, char *p);
-struct char_data *find_char_by_uid_in_lookup_table(long uid);
-struct obj_data *find_obj_by_uid_in_lookup_table(long uid);
 EVENTFUNC(trig_wait_event);
 ACMD(do_attach);
 ACMD(do_detach);
@@ -153,6 +149,11 @@ obj_data *get_obj_in_list(char *name, struct inventory_data list) {
   obj_data *result = NULL;
   long id;
 
+  if (*name == UID_CHAR) {
+    if (toupper(name[1]) != 'O') return NULL;
+    id = atoi(name + 2);
+  }
+
   auto handler = [&](auto i) {
     if (*name == UID_CHAR) {
       if (id == GET_ID(i)) {
@@ -167,9 +168,6 @@ obj_data *get_obj_in_list(char *name, struct inventory_data list) {
     }
     return true;
   };
-
-  if (*name == UID_CHAR)
-    id = atoi(name + 1);
 
   switch (list.entity_type) {
   case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
@@ -187,7 +185,8 @@ obj_data *get_object_in_equip(char_data *ch, char *name) {
   long id;
 
   if (*name == UID_CHAR) {
-    id = atoi(name + 1);
+    if (toupper(name[1]) != 'O') return NULL;
+    id = atoi(name + 2);
 
     char_equipment_iterate(ch, [&](auto j, auto obj) {
       if (id == GET_ID(obj)) {
@@ -314,28 +313,28 @@ int can_wear_on_pos(struct obj_data *obj, int pos) {
  * search by number routines
  ************************************************************/
 
-/* return char with UID n */
-struct char_data *find_char(long n) {
-  if (n >= ROOM_ID_BASE) /* See note in dg_scripts.h */
-    return NULL;
-
-  return find_char_by_uid_in_lookup_table(n);
+struct char_data *find_char(char *name) {
+  if (*name == UID_CHAR) {
+    if (toupper(name[1]) != 'C') return NULL;
+    return char_by_id(atol(name + 2));
+  }
+  return char_by_id(atol(name));
 }
 
-/* return object with UID n */
-obj_data *find_obj(long n) {
-  if (n < OBJ_ID_BASE) /* see note in dg_scripts.h */
-    return NULL;
-
-  return find_obj_by_uid_in_lookup_table(n);
+obj_data *find_obj(char *name) {
+  if (*name == UID_CHAR) {
+    if (toupper(name[1]) != 'O') return NULL;
+    return obj_by_id(atol(name + 2));
+  }
+  return obj_by_id(atol(name));
 }
 
-/* return room with UID n */
-room_data *find_room(long n) {
-  n -= ROOM_ID_BASE;
-  if (n < 0)
-    return NULL;
-  return room_by_id((room_vnum)n);
+room_data *find_room(char *name) {
+  if (*name == UID_CHAR) {
+    if (toupper(name[1]) != 'R') return NULL;
+    return room_by_id((room_vnum)atol(name + 2));
+  }
+  return room_by_id((room_vnum)atol(name));
 }
 
 /************************************************************
@@ -347,7 +346,7 @@ char_data *get_char(char *name) {
   char_data *i;
 
   if (*name == UID_CHAR) {
-    i = find_char(atoi(name + 1));
+    i = find_char(name);
 
     if (i && valid_dg_target(i, DG_ALLOW_GODS))
       return i;
@@ -367,7 +366,7 @@ char_data *get_char_near_obj(obj_data *obj, char *name) {
   char_data *ch = NULL;
 
   if (*name == UID_CHAR) {
-    ch = find_char(atoi(name + 1));
+    ch = find_char(name);
 
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
@@ -395,7 +394,7 @@ char_data *get_char_in_room(room_data *room, char *name) {
   char_data *ch;
 
   if (*name == UID_CHAR) {
-    ch = find_char(atoi(name + 1));
+    ch = find_char(name);
 
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
@@ -433,9 +432,7 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
   /* or outside ? */
   if (obj->in_obj) {
     if (*name == UID_CHAR) {
-      id = atoi(name + 1);
-
-      if (id == GET_ID(obj->in_obj))
+      if (toupper(name[1]) == 'O' && atoi(name + 2) == GET_ID(obj->in_obj))
         return obj->in_obj;
     } else if (isname(name, obj->in_obj->name))
       return obj->in_obj;
@@ -468,9 +465,9 @@ obj_data *get_obj_near_obj(obj_data *obj, char *name) {
 obj_data *get_obj(char *name) {
   obj_data *obj;
 
-  if (*name == UID_CHAR)
-    return find_obj(atoi(name + 1));
-  else {
+  if (*name == UID_CHAR) {
+    return find_obj(name);
+  } else {
     for (obj = object_list; obj; obj = obj->next)
       if (isname(name, obj->name))
         return obj;
@@ -483,8 +480,9 @@ obj_data *get_obj(char *name) {
 room_data *get_room(char *name) {
   room_rnum nr;
 
-  if (*name == UID_CHAR)
-    return find_room(atoi(name + 1));
+  if (*name == UID_CHAR) {
+    return find_room(name);
+  }
   return room_by_id(atoi(name));
 }
 
@@ -496,7 +494,7 @@ char_data *get_char_by_obj(obj_data *obj, char *name) {
   char_data *ch;
 
   if (*name == UID_CHAR) {
-    ch = find_char(atoi(name + 1));
+    ch = find_char(name);
 
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
@@ -525,7 +523,7 @@ char_data *get_char_by_room(room_data *room, char *name) {
   char_data *ch;
 
   if (*name == UID_CHAR) {
-    ch = find_char(atoi(name + 1));
+    ch = find_char(name);
 
     if (ch && valid_dg_target(ch, DG_ALLOW_GODS))
       return ch;
@@ -557,8 +555,9 @@ obj_data *get_obj_by_obj(obj_data *obj, char *name) {
   obj_data *i = NULL;
   struct room_data *rm = NULL;
 
-  if (*name == UID_CHAR)
-    return find_obj(atoi(name + 1));
+  if (*name == UID_CHAR) {
+    return find_obj(name);
+  }
 
   if (!strcasecmp(name, "self") || !strcasecmp(name, "me"))
     return obj;
@@ -588,7 +587,8 @@ obj_data *get_obj_in_room(room_data *room, char *name) {
   obj_data *found = NULL;
 
   if (*name == UID_CHAR) {
-    id = atoi(name + 1);
+    if (toupper(name[1]) != 'O') return NULL;
+    id = atoi(name + 2);
     room_contents_iterate(room, [&](auto obj) {
       if (id == GET_ID(obj)) {
         found = obj;
@@ -614,8 +614,9 @@ obj_data *get_obj_in_room(room_data *room, char *name) {
 obj_data *get_obj_by_room(room_data *room, char *name) {
   obj_data *found = NULL;
 
-  if (*name == UID_CHAR)
-    return find_obj(atoi(name + 1));
+  if (*name == UID_CHAR) {
+    return find_obj(name);
+  }
 
   room_contents_iterate(room, [&](auto obj) {
     if (isname(name, obj->name)) {
@@ -783,13 +784,16 @@ void do_stat_trigger(struct char_data *ch, trig_data *trig) {
 void find_uid_name(char *uid, char *name, size_t nlen) {
   char_data *ch;
   obj_data *obj;
+  room_data *room;
 
   if ((ch = get_char(uid)))
     snprintf(name, nlen, "%s", ch->name);
   else if ((obj = get_obj(uid)))
     snprintf(name, nlen, "%s", obj->name);
+  else if ((room = get_room(uid)))
+    snprintf(name, nlen, "room vnum %d", room_vnum_get(room));
   else
-    snprintf(name, nlen, "uid = %s, (not found)", uid + 1);
+    snprintf(name, nlen, "uid = '%s', (not found)", uid);
 }
 
 /* general function to display stats on script sc */
@@ -1785,7 +1789,7 @@ void process_attach(void *go, struct script_data *sc, trig_data *trig, int type,
   char_data *c = NULL;
   obj_data *o = NULL;
   room_data *r = NULL;
-  long trignum, id;
+  long trignum;
 
   id_p = two_arguments(cmd, arg, trignum_s);
   skip_spaces(&id_p);
@@ -1804,16 +1808,11 @@ void process_attach(void *go, struct script_data *sc, trig_data *trig, int type,
 
   /* parse and locate the id specified */
   eval_expr(id_p, result, go, sc, trig, type);
-  if (!(id = atoi(result))) {
-    script_log("Trigger: %s, VNum %d. attach invalid id arg: '%s'",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
-    return;
-  }
-  c = find_char(id);
+  c = find_char(result);
   if (!c) {
-    o = find_obj(id);
+    o = find_obj(result);
     if (!o) {
-      r = find_room(id);
+      r = find_room(result);
       if (!r) {
         script_log("Trigger: %s, VNum %d. attach invalid id arg: '%s'",
                    GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
@@ -1863,7 +1862,6 @@ void process_detach(void *go, struct script_data *sc, trig_data *trig, int type,
   char_data *c = NULL;
   obj_data *o = NULL;
   room_data *r = NULL;
-  long id;
 
   id_p = two_arguments(cmd, arg, trignum_s);
   skip_spaces(&id_p);
@@ -1882,16 +1880,11 @@ void process_detach(void *go, struct script_data *sc, trig_data *trig, int type,
 
   /* parse and locate the id specified */
   eval_expr(id_p, result, go, sc, trig, type);
-  if (!(id = atoi(result))) {
-    script_log("Trigger: %s, VNum %d. detach invalid id arg: '%s'",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
-    return;
-  }
-  c = find_char(id);
+  c = find_char(result);
   if (!c) {
-    o = find_obj(id);
+    o = find_obj(result);
     if (!o) {
-      r = find_room(id);
+      r = find_room(result);
       if (!r) {
         script_log("Trigger: %s, VNum %d. detach invalid id arg: '%s'",
                    GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
@@ -1953,105 +1946,6 @@ struct room_data *dg_room_of_obj(struct obj_data *obj) {
   return NULL;
 }
 
-/* create a UID variable from the id number */
-void makeuid_var(void *go, struct script_data *sc, trig_data *trig, int type,
-                 char *cmd) {
-  char junk[MAX_INPUT_LENGTH], varname[MAX_INPUT_LENGTH];
-  char arg[MAX_INPUT_LENGTH], name[MAX_INPUT_LENGTH];
-  char uid[MAX_INPUT_LENGTH];
-
-  *uid = '\0';
-  half_chop(cmd, junk, cmd);    /* makeuid */
-  half_chop(cmd, varname, cmd); /* variable name */
-  half_chop(cmd, arg, cmd);     /* numerical id or 'obj' 'mob' or 'room' */
-  half_chop(cmd, name,
-            cmd); /* if the above was obj, mob or room, this is the name */
-
-  if (!*varname) {
-    script_log("Trigger: %s, VNum %d. makeuid w/o an arg: '%s'",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
-
-    return;
-  }
-
-  if (arg == NULL || !*arg) {
-    script_log("Trigger: %s, VNum %d. makeuid invalid id arg: '%s'",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
-    return;
-  }
-
-  if (atoi(arg) != 0) { /* easy, if you pass an id number */
-    char result[MAX_INPUT_LENGTH];
-
-    eval_expr(arg, result, go, sc, trig, type);
-    snprintf(uid, sizeof(uid), "%c%s", UID_CHAR, result);
-  } else { /* a lot more work without it */
-    if (name == NULL || !*name) {
-      script_log("Trigger: %s, VNum %d. makeuid needs name: '%s'",
-                 GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
-      return;
-    }
-
-    if (is_abbrev(arg, "mob")) {
-      struct char_data *c = NULL;
-      switch (type) {
-      case WLD_TRIGGER:
-        c = get_char_in_room((struct room_data *)go, name);
-        break;
-      case OBJ_TRIGGER:
-        c = get_char_near_obj((struct obj_data *)go, name);
-        break;
-      case MOB_TRIGGER:
-        c = get_char_room_vis((struct char_data *)go, name, NULL);
-        break;
-      }
-      if (c)
-        snprintf(uid, sizeof(uid), "%c%d", UID_CHAR, GET_ID(c));
-    } else if (is_abbrev(arg, "obj")) {
-      struct obj_data *o = NULL;
-      switch (type) {
-      case WLD_TRIGGER:
-        o = get_obj_in_room((struct room_data *)go, name);
-        break;
-      case OBJ_TRIGGER:
-        o = get_obj_near_obj((struct obj_data *)go, name);
-        break;
-      case MOB_TRIGGER:
-        if ((o = get_obj_in_list_vis((struct char_data *)go, name, NULL,
-                                     inv_for_char((struct char_data *)go))) ==
-            NULL)
-          o = get_obj_in_list_vis(
-              (struct char_data *)go, name, NULL,
-              inv_for_room(char_room_get((struct char_data *)go)));
-        break;
-      }
-      if (o)
-        snprintf(uid, sizeof(uid), "%c%d", UID_CHAR, GET_ID(o));
-    } else if (is_abbrev(arg, "room")) {
-      struct room_data *r = NULL;
-      switch (type) {
-      case WLD_TRIGGER:
-        r = room_by_id(room_vnum_get((struct room_data *)go));
-        break;
-      case OBJ_TRIGGER:
-        r = obj_room((struct obj_data *)go);
-        break;
-      case MOB_TRIGGER:
-        r = char_room_get((struct char_data *)go);
-        break;
-      }
-      if (r != NULL)
-        snprintf(uid, sizeof(uid), "%c%d", UID_CHAR, room_vnum_get(r) + ROOM_ID_BASE);
-    } else {
-      script_log("Trigger: %s, VNum %d. makeuid syntax error: '%s'",
-                 GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
-
-      return;
-    }
-  }
-  if (*uid)
-    add_var(&GET_TRIG_VARS(trig), varname, uid, sc ? sc->context : 0);
-}
 
 /*
  * processes a script return command.
@@ -2102,7 +1996,7 @@ void process_remote(struct script_data *sc, trig_data *trig, char *cmd) {
   struct script_data *sc_remote = NULL;
   char *line, *var, *uid_p;
   char arg[MAX_INPUT_LENGTH], buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
-  long uid, context;
+  long context;
   room_data *room;
   char_data *mob;
   obj_data *obj;
@@ -2136,29 +2030,22 @@ void process_remote(struct script_data *sc, trig_data *trig, char *cmd) {
                GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), buf);
     return;
   }
-  /* find the target script from the uid number */
-  uid = atoi(buf2);
-  if (uid <= 0) {
-    script_log("Trigger: %s, VNum %d. remote: illegal uid '%s'",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), buf2);
-    return;
-  }
 
   /* for all but PC's, context comes from the existing context. */
   /* for PC's, context is 0 (global) */
   context = vd->context;
 
-  if ((room = find_room(uid))) {
+  if ((room = find_room(buf2))) {
     sc_remote = room_script_get(room);
-  } else if ((mob = find_char(uid))) {
+  } else if ((mob = find_char(buf2))) {
     sc_remote = SCRIPT(mob);
     if (!IS_NPC(mob))
       context = 0;
-  } else if ((obj = find_obj(uid))) {
+  } else if ((obj = find_obj(buf2))) {
     sc_remote = SCRIPT(obj);
   } else {
-    script_log("Trigger: %s, VNum %d. remote: uid '%ld' invalid",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), uid);
+    script_log("Trigger: %s, VNum %d. remote: uid '%s' invalid",
+               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), buf2);
     return;
   }
 
@@ -2177,7 +2064,7 @@ ACMD(do_vdelete) {
   struct script_data *sc_remote = NULL;
   char *var, *uid_p;
   char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
-  long uid, context;
+  long context;
   room_data *room;
   char_data *mob;
   obj_data *obj;
@@ -2193,20 +2080,13 @@ ACMD(do_vdelete) {
     return;
   }
 
-  /* find the target script from the uid number */
-  uid = atoi(buf2);
-  if (uid <= 0) {
-    send_to_char(ch, "vdelete: illegal id specified.\r\n");
-    return;
-  }
-
-  if ((room = find_room(uid))) {
+  if ((room = find_room(buf2))) {
     sc_remote = room_script_get(room);
-  } else if ((mob = find_char(uid))) {
+  } else if ((mob = find_char(buf2))) {
     sc_remote = SCRIPT(mob);
     if (!IS_NPC(mob))
       context = 0;
-  } else if ((obj = find_obj(uid))) {
+  } else if ((obj = find_obj(buf2))) {
     sc_remote = SCRIPT(obj);
   } else {
     send_to_char(ch, "vdelete: cannot resolve specified id.\r\n");
@@ -2290,7 +2170,7 @@ void process_rdelete(struct script_data *sc, trig_data *trig, char *cmd) {
   struct script_data *sc_remote = NULL;
   char *line, *var, *uid_p;
   char arg[MAX_INPUT_LENGTH], buf[MAX_STRING_LENGTH], buf2[MAX_STRING_LENGTH];
-  long uid, context;
+  long context;
   room_data *room;
   char_data *mob;
   obj_data *obj;
@@ -2308,25 +2188,17 @@ void process_rdelete(struct script_data *sc, trig_data *trig, char *cmd) {
     return;
   }
 
-  /* find the target script from the uid number */
-  uid = atoi(buf2);
-  if (uid <= 0) {
-    script_log("Trigger: %s, VNum %d. rdelete: illegal uid '%s'",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), buf2);
-    return;
-  }
-
-  if ((room = find_room(uid))) {
+  if ((room = find_room(buf2))) {
     sc_remote = room_script_get(room);
-  } else if ((mob = find_char(uid))) {
+  } else if ((mob = find_char(buf2))) {
     sc_remote = SCRIPT(mob);
     if (!IS_NPC(mob))
       context = 0;
-  } else if ((obj = find_obj(uid))) {
+  } else if ((obj = find_obj(buf2))) {
     sc_remote = SCRIPT(obj);
   } else {
-    script_log("Trigger: %s, VNum %d. remote: uid '%ld' invalid",
-               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), uid);
+    script_log("Trigger: %s, VNum %d. remote: uid '%s' invalid",
+               GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), buf2);
     return;
   }
 
@@ -2667,9 +2539,6 @@ int script_driver(void *go_adress, trig_data *trig, int type, int mode) {
 
       else if (!strncasecmp(cmd, "dg_letter ", 10))
         dg_letter_value(sc, trig, cmd);
-
-      else if (!strncasecmp(cmd, "makeuid ", 8))
-        makeuid_var(go, sc, trig, type, cmd);
 
       else if (!strncasecmp(cmd, "halt", 4))
         break;
@@ -3026,96 +2895,6 @@ void save_char_vars_ascii(FILE *file, struct char_data *ch) {
 // to recognize an empty bucket
 #define UID_OUT_OF_RANGE 1000000000
 
-struct lookup_table_t {
-  long uid;
-  void *c;
-  struct lookup_table_t *next;
-};
-struct lookup_table_t lookup_table[BUCKET_COUNT];
-
-void init_lookup_table(void) {
-  int i;
-  for (i = 0; i < BUCKET_COUNT; i++) {
-    lookup_table[i].uid = UID_OUT_OF_RANGE;
-    lookup_table[i].c = NULL;
-    lookup_table[i].next = NULL;
-  }
-}
-
-struct char_data *find_char_by_uid_in_lookup_table(long uid) {
-  int bucket = (int)(uid & (BUCKET_COUNT - 1));
-  struct lookup_table_t *lt = &lookup_table[bucket];
-
-  for (; lt && lt->uid != uid; lt = lt->next)
-    ;
-
-  if (lt)
-    return (struct char_data *)(lt->c);
-
-  log("find_char_by_uid_in_lookup_table : No entity with number %ld in lookup "
-      "table",
-      uid);
-  return NULL;
-}
-
-struct obj_data *find_obj_by_uid_in_lookup_table(long uid) {
-  int bucket = (int)(uid & (BUCKET_COUNT - 1));
-  struct lookup_table_t *lt = &lookup_table[bucket];
-
-  for (; lt && lt->uid != uid; lt = lt->next)
-    ;
-
-  if (lt)
-    return (struct obj_data *)(lt->c);
-
-  log("find_obj_by_uid_in_lookup_table : No entity with number %ld in lookup "
-      "table",
-      uid);
-  return NULL;
-}
-
-void add_to_lookup_table(long uid, void *c) {
-  int bucket = (int)(uid & (BUCKET_COUNT - 1));
-  struct lookup_table_t *lt = &lookup_table[bucket];
-
-  for (; lt->next; lt = lt->next)
-    if (lt->c == c && lt->uid == uid) {
-      log("Add_to_lookup failed. Already there. (uid = %ld)", uid);
-      return;
-    }
-
-  CREATE(lt->next, struct lookup_table_t, 1);
-  lt->next->uid = uid;
-  lt->next->c = c;
-}
-
-void remove_from_lookup_table(long uid) {
-  int bucket = (int)(uid & (BUCKET_COUNT - 1));
-  struct lookup_table_t *lt = &lookup_table[bucket], *flt = NULL;
-
-  /*
-   * This is not supposed to happen. UID 0 is not used.
-   * However, while I'm debugging the issue, let's just return right away.
-   *
-   * Welcor 02/04
-   */
-  if (uid == 0)
-    return;
-
-  for (; lt; lt = lt->next)
-    if (lt->uid == uid)
-      flt = lt;
-
-  if (flt) {
-    for (lt = &lookup_table[bucket]; lt->next != flt; lt = lt->next)
-      ;
-    lt->next = flt->next;
-    free(flt);
-    return;
-  }
-
-  log("remove_from_lookup. UID %ld not found.", uid);
-}
 
 int check_flags_by_name_ar(bitvector_t *array, int numflags, char *search,
                            const char *namelist[]) {

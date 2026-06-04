@@ -111,7 +111,7 @@ void time_wtrigger(room_data *room);
 char *str_str(char *cs, char *ct);
 int find_eq_pos_script(char *arg);
 int can_wear_on_pos(struct obj_data *obj, int pos);
-struct char_data *find_char(long n);
+struct char_data *find_char(char *name);
 char_data *get_char(char *name);
 char_data *get_char_near_obj(obj_data *obj, char *name);
 char_data *get_char_in_room(room_data *room, char *name);
@@ -146,9 +146,6 @@ void process_eval(void *go, struct script_data *sc, trig_data *trig, int type,
                   char *cmd);
 void read_saved_vars(struct char_data *ch);
 void save_char_vars(struct char_data *ch);
-void init_lookup_table(void);
-void add_to_lookup_table(long uid, void *c);
-void remove_from_lookup_table(long uid);
 
 /* from dg_db_scripts.c */
 void parse_trigger(FILE *trig_f, int nr);
@@ -243,9 +240,9 @@ struct room_data *obj_room(obj_data *obj);
 #define TRIGGER_CHECK(t, type)                                                 \
   (IS_SET(GET_TRIG_TYPE(t), type) && !GET_TRIG_DEPTH(t))
 
-#define ADD_UID_VAR(buf, trig, go, name, context)                              \
+#define ADD_UID_VAR(buf, trig, go, name, context, type_char)                   \
   do {                                                                         \
-    sprintf(buf, "%c%d", UID_CHAR, GET_ID(go));                                \
+    sprintf(buf, "%c%c%d", UID_CHAR, type_char, GET_ID(go));                   \
     add_var(&GET_TRIG_VARS(trig), name, buf, context);                         \
   } while (0)
 
