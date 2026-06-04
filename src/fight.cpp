@@ -825,7 +825,6 @@ void remove_limb(struct char_data *vict, int num) {
   GET_OBJ_VAL(body_part, 4) = 1;
   GET_OBJ_VAL(body_part, 5) = 1;
   GET_OBJ_WEIGHT(body_part) = rand_number(4, 10);
-  add_unique_id(body_part);
   obj_to_room(body_part, char_room_get(vict));
 }
 

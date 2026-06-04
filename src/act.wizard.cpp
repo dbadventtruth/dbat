@@ -1539,8 +1539,8 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
       vnum, GET_OBJ_RNUM(j), GET_ID(j), buf,
       GET_OBJ_SPEC(j) ? "Exists" : "None");
 
-  send_to_char(ch, "Generation time: @g%s@nUnique ID: @g%" I64T "@n\r\n",
-               ctime(&j->generation), j->unique_id);
+  send_to_char(ch, "Generation time: @g%s@n\r\n",
+               ctime(&j->generation));
 
   send_to_char(ch, "Object Hit Points: [ @g%3d@n/@g%3d@n]\r\n",
                GET_OBJ_VAL(j, VAL_ALL_HEALTH),
@@ -2343,7 +2343,6 @@ ACMD(do_load) {
     }
     for (i = 0; i < n; i++) {
       obj = read_object(proto->vnum, VIRTUAL);
-      add_unique_id(obj);
       if (GET_ADMLEVEL(ch) > 0) {
         send_to_imm("LOAD: %s has loaded a %s", GET_NAME(ch),
                     obj->short_description);
@@ -3799,9 +3798,7 @@ ACMD(do_show) {
       low = -1;
       high = 9999999;
     }
-    strp = sprintuniques(low, high);
-    send_to_char(ch, "%s", strp);
-    free(strp);
+    send_to_char(ch, "%s", "not in use");
     break;
 
   case 15:

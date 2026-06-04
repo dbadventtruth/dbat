@@ -977,7 +977,6 @@ void mag_creations(int level, struct char_data *ch, int spellnum) {
         z);
     return;
   }
-  add_unique_id(tobj);
   obj_to_char(tobj, ch);
   act("$n creates $p.", FALSE, ch, tobj, 0, TO_ROOM);
   act("You create $p.", FALSE, ch, tobj, 0, TO_CHAR);

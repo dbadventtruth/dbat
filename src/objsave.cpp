@@ -1302,7 +1302,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
             break;
           case 'U':
             get_line(fl, line);
-            sscanf(line, "%" I64T, &temp->unique_id);
+            // sscanf(line, "%" I64T, &temp->unique_id);
             get_line(fl, line);
             break;
           case 'S':
@@ -1333,8 +1333,6 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
       } /* exit our xap loop */
       if (temp != NULL) {
         num_objs++;
-        check_unique_id(temp);
-        add_unique_id(temp);
         if (GET_OBJ_TYPE(temp) == ITEM_DRINKCON) {
           name_from_drinkcon(temp);
           if (GET_OBJ_VAL(temp, 1) != 0)

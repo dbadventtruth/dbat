@@ -18,8 +18,6 @@ extern fn obj_to_room(object: *cdb.obj_data, room: *cdb.room_data) void;
 extern fn obj_to_obj(obj: *cdb.obj_data, obj_to: *cdb.obj_data) void;
 extern fn json_save_char_for_objects(ch: *cdb.char_data) void;
 extern fn json_obj_auto_equip(ch: *cdb.char_data, obj: *cdb.obj_data, location: c_int) void;
-extern fn check_unique_id(obj: *cdb.obj_data) void;
-extern fn add_unique_id(obj: *cdb.obj_data) void;
 extern fn name_from_drinkcon(obj: *cdb.obj_data) void;
 extern fn name_to_drinkcon(obj: *cdb.obj_data, type_: c_int) void;
 
@@ -178,7 +176,6 @@ fn serializeObjectTree(allocator: std.mem.Allocator, obj: *cdb.obj_data, locatio
     try jsonx.putInt(&object, allocator, "location", location);
     try jsonx.putInt(&object, allocator, "weight", objectBaseWeight(obj));
     try jsonx.putInt(&object, allocator, "generation", obj.generation);
-    try jsonx.putInt(&object, allocator, "unique_id", obj.unique_id);
     try jsonx.putNonEmpty(&object, allocator, "object_affects", try serializeObjectAffects(allocator, obj));
 
     var contents = std.json.Array.init(allocator);
@@ -257,7 +254,6 @@ fn deserializeObjectTree(value: std.json.Value) !*cdb.obj_data {
     obj.ex_description = null;
     try objects_json.deserializeObject(obj, .{ .mode = .instance, .preserve_id = false }, value);
     if (try jsonx.intField(value, "generation", cdb.time_t)) |v| obj.generation = v;
-    if (try jsonx.intField(value, "unique_id", i64)) |v| obj.unique_id = v;
     if (jsonx.field(value, "object_affects")) |affects| try deserializeObjectAffects(obj, affects);
 
     if (jsonx.field(value, "contains")) |contents| {
@@ -268,8 +264,6 @@ fn deserializeObjectTree(value: std.json.Value) !*cdb.obj_data {
         }
     }
 
-    check_unique_id(obj);
-    add_unique_id(obj);
     if (obj.type_flag == cdb.ITEM_DRINKCON) {
         name_from_drinkcon(obj);
         if (obj.value[1] != 0) name_to_drinkcon(obj, obj.value[2]);

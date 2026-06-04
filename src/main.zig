@@ -28,7 +28,7 @@ pub fn main(init: std.process.Init) u8 {
     cdb.max_players = cdb.get_max_players();
 
     if (!cdb.fCopyOver) {
-    cdb.log("Opening mother connection on port %d.", cdb.port);
+        cdb.log("Opening mother connection on port %d.", cdb.port);
         cdb.mother_desc = cdb.init_socket(cdb.port);
     }
 

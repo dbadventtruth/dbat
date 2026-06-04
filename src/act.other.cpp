@@ -3873,16 +3873,12 @@ ACMD(do_form) {
       }
       if (level == 4) {
         obj = read_object(1512, VIRTUAL);
-        add_unique_id(obj);
       } else if (level == 3) {
         obj = read_object(1511, VIRTUAL);
-        add_unique_id(obj);
       } else if (level == 2) {
         obj = read_object(1510, VIRTUAL);
-        add_unique_id(obj);
       } else {
         obj = read_object(70, VIRTUAL);
-        add_unique_id(obj);
       }
       obj_to_char(obj, ch);
       reveal_hiding(ch, 0);
@@ -3922,16 +3918,12 @@ ACMD(do_form) {
       }
       if (level == 4) {
         obj = read_object(1515, VIRTUAL);
-        add_unique_id(obj);
       } else if (level == 3) {
         obj = read_object(1514, VIRTUAL);
-        add_unique_id(obj);
       } else if (level == 2) {
         obj = read_object(1513, VIRTUAL);
-        add_unique_id(obj);
       } else {
         obj = read_object(71, VIRTUAL);
-        add_unique_id(obj);
       }
       obj_to_char(obj, ch);
       reveal_hiding(ch, 0);
@@ -3956,7 +3948,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(319, VIRTUAL);
-      add_unique_id(obj);
       obj_to_char(obj, ch);
       reveal_hiding(ch, 0);
       GET_COOLDOWN(ch) = 10;
@@ -3980,7 +3971,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(16, VIRTUAL);
-      add_unique_id(obj);
       obj_to_char(obj, ch); // cooldown removed on 10/24/2021
       reveal_hiding(ch, 0); // GET_COOLDOWN(ch) = 10;
       act("You hold out your hand and create $p out of your ki!", TRUE, ch, obj,
@@ -4030,87 +4020,62 @@ ACMD(do_form) {
       if (!strcasecmp(arg2, "sword")) {
         if (level == 5) {
           obj = read_object(1519, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 4) {
           obj = read_object(1518, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 3) {
           obj = read_object(1517, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 2) {
           obj = read_object(1516, VIRTUAL);
-          add_unique_id(obj);
         } else {
           obj = read_object(90, VIRTUAL);
-          add_unique_id(obj);
         }
       } else if (!strcasecmp(arg2, "dagger")) {
         if (level == 5) {
           obj = read_object(1540, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 4) {
           obj = read_object(1539, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 3) {
           obj = read_object(1538, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 2) {
           obj = read_object(1537, VIRTUAL);
-          add_unique_id(obj);
         } else {
           obj = read_object(1536, VIRTUAL);
-          add_unique_id(obj);
         }
       } else if (!strcasecmp(arg2, "club")) {
         if (level == 5) {
           obj = read_object(1545, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 4) {
           obj = read_object(1544, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 3) {
           obj = read_object(1543, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 2) {
           obj = read_object(1542, VIRTUAL);
-          add_unique_id(obj);
         } else {
           obj = read_object(1541, VIRTUAL);
-          add_unique_id(obj);
         }
       } else if (!strcasecmp(arg2, "spear")) {
         if (level == 5) {
           obj = read_object(1550, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 4) {
           obj = read_object(1549, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 3) {
           obj = read_object(1548, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 2) {
           obj = read_object(1547, VIRTUAL);
-          add_unique_id(obj);
         } else {
           obj = read_object(1546, VIRTUAL);
-          add_unique_id(obj);
         }
       } else if (!strcasecmp(arg2, "gun")) {
         if (level == 5) {
           obj = read_object(1555, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 4) {
           obj = read_object(1554, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 3) {
           obj = read_object(1553, VIRTUAL);
-          add_unique_id(obj);
         } else if (level == 2) {
           obj = read_object(1552, VIRTUAL);
-          add_unique_id(obj);
         } else {
           obj = read_object(1551, VIRTUAL);
-          add_unique_id(obj);
         }
       } else {
         send_to_char(ch, "What type of weapon?\r\nSyntax: create weapon (sword "
@@ -4159,27 +4124,23 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(92, VIRTUAL); /* gi */
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, vict);
       GET_OBJ_SIZE(obj) = get_size(vict);
       obj = read_object(91, VIRTUAL); /* pants */
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, vict);
       GET_OBJ_SIZE(obj) = get_size(vict);
       obj = read_object(1528, VIRTUAL); /* wrist */
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, vict);
       GET_OBJ_SIZE(obj) = get_size(vict);
       obj = read_object(1528, VIRTUAL); /* wrist */
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, vict);
       GET_OBJ_SIZE(obj) = get_size(vict);
       obj = read_object(1532, VIRTUAL); /* boots */
-      add_unique_id(obj);
+      boost_obj(obj, ch, 0);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, vict);
       GET_OBJ_SIZE(obj) = get_size(vict);
@@ -4205,7 +4166,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(92, VIRTUAL);
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, ch);
       GET_OBJ_SIZE(obj) = get_size(ch);
@@ -4231,7 +4191,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(19053, VIRTUAL);
-      add_unique_id(obj);
       obj_to_char(obj, ch);
       SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_NORENT);
       SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_NOSELL);
@@ -4258,7 +4217,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(91, VIRTUAL);
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, ch);
       GET_OBJ_SIZE(obj) = get_size(ch);
@@ -4284,7 +4242,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(1528, VIRTUAL);
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, ch);
       GET_OBJ_SIZE(obj) = get_size(ch);
@@ -4310,7 +4267,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(1532, VIRTUAL);
-      add_unique_id(obj);
       boost_obj(obj, ch, 0);
       obj_to_char(obj, ch);
       GET_OBJ_SIZE(obj) = get_size(ch);
@@ -4336,7 +4292,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(72, VIRTUAL);
-      add_unique_id(obj);
       obj_to_char(obj, ch);
       GET_OBJ_SIZE(obj) = get_size(ch);
       reveal_hiding(ch, 0);
@@ -4361,7 +4316,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(87, VIRTUAL);
-      add_unique_id(obj);
       obj_to_room(obj, char_room_get(ch));
       GET_OBJ_SIZE(obj) = get_size(ch);
       reveal_hiding(ch, 0);
@@ -4397,7 +4351,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(86, VIRTUAL);
-      add_unique_id(obj);
       obj_to_room(obj, char_room_get(ch));
       GET_OBJ_SIZE(obj) = get_size(ch);
       reveal_hiding(ch, 0);
@@ -4444,7 +4397,6 @@ ACMD(do_form) {
       return;
     } else {
       obj = read_object(1, VIRTUAL);
-      add_unique_id(obj);
       obj_to_char(obj, ch);
       reveal_hiding(ch, 0);
       GET_COOLDOWN(ch) = 10;
@@ -7212,7 +7164,6 @@ ACMD(do_forgery) {
   int loadn = GET_OBJ_VNUM(obj2);
 
   obj3 = read_object(loadn, VIRTUAL);
-  add_unique_id(obj3);
   obj_to_char(obj3, ch);
 
   /* Set Object Variables */
@@ -13561,7 +13512,6 @@ ACMD(do_aid) {
             "completed Adrenex Adreneline Injector!@n",
             TRUE, ch, 0, 0, TO_ROOM);
         aid_prod = read_object(num2, VIRTUAL);
-        add_unique_id(aid_prod);
         obj_to_char(aid_prod, ch);
         extract_obj(aid_obj);
         improve_skill(ch, SKILL_FIRST_AID, 1);
@@ -13598,7 +13548,6 @@ ACMD(do_aid) {
             "of burn salve!@n",
             TRUE, ch, 0, 0, TO_ROOM);
         aid_prod = read_object(num2, VIRTUAL);
-        add_unique_id(aid_prod);
         obj_to_char(aid_prod, ch);
         extract_obj(aid_obj);
         improve_skill(ch, SKILL_FIRST_AID, 1);
@@ -13633,7 +13582,6 @@ ACMD(do_aid) {
             "completed Antitoxin Injector!@n",
             TRUE, ch, 0, 0, TO_ROOM);
         aid_prod = read_object(num2, VIRTUAL);
-        add_unique_id(aid_prod);
         obj_to_char(aid_prod, ch);
         extract_obj(aid_obj);
         improve_skill(ch, SKILL_FIRST_AID, 1);
@@ -13669,7 +13617,6 @@ ACMD(do_aid) {
             "completed Vial of Formula 82!@n",
             TRUE, ch, 0, 0, TO_ROOM);
         aid_prod = read_object(num2, VIRTUAL);
-        add_unique_id(aid_prod);
         obj_to_char(aid_prod, ch);
         extract_obj(aid_obj);
         improve_skill(ch, SKILL_FIRST_AID, 1);

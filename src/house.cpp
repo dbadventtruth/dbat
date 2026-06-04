@@ -739,7 +739,7 @@ int House_load(room_vnum rvnum) {
             break;
           case 'U':
             get_line(fl, line);
-            sscanf(line, "%" I64T, &temp->unique_id);
+            // sscanf(line, "%" I64T, &temp->unique_id);
             get_line(fl, line);
             break;
           case 'S':

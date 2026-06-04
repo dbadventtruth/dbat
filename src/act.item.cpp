@@ -2404,7 +2404,6 @@ ACMD(do_assemble) {
                  argument);
     return;
   }
-  add_unique_id(pObject);
 
   /* Now give the object to the character. */
   if (GET_OBJ_VNUM(pObject) != 1611) {
