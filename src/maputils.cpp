@@ -24,7 +24,7 @@
 #include "random.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
+
 #include "room_macros.h"
 #include "vehicles.h"
 
@@ -155,7 +155,7 @@ char *getmapchar(struct room_data *room, struct char_data *ch,
       sprintf(mapchar, "@gNN");
     }
   } /* End Namek Character */
-  else if (room->number == 50772) {
+  else if (room_vnum_get(room) == 50772) {
     if (there) {
       sprintf(mapchar, "@cZ@RX");
     } else if (enemy == TRUE) {
@@ -218,7 +218,7 @@ char *getmapchar(struct room_data *room, struct char_data *ch,
       sprintf(mapchar, "@m&&");
     }
   } /* End Nebula Character */
-  else if (room->number == 38028) {
+  else if (room_vnum_get(room) == 38028) {
     if (there) {
       sprintf(mapchar, "@yQ@RX");
     } else if (enemy == TRUE) {
@@ -295,7 +295,7 @@ MapStruct findcoord(struct room_data *room) {
 
   for (y = 0; y <= MAP_ROWS; y++) {
     for (x = 0; x <= MAP_COLS; x++) {
-      if (mapnums[y][x] == room->number) {
+      if (mapnums[y][x] == room_vnum_get(room)) {
         coords.y = y;
         coords.x = x;
         return coords;
@@ -382,30 +382,30 @@ void printmap(struct room_data *room, struct char_data *ch, int type,
         strcat(buf, "      @RCompass@n           ");
       } else if (count == 2) {
         sprintf(buf2, "@w       @w|%s@w|            ",
-                (R_EXIT(room, 0) ? " @CN " : "   "));
+                (room_dir_option_get(room, 0) ? " @CN " : "   "));
         strcat(buf, buf2);
       } else if (count == 3) {
         sprintf(buf2, "@w @w|%s@w| |%s@w| |%s@w|      ",
-                (R_EXIT(room, 6) ? " @CNW" : "   "),
-                (R_EXIT(room, 4) ? " @YU " : "   "),
-                (R_EXIT(room, 7) ? "@CNE " : "   "));
+                (room_dir_option_get(room, 6) ? " @CNW" : "   "),
+                (room_dir_option_get(room, 4) ? " @YU " : "   "),
+                (room_dir_option_get(room, 7) ? "@CNE " : "   "));
         strcat(buf, buf2);
       } else if (count == 4) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|      ",
-            (R_EXIT(room, 3) ? "  @CW" : "   "),
-            (R_EXIT(room, 10) ? "@m I " : (R_EXIT(room, 11) ? "@mOUT" : "   ")),
-            (R_EXIT(room, 1) ? "@CE  " : "   "));
+            (room_dir_option_get(room, 3) ? "  @CW" : "   "),
+            (room_dir_option_get(room, 10) ? "@m I " : (room_dir_option_get(room, 11) ? "@mOUT" : "   ")),
+            (room_dir_option_get(room, 1) ? "@CE  " : "   "));
         strcat(buf, buf2);
       } else if (count == 5) {
         sprintf(buf2, "@w @w|%s@w| |%s@w| |%s@w|      ",
-                (R_EXIT(room, 9) ? " @CSW" : "   "),
-                (R_EXIT(room, 5) ? " @YD " : "   "),
-                (R_EXIT(room, 8) ? "@CSE " : "   "));
+                (room_dir_option_get(room, 9) ? " @CSW" : "   "),
+                (room_dir_option_get(room, 5) ? " @YD " : "   "),
+                (room_dir_option_get(room, 8) ? "@CSE " : "   "));
         strcat(buf, buf2);
       } else if (count == 6) {
         sprintf(buf2, "@w       @w|%s@w|            ",
-                (R_EXIT(room, 2) ? " @CS " : "   "));
+                (room_dir_option_get(room, 2) ? " @CS " : "   "));
         strcat(buf, buf2);
       } else {
         strcat(buf, "                        ");

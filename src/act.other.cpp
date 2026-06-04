@@ -50,7 +50,6 @@
 #include "races.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "skills.h"
 #include "stringutils.h"
 #include "util_macros.h"
@@ -7433,11 +7432,11 @@ ACMD(do_eavesdrop) {
     return;
   }
   if (auto ex = EXIT(ch, dir); ex) {
-    if (IS_SET(ex->exit_info, EX_CLOSED) && ex->keyword) {
-      sprintf(buf, "The %s is closed.\r\n", fname(ex->keyword));
+    if (exit_flagged(ex, EX_CLOSED) && exit_keyword_get(ex)) {
+      sprintf(buf, "The %s is closed.\r\n", fname(exit_keyword_get(ex)));
       send_to_char(ch, "%s", buf);
     } else {
-      GET_EAVESDROP(ch) = ex->to_room;
+      GET_EAVESDROP(ch) = exit_to_room_vnum_get(ex);
       GET_EAVESDIR(ch) = dir;
       send_to_char(ch, "Okay.\r\n");
     }
@@ -13727,11 +13726,11 @@ ACMD(do_aura) {
         act("$n's aura fades as they stop shining light on the area.", TRUE, ch,
             0, 0, TO_ROOM);
         REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_AURALIGHT);
-        char_room_get(ch)->light--;
+        room_light_mod(char_room_get(ch), -1);
 
       } else if ((getCurKI(ch)) > GET_MAX_MANA(ch) * 0.12) {
         if (char_room_get(ch) != NULL) {
-          char_room_get(ch)->light++;
+          room_light_mod(char_room_get(ch), 1);
         }
         reveal_hiding(ch, 0);
         decCurKIPercent(ch, .12);

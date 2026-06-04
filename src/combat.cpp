@@ -60,7 +60,6 @@
 #include "relocate.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "room_utils.h"
 #include "stringutils.h"
 

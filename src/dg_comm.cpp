@@ -43,7 +43,6 @@
 #include "object_macros.h"
 #include "races_plus.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 #include "spells.h"
 #include "stringutils.h"
@@ -280,7 +279,7 @@ void send_to_sense(int type, char *messg, struct char_data *ch) {
     if (!GET_SKILL(tch, SKILL_SENSE)) {
       continue;
     }
-    if (((char_room_get(ch)->zone != char_room_get(tch)->zone && type == 0) ||
+    if (((room_zone_get(char_room_get(ch)) != room_zone_get(char_room_get(tch)) && type == 0) ||
          !AWAKE(tch))) {
       continue;
     }
@@ -393,7 +392,7 @@ void send_to_scouter(char *messg, struct char_data *ch, int num, int type) {
     if (tch == ch) {
       continue;
     } else {
-      if ((((char_room_get(ch)->zone != char_room_get(tch)->zone) &&
+      if ((((room_zone_get(char_room_get(ch)) != room_zone_get(char_room_get(tch))) &&
             type == 0) ||
            !AWAKE(tch))) {
         continue;

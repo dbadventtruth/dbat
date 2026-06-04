@@ -1033,7 +1033,7 @@ void reset_wtrigger(struct room_data *room) {
   if (!SCRIPT_CHECK(room, WTRIG_RESET))
     return;
 
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_RESET) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
       script_driver(&room, t, WLD_TRIGGER, TRIG_NEW);
@@ -1048,7 +1048,7 @@ void random_wtrigger(struct room_data *room) {
   if (!SCRIPT_CHECK(room, WTRIG_RANDOM))
     return;
 
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_RANDOM) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
       script_driver(&room, t, WLD_TRIGGER, TRIG_NEW);
@@ -1064,7 +1064,7 @@ int enter_wtrigger(struct room_data *room, char_data *actor, int dir) {
   if (!SCRIPT_CHECK(room, WTRIG_ENTER))
     return 1;
 
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_ENTER) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
       if (dir >= 0 && dir < NUM_OF_DIRS)
@@ -1093,7 +1093,7 @@ int command_wtrigger(char_data *actor, char *cmd, char *argument) {
     return 0;
 
   room = char_room_get(actor);
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (!TRIGGER_CHECK(t, WTRIG_COMMAND))
       continue;
 
@@ -1128,7 +1128,7 @@ void speech_wtrigger(char_data *actor, char *str) {
     return;
 
   room = char_room_get(actor);
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (!TRIGGER_CHECK(t, WTRIG_SPEECH))
       continue;
 
@@ -1160,7 +1160,7 @@ int drop_wtrigger(obj_data *obj, char_data *actor) {
     return 1;
 
   room = char_room_get(actor);
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next)
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next)
     if (TRIGGER_CHECK(t, WTRIG_DROP) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
       ADD_UID_VAR(buf, t, actor, "actor", 0);
@@ -1186,7 +1186,7 @@ int cast_wtrigger(char_data *actor, char_data *vict, obj_data *obj,
     return 1;
 
   room = char_room_get(actor);
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_CAST) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
 
@@ -1216,7 +1216,7 @@ int leave_wtrigger(struct room_data *room, char_data *actor, int dir) {
   if (!SCRIPT_CHECK(room, WTRIG_LEAVE))
     return 1;
 
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_LEAVE) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
       if (dir >= 0 && dir < NUM_OF_DIRS)
@@ -1240,7 +1240,7 @@ int door_wtrigger(char_data *actor, int subcmd, int dir) {
     return 1;
 
   room = char_room_get(actor);
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_DOOR) &&
         (rand_number(1, 100) <= GET_TRIG_NARG(t))) {
       add_var(&GET_TRIG_VARS(t), "cmd", (const char *)cmd_door[subcmd], 0);
@@ -1263,7 +1263,7 @@ void time_wtrigger(struct room_data *room) {
   if (!SCRIPT_CHECK(room, WTRIG_TIME))
     return;
 
-  for (t = TRIGGERS(SCRIPT(room)); t; t = t->next) {
+  for (t = TRIGGERS(room_script_get(room)); t; t = t->next) {
     if (TRIGGER_CHECK(t, WTRIG_TIME) && (time_info.hours == GET_TRIG_NARG(t))) {
       sprintf(buf, "%d", time_info.hours);
       add_var(&GET_TRIG_VARS(t), "time", buf, 0);

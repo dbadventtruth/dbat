@@ -33,7 +33,6 @@
 #include "object_utils.h"
 #include "relocate.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 /* external vars */
 
@@ -75,7 +74,7 @@ void update_char_objects(struct char_data *ch) {
         } else if (j == 0) {
           send_to_char(ch, "Your light sputters out and dies.\r\n");
           act("$n's light sputters out and dies.", FALSE, ch, 0, 0, TO_ROOM);
-          char_room_get(ch)->light--;
+          room_light_mod(char_room_get(ch), -1);
         }
       } else if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT &&
                  GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS) > 0) {

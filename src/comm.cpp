@@ -62,7 +62,6 @@
 #include "random.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "stringutils.h"
 #include "util_macros.h"
 #include "weather.h"
@@ -2995,7 +2994,7 @@ void send_to_room(struct room_data *room, const char *messg, ...) {
       continue;
 
     if (PRF_FLAGGED(d->character, PRF_ARENAWATCH)) {
-      if (arena_watch(d->character) == room->number) {
+      if (arena_watch(d->character) == room_vnum_get(room)) {
         char buf[2000];
         *buf = '\0';
         sprintf(buf,
@@ -3008,7 +3007,7 @@ void send_to_room(struct room_data *room, const char *messg, ...) {
     }
     if (GET_EAVESDROP(d->character) > 0) {
       int roll = rand_number(1, 101);
-      if (GET_EAVESDROP(d->character) == room->number &&
+      if (GET_EAVESDROP(d->character) == room_vnum_get(room) &&
           GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
         char buf[1000];
         *buf = '\0';
@@ -3297,17 +3296,18 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
     }
   }
 
-  for (; to; to = to->next_in_room) {
-    if (!SENDOK(to) || (to == ch))
-      continue;
-    if (hide_invisible && ch && !CAN_SEE(to, ch))
-      continue;
-    if (type != TO_ROOM && to == vict_obj)
-      continue;
-    if (resskill && roll_skill(to, resskill) < dcval)
-      continue;
-    perform_act(str, ch, obj, vict_obj, to);
-  }
+  room_people_iterate(char_room_get(ch), [&](struct char_data *c) {
+    if (!SENDOK(c) || (c == ch))
+      return true;
+    if (hide_invisible && ch && !CAN_SEE(c, ch))
+      return true;
+    if (type != TO_ROOM && c == vict_obj)
+      return true;
+    if (resskill && roll_skill(c, resskill) < dcval)
+      return true;
+    perform_act(str, ch, obj, vict_obj, c);
+    return true;
+  });
   return last_act_message;
 }
 

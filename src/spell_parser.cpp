@@ -39,7 +39,6 @@
 #include "object_macros.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 #include "skills.h"
 #include "spells.h"

@@ -39,7 +39,6 @@
 #include "object_macros.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "room_utils.h"
 #include "shop.h"
 #include "shop_impl.h"
@@ -47,7 +46,7 @@
 #include "spells.h"
 
 #include <cstring>
-
+#include <vector>
 #include "iterate.hpp"
 
 /* local functions */
@@ -227,18 +226,24 @@ void mobile_activity(void) {
       }
 
     /* Mob Movement */
-    if (!MOB_FLAGGED(ch, MOB_SENTINEL) && (GET_POS(ch) == POS_STANDING) &&
-        !FIGHTING(ch) && (!AFF_FLAGGED(ch, AFF_TAMED)) && !ABSORBBY(ch) &&
-        ((door = rand_number(0, 18)) < NUM_OF_DIRS) && CAN_GO(ch, door) &&
-        !room_flagged(exit_dest_get(EXIT(ch, door)), ROOM_NOMOB) &&
-        !room_flagged(exit_dest_get(EXIT(ch, door)), ROOM_DEATH) &&
-        (!MOB_FLAGGED(ch, MOB_STAY_ZONE) ||
-         (exit_dest_get(EXIT(ch, door))->zone == char_room_get(ch)->zone))) {
-      if (rand_number(1, 2) == 2 && !IS_AFFECTED(ch, AFF_PARALYZE) &&
-          block_calc(ch)) {
-        perform_move(ch, door, 1);
-      }
-    }
+    if(!MOB_FLAGGED(ch, MOB_SENTINEL) && (GET_POS(ch) == POS_STANDING) &&
+        !FIGHTING(ch) && (!AFF_FLAGGED(ch, AFF_TAMED)) && !ABSORBBY(ch)) {
+          if(rand_number(1,3) == 3) {
+            std::vector<int> available_dirs;
+            room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
+              if (auto dest = char_can_go_exit(ch, exit);                  !room_flagged(dest, ROOM_NOMOB) &&
+                  !room_flagged(dest, ROOM_DEATH) &&
+                  (!MOB_FLAGGED(ch, MOB_STAY_ZONE) ||
+                   (room_zone_get(dest) == char_zone_get(ch)))) {
+                available_dirs.push_back(dir);
+              }
+              return true;
+            });
+            if(!available_dirs.empty() && !IS_AFFECTED(ch, AFF_PARALYZE) && block_calc(ch)) {
+              perform_move(ch, available_dirs[rand_number(0, available_dirs.size() - 1)], 1);
+            }
+          }
+        }
 
     /* RESPOND TO A HUGE ATTACK */
     room_contents_iterate(char_room_get(ch), [&](auto hugeatk) {

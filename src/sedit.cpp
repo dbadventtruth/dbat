@@ -24,7 +24,7 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "room_db.h"
-#include "room_impl.h"
+#include "room_api.h"
 #include "shop.h"
 #include "shop_db.h"
 #include "shop_impl.h"
@@ -320,9 +320,9 @@ void sedit_rooms_menu(struct descriptor_data *d) {
   clear_screen(d);
   write_to_output(d, "##     VNUM     Room\r\n\r\n");
   for (i = 0; S_ROOM(shop, i) != NOWHERE; i++) {
-    if (room_by_id(S_ROOM(shop, i))) {
+    if (auto room = room_by_id(S_ROOM(shop, i))) {
       write_to_output(d, "%2d - [@c%5d@n] - @y%s@n\r\n", i, S_ROOM(shop, i),
-                      room_by_id(S_ROOM(shop, i))->name);
+                      room_name_get(room));
     } else {
       write_to_output(d, "%2d - [@R!Removed Room!@n]\r\n", i);
     }
@@ -813,7 +813,7 @@ void sedit_parse(struct descriptor_data *d, char *arg) {
     break;
   case SEDIT_COPY:
     if (auto room = room_by_id(atoi(arg)); room) {
-      sedit_setup_existing(d, room->number);
+      sedit_setup_existing(d, room_vnum_get(room));
     } else
       write_to_output(d, "That shop does not exist.\r\n");
     break;

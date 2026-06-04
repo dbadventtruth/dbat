@@ -50,7 +50,7 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
+#include "room_api.h"
 
 #include <cctype>
 #include <cstring>
@@ -708,8 +708,8 @@ int special(struct char_data *ch, int cmd, char *arg) {
   struct room_data *room = char_room_get(ch);
 
   /* special in room? */
-  if (room->func)
-    if (room->func(ch, room, cmd, arg))
+  if (room_func_get(room))
+    if (room_func_get(room)(ch, room, cmd, arg))
       return (1);
 
   /* special in equipment list? */

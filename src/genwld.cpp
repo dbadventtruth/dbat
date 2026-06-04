@@ -113,7 +113,7 @@ int delete_room(room_vnum vnum) {
   });
 
   free_room_strings(room);
-  if (SCRIPT(room))
+  if (room_script_get(room))
     extract_script(room, WLD_TRIGGER);
   free_proto_script(room, WLD_TRIGGER);
 

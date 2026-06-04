@@ -42,7 +42,7 @@
 #include "object_macros.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
+
 #include "room_macros.h"
 #include "search.h"
 #include "spells.h"
@@ -71,8 +71,8 @@ static struct bfs_queue_struct *bfs_queue_head = 0, *bfs_queue_tail = 0;
 #define MARK(room) (room_flag_set(room, ROOM_BFS_MARK, TRUE))
 #define UNMARK(room) (room_flag_set(room, ROOM_BFS_MARK, FALSE))
 #define IS_MARKED(room) (room_flagged(room, ROOM_BFS_MARK))
-#define TOROOM(x, y) (exit_dest_get((x)->dir_option[(y)]))
-#define IS_CLOSED(x, y) (EXIT_FLAGGED((x)->dir_option[(y)], EX_CLOSED))
+#define TOROOM(x, y) (exit_dest_get(room_dir_option_get(x, y)))
+#define IS_CLOSED(x, y) (exit_flagged(room_dir_option_get(x, y), EX_CLOSED))
 
 int VALID_EDGE(struct room_data *x, int y) {
   if (!x || !TOROOM(x, y))

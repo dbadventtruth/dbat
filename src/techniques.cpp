@@ -20,7 +20,6 @@
 #include "consts/sex.h"
 #include "flags.h"
 #include "random.h"
-//#include "room_impl.h"
 #include "search.h"
 #include "spells.h"
 

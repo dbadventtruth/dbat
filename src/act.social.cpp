@@ -32,7 +32,8 @@
 #include "interpreter.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
+#include "consts/roomflags.h"
+
 #include "search.h"
 
 #include "config_db.h"

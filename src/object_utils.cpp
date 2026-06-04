@@ -11,7 +11,7 @@
 #include "object_macros.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
+
 #include "stringutils.h"
 
 #include <cstring>
@@ -451,7 +451,7 @@ struct room_direction_data *obj_exit_dir(struct obj_data *obj, int dir) {
     return NULL;
   }
 
-  return room->dir_option[dir];
+  return room_dir_option_get(room, dir);
 }
 
 struct room_direction_data *obj_exit_dir_2nd(struct obj_data *obj, int dir) {
@@ -469,7 +469,7 @@ struct room_direction_data *obj_exit_dir_2nd(struct obj_data *obj, int dir) {
     return NULL;
   }
 
-  return dest->dir_option[dir];
+  return room_dir_option_get(dest, dir);
 }
 
 struct room_direction_data *obj_exit_dir_3rd(struct obj_data *obj, int dir) {
@@ -487,7 +487,7 @@ struct room_direction_data *obj_exit_dir_3rd(struct obj_data *obj, int dir) {
     return NULL;
   }
 
-  return dest->dir_option[dir];
+  return room_dir_option_get(dest, dir);
 }
 
 bool obj_planet_zenith(struct obj_data *obj) {

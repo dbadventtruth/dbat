@@ -57,7 +57,6 @@
 #include "relocate.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "spells.h"
 #include "stringutils.h"
 #include "util_macros.h"

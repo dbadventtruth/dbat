@@ -6283,7 +6283,7 @@ ACMD(do_obstruct) {
     return;
   } else {
     auto ex = EXIT(ch, dir);
-    int newroom = ex->to_room;
+    int newroom = exit_to_room_vnum_get(ex);
     struct room_data *nrm = exit_dest_get(ex);
 
     if (room_flagged(nrm, ROOM_PEACEFUL)) {

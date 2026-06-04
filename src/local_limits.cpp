@@ -54,7 +54,7 @@
 #include "random.h"
 #include "relocate.h"
 #include "room_api.h"
-#include "room_impl.h"
+
 #include "room_utils.h"
 #include "spells.h"
 #include "stringutils.h"
@@ -1526,7 +1526,7 @@ static void point_update_characters(void) {
           act("$n's aura slowly stops shining and fades.\r\n", TRUE, i, nullptr,
               nullptr, TO_ROOM);
           REMOVE_BIT_AR(PLR_FLAGS(i), PLR_AURALIGHT);
-          char_room_get(i)->light--;
+          room_light_mod(char_room_get(i), -1);
         }
       }
       if (IS_MUTANT(i) && (GET_GENOME(i, 0) == 6 || GET_GENOME(i, 1) == 6)) {
@@ -1971,7 +1971,7 @@ void timed_dt(struct char_data *ch) {
       */
 
     room_iterate([&](auto room) {
-      room->timed -= (room->timed != -1);
+      if (room_timed_get(room) != -1) room_timed_mod(room, -1);
       return true;
     });
 
@@ -1998,15 +1998,15 @@ void timed_dt(struct char_data *ch) {
     and return again.
   */
   auto room = char_room_get(ch);
-  if (room->timed < 0) {
-    room->timed = rand_number(2, 5);
+  if (room_timed_get(room) < 0) {
+    room_timed_set(room, rand_number(2, 5));
     return;
   }
 
   /* We know ch is in a dt room with timed >= 0 - see if its the end.
    *
    */
-  if (room->timed == 0) {
+  if (room_timed_get(room) == 0) {
     room_people_iterate(room, [&](auto vict) {
       if (IS_NPC(vict))
         return true;

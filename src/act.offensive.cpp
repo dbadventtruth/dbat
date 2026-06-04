@@ -52,7 +52,7 @@
 #include "object_impl.h"
 #include "object_macros.h"
 #include "room_api.h"
-#include "room_impl.h"
+
 #include "stringutils.h"
 #include "techniques.h"
 #include <cstdlib>

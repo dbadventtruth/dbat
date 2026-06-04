@@ -1630,7 +1630,7 @@ static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
         int sect = room_sector_type_get(dest);
     int geffect = room_geffect_get(dest);
     bool sunken = room_is_sunken(dest);
-    if ((EXIT_FLAGGED(exit, EX_CLOSED) && !EXIT_FLAGGED(exit, EX_SECRET))) {
+    if ((exit_flagged(exit, EX_CLOSED) && !exit_flagged(exit, EX_SECRET))) {
       switch (door) {
       case NORTH:
         map[y - 1][x] = '8';
@@ -1657,7 +1657,7 @@ static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
         map[y + 1][x - 1] = '8';
         break;
       }
-    } else if (!EXIT_FLAGGED(exit, EX_CLOSED)) {
+    } else if (!exit_flagged(exit, EX_CLOSED)) {
       switch (door) {
       case NORTH:
         if (sunken) {
@@ -2225,63 +2225,63 @@ static void gen_map(struct char_data *ch, int num) {
       if (i == 2) {
         sprintf(
             buf2, "@w       @w|%s@w|           %s",
-            (R_EXIT(room, 0) && !EXIT_FLAGGED(R_EXIT(room, 0), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 0), EX_CLOSED) ? " @rN " : " @CN ")
+            (room_dir_option_get(room, 0) && !exit_flagged(room_dir_option_get(room, 0), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 0), EX_CLOSED) ? " @rN " : " @CN ")
                 : "   ",
             map[i]);
       }
       if (i == 3) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|     %s",
-            (R_EXIT(room, 6) && !EXIT_FLAGGED(R_EXIT(room, 6), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 6), EX_CLOSED) ? " @rNW" : " @CNW")
+            (room_dir_option_get(room, 6) && !exit_flagged(room_dir_option_get(room, 6), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 6), EX_CLOSED) ? " @rNW" : " @CNW")
                 : "   ",
-            (R_EXIT(room, 4) && !EXIT_FLAGGED(R_EXIT(room, 4), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 4), EX_CLOSED) ? " @yU " : " @YU ")
+            (room_dir_option_get(room, 4) && !exit_flagged(room_dir_option_get(room, 4), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 4), EX_CLOSED) ? " @yU " : " @YU ")
                 : "   ",
-            (R_EXIT(room, 7) && !EXIT_FLAGGED(R_EXIT(room, 7), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 7), EX_SECRET) ? "@rNE " : "@CNE ")
+            (room_dir_option_get(room, 7) && !exit_flagged(room_dir_option_get(room, 7), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 7), EX_SECRET) ? "@rNE " : "@CNE ")
                 : "   ",
             map[i]);
       }
       if (i == 4) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|     %s",
-            (R_EXIT(room, 3) && !EXIT_FLAGGED(R_EXIT(room, 3), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 3), EX_CLOSED) ? "  @rW" : "  @CW")
+            (room_dir_option_get(room, 3) && !exit_flagged(room_dir_option_get(room, 3), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 3), EX_CLOSED) ? "  @rW" : "  @CW")
                 : "   ",
-            (R_EXIT(room, 10) && !EXIT_FLAGGED(R_EXIT(room, 10), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 10), EX_CLOSED) ? " @rI "
+            (room_dir_option_get(room, 10) && !exit_flagged(room_dir_option_get(room, 10), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 10), EX_CLOSED) ? " @rI "
                                                              : " @mI ")
-                : ((R_EXIT(room, 11) &&
-                    !EXIT_FLAGGED(R_EXIT(room, 11), EX_SECRET))
-                       ? (EXIT_FLAGGED(R_EXIT(room, 11), EX_CLOSED) ? "@rOUT"
+                : ((room_dir_option_get(room, 11) &&
+                    !exit_flagged(room_dir_option_get(room, 11), EX_SECRET))
+                       ? (exit_flagged(room_dir_option_get(room, 11), EX_CLOSED) ? "@rOUT"
                                                                     : "@mOUT")
                        : "@r{ }"),
-            (R_EXIT(room, 1) && !EXIT_FLAGGED(R_EXIT(room, 1), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 1), EX_CLOSED) ? "@rE  " : "@CE  ")
+            (room_dir_option_get(room, 1) && !exit_flagged(room_dir_option_get(room, 1), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 1), EX_CLOSED) ? "@rE  " : "@CE  ")
                 : "   ",
             map[i]);
       }
       if (i == 5) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|     %s",
-            (R_EXIT(room, 9) && !EXIT_FLAGGED(R_EXIT(room, 9), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 9), EX_CLOSED) ? " @rSW" : " @CSW")
+            (room_dir_option_get(room, 9) && !exit_flagged(room_dir_option_get(room, 9), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 9), EX_CLOSED) ? " @rSW" : " @CSW")
                 : "   ",
-            (R_EXIT(room, 5) && !EXIT_FLAGGED(R_EXIT(room, 5), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 5), EX_CLOSED) ? " @yD " : " @YD ")
+            (room_dir_option_get(room, 5) && !exit_flagged(room_dir_option_get(room, 5), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 5), EX_CLOSED) ? " @yD " : " @YD ")
                 : "   ",
-            (R_EXIT(room, 8) && !EXIT_FLAGGED(R_EXIT(room, 8), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 8), EX_SECRET) ? "@rSE " : "@CSE ")
+            (room_dir_option_get(room, 8) && !exit_flagged(room_dir_option_get(room, 8), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 8), EX_SECRET) ? "@rSE " : "@CSE ")
                 : "   ",
             map[i]);
       }
       if (i == 6) {
         sprintf(
             buf2, "@w       @w|%s@w|           %s",
-            (R_EXIT(room, 2) && !EXIT_FLAGGED(R_EXIT(room, 2), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 2), EX_CLOSED) ? " @rS " : " @CS ")
+            (room_dir_option_get(room, 2) && !exit_flagged(room_dir_option_get(room, 2), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 2), EX_CLOSED) ? " @rS " : " @CS ")
                 : "   ",
             map[i]);
       }
@@ -3985,10 +3985,10 @@ static void capitalize_direction(char *out, size_t out_size, int door) {
 }
 
 static const char *exit_keyword_or_opening(struct room_direction_data *exit) {
-  if (!exit->keyword)
+  if (!exit_keyword_get(exit))
     return "opening";
 
-  const char *keyword = fname(exit->keyword);
+  const char *keyword = fname(exit_keyword_get(exit));
   if (!keyword || !strcasecmp(keyword, "undefined"))
     return "opening";
 
@@ -3999,11 +3999,11 @@ static bool
 append_immortal_exit_door_details(char *line, size_t line_size,
                                   struct char_data *ch, int door,
                                   struct room_direction_data *exit) {
-  if (!IS_SET(exit->exit_info, EX_ISDOOR) &&
-      !IS_SET(exit->exit_info, EX_SECRET))
+  if (!exit_flagged(exit, EX_ISDOOR) &&
+      !exit_flagged(exit, EX_SECRET))
     return true;
 
-  const char *keyword = fname(exit->keyword);
+  const char *keyword = fname(exit_keyword_get(exit));
   if (!keyword) {
     send_to_char(ch, "@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION %s@n\r\n",
                  dirs[door]);
@@ -4019,11 +4019,11 @@ append_immortal_exit_door_details(char *line, size_t line_size,
 
   snprintf(line + strlen(line), line_size - strlen(line),
            "                    The %s%s %s %s %s%s.\r\n",
-           IS_SET(exit->exit_info, EX_SECRET) ? "@rsecret@w " : "", door_name,
+           exit_flagged(exit, EX_SECRET) ? "@rsecret@w " : "", door_name,
            strstr(plural_probe, "s ") != NULL ? "are" : "is",
-           IS_SET(exit->exit_info, EX_CLOSED) ? "closed" : "open",
-           IS_SET(exit->exit_info, EX_LOCKED) ? "and locked" : "and unlocked",
-           IS_SET(exit->exit_info, EX_PICKPROOF) ? " (pickproof)" : "");
+           exit_flagged(exit, EX_CLOSED) ? "closed" : "open",
+           exit_flagged(exit, EX_LOCKED) ? "and locked" : "and unlocked",
+           exit_flagged(exit, EX_PICKPROOF) ? " (pickproof)" : "");
   return true;
 }
 
@@ -4154,7 +4154,7 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
       if (!append_immortal_exit_door_details(line, sizeof(exit_lines[door]), ch,
                                              door, exit))
         return false;
-    } else if (!IS_SET(exit->exit_info, EX_CLOSED)) {
+    } else if (!exit_flagged(exit, EX_CLOSED)) {
       door_found = true;
       const char *destination_name =
           IS_DARK(exit_dest_get(exit)) && !CAN_SEE_IN_DARK(ch) && !has_light
@@ -4163,7 +4163,7 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
       snprintf(line, sizeof(exit_lines[door]), "@c%-9s @D-@w %s\r\n", direction,
                destination_name);
     } else if (CONFIG_DISP_CLOSED_DOORS &&
-               !IS_SET(exit->exit_info, EX_SECRET)) {
+               !exit_flagged(exit, EX_SECRET)) {
       door_found = true;
       snprintf(line, sizeof(exit_lines[door]),
                "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", direction,
@@ -4193,7 +4193,7 @@ static void do_auto_exits2(struct room_data *room,
   room_exits_iterate(room, [&](auto door, auto exit) {
     auto dest = exit_dest_get(exit);
     if(!dest) return true;
-    if (EXIT_FLAGGED(exit, EX_CLOSED))
+    if (exit_flagged(exit, EX_CLOSED))
       return true;
 
     send_to_char(ch, "%s ", abbr_dirs[door]);
@@ -4533,9 +4533,9 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
     }
 
     send_to_char(ch, "@wLocation: @G%-70s@w\r\n", name);
-    if (SCRIPT(trm)) {
+    if (auto sc = room_script_get(trm)) {
       send_to_char(ch, "@D[@GTriggers");
-      for (t = TRIGGERS(SCRIPT(trm)); t; t = t->next)
+      for (t = TRIGGERS(sc); t; t = t->next)
         send_to_char(ch, " %d", GET_TRIG_VNUM(t));
       send_to_char(ch, "@D] ");
     }
@@ -4615,8 +4615,8 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
 
 static void look_in_direction(struct char_data *ch, int dir) {
   if (EXIT(ch, dir)) {
-    if (EXIT(ch, dir)->general_description)
-      send_to_char(ch, "%s", EXIT(ch, dir)->general_description);
+    if (exit_general_description_get(EXIT(ch, dir)))
+      send_to_char(ch, "%s", exit_general_description_get(EXIT(ch, dir)));
     else {
       struct obj_data *obj = char_inventory_search_vnum(ch, 17, FALSE, 0);
       if (!obj) {
@@ -4627,13 +4627,13 @@ static void look_in_direction(struct char_data *ch, int dir) {
       }
     }
 
-    if (EXIT_FLAGGED(EXIT(ch, dir), EX_ISDOOR) && EXIT(ch, dir)->keyword) {
-      if (!EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET) &&
-          EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED))
+    if (exit_flagged(EXIT(ch, dir), EX_ISDOOR) && exit_keyword_get(EXIT(ch, dir))) {
+      if (!exit_flagged(EXIT(ch, dir), EX_SECRET) &&
+          exit_flagged(EXIT(ch, dir), EX_CLOSED))
         send_to_char(ch, "The %s is closed.\r\n",
-                     fname(EXIT(ch, dir)->keyword));
-      else if (!EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED))
-        send_to_char(ch, "The %s is open.\r\n", fname(EXIT(ch, dir)->keyword));
+                     fname(exit_keyword_get(EXIT(ch, dir))));
+      else if (!exit_flagged(EXIT(ch, dir), EX_CLOSED))
+        send_to_char(ch, "The %s is open.\r\n", fname(exit_keyword_get(EXIT(ch, dir))));
     }
   } else
     send_to_char(ch, "Nothing special there...\r\n");
@@ -4667,7 +4667,7 @@ static void look_in_obj(struct char_data *ch, char *arg) {
       } else {
         send_to_char(
             ch, "After seconds of concentration you see the image of %s.\r\n",
-            portal_dest->name);
+            room_name_get(portal_dest));
       }
     } else if (GET_OBJ_VAL(obj, VAL_PORTAL_APPEAR) < MAX_PORTAL_TYPES) {
       /* display the appropriate description from the list of descriptions
@@ -4867,7 +4867,7 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
     }
 
     /* Does the argument match an extra desc in the room? */
-    if ((desc = find_exdesc(arg, char_room_get(ch)->ex_description)) != NULL &&
+    if ((desc = find_exdesc(arg, room_ex_description_get(char_room_get(ch)))) != NULL &&
         ++i == fnum) {
       send_to_char(ch, "%s", desc);
       return;
@@ -5385,7 +5385,7 @@ ACMD(do_look) {
       struct extra_descr_data *i;
       int found = 0;
 
-      for (i = char_room_get(ch)->ex_description; i; i = i->next) {
+      for (i = room_ex_description_get(char_room_get(ch)); i; i = i->next) {
         if (*i->keyword != '.') {
           send_to_char(ch, "%s%s:\r\n%s", (found ? "\r\n" : ""), i->keyword,
                        i->description);
@@ -5394,7 +5394,7 @@ ACMD(do_look) {
       }
       if (!found)
         send_to_char(ch, "You couldn't find anything noticeable.\r\n");
-    } else if (find_exdesc(arg, char_room_get(ch)->ex_description) != NULL) {
+    } else if (find_exdesc(arg, room_ex_description_get(char_room_get(ch))) != NULL) {
       look_at_target(ch, arg, 0);
     } else {
       if (subcmd == SCMD_SEARCH)
@@ -7124,7 +7124,7 @@ ACMD(do_who) {
         continue;
       if (questwho && !PRF_FLAGGED(tch, PRF_QUEST))
         continue;
-      if (localwho && char_room_get(ch)->zone != char_room_get(tch)->zone)
+      if (localwho && room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(tch)))
         continue;
       if (PRF_FLAGGED(tch, PRF_HIDE) && tch != ch &&
           GET_ADMLEVEL(ch) < ADMLVL_IMMORT) {
@@ -7177,7 +7177,7 @@ ACMD(do_who) {
         continue;
       if (questwho && !PRF_FLAGGED(tch, PRF_QUEST))
         continue;
-      if (localwho && char_room_get(ch)->zone != char_room_get(tch)->zone)
+      if (localwho && room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(tch)))
         continue;
       if (who_room && (char_room_get(tch) != char_room_get(ch)))
         continue;
@@ -7532,19 +7532,19 @@ static void perform_mortal_where(struct char_data *ch, char *arg) {
         continue;
       if (char_room_get(i) == NULL || !CAN_SEE(ch, i))
         continue;
-      if (char_room_get(ch)->zone != char_room_get(i)->zone)
+      if (room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(i)))
         continue;
-      send_to_char(ch, "%-20s - %s\r\n", GET_NAME(i), char_room_get(i)->name);
+      send_to_char(ch, "%-20s - %s\r\n", GET_NAME(i), room_name_get(char_room_get(i)));
     }
   } else { /* print only FIRST char, not all. */
     for (i = character_list; i; i = i->next) {
       if (char_room_get(i) == NULL || i == ch)
         continue;
-      if (!CAN_SEE(ch, i) || char_room_get(i)->zone != char_room_get(ch)->zone)
+      if (!CAN_SEE(ch, i) || room_zone_vnum_get(char_room_get(i)) != room_zone_vnum_get(char_room_get(ch)))
         continue;
       if (!isname(arg, i->name))
         continue;
-      send_to_char(ch, "%-25s - %s\r\n", GET_NAME(i), char_room_get(i)->name);
+      send_to_char(ch, "%-25s - %s\r\n", GET_NAME(i), room_name_get(char_room_get(i)));
       return;
     }
     send_to_char(ch, "Nobody around by that name.\r\n");
@@ -7563,7 +7563,7 @@ static void print_object_location(int num, struct obj_data *obj,
 
   if (obj_room_get(obj) != NULL)
     send_to_char(ch, "[%5d] %s\r\n", obj_room_vnum_get(obj),
-                 obj_room_get(obj)->name);
+                 room_name_get(obj_room_get(obj)));
   else if (obj->carried_by)
     send_to_char(ch, "carried by %s in room [%d]\r\n",
                  PERS(obj->carried_by, ch),
@@ -7642,12 +7642,12 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
           if (d->original)
             send_to_char(ch, "%-20s - [%5d]   %s (in %s)\r\n", GET_NAME(i),
                          char_room_vnum_get(d->character),
-                         char_room_get(d->character)->name,
+                         room_name_get(char_room_get(d->character)),
                          GET_NAME(d->character));
           else {
             send_to_char(ch, "%-20s - [%5d]   %-14s %s\r\n", GET_NAME(i),
                          char_room_vnum_get(i), planet[num2],
-                         char_room_get(i)->name);
+                         room_name_get(char_room_get(i)));
           }
         }
       }
@@ -7659,7 +7659,7 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
       if (CAN_SEE(ch, i) && char_room_get(i) != NULL && isname(arg, i->name)) {
         found = 1;
         send_to_char(ch, "M%3d. %-25s - [%5d] %-25s", ++num, GET_NAME(i),
-                     char_room_vnum_get(i), char_room_get(i)->name);
+                     char_room_vnum_get(i), room_name_get(char_room_get(i)));
         if (IS_NPC(i) && SCRIPT(i)) {
           if (!TRIGGERS(SCRIPT(i))->next)
             send_to_char(ch, "[T%5d] ", GET_TRIG_VNUM(TRIGGERS(SCRIPT(i))));
@@ -8377,8 +8377,8 @@ ACMD(do_scan) {
         send_to_char(ch, "@w-----------------------------------------@n\r\n");
         send_to_char(ch, "          %s%s: %s %s\n\r", CCCYN(ch, C_NRM),
                      dirnames[i],
-                     nrm->name ? nrm->name
-                               : "You don't think you saw what you just saw.",
+                      room_name_get(nrm) ? room_name_get(nrm)
+                                : "You don't think you saw what you just saw.",
                      CCNRM(ch, C_NRM));
         send_to_char(ch, "@W          -----------------          @n\r\n");
 
@@ -8392,18 +8392,18 @@ ACMD(do_scan) {
                        "@RLava@r covers pretty much the entire area!@n\r\n");
         }
         /* Check 2nd room away */
-        if (auto nrm2 = _2ND_EXIT(ch, i); nrm2 && nrm2->to_room) {
-          newroom = nrm2->to_room;
+        if (auto nrm2 = _2ND_EXIT(ch, i); nrm2 && exit_to_room_vnum_get(nrm2)) {
+          newroom = exit_to_room_vnum_get(nrm2);
 
           if ((newroom != NOWHERE) &&
-              (!IS_SET(_2ND_EXIT(ch, i)->exit_info, EX_CLOSED))) {
+              (!exit_flagged(_2ND_EXIT(ch, i), EX_CLOSED))) {
             if (!IS_DARK(exit_dest_get(_2ND_EXIT(ch, i)))) {
               send_to_char(ch,
                            "@w-----------------------------------------@n\r\n");
               send_to_char(ch, "          %sFar %s: %s %s\n\r",
                            CCCYN(ch, C_NRM), dirnames[i],
-                           nrm->name
-                               ? nrm->name
+                           room_name_get(nrm)
+                               ? room_name_get(nrm)
                                : "You don't think you saw what you just saw.",
                            CCNRM(ch, C_NRM));
               send_to_char(ch, "@W          -----------------          @n\r\n");
@@ -8643,7 +8643,7 @@ ACMD(do_whois) {
   }
 }
 
-#define DOOR_DCHIDE(ch, door) (EXIT(ch, door)->dchide)
+#define DOOR_DCHIDE(ch, door) exit_dchide_get(EXIT(ch, door))
 
 static void search_in_direction(struct char_data *ch, int dir) {
   int check = FALSE, skill_lvl, dchide = 20;
@@ -8665,17 +8665,17 @@ static void search_in_direction(struct char_data *ch, int dir) {
     check = TRUE;
 
   if (EXIT(ch, dir)) {
-    if (EXIT(ch, dir)->general_description &&
-        !EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET))
-      send_to_char(ch, "%s", EXIT(ch, dir)->general_description);
-    else if (!EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET))
+    if (exit_general_description_get(EXIT(ch, dir)) &&
+        !exit_flagged(EXIT(ch, dir), EX_SECRET))
+      send_to_char(ch, "%s", exit_general_description_get(EXIT(ch, dir)));
+    else if (!exit_flagged(EXIT(ch, dir), EX_SECRET))
       send_to_char(ch, "There is a normal exit there.\r\n");
-    else if (EXIT_FLAGGED(EXIT(ch, dir), EX_ISDOOR) &&
-             EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET) && EXIT(ch, dir)->keyword &&
+    else if (exit_flagged(EXIT(ch, dir), EX_ISDOOR) &&
+             exit_flagged(EXIT(ch, dir), EX_SECRET) && exit_keyword_get(EXIT(ch, dir)) &&
              (check == TRUE))
       send_to_char(ch, "There is a hidden door keyword: '%s' %sthere.\r\n",
-                   fname(EXIT(ch, dir)->keyword),
-                   (EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED)) ? "" : "open ");
+                   fname(exit_keyword_get(EXIT(ch, dir))),
+                   (exit_flagged(EXIT(ch, dir), EX_CLOSED)) ? "" : "open ");
     else
       send_to_char(ch, "There is no exit there.\r\n");
   } else

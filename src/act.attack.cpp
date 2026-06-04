@@ -47,7 +47,6 @@
 #include "random.h"
 #include "relocate.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 #include "spells.h"
 #include "stringutils.h"

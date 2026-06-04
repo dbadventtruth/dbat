@@ -152,7 +152,7 @@ void do_dg_cast(void *go, struct script_data *sc, trig_data *trig, int type,
       caster->short_descr = strdup("The gods");
     caster->next_in_room = room_people_get(caster_room);
     caster_room->people = caster;
-    IN_ROOM(caster) = caster_room->number;
+    IN_ROOM(caster) = room_vnum_get(caster_room);
     call_magic(caster, tch, tobj, spellnum, DG_SPELL_LEVEL, CAST_SPELL, t);
     extract_char(caster);
   } else
@@ -327,7 +327,7 @@ void script_damage(struct char_data *vict, int dam) {
   if (GET_POS(vict) == POS_DEAD) {
     if (!IS_NPC(vict))
       mudlog(BRF, 0, TRUE, "%s killed by script at %s", GET_NAME(vict),
-             char_room_get(vict)->name);
+             room_name_get(char_room_get(vict)));
     die(vict, NULL);
   }
 }

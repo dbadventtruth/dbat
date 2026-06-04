@@ -34,7 +34,6 @@
 #include "random.h"
 #include "relocate.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "skills.h"
 #include "spells.h"
 #include "stringutils.h"
@@ -4930,7 +4929,7 @@ struct room_direction_data *char_exit_dir(struct char_data *ch, int dir) {
     return NULL;
   }
 
-  return room->dir_option[dir];
+  return room_dir_option_get(room, dir);
 }
 
 struct room_direction_data *char_exit_dir_2nd(struct char_data *ch, int dir) {
@@ -4948,7 +4947,7 @@ struct room_direction_data *char_exit_dir_2nd(struct char_data *ch, int dir) {
     return NULL;
   }
 
-  return dest->dir_option[dir];
+  return room_dir_option_get(dest, dir);
 }
 
 struct room_direction_data *char_exit_dir_3rd(struct char_data *ch, int dir) {
@@ -4966,14 +4965,14 @@ struct room_direction_data *char_exit_dir_3rd(struct char_data *ch, int dir) {
     return NULL;
   }
 
-  return dest->dir_option[dir];
+  return room_dir_option_get(dest, dir);
 }
 
 struct room_data* char_can_go_exit(struct char_data *ch, struct room_direction_data *exit) {
   if (!exit)
     return NULL;
 
-  if (EXIT_FLAGGED(exit, EX_CLOSED)) {
+  if (exit_flagged(exit, EX_CLOSED)) {
     return NULL;
   }
 

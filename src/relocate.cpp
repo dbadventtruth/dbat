@@ -117,20 +117,20 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   }
   int osect = room_sector_type_get(obj_room_get(object));
   struct room_direction_data *down = obj_exit_dir(object, 5);
-  if (down && (osect == SECT_UNDERWATER || osect == SECT_WATER_NOSWIM)) {
+  auto ddest = down ? exit_dest_get(down) : NULL;
+  if (ddest && (osect == SECT_UNDERWATER || osect == SECT_WATER_NOSWIM)) {
     act("$p @Bsinks to deeper waters.@n", TRUE, 0, object, 0, TO_ROOM);
-    struct room_data *dest = exit_dest_get(down);
     obj_from_room(object);
-    obj_to_room(object, dest);
+    obj_to_room(object, ddest);
   }
   osect = room_sector_type_get(obj_room_get(object));
   down = obj_exit_dir(object, 5);
-  if (down && osect == SECT_FLYING &&
+  ddest = down ? exit_dest_get(down) : NULL;
+  if (ddest && osect == SECT_FLYING &&
       (GET_OBJ_VNUM(object) < 80 || GET_OBJ_VNUM(object) > 83)) {
     act("$p @Cfalls down.@n", TRUE, 0, object, 0, TO_ROOM);
-    struct room_data *dest = exit_dest_get(down);
     obj_from_room(object);
-    obj_to_room(object, dest);
+    obj_to_room(object, ddest);
     if (osect != SECT_FLYING) {
       act("$p @Cfalls down and smacks the ground.@n", TRUE, 0, object, 0,
           TO_ROOM);
@@ -273,10 +273,10 @@ void char_from_room(struct char_data *ch) {
     if (GET_EQ(ch, i) != NULL)
       if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT)
         if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS))
-          char_room_get(ch)->light--;
+          room_light_mod(char_room_get(ch), -1);
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
-    char_room_get(ch)->light--;
+    room_light_mod(char_room_get(ch), -1);
 
   {
     auto people = room_people_get(char_room_get(ch));
@@ -296,7 +296,7 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   }
 
   struct room_data *rm = room;
-  ch->next_in_room = room_people_get(rm);
+  ch->next_in_room = rm->people;
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
 
@@ -304,10 +304,10 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
     if (GET_EQ(ch, i))
       if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT)
         if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS))
-          rm->light++;
+          room_light_mod(rm, 1);
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
-    rm->light++;
+    room_light_mod(rm, 1);
 
   /* Stop fighting now, if we left. */
   if (FIGHTING(ch) && char_room_get(ch) != char_room_get(FIGHTING(ch)) &&
@@ -477,7 +477,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
   if (char_room_get(ch)) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS)) /* if light is ON */
-        char_room_get(ch)->light++;
+        room_light_mod(char_room_get(ch), 1);
   } else
     log("SYSERR: IN_ROOM(ch) = NOWHERE when equipping char %s.", GET_NAME(ch));
 
@@ -507,7 +507,7 @@ struct obj_data *unequip_char(struct char_data *ch, int pos) {
   if (char_room_get(ch)) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS)) /* if light is ON */
-        char_room_get(ch)->light--;
+        room_light_mod(char_room_get(ch), -1);
   } else
     log("SYSERR: IN_ROOM(ch) = NOWHERE when unequipping char %s.",
         GET_NAME(ch));

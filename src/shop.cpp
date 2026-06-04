@@ -36,7 +36,6 @@
 #include "random.h"
 #include "relocate.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 #include "shop_impl.h"
 #include "skills.h"
@@ -1795,7 +1794,7 @@ static void list_detailed_shop(struct char_data *ch, struct shop_data *shop) {
     }
 
     if (room) {
-      linelen = snprintf(buf1, sizeof(buf1), "%s (#%d)", room->name,
+      linelen = snprintf(buf1, sizeof(buf1), "%s (#%d)", room_name_get(room),
                          room_vnum_get(room));
     } else {
       linelen = snprintf(buf1, sizeof(buf1), "<UNKNOWN> (#%d)", in_room);

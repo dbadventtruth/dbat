@@ -153,7 +153,7 @@ ACMD(do_masound) {
     if (!dest)
       return true;
 
-    IN_ROOM(ch) = dest->number;
+    IN_ROOM(ch) = room_vnum_get(dest);
     sub_write(argument, ch, TRUE, TO_ROOM);
     return true;
   });
@@ -1098,15 +1098,15 @@ ACMD(do_mdoor) {
     return;
   }
 
-  newexit = rm->dir_option[dir];
+  newexit = room_dir_option_get(rm, dir);
 
   /* purge exit */
   if (fd == 0) {
     if (newexit) {
-      if (newexit->general_description)
-        free(newexit->general_description);
-      if (newexit->keyword)
-        free(newexit->keyword);
+      if (exit_general_description_get(newexit))
+        free((char*)exit_general_description_get(newexit));
+      if (exit_keyword_get(newexit))
+        free((char*)exit_keyword_get(newexit));
       free(newexit);
       rm->dir_option[dir] = NULL;
     }
@@ -1120,27 +1120,24 @@ ACMD(do_mdoor) {
 
     switch (fd) {
     case 1: /* description */
-      if (newexit->general_description)
-        free(newexit->general_description);
-      CREATE(newexit->general_description, char, strlen(value) + 3);
-      strcpy(newexit->general_description, value);
-      strcat(newexit->general_description, "\r\n");
+      {
+        char desc_buf[MAX_INPUT_LENGTH + 3];
+        snprintf(desc_buf, sizeof(desc_buf), "%s\r\n", value);
+        exit_general_description_set(newexit, desc_buf);
+      }
       break;
     case 2: /* flags       */
-      newexit->exit_info = (int16_t)asciiflag_conv(value);
+      exit_info_set(newexit, (int16_t)asciiflag_conv(value));
       break;
     case 3: /* key         */
-      newexit->key = atoi(value);
+      exit_key_set(newexit, atoi(value));
       break;
     case 4: /* name        */
-      if (newexit->keyword)
-        free(newexit->keyword);
-      CREATE(newexit->keyword, char, strlen(value) + 1);
-      strcpy(newexit->keyword, value);
+      exit_keyword_set(newexit, value);
       break;
     case 5: /* room        */
       if ((to_room = room_vnum_check(atoi(value))) != NOWHERE)
-        newexit->to_room = to_room;
+        exit_to_room_vnum_set(newexit, to_room);
       else
         mob_log(ch, "mdoor: invalid door target");
       break;

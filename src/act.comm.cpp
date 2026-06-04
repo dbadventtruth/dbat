@@ -31,8 +31,9 @@
 #include "object_impl.h"
 #include "object_macros.h"
 #include "room_api.h"
+#include "consts/roomflags.h"
 #include "room_db.h"
-#include "room_impl.h"
+
 #include "stringutils.h"
 #include "util_macros.h"
 #include "weather_db.h"
@@ -1713,7 +1714,7 @@ ACMD(do_gen_comm) {
           room_flagged(char_room_get(i->character), ROOM_SOUNDPROOF))) {
 
       if (subcmd == SCMD_SHOUT &&
-          ((char_room_get(ch)->zone != char_room_get(i->character)->zone) ||
+          ((room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(i->character))) ||
            !AWAKE(i->character)))
         continue;
 

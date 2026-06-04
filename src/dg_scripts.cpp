@@ -38,7 +38,6 @@
 #include "object_impl.h"
 #include "object_macros.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 #include "util_macros.h"
 #include "weather_db.h"
@@ -627,8 +626,8 @@ void script_trigger_check(void) {
       sc = SCRIPT(ch);
 
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM) &&
-          (!is_empty(char_room_get(ch)->zone) ||
-           IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
+          (!is_empty(room_zone_vnum_get(char_room_get(ch))) ||
+           IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM)))
         random_mtrigger(ch);
     }
   }
@@ -643,9 +642,9 @@ void script_trigger_check(void) {
   }
 
   room_iterate([&](auto room) {
-    if ((sc = SCRIPT(room))) {
+    if ((sc = room_script_get(room))) {
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM) &&
-          (!is_empty(room->zone) || IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
+          (!is_empty(room_zone_vnum_get(room)) || IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
         random_wtrigger(room);
     }
     return true;
@@ -664,7 +663,7 @@ void check_time_triggers(void) {
       sc = SCRIPT(ch);
 
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_TIME) &&
-          (!is_empty(char_room_get(ch)->zone) ||
+          (!is_empty(room_zone_vnum_get(char_room_get(ch))) ||
            IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
         time_mtrigger(ch);
     }
@@ -680,9 +679,9 @@ void check_time_triggers(void) {
   }
 
   room_iterate([&](auto room) {
-    if ((sc = SCRIPT(room))) {
+    if ((sc = room_script_get(room))) {
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_TIME) &&
-          (!is_empty(room->zone) || IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
+          (!is_empty(room_zone_vnum_get(room)) || IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
         time_wtrigger(room);
     }
     return true;
@@ -834,12 +833,13 @@ void script_stat(char_data *ch, struct script_data *sc) {
 
 void do_sstat_room(struct char_data *ch, struct room_data *rm) {
   send_to_char(ch, "Triggers:\r\n");
-  if (!SCRIPT(rm)) {
+  struct script_data *sc = room_script_get(rm);
+  if (!sc) {
     send_to_char(ch, "  None.\r\n");
     return;
   }
 
-  script_stat(ch, SCRIPT(rm));
+  script_stat(ch, sc);
 }
 
 void do_sstat_object(char_data *ch, obj_data *j) {
@@ -1022,12 +1022,11 @@ ACMD(do_attach) {
       return;
     }
 
-    if (!SCRIPT(room))
-      CREATE(SCRIPT(room), struct script_data, 1);
-    add_trigger(SCRIPT(room), trig, loc);
+    struct script_data *sc = room_script_ensure(room);
+    add_trigger(sc, trig, loc);
 
     send_to_char(ch, "Trigger %d (%s) attached to room %d.\r\n", tn,
-                 GET_TRIG_NAME(trig), room->number);
+                 GET_TRIG_NAME(trig), room_vnum_get(room));
   }
 
   else
@@ -1125,14 +1124,15 @@ ACMD(do_detach) {
       send_to_char(ch, "You can only detach triggers in your own zone\r\n");
       return;
     }
-    if (!SCRIPT(room))
+    struct script_data *room_sc = room_script_get(room);
+    if (!room_sc)
       send_to_char(ch, "This room does not have any triggers.\r\n");
     else if (!strcasecmp(arg2, "all")) {
       extract_script(room, WLD_TRIGGER);
       send_to_char(ch, "All triggers removed from room.\r\n");
-    } else if (remove_trigger(SCRIPT(room), arg2)) {
+    } else if (remove_trigger(room_sc, arg2)) {
       send_to_char(ch, "Trigger removed.\r\n");
-      if (!TRIGGERS(SCRIPT(room))) {
+      if (!TRIGGERS(room_sc)) {
         extract_script(room, WLD_TRIGGER);
       }
     } else
@@ -1822,9 +1822,7 @@ void process_attach(void *go, struct script_data *sc, trig_data *trig, int type,
   }
 
   if (r) {
-    if (!SCRIPT(r))
-      CREATE(SCRIPT(r), struct script_data, 1);
-    add_trigger(SCRIPT(r), newtrig, -1);
+    add_trigger(room_script_ensure(r), newtrig, -1);
     return;
   }
 }
@@ -1900,13 +1898,14 @@ void process_detach(void *go, struct script_data *sc, trig_data *trig, int type,
     return;
   }
 
-  if (r && SCRIPT(r)) {
+  if (r && room_script_get(r)) {
     if (!strcmp(trignum_s, "all")) {
       extract_script(r, WLD_TRIGGER);
       return;
     }
-    if (remove_trigger(SCRIPT(r), trignum_s)) {
-      if (!TRIGGERS(SCRIPT(r))) {
+    auto sc = room_script_get(r);
+    if (remove_trigger(sc, trignum_s)) {
+      if (!TRIGGERS(sc)) {
         extract_script(r, WLD_TRIGGER);
       }
     }
@@ -2004,7 +2003,7 @@ void makeuid_var(void *go, struct script_data *sc, trig_data *trig, int type,
       struct room_data *r = NULL;
       switch (type) {
       case WLD_TRIGGER:
-        r = room_by_id(((struct room_data *)go)->number);
+        r = room_by_id(room_vnum_get((struct room_data *)go));
         break;
       case OBJ_TRIGGER:
         r = obj_room((struct obj_data *)go);
@@ -2014,7 +2013,7 @@ void makeuid_var(void *go, struct script_data *sc, trig_data *trig, int type,
         break;
       }
       if (r != NULL)
-        snprintf(uid, sizeof(uid), "%c%d", UID_CHAR, r->number + ROOM_ID_BASE);
+        snprintf(uid, sizeof(uid), "%c%d", UID_CHAR, room_vnum_get(r) + ROOM_ID_BASE);
     } else {
       script_log("Trigger: %s, VNum %d. makeuid syntax error: '%s'",
                  GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig), cmd);
@@ -2122,7 +2121,7 @@ void process_remote(struct script_data *sc, trig_data *trig, char *cmd) {
   context = vd->context;
 
   if ((room = find_room(uid))) {
-    sc_remote = SCRIPT(room);
+    sc_remote = room_script_get(room);
   } else if ((mob = find_char(uid))) {
     sc_remote = SCRIPT(mob);
     if (!IS_NPC(mob))
@@ -2174,7 +2173,7 @@ ACMD(do_vdelete) {
   }
 
   if ((room = find_room(uid))) {
-    sc_remote = SCRIPT(room);
+    sc_remote = room_script_get(room);
   } else if ((mob = find_char(uid))) {
     sc_remote = SCRIPT(mob);
     if (!IS_NPC(mob))
@@ -2290,7 +2289,7 @@ void process_rdelete(struct script_data *sc, trig_data *trig, char *cmd) {
   }
 
   if ((room = find_room(uid))) {
-    sc_remote = SCRIPT(room);
+    sc_remote = room_script_get(room);
   } else if ((mob = find_char(uid))) {
     sc_remote = SCRIPT(mob);
     if (!IS_NPC(mob))
@@ -2495,7 +2494,7 @@ int script_driver(void *go_adress, trig_data *trig, int type, int mode) {
     break;
   case WLD_TRIGGER:
     go = *(room_data **)go_adress;
-    sc = SCRIPT((room_data *)go);
+    sc = room_script_get((room_data *)go);
     break;
   }
 
@@ -2513,8 +2512,8 @@ int script_driver(void *go_adress, trig_data *trig, int type, int mode) {
                  GET_OBJ_VNUM((obj_data *)go));
       break;
     case WLD_TRIGGER:
-      script_log("It was attached to %s [%d]", ((room_data *)go)->name,
-                 ((room_data *)go)->number);
+      script_log("It was attached to %s [%d]", room_name_get((room_data *)go),
+                 room_vnum_get((room_data *)go));
       break;
     }
 
@@ -2719,7 +2718,7 @@ int script_driver(void *go_adress, trig_data *trig, int type, int mode) {
     sc = SCRIPT((obj_data *)go);
     break;
   case WLD_TRIGGER:
-    sc = SCRIPT((room_data *)go);
+    sc = room_script_get((room_data *)go);
     break;
   }
   if (sc)

@@ -13,7 +13,6 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
 #include "stringutils.h"
 #include "util_macros.h"
 

@@ -1,6 +1,5 @@
 #include "room_utils.h"
 #include "room_api.h"
-#include "room_impl.h"
 
 #include "character_impl.h"
 #include "character_macros.h"
@@ -57,7 +56,7 @@ bool room_is_dark(struct room_data *room) {
 
   struct room_data *rm = room;
 
-  if (rm->light)
+  if (room_light_get(rm))
     return (FALSE);
 
   if (cook_element(rm))

@@ -27,7 +27,7 @@
 #include "interpreter.h"
 #include "log.h"
 #include "relocate.h"
-#include "room_impl.h"
+
 #include "search.h"
 
 #include <cstring>

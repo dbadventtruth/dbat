@@ -36,7 +36,6 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
 #include "search.h"
 #include "shop.h"
 #include "shop_db.h"

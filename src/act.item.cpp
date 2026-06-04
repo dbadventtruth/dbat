@@ -74,7 +74,6 @@
 #include "races_plus.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "room_utils.h"
 #include "skills.h"
 #include "spells.h"
@@ -2893,7 +2892,7 @@ static void get_from_room(struct char_data *ch, char *arg, int howmany) {
   char *descword;
 
   /* Are they trying to take something in a room extra description? */
-  if (find_exdesc(arg, char_room_get(ch)->ex_description) != NULL) {
+  if (find_exdesc(arg, room_ex_description_get(char_room_get(ch))) != NULL) {
     send_to_char(ch, "You can't take %s %s.\r\n", AN(arg), arg);
     return;
   }
@@ -2902,7 +2901,7 @@ static void get_from_room(struct char_data *ch, char *arg, int howmany) {
 
   if (dotmode == FIND_INDIV) {
     if ((descword = find_exdesc_keywords(
-             arg, char_room_get(ch)->ex_description)) != NULL)
+             arg, room_ex_description_get(char_room_get(ch)))) != NULL)
       send_to_char(ch, "%s: you can't take that!\r\n", fname(descword));
     else if (!(obj = get_obj_in_list_vis(ch, arg, NULL,
                                          room_contents_get(char_room_get(ch)))))

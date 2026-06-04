@@ -80,7 +80,7 @@ void wld_log(room_data *room, const char *format, ...) {
   va_list args;
   char output[MAX_STRING_LENGTH];
 
-  snprintf(output, sizeof(output), "Room %d :: %s", room->number, format);
+  snprintf(output, sizeof(output), "Room %d :: %s", room_vnum_get(room), format);
 
   va_start(args, format);
   script_vlog(output, args);
@@ -288,15 +288,15 @@ WCMD(do_wdoor) {
     return;
   }
 
-  newexit = rm->dir_option[dir];
+  newexit = room_dir_option_get(rm, dir);
 
   /* purge exit */
   if (fd == 0) {
     if (newexit) {
-      if (newexit->general_description)
-        free(newexit->general_description);
-      if (newexit->keyword)
-        free(newexit->keyword);
+      if (exit_general_description_get(newexit))
+        free((char*)exit_general_description_get(newexit));
+      if (exit_keyword_get(newexit))
+        free((char*)exit_keyword_get(newexit));
       free(newexit);
       rm->dir_option[dir] = NULL;
     }
@@ -310,27 +310,24 @@ WCMD(do_wdoor) {
 
     switch (fd) {
     case 1: /* description */
-      if (newexit->general_description)
-        free(newexit->general_description);
-      CREATE(newexit->general_description, char, strlen(value) + 3);
-      strcpy(newexit->general_description, value);
-      strcat(newexit->general_description, "\r\n");
+      {
+        char desc_buf[MAX_INPUT_LENGTH + 3];
+        snprintf(desc_buf, sizeof(desc_buf), "%s\r\n", value);
+        exit_general_description_set(newexit, desc_buf);
+      }
       break;
     case 2: /* flags       */
-      newexit->exit_info = (int16_t)asciiflag_conv(value);
+      exit_info_set(newexit, (int16_t)asciiflag_conv(value));
       break;
     case 3: /* key         */
-      newexit->key = atoi(value);
+      exit_key_set(newexit, atoi(value));
       break;
     case 4: /* name        */
-      if (newexit->keyword)
-        free(newexit->keyword);
-      CREATE(newexit->keyword, char, strlen(value) + 1);
-      strcpy(newexit->keyword, value);
+      exit_keyword_set(newexit, value);
       break;
     case 5: /* room        */
       if ((to_room = room_vnum_check(atoi(value))) != NOWHERE)
-        newexit->to_room = to_room;
+        exit_to_room_vnum_set(newexit, to_room);
       else
         wld_log(room, "wdoor: invalid door target");
       break;
@@ -357,7 +354,7 @@ WCMD(do_wteleport) {
     wld_log(room, "wteleport target is an invalid room");
 
   else if (!strcasecmp(arg1, "all")) {
-    if (nr == room->number) {
+    if (nr == room_vnum_get(room)) {
       wld_log(room, "wteleport all target is itself");
       return;
     }
@@ -491,7 +488,7 @@ WCMD(do_wload) {
   if (is_abbrev(arg1, "mob")) {
     struct room_data *rnum;
     if (!target || !*target) {
-      rnum = room_by_id(room->number);
+      rnum = room_by_id(room_vnum_get(room));
     } else {
       if (!isdigit(*target) || (rnum = room_by_id(atoi(target))) == NULL) {
         wld_log(room,
@@ -506,10 +503,10 @@ WCMD(do_wload) {
       return;
     }
     char_to_room(mob, rnum);
-    if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
+    if (struct script_data *sc = room_script_get(room)) {
       char buf[MAX_INPUT_LENGTH];
       sprintf(buf, "%c%d", UID_CHAR, GET_ID(mob));
-      add_var(&(SCRIPT(room)->global_vars), "lastloaded", buf, 0);
+      add_var(&(sc->global_vars), "lastloaded", buf, 0);
     }
     load_mtrigger(mob);
   }
@@ -524,10 +521,10 @@ WCMD(do_wload) {
     if (!target || !*target) {
       add_unique_id(object);
       obj_to_room(object, room);
-      if (SCRIPT(room)) { /* It _should_ have, but it might be detached. */
+      if (struct script_data *sc = room_script_get(room)) {
         char buf[MAX_INPUT_LENGTH];
         sprintf(buf, "%c%d", UID_CHAR, GET_ID(object));
-        add_var(&(SCRIPT(room)->global_vars), "lastloaded", buf, 0);
+        add_var(&(sc->global_vars), "lastloaded", buf, 0);
       }
       load_otrigger(object);
       return;
