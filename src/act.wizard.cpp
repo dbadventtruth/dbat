@@ -1418,9 +1418,8 @@ static void do_stat_room(struct char_data *ch) {
   send_to_char(ch, "Room name: @c%s@n\r\n", room_name_get(rm));
 
   sprinttype(room_sector_type_get(rm), sector_types, buf2, sizeof(buf2));
-  send_to_char(ch, "Zone: [%3d], VNum: [@g%5d@n], IDNum: [%5ld], Type: %s\r\n",
-               room_zone_vnum_get(rm), room_vnum_get(rm),
-               (long)room_vnum_get(rm) + ROOM_ID_BASE, buf2);
+  send_to_char(ch, "Zone: [%3d], VNum: [@g%5d@n], Type: %s\r\n",
+               room_zone_vnum_get(rm), room_vnum_get(rm), buf2);
 
   sprintbitarray(rm->room_flags, room_bits, RF_ARRAY_MAX, buf2, sizeof(buf2));
   send_to_char(ch, "Room Damage: %d, Room Effect: %d\r\n", room_dmg_get(rm),
@@ -1955,7 +1954,9 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
       struct script_memory *mem = SCRIPT_MEM(k);
       send_to_char(ch, "Script memory:\r\n  Remember             Command\r\n");
       while (mem) {
-        struct char_data *mc = find_char(mem->id);
+        char id_buf[32];
+        snprintf(id_buf, sizeof(id_buf), "%ld", mem->id);
+        struct char_data *mc = find_char(id_buf);
         if (!mc)
           send_to_char(ch, "  ** Corrupted!\r\n");
         else {

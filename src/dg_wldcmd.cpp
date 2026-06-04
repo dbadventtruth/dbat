@@ -505,7 +505,7 @@ WCMD(do_wload) {
     char_to_room(mob, rnum);
     if (struct script_data *sc = room_script_get(room)) {
       char buf[MAX_INPUT_LENGTH];
-      sprintf(buf, "%c%d", UID_CHAR, GET_ID(mob));
+      sprintf(buf, "%cC%d", UID_CHAR, GET_ID(mob));
       add_var(&(sc->global_vars), "lastloaded", buf, 0);
     }
     load_mtrigger(mob);
@@ -523,7 +523,7 @@ WCMD(do_wload) {
       obj_to_room(object, room);
       if (struct script_data *sc = room_script_get(room)) {
         char buf[MAX_INPUT_LENGTH];
-        sprintf(buf, "%c%d", UID_CHAR, GET_ID(object));
+        sprintf(buf, "%cO%d", UID_CHAR, GET_ID(object));
         add_var(&(sc->global_vars), "lastloaded", buf, 0);
       }
       load_otrigger(object);

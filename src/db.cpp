@@ -2801,7 +2801,6 @@ struct char_data *create_char(void) {
   character_list = ch;
   GET_ID(ch) = max_mob_id++;
   /* find_char helper */
-  add_to_lookup_table(GET_ID(ch), (void *)ch);
   (void)char_register_id(GET_ID(ch), ch);
 
   return (ch);
@@ -3395,7 +3394,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 
   GET_ID(mob) = max_mob_id++;
   /* find_char helper */
-  add_to_lookup_table(GET_ID(mob), (void *)mob);
   (void)char_register_id(GET_ID(mob), mob);
 
   assign_triggers(mob, MOB_TRIGGER);
@@ -3588,7 +3586,6 @@ struct obj_data *create_obj(void) {
 
   GET_ID(obj) = max_obj_id++;
   /* find_obj helper */
-  add_to_lookup_table(GET_ID(obj), (void *)obj);
   (void)obj_register_id(GET_ID(obj), obj);
 
   obj->generation = time(0);
@@ -3626,7 +3623,6 @@ struct obj_data *read_object(obj_vnum nr, int type) /* and obj_rnum */
 
   GET_ID(obj) = max_obj_id++;
   /* find_obj helper */
-  add_to_lookup_table(GET_ID(obj), (void *)obj);
   (void)obj_register_id(GET_ID(obj), obj);
 
   obj->generation = time(0);
@@ -4434,8 +4430,6 @@ void char_free_instance(struct char_data *ch) {
    * when free_char is called with a blank character struct, ID is set
    * to 0, and has not yet been added to the lookup table.
    */
-  if (GET_ID(ch) != 0)
-    remove_from_lookup_table(GET_ID(ch));
   char_unregister_id(GET_ID(ch));
 
   char_zig_free(ch);
@@ -4497,7 +4491,6 @@ void obj_free_instance(struct obj_data *obj) {
     extract_script(obj, OBJ_TRIGGER);
 
   /* find_obj helper */
-  remove_from_lookup_table(GET_ID(obj));
   obj_unregister_id(GET_ID(obj));
 
   free(obj);

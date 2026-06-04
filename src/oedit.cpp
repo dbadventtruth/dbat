@@ -1140,7 +1140,6 @@ void oedit_parse(struct descriptor_data *d, char *arg) {
         obj_apply_proto_to_instance(obj, OLC_OBJ(d));
         GET_ID(obj) = max_obj_id++;
         /* find_obj helper */
-        add_to_lookup_table(GET_ID(obj), (void *)obj);
         (void)obj_register_id(GET_ID(obj), obj);
         if (GET_OBJ_VNUM(obj) != NOTHING) {
           /* remove any old scripts */

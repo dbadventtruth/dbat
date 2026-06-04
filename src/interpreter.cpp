@@ -452,7 +452,6 @@ int enter_player_game(struct descriptor_data *d) {
   d->character->host = strdup(d->host);
   GET_ID(d->character) = GET_IDNUM(d->character);
   /* find_char helper */
-  add_to_lookup_table(GET_ID(d->character), (void *)d->character);
   (void)char_register_id(GET_ID(d->character), d->character);
   read_saved_vars(d->character);
   for (check = character_list; check; check = check->next)
