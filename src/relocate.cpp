@@ -30,6 +30,8 @@
 #include "util_macros.h"
 #include "vehicles.h"
 
+#include "iterate.hpp"
+
 #include <cstring>
 
 /* put an object in a room */
@@ -56,7 +58,7 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   if (room_vnum_get(rm) == 80) {
     auc_load(object);
   }
-  object->next_content = room_contents_get(rm);
+  object->next_content = rm->contents;
   rm->contents = object;
   IN_ROOM(object) = room_vnum_get(rm);
   object->carried_by = NULL;
@@ -174,10 +176,7 @@ void obj_from_room(struct obj_data *object) {
     GET_OBJ_POSTTYPE(object) = 0;
   }
 
-  {
-    auto contents = room_contents_get(rm);
-    REMOVE_FROM_LIST(object, contents, next_content, temp);
-  }
+  REMOVE_FROM_LIST(object, rm->contents, next_content, temp);
 
   if (room_flagged(rm, ROOM_HOUSE))
     room_flag_set(rm, ROOM_HOUSE_CRASH, TRUE);
@@ -277,11 +276,8 @@ void char_from_room(struct char_data *ch) {
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     room_light_mod(char_room_get(ch), -1);
-
-  {
-    auto people = room_people_get(char_room_get(ch));
-    REMOVE_FROM_LIST(ch, people, next_in_room, temp);
-  }
+  auto room = char_room_get(ch);
+  REMOVE_FROM_LIST(ch, room->people, next_in_room, temp);
   IN_ROOM(ch) = NOWHERE;
   ch->next_in_room = NULL;
 }
@@ -296,6 +292,17 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   }
 
   struct room_data *rm = room;
+
+  room_people_iterate(rm, [&](struct char_data *tch) {
+    if (tch == ch) {
+      log("SYSERR: Attempting to char_to_room char %s into room %d, but they "
+          "are already in that room.",
+          GET_NAME(ch), room_vnum_get(rm));
+      return false;
+    }
+    return true;
+  });
+
   ch->next_in_room = rm->people;
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);

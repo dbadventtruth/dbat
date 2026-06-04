@@ -231,7 +231,7 @@ void mobile_activity(void) {
           if(rand_number(1,3) == 3) {
             std::vector<int> available_dirs;
             room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
-              if (auto dest = char_can_go_exit(ch, exit);                  !room_flagged(dest, ROOM_NOMOB) &&
+              if (auto dest = char_can_go_exit(ch, exit); dest && !room_flagged(dest, ROOM_NOMOB) &&
                   !room_flagged(dest, ROOM_DEATH) &&
                   (!MOB_FLAGGED(ch, MOB_STAY_ZONE) ||
                    (room_zone_get(dest) == char_zone_get(ch)))) {

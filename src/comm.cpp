@@ -3296,21 +3296,19 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
     }
   }
 
-  room_people_iterate(char_room_get(ch), [&](struct char_data *c) {
-    if (!SENDOK(c) || (c == ch))
-      return true;
-    if (hide_invisible && ch && !CAN_SEE(c, ch))
-      return true;
-    if (type != TO_ROOM && c == vict_obj)
-      return true;
-    if (resskill && roll_skill(c, resskill) < dcval)
-      return true;
-    perform_act(str, ch, obj, vict_obj, c);
-    return true;
-  });
+  for (; to; to = to->next_in_room) {
+    if (!SENDOK(to) || (to == ch))
+      continue;
+    if (hide_invisible && ch && !CAN_SEE(to, ch))
+      continue;
+    if (type != TO_ROOM && to == vict_obj)
+      continue;
+    if (resskill && roll_skill(to, resskill) < dcval)
+      continue;
+    perform_act(str, ch, obj, vict_obj, to);
+  }
   return last_act_message;
 }
-
 /* Prefer the file over the descriptor. */
 void setup_log(const char *filename, int fd) {
   FILE *s_fp;

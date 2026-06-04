@@ -12,8 +12,6 @@
 #include "shop_db.h"
 #include "zone_db.h"
 
-#include <unordered_set>
-
 template <typename Func> inline void mob_proto_iterate(Func &&func) {
   void *iterator = mob_proto_iterator_create();
   if (!iterator) {
@@ -133,19 +131,12 @@ template <typename Func> inline void room_exits_iterate(struct room_data *room, 
 template <typename Func> inline void room_people_iterate(struct room_data *room, Func &&func) {
   if(!room) return;
 
-  std::unordered_set<int64_t> seen;
-
   struct char_data *next = nullptr;
   for (auto c = room_people_get(room); c; c = next) {
-    auto id = char_id_get(c);
-    if(seen.count(id)) {
-      break;
-    }
     next = char_next_in_room_get(c);
     if (!func(c)) {
       break;
     }
-    seen.insert(id);
   }
 }
 
