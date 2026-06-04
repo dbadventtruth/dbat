@@ -927,8 +927,7 @@ int check_insidebag(struct obj_data *cont, double mult) {
   struct obj_data *inside = NULL, *next_obj2 = NULL;
   int count = 0, containers = 0;
 
-  for (inside = cont->contains; inside; inside = next_obj2) {
-    next_obj2 = inside->next_content;
+  obj_contents_iterate(cont, [&](struct obj_data *inside) {
     if (GET_OBJ_TYPE(inside) == ITEM_CONTAINER) {
       count++;
       count += check_insidebag(inside, mult);
@@ -936,7 +935,8 @@ int check_insidebag(struct obj_data *cont, double mult) {
     } else {
       count++;
     }
-  }
+    return true;
+  });
 
   count = count * mult;
   count += containers;
@@ -2510,12 +2510,11 @@ static void perform_put(struct char_data *ch, struct obj_data *obj,
   if (OBJ_FLAGGED(cont, ITEM_SHEATH)) {
     struct obj_data *obj2 = NULL, *next_obj = NULL;
     int count = 0, minus = 0;
-    for (obj2 = cont->contains; obj2; obj2 = next_obj) {
-      next_obj = obj2->next_content;
+    obj_contents_iterate(cont, [&](struct obj_data *obj2) {
       minus += GET_OBJ_WEIGHT(obj2);
       count++;
-    }
-    obj2 = NULL;
+      return true;
+    });
     int holds = GET_OBJ_WEIGHT(cont) - minus;
     if (count >= holds) {
       send_to_char(ch, "It can only hold %d weapon%s at a time.\r\n", holds,
@@ -2810,14 +2809,14 @@ static void get_from_container(struct char_data *ch, struct obj_data *cont,
       send_to_char(ch, "Get all of what?\r\n");
       return;
     }
-    for (obj = cont->contains; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    obj_contents_iterate(cont, [&](struct obj_data *obj) {
       if (CAN_SEE_OBJ(ch, obj) &&
           (obj_dotmode == FIND_ALL || isname(arg, obj->name))) {
         found = 1;
         perform_get_from_container(ch, obj, cont, mode);
       }
-    }
+      return true;
+    });
     if (!found) {
       if (obj_dotmode == FIND_ALL)
         act("$p seems to be empty.", FALSE, ch, cont, 0, TO_CHAR);

@@ -44,6 +44,7 @@
 #include "mobact.h"
 #include "object_api.h"
 #include "object_impl.h"
+#include "iterate.hpp"
 #include "object_macros.h"
 #include "object_utils.h"
 #include "races_plus.h"
@@ -795,11 +796,11 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
     mob->master_id = GET_IDNUM(ch);
   }
   if (handle_corpse) {
-    for (tobj = obj->contains; tobj; tobj = next_obj) {
-      next_obj = tobj->next_content;
+    obj_contents_iterate(obj, [&](struct obj_data *tobj) {
       obj_from_obj(tobj);
       obj_to_char(tobj, mob);
-    }
+      return true;
+    });
     extract_obj(obj);
   }
 }

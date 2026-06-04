@@ -1831,8 +1831,7 @@ static void point_update_objects(void) {
             }
           }
         }
-        for (jj = j->contains; jj; jj = next_thing2) {
-          next_thing2 = jj->next_content; /* Next in inventory */
+        obj_contents_iterate(j, [&](struct obj_data *jj) {
           obj_from_obj(jj);
 
           if (j->in_obj)
@@ -1843,7 +1842,8 @@ static void point_update_objects(void) {
             obj_to_room(jj, obj_room_get(j));
           else
             core_dump();
-        }
+          return true;
+        });
         extract_obj(j);
         continue;
       }

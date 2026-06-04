@@ -152,6 +152,18 @@ template <typename Func> inline void room_contents_iterate(struct room_data *roo
   }
 }
 
+template <typename Func> inline void obj_contents_iterate(struct obj_data *obj, Func &&func) {
+  if(!obj) return;
+
+  struct obj_data *next = nullptr;
+  for (auto o = obj_contains_get(obj); o; o = next) {
+    next = obj_next_content_get(o);
+    if (!func(o)) {
+      break;
+    }
+  }
+}
+
 template <typename Func> inline void zone_iterate(Func &&func) {
   void *iterator = zone_iterator_create();
   if (!iterator) {

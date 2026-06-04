@@ -1968,9 +1968,10 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
   if (!MOB_FLAGGED(ch, MOB_HUSK)) {
     /* transfer character's inventory to the corpse */
     corpse->contains = ch->carrying;
-    for (o = corpse->contains; o != NULL; o = o->next_content) {
+    obj_contents_iterate(corpse, [&](struct obj_data *o) {
       o->in_obj = corpse;
-    }
+      return true;
+    });
     object_list_new_owner(corpse, NULL);
 
     /* transfer character's equipment to the corpse */

@@ -33,6 +33,7 @@
 #include "log.h"
 #include "object_api.h"
 #include "object_db.h"
+#include "iterate.hpp"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "relocate.h"
@@ -349,8 +350,10 @@ void extract_obj(struct obj_data *obj) {
     USER(obj) = NULL;
   }
 
-  while (obj->contains)
-    extract_obj(obj->contains);
+  obj_contents_iterate(obj, [&](struct obj_data *o) {
+    extract_obj(o);
+    return true;
+  });
 
   REMOVE_FROM_LIST(obj, object_list, next, temp);
 

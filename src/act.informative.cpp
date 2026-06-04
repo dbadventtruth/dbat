@@ -598,15 +598,15 @@ ACMD(do_draw) {
     send_to_char(ch, "You don't have a case.\r\n");
     return;
   }
-  for (obj2 = obj->contains; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
-    if (drawn == FALSE) {
+  obj_contents_iterate(obj, [&](struct obj_data *obj2) {
+    if (!drawn) {
       obj_from_obj(obj2);
       obj_to_char(obj2, ch);
       obj3 = obj2;
       drawn = TRUE;
     }
-  }
+    return !drawn;
+  });
   if (drawn == FALSE) {
     send_to_char(ch, "You don't have any cards in the case!\r\n");
     return;
@@ -638,23 +638,22 @@ ACMD(do_shuffle) {
     return;
   }
 
-  for (obj2 = obj->contains; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
-    if (!OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
-      continue;
+  obj_contents_iterate(obj, [&](struct obj_data *obj2) {
+    if (OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
+      count += 1;
     }
-    count += 1;
-  }
+    return true;
+  });
   if (count <= 0) {
     send_to_char(ch, "You don't have any cards in the case!\r\n");
     return;
   }
   int total = count;
-  for (obj2 = obj->contains; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
+  obj_contents_iterate(obj, [&](struct obj_data *obj2) {
     obj_from_obj(obj2);
     obj_to_room(obj2, room_by_id(48));
-  }
+    return true;
+  });
   while (count > 0) {
     room_contents_iterate(room_by_id(48), [&](auto obj2) {
       if (!OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
@@ -3303,14 +3302,11 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
         if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
                           *sheath = GET_EQ(i, j);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
       } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
                  (!PLR_FLAGGED(i, PLR_THANDW))) {
@@ -3319,14 +3315,11 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
         if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
                           *sheath = GET_EQ(i, j);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
       } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
                  (PLR_FLAGGED(i, PLR_THANDW))) {
@@ -6852,14 +6845,11 @@ ACMD(do_equipment) {
         if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
                           *sheath = GET_EQ(ch, i);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
       } else if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
                  (!PLR_FLAGGED(ch, PLR_THANDW))) {
@@ -6868,14 +6858,11 @@ ACMD(do_equipment) {
         if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
                           *sheath = GET_EQ(ch, i);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
       } else if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
                  (PLR_FLAGGED(ch, PLR_THANDW))) {

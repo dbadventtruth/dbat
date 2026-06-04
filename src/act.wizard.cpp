@@ -1692,21 +1692,23 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
    * more or less useless and just takes up valuable screen space.
    */
 
-  if (j->contains) {
+  {
     int column;
 
     send_to_char(ch, "\r\nContents:@g");
     column = 9; /* ^^^ strlen ^^^ */
+    found = 0;
 
-    for (found = 0, j2 = j->contains; j2; j2 = j2->next_content) {
+    obj_contents_iterate(j, [&](struct obj_data *j2) {
       column +=
           send_to_char(ch, "%s %s", found++ ? "," : "", j2->short_description);
       if (column >= 62) {
-        send_to_char(ch, "%s\r\n", j2->next_content ? "," : "");
+        send_to_char(ch, "%s\r\n", obj_next_content_get(j2) ? "," : "");
         found = FALSE;
         column = 0;
       }
-    }
+      return true;
+    });
     send_to_char(ch, "@n");
   }
 
