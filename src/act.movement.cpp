@@ -648,7 +648,6 @@ ACMD(do_land) {
 /* simple function to determine if char can walk on water */
 static int has_boat(struct char_data *ch) {
   struct obj_data *obj;
-  int i;
 
   if (ADM_FLAGGED(ch, ADM_WALKANYWHERE) || GET_ADMLEVEL(ch) > 4)
     return (1);
@@ -664,9 +663,17 @@ static int has_boat(struct char_data *ch) {
     return (1);
 
   /* and any boat you're wearing will do it too */
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i) && GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_BOAT)
-      return (1);
+  {
+    bool found_boat = false;
+    char_equipment_iterate(ch, [&](auto i, auto eq) {
+      if (GET_OBJ_TYPE(eq) == ITEM_BOAT) {
+        found_boat = true;
+        return false;
+      }
+      return true;
+    });
+    if (found_boat) return (1);
+  }
 
   return (0);
 }
@@ -1652,7 +1659,6 @@ static int find_door(struct char_data *ch, const char *type, char *dir,
 
 static int has_key(struct char_data *ch, obj_vnum key) {
   struct obj_data *o;
-  int i;
 
   if (key == 1) {
     return (1);
@@ -1662,10 +1668,17 @@ static int has_key(struct char_data *ch, obj_vnum key) {
     if (GET_OBJ_VNUM(o) == key)
       return (1);
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i))
-      if (GET_OBJ_VNUM(GET_EQ(ch, i)) == key)
-        return (1);
+  {
+    bool found_key = false;
+    char_equipment_iterate(ch, [&](auto i, auto eq) {
+      if (GET_OBJ_VNUM(eq) == key) {
+        found_key = true;
+        return false;
+      }
+      return true;
+    });
+    if (found_key) return (1);
+  }
 
   return (0);
 }

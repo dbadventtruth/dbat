@@ -435,10 +435,13 @@ struct obj_data *find_control(struct char_data *ch) {
       if (CAN_SEE_OBJ(ch, obj) && GET_OBJ_TYPE(obj) == ITEM_CONTROL)
         controls = obj;
   if (!controls)
-    for (j = 0; j < NUM_WEARS && !controls; j++)
-      if (GET_EQ(ch, j) && CAN_SEE_OBJ(ch, GET_EQ(ch, j)) &&
-          GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_CONTROL)
-        controls = GET_EQ(ch, j);
+    char_equipment_iterate(ch, [&](auto j, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq) && GET_OBJ_TYPE(eq) == ITEM_CONTROL) {
+        controls = eq;
+        return false;
+      }
+      return true;
+    });
   return controls;
 }
 

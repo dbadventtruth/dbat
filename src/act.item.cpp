@@ -4813,12 +4813,11 @@ ACMD(do_remove) {
 
     if (dotmode == FIND_ALL) {
       found = 0;
-      for (i = 0; i < NUM_WEARS; i++) {
-        if (GET_EQ(ch, i)) {
-          perform_remove(ch, i);
-          found = 1;
-        }
-      }
+      char_equipment_iterate(ch, [&](auto i, auto eq) {
+        perform_remove(ch, i);
+        found = 1;
+        return true;
+      });
       if (!found) {
         send_to_char(ch, "You're not using anything.\r\n");
       }
@@ -4827,13 +4826,14 @@ ACMD(do_remove) {
         send_to_char(ch, "Remove all of what?\r\n");
       } else {
         found = 0;
-        for (i = 0; i < NUM_WEARS; i++) {
-          if (GET_EQ(ch, i) && CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-              isname(arg, GET_EQ(ch, i)->name)) {
+        char_equipment_iterate(ch, [&](auto i, auto eq) {
+          if (CAN_SEE_OBJ(ch, eq) &&
+              isname(arg, eq->name)) {
             perform_remove(ch, i);
             found = 1;
           }
-        }
+          return true;
+        });
         if (!found) {
           send_to_char(ch, "You don't seem to be using any %ss.\r\n", arg);
         }

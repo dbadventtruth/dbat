@@ -269,7 +269,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
   obj_data *obj, *o = NULL;
   struct room_data *room, *r = NULL;
   char *name;
-  int num, count, i, j, doors;
+  int num, count, i, doors;
 
   char *send_cmd[] = {"msend ", "osend ", "wsend "};
   char *echo_cmd[] = {"mecho ", "oecho ", "wecho "};
@@ -750,15 +750,17 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
           if (!subfield || !*subfield)
             *str = '\0';
           else if (*subfield == '*') {
-            for (i = 0, j = 0; i < NUM_WEARS; i++)
-              if (GET_EQ(c, i)) {
-                j++;
-                break;
-              }
-            if (j > 0)
-              strcpy(str, "1");
-            else
-              *str = '\0';
+            {
+              bool has_eq = false;
+              char_equipment_iterate(c, [&](auto i, auto eq) {
+                has_eq = true;
+                return false;
+              });
+              if (has_eq)
+                strcpy(str, "1");
+              else
+                *str = '\0';
+            }
           } else if ((pos = find_eq_pos_script(subfield)) < 0 ||
                      !GET_EQ(c, pos))
             *str = '\0';

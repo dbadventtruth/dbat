@@ -560,7 +560,7 @@ ACMD(do_cast) {
   /* char export[256];
   int mana, percent; */
   int ki = 0;
-  int spellnum, i, target = 0, innate = FALSE;
+  int spellnum, target = 0, innate = FALSE;
 
   /* get: blank, spell name, target name */
   s = strtok(argument, "'");
@@ -651,11 +651,14 @@ ACMD(do_cast) {
         target = TRUE;
 
     if (!target && IS_SET(SINFO.targets, TAR_OBJ_EQUIP)) {
-      for (i = 0; !target && i < NUM_WEARS; i++)
-        if (GET_EQ(ch, i) && isname(t, GET_EQ(ch, i)->name)) {
-          tobj = GET_EQ(ch, i);
+      char_equipment_iterate(ch, [&](auto i, auto eq) {
+        if (isname(t, eq->name)) {
+          tobj = eq;
           target = TRUE;
+          return false;
         }
+        return true;
+      });
     }
     if (!target && IS_SET(SINFO.targets, TAR_OBJ_ROOM))
       if ((tobj = get_obj_in_list_vis(ch, t, NULL,

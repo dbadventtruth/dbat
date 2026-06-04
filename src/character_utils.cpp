@@ -1034,11 +1034,10 @@ int64_t getMaxCarryWeight(char_data *ch) {
 int64_t getCurGearWeight(char_data *ch) {
   int64_t total_weight = 0;
 
-  for (int i = 0; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      total_weight += GET_OBJ_WEIGHT(GET_EQ(ch, i));
-    }
-  }
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    total_weight += GET_OBJ_WEIGHT(eq);
+    return true;
+  });
   return total_weight;
 }
 

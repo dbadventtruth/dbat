@@ -256,7 +256,6 @@ void obj_from_obj(struct obj_data *obj) {
 /* move a player out of a room */
 void char_from_room(struct char_data *ch) {
   struct char_data *temp;
-  int i;
 
   if (ch == NULL || char_room_get(ch) == NULL) {
     log("SYSERR: NULL character or NOWHERE in %s, char_from_room", __FILE__);
@@ -268,11 +267,12 @@ void char_from_room(struct char_data *ch) {
   if (AFF_FLAGGED(ch, AFF_PURSUIT) && FIGHTING(ch) == NULL)
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_PURSUIT);
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i) != NULL)
-      if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT)
-        if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS))
-          room_light_mod(char_room_get(ch), -1);
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT)
+      if (GET_OBJ_VAL(eq, VAL_LIGHT_HOURS))
+        room_light_mod(char_room_get(ch), -1);
+    return true;
+  });
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     room_light_mod(char_room_get(ch), -1);
@@ -284,7 +284,6 @@ void char_from_room(struct char_data *ch) {
 
 /* place a character in a room */
 void char_to_room(struct char_data *ch, struct room_data *room) {
-  int i;
 
   if (!ch || !room) {
     log("SYSERR: Illegal value(s) passed to char_to_room.");
@@ -307,11 +306,12 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i))
-      if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT)
-        if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS))
-          room_light_mod(rm, 1);
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT)
+      if (GET_OBJ_VAL(eq, VAL_LIGHT_HOURS))
+        room_light_mod(rm, 1);
+    return true;
+  });
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     room_light_mod(rm, 1);

@@ -2104,9 +2104,6 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch) {
     ungetc(letter, mob_f);
   }
 
-  for (j = 0; j < NUM_WEARS; j++)
-    ch->equipment[j] = NULL;
-
   /* Uncomment to force all mob files to be rewritten. Good for initial
    * AUTOBALANCE setup. if (bitsavetodisk) {
    *   add_to_save_list(virtual_zone_by_thing(nr), 0);

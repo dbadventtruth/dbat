@@ -966,7 +966,7 @@ ACMD(do_mforget) {
 ACMD(do_mtransform) {
   char arg[MAX_INPUT_LENGTH];
   char_data *m, tmpmob;
-  obj_data *obj[NUM_WEARS];
+  obj_data *obj[NUM_WEARS] = {};
   int pos;
 
   if (!MOB_OR_IMPL(ch)) {
@@ -1002,12 +1002,10 @@ ACMD(do_mtransform) {
 
     /* move new obj info over to old object and delete new obj */
 
-    for (pos = 0; pos < NUM_WEARS; pos++) {
-      if (GET_EQ(ch, pos))
-        obj[pos] = unequip_char(ch, pos);
-      else
-        obj[pos] = NULL;
-    }
+    char_equipment_iterate(ch, [&](auto pos, auto eq) {
+      obj[pos] = unequip_char(ch, pos);
+      return true;
+    });
 
     /* put the mob in the same room as ch so extract will work */
     char_to_room(m, char_room_get(ch));

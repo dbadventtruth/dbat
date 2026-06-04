@@ -1879,7 +1879,7 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
   struct obj_data *corpse, *o;
   struct obj_data *money;
   struct obj_data *obj, *next_obj, *meat;
-  int i, x, y;
+  int x, y;
 
   corpse = create_obj();
 
@@ -1976,12 +1976,12 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
 
     /* transfer character's equipment to the corpse */
     int eqdrop = FALSE;
-    for (i = 0; i < NUM_WEARS; i++)
-      if (GET_EQ(ch, i)) {
-        remove_otrigger(GET_EQ(ch, i), ch);
-        obj_to_obj(unequip_char(ch, i), corpse);
-        eqdrop = TRUE;
-      }
+    char_equipment_iterate(ch, [&](auto i, auto eq) {
+      remove_otrigger(eq, ch);
+      obj_to_obj(unequip_char(ch, i), corpse);
+      eqdrop = TRUE;
+      return true;
+    });
   }
   /* transfer gold */
   if (GET_GOLD(ch) > 0 && !MOB_FLAGGED(ch, MOB_HUSK)) {

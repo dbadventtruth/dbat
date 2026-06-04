@@ -207,27 +207,26 @@ static void healthy_check(struct char_data *ch) {
 
 static int wearing_stardust(struct char_data *ch) {
 
-  int count = 0, i;
+  int count = 0;
 
-  for (i = 1; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      struct obj_data *obj = GET_EQ(ch, i);
-      switch (GET_OBJ_VNUM(obj)) {
-      case 1110:
-      case 1111:
-      case 1112:
-      case 1113:
-      case 1114:
-      case 1115:
-      case 1116:
-      case 1117:
-      case 1118:
-      case 1119:
-        count += 1;
-        break;
-      }
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (i == 0) return true;
+    switch (GET_OBJ_VNUM(eq)) {
+    case 1110:
+    case 1111:
+    case 1112:
+    case 1113:
+    case 1114:
+    case 1115:
+    case 1116:
+    case 1117:
+    case 1118:
+    case 1119:
+      count += 1;
+      break;
     }
-  }
+    return true;
+  });
 
   if (count == 26)
     return (1);

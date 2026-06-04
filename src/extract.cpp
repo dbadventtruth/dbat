@@ -52,7 +52,6 @@ void extract_char_final(struct char_data *ch) {
   struct obj_data *chair;
   struct descriptor_data *d;
   struct obj_data *obj;
-  int i;
 
   if (char_room_get(ch) == NULL) {
     log("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)",
@@ -221,9 +220,10 @@ void extract_char_final(struct char_data *ch) {
   }
 
   /* transfer equipment to room, if any */
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i))
-      obj_to_room(unequip_char(ch, i), char_room_get(ch));
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    obj_to_room(unequip_char(ch, i), char_room_get(ch));
+    return true;
+  });
 
   if (FIGHTING(ch))
     stop_fighting(ch);
@@ -269,7 +269,6 @@ void extract_char_final(struct char_data *ch) {
  */
 void extract_char(struct char_data *ch) {
   struct follow_type *foll;
-  int i;
   struct obj_data *obj;
 
   if (IS_NPC(ch)) {
@@ -296,11 +295,11 @@ void extract_char(struct char_data *ch) {
       }
 
       /* transfer equipment to char, if any */
-      for (i = 0; i < NUM_WEARS; i++)
-        if (GET_EQ(foll->follower, i)) {
-          obj = unequip_char(foll->follower, i);
-          obj_to_char(obj, ch);
-        }
+      char_equipment_iterate(foll->follower, [&](auto i, auto eq) {
+        obj = unequip_char(foll->follower, i);
+        obj_to_char(obj, ch);
+        return true;
+      });
 
       extract_char(foll->follower);
     }

@@ -1582,59 +1582,57 @@ int64_t armor_calc(struct char_data *ch, int64_t dmg, int type) {
   }
 
   /* loc: 0 = Physical Bonus, 1 = Ki Bonus, 2 = Bonus To Both */
-  int i, loc = -1;
+  int loc = -1;
   double bonus = 0.0;
 
-  for (i = 0; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      struct obj_data *obj = GET_EQ(ch, i);
-      switch (GET_OBJ_VAL(obj, VAL_ALL_MATERIAL)) {
-      case MATERIAL_STEEL:
-        loc = 0;
-        bonus = 0.05;
-        break;
-      case MATERIAL_IRON:
-        loc = 0;
-        bonus = 0.025;
-        break;
-      case MATERIAL_COPPER:
-      case MATERIAL_BRASS:
-      case MATERIAL_METAL:
-        loc = 0;
-        bonus = 0.01;
-        break;
-      case MATERIAL_SILVER:
-        loc = 1;
-        bonus = 0.1;
-        break;
-      case MATERIAL_KACHIN:
-        loc = 2;
-        bonus = 0.2;
-        break;
-      case MATERIAL_CRYSTAL:
-        loc = 1;
-        bonus = 0.05;
-        break;
-      case MATERIAL_DIAMOND:
-        loc = 2;
-        bonus = 0.05;
-        break;
-      case MATERIAL_PAPER:
-      case MATERIAL_COTTON:
-      case MATERIAL_SATIN:
-      case MATERIAL_SILK:
-      case MATERIAL_BURLAP:
-      case MATERIAL_VELVET:
-      case MATERIAL_HEMP:
-      case MATERIAL_WAX:
-        loc = 2;
-        bonus = -0.05;
-        break;
-      default:
-        break;
-      }
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    switch (GET_OBJ_VAL(eq, VAL_ALL_MATERIAL)) {
+    case MATERIAL_STEEL:
+      loc = 0;
+      bonus = 0.05;
+      break;
+    case MATERIAL_IRON:
+      loc = 0;
+      bonus = 0.025;
+      break;
+    case MATERIAL_COPPER:
+    case MATERIAL_BRASS:
+    case MATERIAL_METAL:
+      loc = 0;
+      bonus = 0.01;
+      break;
+    case MATERIAL_SILVER:
+      loc = 1;
+      bonus = 0.1;
+      break;
+    case MATERIAL_KACHIN:
+      loc = 2;
+      bonus = 0.2;
+      break;
+    case MATERIAL_CRYSTAL:
+      loc = 1;
+      bonus = 0.05;
+      break;
+    case MATERIAL_DIAMOND:
+      loc = 2;
+      bonus = 0.05;
+      break;
+    case MATERIAL_PAPER:
+    case MATERIAL_COTTON:
+    case MATERIAL_SATIN:
+    case MATERIAL_SILK:
+    case MATERIAL_BURLAP:
+    case MATERIAL_VELVET:
+    case MATERIAL_HEMP:
+    case MATERIAL_WAX:
+      loc = 2;
+      bonus = -0.05;
+      break;
+    default:
+      break;
     }
-  }
+    return true;
+  });
 
   if (bonus > 0.95)
     bonus = 0.95;

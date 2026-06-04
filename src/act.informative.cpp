@@ -3040,7 +3040,7 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch) {
 }
 
 static void look_at_char(struct char_data *i, struct char_data *ch) {
-  int j, found, clan = FALSE;
+  int found, clan = FALSE;
   char buf[100];
   struct obj_data *tmp_obj;
 
@@ -3283,9 +3283,13 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
   }
   diag_char_to_char(i, ch);
   found = FALSE;
-  for (j = 0; !found && j < NUM_WEARS; j++)
-    if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)))
+  char_equipment_iterate(i, [&](auto slot, auto eq) {
+    if (CAN_SEE_OBJ(ch, eq)) {
       found = TRUE;
+      return false;
+    }
+    return true;
+  });
 
   if (found && (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NOEQSEE))) {
     send_to_char(ch, "\r\n"); /* act() does capitalization. */
@@ -3294,38 +3298,35 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
     } else {
       act("The disguised person is using:", FALSE, i, 0, ch, TO_VICT);
     }
-    for (j = 0; j < NUM_WEARS; j++)
-      if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
-          (j != WEAR_WIELD1 && j != WEAR_WIELD2)) {
-        send_to_char(ch, "%s", wear_where[j]);
-        show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
-          struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(i, j);
-          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+    char_equipment_iterate(i, [&](auto slot, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq) && slot != WEAR_WIELD1 && slot != WEAR_WIELD2) {
+        send_to_char(ch, "%s", wear_where[slot]);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
+          obj_contents_iterate(eq, [&](struct obj_data *obj2) {
             send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
             show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
             return true;
           });
         }
-      } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
-                 (!PLR_FLAGGED(i, PLR_THANDW))) {
-        send_to_char(ch, "%s", wear_where[j]);
-        show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
-          struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(i, j);
-          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+      } else if (CAN_SEE_OBJ(ch, eq) &&
+                 !PLR_FLAGGED(i, PLR_THANDW)) {
+        send_to_char(ch, "%s", wear_where[slot]);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
+          obj_contents_iterate(eq, [&](struct obj_data *obj2) {
             send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
             show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
             return true;
           });
         }
-      } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
-                 (PLR_FLAGGED(i, PLR_THANDW))) {
+      } else if (CAN_SEE_OBJ(ch, eq) &&
+                 PLR_FLAGGED(i, PLR_THANDW)) {
         send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
-        show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
       }
+      return true;
+    });
   }
   if (ch != i && ((GET_SKILL(ch, SKILL_KEEN) && AFF_FLAGGED(ch, AFF_SNEAK)) ||
                   GET_ADMLEVEL(ch))) {
@@ -4024,14 +4025,17 @@ static bool character_has_light(struct char_data *ch) {
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     return true;
 
-  for (int i = 0; i < NUM_WEARS; i++) {
-    struct obj_data *eq = GET_EQ(ch, i);
-    if (eq && GET_OBJ_TYPE(eq) == ITEM_LIGHT &&
-        GET_OBJ_VAL(eq, VAL_LIGHT_HOURS))
-      return true;
-  }
+  bool has_light = false;
 
-  return false;
+  char_equipment_iterate(ch, [&](auto slot, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT && GET_OBJ_VAL(eq, VAL_LIGHT_HOURS)) {
+      has_light = true;
+      return false;
+    }
+    return true;
+  });
+
+  return has_light;
 }
 
 static void show_auto_exit_room_details(struct room_data *target_room,
@@ -4783,7 +4787,7 @@ char *find_exdesc(char *word, struct extra_descr_data *list) {
  * suggested fix to this problem.
  */
 static void look_at_target(struct char_data *ch, char *arg, int cmread) {
-  int bits, found = FALSE, j, fnum, i = 0, msg = 1;
+  int bits, found = FALSE, fnum, i = 0, msg = 1;
   struct char_data *found_char = NULL;
   struct obj_data *obj, *found_obj = NULL;
   char *desc;
@@ -4867,30 +4871,33 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
     }
 
     /* Does the argument match an extra desc in the char's equipment? */
-    for (j = 0; j < NUM_WEARS && !found; j++)
-      if (GET_EQ(ch, j) && CAN_SEE_OBJ(ch, GET_EQ(ch, j)))
-        if ((desc = find_exdesc(arg, GET_EQ(ch, j)->ex_description)) != NULL &&
+    char_equipment_iterate(ch, [&](auto slot, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq))
+        if ((desc = find_exdesc(arg, eq->ex_description)) != NULL &&
             ++i == fnum) {
           send_to_char(ch, "%s", desc);
-          if (isname(arg, GET_EQ(ch, j)->name)) {
-            if (GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_WEAPON) {
+          if (isname(arg, eq->name)) {
+            if (GET_OBJ_TYPE(eq) == ITEM_WEAPON) {
               send_to_char(ch, "The weapon type of %s is a %s.\r\n",
-                           GET_OBJ_SHORT(GET_EQ(ch, j)),
-                           weapon_type[(int)GET_OBJ_VAL(GET_EQ(ch, j),
+                           GET_OBJ_SHORT(eq),
+                           weapon_type[(int)GET_OBJ_VAL(eq,
                                                         VAL_WEAPON_SKILL)]);
             }
-            if (GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_SPELLBOOK) {
-              display_spells(ch, GET_EQ(ch, j));
+            if (GET_OBJ_TYPE(eq) == ITEM_SPELLBOOK) {
+              display_spells(ch, eq);
             }
-            if (GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_SCROLL) {
-              display_scroll(ch, GET_EQ(ch, j));
+            if (GET_OBJ_TYPE(eq) == ITEM_SCROLL) {
+              display_scroll(ch, eq);
             }
-            diag_obj_to_char(GET_EQ(ch, j), ch);
+            diag_obj_to_char(eq, ch);
             send_to_char(ch, "It appears to be made of %s",
-                         material_names[GET_OBJ_MATERIAL(GET_EQ(ch, j))]);
+                         material_names[GET_OBJ_MATERIAL(eq)]);
           }
           found = TRUE;
+          return false;
         }
+      return true;
+    });
 
     /* Does the argument match an extra desc in the char's inventory? */
     for (obj = ch->carrying; obj && !found; obj = obj->next_content) {
@@ -6835,39 +6842,37 @@ ACMD(do_equipment) {
 
   send_to_char(ch, "        @YEquipment Being "
                    "Worn\r\n@D-------------------------------------@w\r\n");
+  
   for (i = 1; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-          (i != WEAR_WIELD1 && i != WEAR_WIELD2)) {
+    if (auto eq = GET_EQ(ch, i); eq && CAN_SEE_OBJ(ch, eq)) {
+      if ((i != WEAR_WIELD1 && i != WEAR_WIELD2)) {
         send_to_char(ch, "%s", wear_where[i]);
-        show_obj_to_char(GET_EQ(ch, i), ch, SHOW_OBJ_SHORT);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
 
-        if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_SHEATH)) {
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(ch, i);
+                          *sheath = eq;
           obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
             send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
             show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
             return true;
           });
         }
-      } else if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-                 (!PLR_FLAGGED(ch, PLR_THANDW))) {
+      } else if ((!PLR_FLAGGED(ch, PLR_THANDW))) {
         send_to_char(ch, "%s", wear_where[i]);
-        show_obj_to_char(GET_EQ(ch, i), ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_SHEATH)) {
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(ch, i);
+                          *sheath = eq;
           obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
             send_to_char(ch, "@D  ---- @YSheathed@D ----> @n");
             show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
             return true;
           });
         }
-      } else if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-                 (PLR_FLAGGED(ch, PLR_THANDW))) {
+      } else if ((PLR_FLAGGED(ch, PLR_THANDW))) {
         send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
-        show_obj_to_char(GET_EQ(ch, i), ch, SHOW_OBJ_SHORT);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
       } else {
         send_to_char(ch, "%s", wear_where[i]);
         send_to_char(ch, "Something.\r\n");

@@ -750,17 +750,24 @@ int cmd_otrig(obj_data *obj, char_data *actor, char *cmd, char *argument,
 
 int command_otrigger(char_data *actor, char *cmd, char *argument) {
   obj_data *obj;
-  int i;
 
   /* prevent people we like from becoming trapped :P */
   if (!valid_dg_target(actor, 0))
     return 0;
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(actor, i))
-      if (cmd_otrig(GET_EQ(actor, i), actor, cmd, argument, OCMD_EQUIP) &&
-          !OBJ_FLAGGED(GET_EQ(actor, i), ITEM_FORGED))
-        return 1;
+  {
+    int found = 0;
+    char_equipment_iterate(actor, [&](auto i, auto eq) {
+      if (cmd_otrig(eq, actor, cmd, argument, OCMD_EQUIP) &&
+          !OBJ_FLAGGED(eq, ITEM_FORGED)) {
+        found = 1;
+        return false;
+      }
+      return true;
+    });
+    if (found)
+      return 1;
+  }
 
   for (obj = actor->carrying; obj; obj = obj->next_content)
     if (cmd_otrig(obj, actor, cmd, argument, OCMD_INVEN) &&

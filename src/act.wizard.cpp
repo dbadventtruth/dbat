@@ -1880,11 +1880,12 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
   }
   total = counts;
   total += i;
-  for (i = 0, i2 = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(k, i)) {
-      i2++;
-      total += check_insidebag(GET_EQ(k, i), 0.5) + 1;
-    }
+  i2 = 0;
+  char_equipment_iterate(k, [&](auto i, auto eq) {
+    i2++;
+    total += check_insidebag(eq, 0.5) + 1;
+    return true;
+  });
   send_to_char(ch,
                "Carried: weight: %d, Total Items (includes bagged items): %d, "
                "EQ: %d\r\n",
@@ -2461,9 +2462,10 @@ ACMD(do_purge) {
         extract_obj(vict->carrying);
 
       /* Dump equipment. */
-      for (i = 0; i < NUM_WEARS; i++)
-        if (GET_EQ(vict, i))
-          extract_obj(GET_EQ(vict, i));
+      char_equipment_iterate(vict, [&](auto i, auto eq) {
+        extract_obj(eq);
+        return true;
+      });
 
       /* Dump character. */
       extract_char(vict);
@@ -4873,13 +4875,14 @@ ACMD(do_chown) {
   else if (!*buf3)
     send_to_char(ch, "Syntax: chown <object> <character>.\r\n");
   else {
-    for (i = 0; i < NUM_WEARS; i++) {
-      if (GET_EQ(victim, i) && CAN_SEE_OBJ(ch, GET_EQ(victim, i)) &&
-          isname(buf2, GET_EQ(victim, i)->name)) {
+    char_equipment_iterate(victim, [&](auto i, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq) &&
+          isname(buf2, eq->name)) {
         obj_to_char(unequip_char(victim, i), victim);
         k = 1;
       }
-    }
+      return true;
+    });
 
     if (!(obj = get_obj_in_list_vis(victim, buf2, NULL, victim->carrying))) {
       if (!k &&

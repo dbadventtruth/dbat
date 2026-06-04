@@ -168,8 +168,8 @@ obj_data *get_obj_in_list(char *name, obj_data *list) {
 }
 
 obj_data *get_object_in_equip(char_data *ch, char *name) {
-  int j, n = 0, number;
-  obj_data *obj;
+  int n = 0, number;
+  obj_data *result = nullptr;
   char tmpname[MAX_INPUT_LENGTH];
   char *tmp = tmpname;
   long id;
@@ -177,29 +177,37 @@ obj_data *get_object_in_equip(char_data *ch, char *name) {
   if (*name == UID_CHAR) {
     id = atoi(name + 1);
 
-    for (j = 0; j < NUM_WEARS; j++)
-      if ((obj = GET_EQ(ch, j)))
-        if (id == GET_ID(obj))
-          return (obj);
+    char_equipment_iterate(ch, [&](auto j, auto obj) {
+      if (id == GET_ID(obj)) {
+        result = obj;
+        return false;
+      }
+      return true;
+    });
   } else if (is_number(name)) {
     obj_vnum ovnum = atoi(name);
-    for (j = 0; j < NUM_WEARS; j++)
-      if ((obj = GET_EQ(ch, j)))
-        if (GET_OBJ_VNUM(obj) == ovnum)
-          return (obj);
+    char_equipment_iterate(ch, [&](auto j, auto obj) {
+      if (GET_OBJ_VNUM(obj) == ovnum) {
+        result = obj;
+        return false;
+      }
+      return true;
+    });
   } else {
     snprintf(tmpname, sizeof(tmpname), "%s", name);
     if (!(number = get_number(&tmp)))
       return NULL;
 
-    for (j = 0; (j < NUM_WEARS) && (n <= number); j++)
-      if ((obj = GET_EQ(ch, j)))
-        if (isname(tmp, obj->name))
-          if (++n == number)
-            return (obj);
+    char_equipment_iterate(ch, [&](auto j, auto obj) {
+      if (isname(tmp, obj->name) && ++n == number) {
+        result = obj;
+        return false;
+      }
+      return n <= number;
+    });
   }
 
-  return NULL;
+  return result;
 }
 
 /* Handles 'held', 'light' and 'wield' positions - Welcor

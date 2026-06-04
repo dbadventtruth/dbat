@@ -703,7 +703,6 @@ int command_pass(char *cmd, struct char_data *ch) {
 int special(struct char_data *ch, int cmd, char *arg) {
   struct obj_data *i;
   struct char_data *k;
-  int j;
 
   struct room_data *room = char_room_get(ch);
 
@@ -713,10 +712,19 @@ int special(struct char_data *ch, int cmd, char *arg) {
       return (1);
 
   /* special in equipment list? */
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j) && GET_OBJ_SPEC(GET_EQ(ch, j)) != NULL)
-      if (GET_OBJ_SPEC(GET_EQ(ch, j))(ch, GET_EQ(ch, j), cmd, arg))
-        return (1);
+  {
+    bool found = false;
+    char_equipment_iterate(ch, [&](auto j, auto eq) {
+      if (GET_OBJ_SPEC(eq))
+        if (GET_OBJ_SPEC(eq)(ch, eq, cmd, arg)) {
+          found = true;
+          return false;
+        }
+      return true;
+    });
+    if (found)
+      return (1);
+  }
 
   /* special in inventory? */
   for (i = ch->carrying; i; i = i->next_content)

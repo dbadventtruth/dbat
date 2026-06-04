@@ -1,5 +1,6 @@
 #pragma once
 #include "consts/directions.h"
+#include "consts/itemdata.h"
 
 #include "character_db.h"
 #include "character_api.h"
@@ -160,6 +161,30 @@ template <typename Func> inline void obj_contents_iterate(struct obj_data *obj, 
     next = obj_next_content_get(o);
     if (!func(o)) {
       break;
+    }
+  }
+}
+
+template <typename Func> inline void char_inventory_iterate(struct char_data *ch, Func &&func) {
+  if(!ch) return;
+
+  struct obj_data *next = nullptr;
+  for (auto o = char_carrying_get(ch); o; o = next) {
+    next = obj_next_content_get(o);
+    if (!func(o)) {
+      break;
+    }
+  }
+}
+
+template <typename Func> inline void char_equipment_iterate(struct char_data *ch, Func &&func) {
+  if(!ch) return;
+
+  for (auto i = 0; i < NUM_WEARS; i++) {
+    if (auto o = char_equipment_get(ch, i); o) {
+      if (!func(i, o)) {
+        break;
+      }
     }
   }
 }

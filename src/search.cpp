@@ -443,7 +443,7 @@ int find_all_dots(char *arg) {
 
 int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
                  struct char_data **tar_ch, struct obj_data **tar_obj) {
-  int i, found, number;
+  int found, number;
   char name_val[MAX_INPUT_LENGTH];
   char *name = name_val;
 
@@ -468,11 +468,15 @@ int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
   }
 
   if (IS_SET(bitvector, FIND_OBJ_EQUIP)) {
-    for (found = FALSE, i = 0; i < NUM_WEARS && !found; i++)
-      if (GET_EQ(ch, i) && isname(name, GET_EQ(ch, i)->name) && --number == 0) {
-        *tar_obj = GET_EQ(ch, i);
+    found = FALSE;
+    char_equipment_iterate(ch, [&](auto i, auto eq) {
+      if (isname(name, eq->name) && --number == 0) {
+        *tar_obj = eq;
         found = TRUE;
+        return false;
       }
+      return true;
+    });
     if (found)
       return (FIND_OBJ_EQUIP);
   }

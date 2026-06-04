@@ -4511,8 +4511,6 @@ ACMD(do_recharge) {
 }
 
 ACMD(do_srepair) {
-  int i;
-
   if (!IS_ANDROID(ch)) {
     send_to_char(
         ch, "Only androids can use repair, maybe you want 'fix' instead?\r\n");
@@ -4553,20 +4551,19 @@ ACMD(do_srepair) {
 
       int repaired = FALSE;
       if (!IS_NPC(ch)) {
-        for (i = 0; i < NUM_WEARS; i++) {
-          if (GET_EQ(ch, i)) {
-            if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_ALL_HEALTH) < 100) {
-              GET_OBJ_VAL(GET_EQ(ch, i), VAL_ALL_HEALTH) += 20;
-              if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_ALL_HEALTH) > 100) {
-                GET_OBJ_VAL(GET_EQ(ch, i), VAL_ALL_HEALTH) = 100;
-              }
-              if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_BROKEN)) {
-                REMOVE_BIT_AR(GET_OBJ_EXTRA(GET_EQ(ch, i)), ITEM_BROKEN);
-              }
-              repaired = TRUE;
+        char_equipment_iterate(ch, [&](auto i, auto eq) {
+          if (GET_OBJ_VAL(eq, VAL_ALL_HEALTH) < 100) {
+            GET_OBJ_VAL(eq, VAL_ALL_HEALTH) += 20;
+            if (GET_OBJ_VAL(eq, VAL_ALL_HEALTH) > 100) {
+              GET_OBJ_VAL(eq, VAL_ALL_HEALTH) = 100;
             }
+            if (OBJ_FLAGGED(eq, ITEM_BROKEN)) {
+              REMOVE_BIT_AR(GET_OBJ_EXTRA(eq), ITEM_BROKEN);
+            }
+            repaired = TRUE;
           }
-        }
+          return true;
+        });
       }
 
       if (repaired == TRUE) {
@@ -9581,35 +9578,31 @@ ACMD(do_spar) {
 }
 
 static void check_eq(struct char_data *ch) {
-  struct obj_data *obj;
-  int i;
-  for (i = 0; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      obj = GET_EQ(ch, i);
-      if (OBJ_FLAGGED(obj, ITEM_BROKEN)) {
-        act("@W$p@W falls apart and you remove it.@n", FALSE, ch, obj, 0,
-            TO_CHAR);
-        act("@W$p@W falls apart and @C$n@W remove it.@n", FALSE, ch, obj, 0,
-            TO_ROOM);
-        perform_remove(ch, i);
-        return;
-      }
-      if (obj == GET_EQ(ch, WEAR_WIELD1) && GET_LIMBCOND(ch, 1) <= 0) {
-        act("@WWithout your right arm you let go of @c$p@W!@n", FALSE, ch, obj,
-            0, TO_CHAR);
-        act("@C$n@W lets go of @c$p@W!@n", FALSE, ch, obj, 0, TO_ROOM);
-        perform_remove(ch, i);
-        return;
-      }
-      if (obj == GET_EQ(ch, WEAR_WIELD2) && GET_LIMBCOND(ch, 2) <= 0) {
-        act("@WWithout your left arm you let go of @c$p@W!@n", FALSE, ch, obj,
-            0, TO_CHAR);
-        act("@C$n@W lets go of @c$p@W!@n", FALSE, ch, obj, 0, TO_ROOM);
-        perform_remove(ch, i);
-        return;
-      }
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (OBJ_FLAGGED(eq, ITEM_BROKEN)) {
+      act("@W$p@W falls apart and you remove it.@n", FALSE, ch, eq, 0,
+          TO_CHAR);
+      act("@W$p@W falls apart and @C$n@W remove it.@n", FALSE, ch, eq, 0,
+          TO_ROOM);
+      perform_remove(ch, i);
+      return false;
     }
-  }
+    if (eq == GET_EQ(ch, WEAR_WIELD1) && GET_LIMBCOND(ch, 1) <= 0) {
+      act("@WWithout your right arm you let go of @c$p@W!@n", FALSE, ch, eq,
+          0, TO_CHAR);
+      act("@C$n@W lets go of @c$p@W!@n", FALSE, ch, eq, 0, TO_ROOM);
+      perform_remove(ch, i);
+      return false;
+    }
+    if (eq == GET_EQ(ch, WEAR_WIELD2) && GET_LIMBCOND(ch, 2) <= 0) {
+      act("@WWithout your left arm you let go of @c$p@W!@n", FALSE, ch, eq,
+          0, TO_CHAR);
+      act("@C$n@W lets go of @c$p@W!@n", FALSE, ch, eq, 0, TO_ROOM);
+      perform_remove(ch, i);
+      return false;
+    }
+    return true;
+  });
 }
 
 /* This handles many player specific routines. It may be a bit too bloated
