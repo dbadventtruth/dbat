@@ -5,7 +5,6 @@ const jsonx = @import("flags_json.zig");
 pub const JsonValue = jsonx.JsonValue;
 
 extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
-extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 
 pub fn serializeProtoScript(allocator: std.mem.Allocator, head: [*c]cdb.trig_proto_list) !JsonValue {
     var array = jsonx.JsonArray.init(allocator);
@@ -132,7 +131,5 @@ fn freeCommandLines(head: [*c]cdb.cmdlist_element) void {
 }
 
 fn duplicate(value: []const u8) ![*:0]u8 {
-    const z = try std.heap.c_allocator.dupeZ(u8, value);
-    defer std.heap.c_allocator.free(z);
-    return strdup(z) orelse error.OutOfMemory;
+    return try std.heap.c_allocator.dupeZ(u8, value);
 }

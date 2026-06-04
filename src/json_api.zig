@@ -386,6 +386,10 @@ fn logImportFileError(label: []const u8, file: JsonFile, err: anyerror) void {
 
 fn importZones(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("zones", files.len);
 
     for (files, 0..) |file, index| {
@@ -407,6 +411,10 @@ fn importZones(folder: []const u8) !void {
 
 fn importRooms(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("rooms", files.len);
 
     for (files, 0..) |file, index| {
@@ -431,6 +439,10 @@ fn importRooms(folder: []const u8) !void {
 
 fn importRoomExits(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("exits", files.len);
     for (files, 0..) |file, index| {
         const room = cdb.room_by_id(@intCast(file.vnum));
@@ -451,6 +463,10 @@ fn importRoomExits(folder: []const u8) !void {
 
 fn importDgScripts(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("dgscripts", files.len);
 
     for (files, 0..) |file, index| {
@@ -473,6 +489,10 @@ fn importDgScripts(folder: []const u8) !void {
 
 fn importNpcPrototypes(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("npc_prototypes", files.len);
 
     for (files, 0..) |file, index| {
@@ -496,6 +516,10 @@ fn importNpcPrototypes(folder: []const u8) !void {
 
 fn importObjPrototypes(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("obj_prototypes", files.len);
 
     for (files, 0..) |file, index| {
@@ -519,6 +543,10 @@ fn importObjPrototypes(folder: []const u8) !void {
 
 fn importShops(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("shops", files.len);
 
     for (files, 0..) |file, index| {
@@ -541,6 +569,10 @@ fn importShops(folder: []const u8) !void {
 
 fn importGuilds(folder: []const u8) !void {
     const files = try listJsonFiles(folder);
+    defer {
+        for (files) |f| std.heap.page_allocator.free(f.path);
+        std.heap.page_allocator.free(files);
+    }
     var progress = Progress.init("guilds", files.len);
 
     for (files, 0..) |file, index| {

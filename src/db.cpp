@@ -800,7 +800,7 @@ static void json_import_or_die(const char *label, int result) {
 }
 
 static void load_assets(void) {
-  constexpr bool use_json_assets = false;
+  constexpr bool use_json_assets = true;
   constexpr const char *asset_root = "data/assets";
 
   if (use_json_assets && directory_exists(asset_root)) {
