@@ -87,10 +87,6 @@ struct obj_data *obj_contents_search_vnum(struct obj_data *obj, obj_vnum vnum,
                                           bool recursive, int flags);
 struct obj_data *obj_contents_search_type(struct obj_data *obj, int type,
                                           bool recursive, int flags);
-struct obj_data *obj_inventory_search_vnum(struct obj_data *obj, obj_vnum vnum,
-                                           bool recursive, int flags);
-struct obj_data *obj_inventory_search_type(struct obj_data *obj, int type,
-                                           bool recursive, int flags);
 
 #ifdef __cplusplus
 }

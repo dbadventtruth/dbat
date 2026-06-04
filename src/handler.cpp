@@ -84,8 +84,10 @@ void update_char_objects(struct char_data *ch) {
     return true;
   });
 
-  if (ch->carrying)
-    update_object(ch->carrying, 1);
+  char_inventory_iterate(ch, [&](auto obj) {
+    update_object(obj, 1);
+    return true;
+  });
 }
 
 /* check and see if this item is better */

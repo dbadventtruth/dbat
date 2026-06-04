@@ -54,10 +54,6 @@ struct obj_data *obj_contents_search_vnum(struct obj_data *obj, obj_vnum vnum,
   return data.found;
 }
 
-struct obj_data *obj_inventory_search_vnum(struct obj_data *obj, obj_vnum vnum,
-                                           bool recursive, int flags) {
-  return obj_contents_search_vnum(obj->contains, vnum, recursive, flags);
-}
 
 struct obj_data *obj_contents_search_type(struct obj_data *obj, int type,
                                           bool recursive, int flags) {
@@ -65,9 +61,4 @@ struct obj_data *obj_contents_search_type(struct obj_data *obj, int type,
       .type = type, .flags = 0, .ch = nullptr, .found = nullptr};
   obj_contents_list_iterate(obj, recursive, obj_search_type_match, &data);
   return data.found;
-}
-
-struct obj_data *obj_inventory_search_type(struct obj_data *obj, int type,
-                                           bool recursive, int flags) {
-  return obj_contents_search_type(obj->contains, type, recursive, flags);
 }
