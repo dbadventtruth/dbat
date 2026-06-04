@@ -98,12 +98,10 @@ fn ensureRoomExit(room: *cdb.room_data, dir: usize) !*cdb.room_direction_data {
     return room.dir_option[dir];
 }
 
-fn nul(value: []const u8) ![*:0]const u8 {
-    return try std.heap.c_allocator.dupeZ(u8, value);
-}
-
 fn setStringField(exit: *cdb.room_direction_data, object: JsonValue, key: []const u8, comptime setter: anytype) !void {
     const value = try jsonx.stringFieldAlloc(std.heap.c_allocator, object, key) orelse return;
     defer std.heap.c_allocator.free(value);
-    setter(exit, try nul(value));
+    const z = try std.heap.c_allocator.dupeZ(u8, value);
+    defer std.heap.c_allocator.free(z);
+    setter(exit, z);
 }

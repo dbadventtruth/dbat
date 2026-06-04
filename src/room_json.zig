@@ -44,12 +44,10 @@ fn roomFlagSet(room: *cdb.room_data, pos: c_int, flag: bool) void {
     cdb.room_flag_set(room, pos, flag);
 }
 
-fn nul(value: []const u8) ![*:0]const u8 {
-    return try std.heap.c_allocator.dupeZ(u8, value);
-}
-
 fn setStringField(allocator: std.mem.Allocator, room: *cdb.room_data, object: JsonValue, key: []const u8, comptime setter: anytype) !void {
     const value = try jsonx.stringFieldAlloc(allocator, object, key) orelse return;
     defer allocator.free(value);
-    setter(room, try nul(value));
+    const z = try std.heap.c_allocator.dupeZ(u8, value);
+    defer std.heap.c_allocator.free(z);
+    setter(room, z);
 }
