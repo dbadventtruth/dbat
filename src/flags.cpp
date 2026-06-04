@@ -121,6 +121,7 @@ size_t sprintbitarray(bitvector_t bitvector[], const char *names[], int maxar,
   return len;
 }
 
+
 int get_flag_by_name(const char *flag_list[], char *flag_name) {
   int i = 0;
   for (; flag_list[i] && *flag_list[i] && strcmp(flag_list[i], "\n") != 0; i++)

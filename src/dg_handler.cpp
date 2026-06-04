@@ -26,6 +26,7 @@
 #include "log.h"
 #include "object_impl.h"
 #include "object_utils.h"
+#include "room_api.h"
 #include "room_impl.h"
 #include "room_utils.h"
 #include "stringutils.h"
@@ -143,8 +144,8 @@ void extract_script(void *thing, int type) {
     break;
   case WLD_TRIGGER:
     room = (struct room_data *)thing;
-    sc = SCRIPT(room);
-    SCRIPT(room) = NULL;
+    sc = room_script_get(room);
+    room_script_set(room, NULL);
     break;
   }
 

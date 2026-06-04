@@ -29,8 +29,8 @@
 #include "descriptor_macros.h"
 #include "flags.h"
 #include "log.h"
-#include "room_impl.h"
 #include "util_macros.h"
+#include "room_impl.h"
 
 #include <cctype>
 #include <cstring>

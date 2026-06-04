@@ -62,11 +62,12 @@
 #include "random.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "stringutils.h"
 #include "util_macros.h"
 #include "weather.h"
 #include "weather_db.h"
+
+#include "iterate.hpp"
 
 #include "extract.h"
 #include "fileop.h"
@@ -2977,7 +2978,7 @@ void send_to_room(struct room_data *room, const char *messg, ...) {
   if (messg == NULL)
     return;
 
-  for (i = room->people; i; i = i->next_in_room) {
+  for (i = room_people_get(room); i; i = i->next_in_room) {
     if (!i->desc)
       continue;
 
@@ -2993,7 +2994,7 @@ void send_to_room(struct room_data *room, const char *messg, ...) {
       continue;
 
     if (PRF_FLAGGED(d->character, PRF_ARENAWATCH)) {
-      if (arena_watch(d->character) == room->number) {
+      if (arena_watch(d->character) == room_vnum_get(room)) {
         char buf[2000];
         *buf = '\0';
         sprintf(buf,
@@ -3006,7 +3007,7 @@ void send_to_room(struct room_data *room, const char *messg, ...) {
     }
     if (GET_EAVESDROP(d->character) > 0) {
       int roll = rand_number(1, 101);
-      if (GET_EAVESDROP(d->character) == room->number &&
+      if (GET_EAVESDROP(d->character) == room_vnum_get(room) &&
           GET_SKILL(d->character, SKILL_EAVESDROP) > roll) {
         char buf[1000];
         *buf = '\0';
@@ -3239,9 +3240,9 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
   /* ASSUMPTION: at this point we know type must be TO_NOTVICT or TO_ROOM */
 
   if (ch && char_room_get(ch) != NULL)
-    to = char_room_get(ch)->people;
+    to = room_people_get(char_room_get(ch));
   else if (obj && obj_room_get(obj) != NULL)
-    to = obj_room_get(obj)->people;
+    to = room_people_get(obj_room_get(obj));
   else {
     return NULL;
   }
@@ -3308,7 +3309,6 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
   }
   return last_act_message;
 }
-
 /* Prefer the file over the descriptor. */
 void setup_log(const char *filename, int fd) {
   FILE *s_fp;
@@ -3419,7 +3419,7 @@ void send_to_range(room_vnum start, room_vnum finish, const char *messg, ...) {
     auto room = room_by_id(j);
     if (!room)
       continue;
-    for (i = room->people; i; i = i->next_in_room) {
+    for (i = room_people_get(room); i; i = i->next_in_room) {
       if (!i->desc)
         continue;
 

@@ -32,9 +32,8 @@
 #include "object_impl.h"
 #include "olc.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "stringutils.h"
-
+#include "room_impl.h"
 #include <cctype>
 #include <cstdlib>
 #include <cstring>

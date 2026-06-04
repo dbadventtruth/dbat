@@ -1,5 +1,6 @@
 #pragma once
 #include "consts/types.h"
+#include "consts/roomflags.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,9 @@ void exit_failroom_set(struct room_direction_data *exit, room_vnum failroom);
 int exit_totalfailroom_get(struct room_direction_data *exit);
 void exit_totalfailroom_set(struct room_direction_data *exit,
                             room_vnum totalfailroom);
+bool exit_flagged(struct room_direction_data *exit, int pos);
+bool exit_flag_toggle(struct room_direction_data *exit, int pos);
+void exit_flag_set(struct room_direction_data *exit, int pos, bool value);
 
 // Rooms API functions, implemented in rooms_api.zig
 room_vnum room_id_get(struct room_data *room);
@@ -51,6 +55,7 @@ const char *room_name_get(struct room_data *room);
 void room_name_set(struct room_data *room, const char *name);
 const char *room_description_get(struct room_data *room);
 void room_description_set(struct room_data *room, const char *description);
+struct extra_descr_data *room_ex_description_get(struct room_data *room);
 int room_flagged(struct room_data *room, int pos);
 bool room_flag_toggle(struct room_data *room, int pos);
 void room_flag_set(struct room_data *room, int pos, bool value);
@@ -71,6 +76,7 @@ void room_gravity_set(struct room_data *room, int gravity);
 int room_geffect_get(struct room_data *room);
 void room_geffect_mod(struct room_data *room, int delta);
 void room_geffect_set(struct room_data *room, int geffect);
+struct trig_proto_list* room_proto_script_get(struct room_data *room);
 
 void room_send_text(struct room_data *room, const char *text);
 void room_send_textf(struct room_data *room, const char *format, ...);
@@ -81,10 +87,9 @@ struct room_direction_data *room_dir_option_get(struct room_data *room,
                                                 int dir);
 struct char_data *room_people_get(struct room_data *room);
 struct obj_data *room_contents_get(struct room_data *room);
-
-void room_contents_iterate(struct room_data *room, bool recursive,
-                           obj_iter_fn func, void *ctx);
-void room_people_iterate(struct room_data *room, char_iter_fn func, void *ctx);
+struct script_data *room_script_get(struct room_data *room);
+struct script_data *room_script_ensure(struct room_data *room);
+void room_script_set(struct room_data *room, struct script_data *script);
 
 #ifdef __cplusplus
 }

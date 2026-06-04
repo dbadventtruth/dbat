@@ -36,6 +36,8 @@
 #include "consts/affflags.h"
 #include "consts/positions.h"
 
+#include "iterate.hpp"
+
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
@@ -48,7 +50,7 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
+#include "room_api.h"
 
 #include <cctype>
 #include <cstring>
@@ -699,40 +701,72 @@ int command_pass(char *cmd, struct char_data *ch) {
 }
 
 int special(struct char_data *ch, int cmd, char *arg) {
-  struct obj_data *i;
   struct char_data *k;
-  int j;
 
   struct room_data *room = char_room_get(ch);
 
   /* special in room? */
-  if (room->func)
-    if (room->func(ch, room, cmd, arg))
+  if (room_func_get(room))
+    if (room_func_get(room)(ch, room, cmd, arg))
       return (1);
 
   /* special in equipment list? */
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j) && GET_OBJ_SPEC(GET_EQ(ch, j)) != NULL)
-      if (GET_OBJ_SPEC(GET_EQ(ch, j))(ch, GET_EQ(ch, j), cmd, arg))
-        return (1);
+  {
+    bool found = false;
+    char_equipment_iterate(ch, [&](auto j, auto eq) {
+      if (GET_OBJ_SPEC(eq))
+        if (GET_OBJ_SPEC(eq)(ch, eq, cmd, arg)) {
+          found = true;
+          return false;
+        }
+      return true;
+    });
+    if (found)
+      return (1);
+  }
 
   /* special in inventory? */
-  for (i = ch->carrying; i; i = i->next_content)
-    if (GET_OBJ_SPEC(i) != NULL)
-      if (GET_OBJ_SPEC(i)(ch, i, cmd, arg))
-        return (1);
+  {
+    bool found = false;
+    char_inventory_iterate(ch, [&](auto i) {
+      if (GET_OBJ_SPEC(i) != NULL)
+        if (GET_OBJ_SPEC(i)(ch, i, cmd, arg)) {
+          found = true;
+          return false;
+        }
+      return true;
+    });
+    if (found) return (1);
+  }
 
   /* special in mobile present? */
-  for (k = char_room_get(ch)->people; k; k = k->next_in_room)
-    if (!MOB_FLAGGED(k, MOB_NOTDEADYET))
-      if (GET_MOB_SPEC(k) && GET_MOB_SPEC(k)(ch, k, cmd, arg))
-        return (1);
+  {
+    bool found = false;
+    room_people_iterate(char_room_get(ch), [&](auto k) {
+      if (!MOB_FLAGGED(k, MOB_NOTDEADYET))
+        if (GET_MOB_SPEC(k) && GET_MOB_SPEC(k)(ch, k, cmd, arg)) {
+          found = true;
+          return false;
+        }
+      return true;
+    });
+    if (found)
+      return (1);
+  }
 
   /* special in object present? */
-  for (i = char_room_get(ch)->contents; i; i = i->next_content)
-    if (GET_OBJ_SPEC(i) != NULL)
-      if (GET_OBJ_SPEC(i)(ch, i, cmd, arg))
-        return (1);
+  {
+    int spec_result = 0;
+    room_contents_iterate(char_room_get(ch), [&](auto i) {
+      if (GET_OBJ_SPEC(i) != NULL)
+        if (GET_OBJ_SPEC(i)(ch, i, cmd, arg)) {
+          spec_result = 1;
+          return false;
+        }
+      return true;
+    });
+    if (spec_result) return (1);
+  }
 
   return (0);
 }

@@ -30,6 +30,7 @@
 #include "log.h"
 #include "object_impl.h"
 #include "object_macros.h"
+#include "room_api.h"
 #include "room_impl.h"
 
 #include <cstdlib>
@@ -161,7 +162,7 @@ void dg_read_trigger(FILE *fp, void *proto, int type) {
       mudlog(BRF, ADMLVL_BUILDER, TRUE,
              "SYSERR: dg_read_trigger: Trigger vnum #%d asked for but "
              "non-existant! (room:%d)",
-             vnum, ((room_data *)proto)->number);
+              vnum, room_vnum_get((room_data *)proto));
       break;
     default:
       mudlog(BRF, ADMLVL_BUILDER, TRUE,
@@ -204,13 +205,12 @@ void dg_read_trigger(FILE *fp, void *proto, int type) {
     }
 
     if (rnum != NOTHING) {
-      if (!(room->script))
-        CREATE(room->script, struct script_data, 1);
-      add_trigger(SCRIPT(room), read_trigger(rnum), -1);
+      struct script_data *sc = room_script_ensure(room);
+      add_trigger(sc, read_trigger(rnum), -1);
     } else {
       mudlog(BRF, ADMLVL_BUILDER, TRUE,
              "SYSERR: non-existant trigger #%d assigned to room #%d", vnum,
-             room->number);
+             room_vnum_get(room));
     }
     break;
   default:
@@ -306,11 +306,10 @@ void assign_triggers(void *i, int type) {
       if (rnum == NOTHING) {
         mudlog(BRF, ADMLVL_BUILDER, TRUE,
                "SYSERR: trigger #%d non-existant, for room #%d",
-               trg_proto->vnum, room->number);
+               trg_proto->vnum, room_vnum_get(room));
       } else {
-        if (!SCRIPT(room))
-          CREATE(SCRIPT(room), struct script_data, 1);
-        add_trigger(SCRIPT(room), read_trigger(rnum), -1);
+        struct script_data *sc = room_script_ensure(room);
+        add_trigger(sc, read_trigger(rnum), -1);
       }
       trg_proto = trg_proto->next;
     }

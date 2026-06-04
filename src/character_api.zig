@@ -1250,3 +1250,11 @@ fn emitConditionModifiers(ch: *cdb.char_data, zigdata: *CharacterData) void {
 pub export fn char_is_npc(ch: *cdb.char_data) bool {
     return cdb.flag_test(@ptrCast(&ch.act), cdb.MOB_ISNPC) != 0;
 }
+
+pub export fn char_next_in_room_get(ch: *cdb.char_data) [*c]cdb.char_data {
+    return ch.next_in_room;
+}
+
+pub export fn char_carrying_get(ch: *cdb.char_data) [*c]cdb.obj_data {
+    return ch.carrying;
+}

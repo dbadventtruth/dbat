@@ -42,6 +42,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "iterate.hpp"
+
 /*
  * Local functions
  */
@@ -157,9 +159,9 @@ OCMD(do_oecho) {
     obj_log(obj, "oecho called with no args");
 
   else if ((room = obj_room(obj)) != NULL) {
-    if (room->people) {
-      sub_write(argument, room->people, TRUE, TO_ROOM);
-      sub_write(argument, room->people, TRUE, TO_CHAR);
+    if (auto people = room_people_get(room)) {
+      sub_write(argument, people, TRUE, TO_ROOM);
+      sub_write(argument, people, TRUE, TO_CHAR);
     }
   }
 
@@ -183,12 +185,12 @@ OCMD(do_oforce) {
     if ((room = obj_room(obj)) == NULL)
       obj_log(obj, "oforce called by object in NOWHERE");
     else {
-      for (ch = room->people; ch; ch = next_ch) {
-        next_ch = ch->next_in_room;
+      room_people_iterate(room, [&](auto ch) {
         if (valid_dg_target(ch, 0)) {
           command_interpreter(ch, line);
         }
-      }
+        return true;
+      });
     }
   }
 
@@ -344,7 +346,7 @@ OCMD(do_dupe) { SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_DUPLICATE); }
 OCMD(do_opurge) {
   char arg[MAX_INPUT_LENGTH];
   char_data *ch, *next_ch;
-  obj_data *o, *next_obj;
+  obj_data *o;
   struct room_data *room = NULL;
 
   one_argument(argument, arg);
@@ -352,17 +354,17 @@ OCMD(do_opurge) {
   if (!*arg) {
     /* purge all */
     if ((room = obj_room(obj)) != NULL) {
-      for (ch = room->people; ch; ch = next_ch) {
-        next_ch = ch->next_in_room;
+      room_people_iterate(room, [&](auto ch) {
         if (IS_NPC(ch))
           extract_char(ch);
-      }
+        return true;
+      });
 
-      for (o = room->contents; o; o = next_obj) {
-        next_obj = o->next_content;
+      room_contents_iterate(room, [&](auto o) {
         if (o != obj)
           extract_obj(o);
-      }
+        return true;
+      });
     }
 
     return;
@@ -437,14 +439,14 @@ OCMD(do_oteleport) {
     if (target == room)
       obj_log(obj, "oteleport target is itself");
 
-    for (ch = room->people; ch; ch = next_ch) {
-      next_ch = ch->next_in_room;
+    room_people_iterate(room, [&](auto ch) {
       if (!valid_dg_target(ch, DG_ALLOW_GODS))
-        continue;
+        return true;
       char_from_room(ch);
       char_to_room(ch, target);
       enter_wtrigger(char_room_get(ch), ch, -1);
-    }
+      return true;
+    });
   }
 
   else {
@@ -603,14 +605,14 @@ OCMD(do_oasound) {
     return;
   }
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *ex = room->dir_option[door];
-    struct room_data *dest = exit_dest_get(ex);
-    if (dest && dest->people) {
-      sub_write(argument, dest->people, TRUE, TO_ROOM);
-      sub_write(argument, dest->people, TRUE, TO_CHAR);
+  room_exits_iterate(room, [&](auto dir, auto exit) {
+    auto dest = exit_dest_get(exit);
+    if(dest && room_people_get(dest)) {
+      sub_write(argument, room_people_get(dest), TRUE, TO_ROOM);
+      sub_write(argument, room_people_get(dest), TRUE, TO_CHAR);
     }
-  }
+    return true;
+  });
 }
 
 OCMD(do_odoor) {
@@ -648,15 +650,15 @@ OCMD(do_odoor) {
     return;
   }
 
-  newexit = rm->dir_option[dir];
+  newexit = room_dir_option_get(rm, dir);
 
   /* purge exit */
   if (fd == 0) {
     if (newexit) {
-      if (newexit->general_description)
-        free(newexit->general_description);
-      if (newexit->keyword)
-        free(newexit->keyword);
+      if (exit_general_description_get(newexit))
+        free((char*)exit_general_description_get(newexit));
+      if (exit_keyword_get(newexit))
+        free((char*)exit_keyword_get(newexit));
       free(newexit);
       rm->dir_option[dir] = NULL;
     }
@@ -670,27 +672,24 @@ OCMD(do_odoor) {
 
     switch (fd) {
     case 1: /* description */
-      if (newexit->general_description)
-        free(newexit->general_description);
-      CREATE(newexit->general_description, char, strlen(value) + 3);
-      strcpy(newexit->general_description, value);
-      strcat(newexit->general_description, "\r\n"); /* strcat : OK */
+      {
+        char desc_buf[MAX_INPUT_LENGTH + 3];
+        snprintf(desc_buf, sizeof(desc_buf), "%s\r\n", value);
+        exit_general_description_set(newexit, desc_buf);
+      }
       break;
     case 2: /* flags       */
-      newexit->exit_info = (int16_t)asciiflag_conv(value);
+      exit_info_set(newexit, (int16_t)asciiflag_conv(value));
       break;
     case 3: /* key         */
-      newexit->key = atoi(value);
+      exit_key_set(newexit, atoi(value));
       break;
     case 4: /* name        */
-      if (newexit->keyword)
-        free(newexit->keyword);
-      CREATE(newexit->keyword, char, strlen(value) + 1);
-      strcpy(newexit->keyword, value);
+      exit_keyword_set(newexit, value);
       break;
     case 5: /* room        */
       if ((to_room = room_vnum_check(atoi(value))) != NOWHERE)
-        newexit->to_room = to_room;
+        exit_to_room_vnum_set(newexit, to_room);
       else
         obj_log(obj, "odoor: invalid door target");
       break;

@@ -15,7 +15,6 @@
 #include "guild_impl.h"
 #include "log.h"
 #include "object_impl.h"
-#include "room_impl.h"
 #include "shop_impl.h"
 #include "util_macros.h"
 #include "zone_db.h"

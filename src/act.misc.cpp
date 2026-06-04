@@ -31,6 +31,7 @@
 #include "affect.h"
 #include "extract.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "random.h"
 #include "relocate.h"
 #include "search.h"
@@ -77,8 +78,10 @@
 #include "util_macros.h"
 
 #include "search.hpp"
+#include "iterate.hpp"
 
 #include <cstdlib>
+#include <vector>
 
 /* local functions  */
 static void generate_multiform(struct char_data *ch, int count);
@@ -180,7 +183,7 @@ ACMD(do_restring) {
       send_to_char(ch, "You need at least 5,000 zenni to initiate an equipment "
                        "restring.\r\n");
       return;
-    } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+    } else if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
       send_to_char(
           ch,
           "You don't have a that equipment to restring in your inventory.\r\n");
@@ -225,29 +228,28 @@ ACMD(do_multiform) {
     return;
   }
 
-  struct char_data *tch = NULL, *next_v = NULL;
-  int count = 0;
+  std::vector<struct char_data *> multiforms;
 
-  for (tch = char_room_get(ch)->people; tch; tch = next_v) {
-    next_v = tch->next_in_room;
+  auto room = char_room_get(ch);
+  room_people_iterate(room, [&](auto tch) {
     if (tch == ch || !IS_NPC(tch)) {
-      continue;
+      return true;
     }
     if (GET_MOB_VNUM(tch) == 25 && GET_ORIGINAL(tch) == ch) {
-      count++;
+      multiforms.push_back(tch);
     }
-  }
+    return true;
+  });
 
   char arg[MAX_INPUT_LENGTH];
   one_argument(argument, arg);
 
   if (!strcasecmp(arg, "merge")) {
-    if (count == 0) {
+    if (multiforms.empty()) {
       send_to_char(ch, "You have no multiforms present to merge with!\r\n");
       return;
     }
-    for (tch = char_room_get(ch)->people; tch; tch = next_v) {
-      next_v = tch->next_in_room;
+    for (auto tch : multiforms) {
       if (tch == ch || !IS_NPC(tch)) {
         continue;
       }
@@ -312,7 +314,7 @@ static void generate_multiform(struct char_data *ch, int count) {
   sprintf(blamo, "p.%s", GET_NAME(ch));
   struct mob_proto_data *proto = mob_proto_by_id(25);
   if (!proto) {
-    send_to_imm("Multiform Clone doesn't exist!");
+    send_to_imm("Multiform Clone prototype doesn't exist!");
     return;
   }
 
@@ -478,8 +480,8 @@ static void resolve_song(struct char_data *ch) {
     return;
   }
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  bool stop_song = false;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     switch (GET_SONG(ch)) {
     case SONG_SAFETY:
       if ((ch->master == vict->master || ch == vict->master ||
@@ -554,7 +556,8 @@ static void resolve_song(struct char_data *ch) {
             ch, "You no longer have the ki necessary to play your song.\r\n");
         act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
         GET_SONG(ch) = 0;
-        return;
+        stop_song = true;
+        return false;
       }
       break;
     case SONG_SHADOW_STITCH:
@@ -562,7 +565,7 @@ static void resolve_song(struct char_data *ch) {
         if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
           if (ch == vict->master || ch->master == vict ||
               ch->master == vict->master) {
-            continue;
+            return true;
           } else if (skill > diceroll + 10) {
             apply_shadow_sitch(ch, vict, skill);
           }
@@ -577,12 +580,13 @@ static void resolve_song(struct char_data *ch) {
             ch, "You no longer have the ki necessary to play your song.\r\n");
         act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
         GET_SONG(ch) = 0;
-        return;
+        stop_song = true;
+        return false;
       }
       break;
     case SONG_TELEPORT_EARTH:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -604,7 +608,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_VEGETA:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -626,7 +630,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_FRIGID:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -648,7 +652,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_KONACK:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -670,7 +674,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_NAMEK:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -692,7 +696,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_ARLIA:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -714,7 +718,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_AETHER:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -736,7 +740,7 @@ static void resolve_song(struct char_data *ch) {
       break;
     case SONG_TELEPORT_KANASSA:
       if (vict == ch)
-        continue;
+        return true;
       if (AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
         if (ch == vict->master || ch->master == vict ||
             ch->master == vict->master) {
@@ -794,10 +798,15 @@ static void resolve_song(struct char_data *ch) {
             ch, "You no longer have the ki necessary to play your song.\r\n");
         act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
         GET_SONG(ch) = 0;
-        return;
+        stop_song = true;
+        return false;
       }
       break;
     }
+    return true;
+  });
+  if (stop_song) {
+    return;
   }
 
   if (GET_SONG(ch) >= 4 && skill > diceroll) {
@@ -1156,10 +1165,9 @@ ACMD(do_moondust) {
 
   struct char_data *vict = NULL, *next_v = NULL;
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch) {
-      continue;
+      return true;
     }
     if (AFF_FLAGGED(vict, AFF_GROUP)) {
       if (ch->master == vict->master || vict->master == ch ||
@@ -1172,7 +1180,8 @@ ACMD(do_moondust) {
         send_to_char(vict, "@RHeal@Y: @C%s@n\r\n", add_commas(heal));
       }
     }
-  }
+    return true;
+  });
 }
 
 ACMD(do_shell) {
@@ -1590,7 +1599,7 @@ ACMD(do_fish) {
           send_to_char(ch, "Syntax: fish apply (bait)\r\n");
           return;
         }
-        if (!(bait = get_obj_in_list_vis(ch, arg2, NULL, ch->carrying))) {
+        if (!(bait = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
           send_to_char(ch, "You don't have that bait.\r\n");
           return;
         } else if (GET_OBJ_TYPE(bait) != ITEM_FISHBAIT) {
@@ -1922,12 +1931,12 @@ ACMD(do_extract) {
   }
 
   if (!strcasecmp(arg, "combine")) {
-    if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, ch->carrying))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You do not have the first bottle that you were wanting "
                        "to combine.\r\n");
       return;
     }
-    if (!(obj2 = get_obj_in_list_vis(ch, arg3, NULL, ch->carrying))) {
+    if (!(obj2 = get_obj_in_list_vis(ch, arg3, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You do not have the second bottle that you were "
                        "wanting to combine.\r\n");
       return;
@@ -1968,7 +1977,7 @@ ACMD(do_extract) {
     }
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You do not have that item.\r\n");
     return;
   } else {
@@ -2668,11 +2677,9 @@ ACMD(do_scry) {
 }
 
 void ash_burn(struct char_data *ch) {
-  struct obj_data *obj, *next_obj;
 
   if (ch && char_room_get(ch) != NULL) {
-    for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       if (GET_OBJ_VNUM(obj) == 1306) {
         if (axion_dice(0) > GET_CON(ch)) {
           if (!IS_ANDROID(ch) && !IS_DEMON(ch) && !IS_ICER(ch)) {
@@ -2699,7 +2706,8 @@ void ash_burn(struct char_data *ch) {
           }
         }
       }
-    }
+      return true;
+    });
   }
 }
 
@@ -2720,24 +2728,24 @@ ACMD(do_ashcloud) {
     return;
   }
 
-  struct obj_data *ash = NULL, *obj, *next_obj;
+  struct obj_data *ash = NULL;
   int there = FALSE;
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 1305) {
       ash = obj;
     }
-  }
+    return true;
+  });
 
   struct room_data *room = char_room_get(ch);
 
-  for (obj = room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 1306) {
       there = TRUE;
     }
-  }
+    return true;
+  });
 
   if (there == TRUE) {
     send_to_char(ch, "You can not pile more ash into the air without causing "
@@ -2878,7 +2886,7 @@ ACMD(do_resize) {
       send_to_char(ch, "Syntax: resize (obj) (small | medium)\r\n");
       return;
     }
-    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You don't have that object!\r\n");
       return;
     } else {
@@ -3246,18 +3254,18 @@ ACMD(do_channel) {
     return;
   }
 
-  struct obj_data *obj, *next_obj = NULL, *ruby = NULL;
+  struct obj_data *ruby = NULL;
   int found = FALSE;
 
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  char_inventory_iterate(ch, [&](auto obj) {
     if (found == FALSE && GET_OBJ_VNUM(obj) == 6600) {
       if (!OBJ_FLAGGED(obj, ITEM_HOT)) {
         found = TRUE;
         ruby = obj;
       }
     }
-  }
+    return true;
+  });
 
   if (found == FALSE) {
     send_to_char(ch, "You do not have any uncharged blood rubies.\r\n");
@@ -3438,10 +3446,9 @@ ACMD(do_hydromancy) {
         act(bun, TRUE, ch, 0, 0, TO_CHAR);
         act(bunn, TRUE, ch, 0, 0, TO_ROOM);
 
-        for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-          next_v = vict->next_in_room;
+        room_people_iterate(char_room_get(ch), [&](auto vict) {
           if (vict == ch)
-            continue;
+            return true;
           if (!can_kill(ch, vict, NULL, 1)) {
             act("@CYou are protected from the water!@n", TRUE, vict, 0, 0,
                 TO_VICT);
@@ -3472,7 +3479,8 @@ ACMD(do_hydromancy) {
             do_simple_move(vict, attempt, TRUE);
             hurt(0, 0, ch, vict, NULL, cost * 4, 1);
           }
-        }
+          return true;
+        });
         room_geffect_set(exit_dest_get(EXIT(ch, attempt)), -3);
         LASTATK(ch) = last;
         WAIT_STATE(ch, PULSE_2SEC);
@@ -3676,12 +3684,12 @@ ACMD(do_instill) {
     return;
   }
 
-  if (!(token = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(token = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "Syntax: instill (token) (target)\r\n");
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "Syntax: instill (token) (target)\r\n");
     return;
   }
@@ -3891,20 +3899,20 @@ ACMD(do_bury) {
     return;
   }
 
-  struct obj_data *obj = NULL, *buried = NULL, *fobj = NULL, *next_obj;
+  struct obj_data *obj = NULL, *fobj = NULL;
 
-  for (buried = char_room_get(ch)->contents; buried; buried = next_obj) {
-    next_obj = buried->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto buried) {
     if (OBJ_FLAGGED(buried, ITEM_BURIED)) {
       fobj = buried;
     }
-  }
+    return true;
+  });
 
   if (!strcasecmp(arg, "bury")) {
     if (!*arg2) {
       send_to_char(ch, "Bury what?\r\n");
       return;
-    } else if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, ch->carrying))) {
+    } else if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You don't have that object to bury.\r\n");
       return;
     } else if (fobj != NULL) {
@@ -4065,17 +4073,17 @@ ACMD(do_ensnare) {
     return;
   }
 
-  struct obj_data *weave, *obj = NULL, *next_obj;
+  struct obj_data *obj = NULL;
   int found = FALSE;
 
-  for (weave = ch->carrying; weave; weave = next_obj) {
-    next_obj = weave->next_content;
+  char_inventory_iterate(ch, [&](auto weave) {
     if (found == FALSE && valid_silk(weave) &&
         !OBJ_FLAGGED(weave, ITEM_FORGED)) {
       found = TRUE;
       obj = weave;
     }
-  }
+    return true;
+  });
 
   if (found == FALSE) {
     send_to_char(
@@ -4287,7 +4295,7 @@ ACMD(do_silk) {
     return;
   }
 
-  struct obj_data *obj = NULL, *weave = NULL, *next_obj = NULL, *weaved = NULL;
+  struct obj_data *obj = NULL, *weaved = NULL;
   char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
 
   two_arguments(argument, arg, arg2);
@@ -4308,14 +4316,14 @@ ACMD(do_silk) {
     int found = FALSE, armor = 500, str = 0, intel = 0, olevel = 0;
     double price = 1;
 
-    for (weave = ch->carrying; weave; weave = next_obj) {
-      next_obj = weave->next_content;
+    char_inventory_iterate(ch, [&](auto weave) {
       if (found == FALSE && valid_silk(weave) &&
           !OBJ_FLAGGED(weave, ITEM_FORGED)) {
         found = TRUE;
         obj = weave;
       }
-    }
+      return true;
+    });
 
     if (found == FALSE) {
       send_to_char(ch, "You do not have an acceptable bundle of silk in your "
@@ -5089,8 +5097,7 @@ static int valid_recipe(struct char_data *ch, int recipe, int type) {
 
   if (type == 0) {
     /* Check for ingredients in inventory */
-    for (obj2 = ch->carrying; obj2; obj2 = next_obj) {
-      next_obj = obj2->next_content;
+    char_inventory_iterate(ch, [&](auto obj2) {
       switch (GET_OBJ_VNUM(obj2)) {
       case RCP_TOMATO:
         if (tomato > 0) {
@@ -5205,10 +5212,10 @@ static int valid_recipe(struct char_data *ch, int recipe, int type) {
         }
         break;
       }
-    }
+      return true;
+    });
   } else { /* We know the ingredients are there, remove and exit. */
-    for (obj2 = ch->carrying; obj2; obj2 = next_obj) {
-      next_obj = obj2->next_content;
+    char_inventory_iterate(ch, [&](auto obj2) {
       switch (GET_OBJ_VNUM(obj2)) {
       case RCP_TOMATO:
         if (tomato > 0) {
@@ -5343,7 +5350,8 @@ static int valid_recipe(struct char_data *ch, int recipe, int type) {
         }
         break;
       }
-    }
+      return true;
+    });
     return (TRUE);
     /* We'll exit here after removing the ingredients, for safety */
   }
@@ -6274,9 +6282,8 @@ ACMD(do_obstruct) {
     improve_skill(ch, SKILL_HYOGA_KABE, 0);
     return;
   } else {
-    struct obj_data *obj;
     auto ex = EXIT(ch, dir);
-    int newroom = ex->to_room;
+    int newroom = exit_to_room_vnum_get(ex);
     struct room_data *nrm = exit_dest_get(ex);
 
     if (room_flagged(nrm, ROOM_PEACEFUL)) {
@@ -6284,7 +6291,8 @@ ACMD(do_obstruct) {
       return;
     }
 
-    for (obj = nrm->contents; obj; obj = obj->next_content) {
+    bool found_wall = false;
+    room_contents_iterate(nrm, [&](auto obj) {
       if (GET_OBJ_VNUM(obj) == 79) {
         if (GET_OBJ_COST(obj) == dir2) {
           if (skill < prob) {
@@ -6305,10 +6313,13 @@ ACMD(do_obstruct) {
             decCurKI(ch, cost / 2);
             extract_obj(obj);
           }
-          return;
+          found_wall = true;
+          return false;
         }
       }
-    }
+      return true;
+    });
+    if (found_wall) return;
 
     struct obj_data *obj2, *obj3;
 
@@ -6474,7 +6485,7 @@ ACMD(do_feed) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You need to give them a senzu.\r\n");
     return;
   }
@@ -6536,7 +6547,7 @@ ACMD(do_spoil) {
   }
 
   if (!(obj =
-            get_obj_in_list_vis(ch, arg, NULL, char_room_get(ch)->contents))) {
+             get_obj_in_list_vis(ch, arg, NULL, inv_for_room(char_room_get(ch))))) {
     send_to_char(ch, "No corpse around here by that name.\r\n");
     return;
   }

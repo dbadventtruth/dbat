@@ -18,7 +18,7 @@
 #include "object_db.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
+
 
 #include "mail.h"
 #include "objsave.h"
@@ -55,7 +55,7 @@ void ASSIGNROOM(room_vnum room, SPECIAL(fname)) {
   struct room_data *rm = room_by_id(room);
 
   if (rm)
-    rm->func = fname;
+    room_func_set(rm, fname);
   else if (!mini_mud)
     log("SYSERR: Attempt to assign spec to non-existant room #%d", room);
 }
@@ -93,7 +93,7 @@ void assign_rooms(void) {
   if (CONFIG_DTS_ARE_DUMPS)
     room_iterate([&](auto room) {
       if (room_flagged(room, ROOM_DEATH))
-        room->func = dump;
+        room_func_set(room, dump);
       return true;
     });
 }

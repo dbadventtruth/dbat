@@ -55,8 +55,8 @@ room_vnum add_room(struct room_data *room) {
   if (auto irm = room_by_id(room->number)) {
     if (SCRIPT(irm))
       extract_script(irm, WLD_TRIGGER);
-    tch = irm->people;
-    tobj = irm->contents;
+    tch = room_people_get(irm);
+    tobj = room_contents_get(irm);
     copy_room(irm, room);
     irm->people = tch;
     irm->contents = tobj;
@@ -101,43 +101,41 @@ int delete_room(room_vnum vnum) {
    * Dump the contents of this room into the Void.  We could also just
    * extract the people, mobs, and objects here.
    */
-  for (obj = room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     obj_from_room(obj);
     obj_to_room(obj, 0);
-  }
-  for (ppl = room->people; ppl; ppl = next_ppl) {
-    next_ppl = ppl->next_in_room;
+    return true;
+  });
+  room_people_iterate(room, [&](auto ppl) {
     char_from_room(ppl);
     char_to_room(ppl, 0);
-  }
+    return true;
+  });
 
   free_room_strings(room);
-  if (SCRIPT(room))
+  if (room_script_get(room))
     extract_script(room, WLD_TRIGGER);
   free_proto_script(room, WLD_TRIGGER);
 
   room_iterate([&](auto other_room) {
-    for (j = 0; j < NUM_OF_DIRS; j++) {
-      auto ex = R_EXIT(other_room, j);
-      if (!ex)
-        continue;
-      if (ex->to_room != vnum)
-        continue;
-      if ((!ex->keyword || !*ex->keyword) &&
-          (!ex->general_description || !*ex->general_description)) {
+    room_exits_iterate(other_room, [&](auto dir, auto exit) {
+      if (exit->to_room != vnum)
+        return true;
+      if ((!exit->keyword || !*exit->keyword) &&
+          (!exit->general_description || !*exit->general_description)) {
         /* no description, remove exit completely */
-        if (ex->keyword)
-          free(ex->keyword);
-        if (ex->general_description)
-          free(ex->general_description);
-        free(ex);
+        if (exit->keyword)
+          free(exit->keyword);
+        if (exit->general_description)
+          free(exit->general_description);
+        free(exit);
         R_EXIT(other_room, j) = NULL;
       } else {
         /* description is set, just point to nowhere */
-        ex->to_room = NOWHERE;
+        exit->to_room = NOWHERE;
       }
-    }
+      return true;
+    });
     return true;
   });
 
@@ -246,12 +244,8 @@ int save_rooms(struct zone_data *zone) {
     /*
      * Now you write out the exits for the room.
      */
-    for (j = 0; j < NUM_OF_DIRS; j++) {
-      auto ex = R_EXIT(room, j);
-      if (!ex)
-        continue;
-
-      int dflag;
+     room_exits_iterate(room, [&](auto j, auto ex) {
+            int dflag;
       if (ex->general_description) {
         strncpy(buf, ex->general_description, sizeof(buf) - 1);
         strip_cr(buf);
@@ -290,7 +284,8 @@ int save_rooms(struct zone_data *zone) {
               j, buf, buf1, dflag, ex->key, ex->to_room, ex->dclock, ex->dchide,
               ex->dcskill, ex->dcmove, ex->failsavetype, ex->dcfailsave,
               ex->failroom, ex->totalfailroom);
-    }
+      return true;
+     });
 
     if (room->ex_description) {
       struct extra_descr_data *xdesc;
@@ -392,16 +387,14 @@ int free_room_strings(struct room_data *room) {
     free_ex_descriptions(room->ex_description);
 
   /* Free exits. */
-  for (i = 0; i < NUM_OF_DIRS; i++) {
-    if (room->dir_option[i]) {
-      if (room->dir_option[i]->general_description)
-        free(room->dir_option[i]->general_description);
-      if (room->dir_option[i]->keyword)
-        free(room->dir_option[i]->keyword);
-      free(room->dir_option[i]);
-      room->dir_option[i] = NULL;
-    }
-  }
+  room_exits_iterate(room, [&](auto dir, auto exit) {
+    if (exit->general_description)
+      free(exit->general_description);
+    if (exit->keyword)
+      free(exit->keyword);
+    free(exit);
+    return true;
+  });
 
   return TRUE;
 }

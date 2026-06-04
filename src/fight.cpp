@@ -57,11 +57,12 @@
 #include "relocate.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "spells.h"
 #include "stringutils.h"
 #include "util_macros.h"
 #include "weather_db.h"
+
+#include "iterate.hpp"
 
 #include <string.h>
 
@@ -251,14 +252,20 @@ static int pick_n_throw(struct char_data *ch, char *buf) {
     return (FALSE);
   }
 
-  for (cont = char_room_get(ch)->contents; cont; cont = cont->next_content) {
-    if (GET_OBJ_WEIGHT(cont) <= CAN_CARRY_W(ch) + IS_CARRYING_W(ch)) {
-      sprintf(buf2, "%s", cont->name);
-      do_get(ch, buf2, 0, 0);
-      sprintf(buf3, "%s %s", buf2, buf);
-      do_throw(ch, buf3, 0, 0);
-      return (TRUE);
-    }
+  {
+    bool thrown = false;
+    room_contents_iterate(char_room_get(ch), [&](auto cont) {
+      if (GET_OBJ_WEIGHT(cont) <= CAN_CARRY_W(ch) + IS_CARRYING_W(ch)) {
+        sprintf(buf2, "%s", cont->name);
+        do_get(ch, buf2, 0, 0);
+        sprintf(buf3, "%s %s", buf2, buf);
+        do_throw(ch, buf3, 0, 0);
+        thrown = true;
+        return false;
+      }
+      return true;
+    });
+    if (thrown) return (TRUE);
   }
 
   return (FALSE);
@@ -735,10 +742,14 @@ static void shadow_dragons_live() {
 
 /* For announcing the sounds of battle to nearby rooms */
 void impact_sound(struct char_data *ch, char *mssg) {
-  int door;
-  for (door = 0; door < NUM_OF_DIRS; door++)
-    if (CAN_GO(ch, door))
-      send_to_room(exit_dest_get(char_exit_dir(ch, door)), "%s", mssg);
+  auto room = char_room_get(ch);
+  if(!room) return;
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    if (auto dest = char_can_go_exit(ch, exit)) {
+      send_to_room(dest, "%s", mssg);
+    }
+    return true;
+  });
 }
 
 /* For removing body parts */
@@ -1142,8 +1153,10 @@ void fight_stack() {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G flees in terror and you lose sight of $m!", TRUE, ch, 0, 0,
               TO_ROOM);
-          while (ch->carrying)
-            extract_obj(ch->carrying);
+          char_inventory_iterate(ch, [&](auto obj) {
+            extract_obj(obj);
+            return true;
+          });
 
           extract_char(ch);
           continue;
@@ -1154,8 +1167,10 @@ void fight_stack() {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G turns and runs away. You lose sight of $m!", TRUE, ch, 0, 0,
               TO_ROOM);
-          while (ch->carrying)
-            extract_obj(ch->carrying);
+          char_inventory_iterate(ch, [&](auto obj) {
+            extract_obj(obj);
+            return true;
+          });
           extract_char(ch);
           continue;
         }
@@ -1706,24 +1721,20 @@ static void make_pcorpse(struct char_data *ch) {
   GET_OBJ_TIMER(corpse) = CONFIG_MAX_PC_CORPSE_TIME;
   SET_BIT_AR(GET_OBJ_EXTRA(corpse), ITEM_UNIQUE_SAVE);
 
-  struct obj_data *obj, *next_obj;
-
-  for (obj = ch->carrying; obj; obj = next_obj) {
-    next_obj = obj->next_content;
-
+  char_inventory_iterate(ch, [&](auto obj) {
     if (obj && GET_OBJ_VNUM(obj) < 19900 && GET_OBJ_VNUM(obj) != 17998) {
       if ((GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 18999) ||
           (GET_OBJ_VNUM(obj) >= 19100 && GET_OBJ_VNUM(obj) <= 19199)) {
-        continue;
+        return true;
       } else {
         obj_from_char(obj);
         obj_to_obj(obj, corpse);
-        continue;
+        return true;
       }
     } else {
-      continue;
+      return true;
     }
-  }
+  });
 
   /* transfer gold */
   if (GET_GOLD(ch) > 0) {
@@ -1867,8 +1878,8 @@ static void handle_corpse_condition(struct obj_data *corpse,
 static void make_corpse(struct char_data *ch, struct char_data *tch) {
   struct obj_data *corpse, *o;
   struct obj_data *money;
-  struct obj_data *obj, *next_obj, *meat;
-  int i, x, y;
+  struct obj_data *meat;
+  int x, y;
 
   corpse = create_obj();
 
@@ -1947,29 +1958,30 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
   SET_BIT_AR(GET_OBJ_EXTRA(corpse), ITEM_UNIQUE_SAVE);
 
   if (MOB_FLAGGED(ch, MOB_HUSK)) {
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    char_inventory_iterate(ch, [&](auto obj) {
       obj_from_char(obj);
       extract_obj(obj);
-    }
+      return true;
+    });
   }
 
   if (!MOB_FLAGGED(ch, MOB_HUSK)) {
     /* transfer character's inventory to the corpse */
     corpse->contains = ch->carrying;
-    for (o = corpse->contains; o != NULL; o = o->next_content) {
+    obj_contents_iterate(corpse, [&](struct obj_data *o) {
       o->in_obj = corpse;
-    }
+      return true;
+    });
     object_list_new_owner(corpse, NULL);
 
     /* transfer character's equipment to the corpse */
     int eqdrop = FALSE;
-    for (i = 0; i < NUM_WEARS; i++)
-      if (GET_EQ(ch, i)) {
-        remove_otrigger(GET_EQ(ch, i), ch);
-        obj_to_obj(unequip_char(ch, i), corpse);
-        eqdrop = TRUE;
-      }
+    char_equipment_iterate(ch, [&](auto i, auto eq) {
+      remove_otrigger(eq, ch);
+      obj_to_obj(unequip_char(ch, i), corpse);
+      eqdrop = TRUE;
+      return true;
+    });
   }
   /* transfer gold */
   if (GET_GOLD(ch) > 0 && !MOB_FLAGGED(ch, MOB_HUSK)) {
@@ -2022,11 +2034,16 @@ static void change_alignment(struct char_data *ch, struct char_data *victim) {
 }
 
 void death_cry(struct char_data *ch) {
-  int door;
-  for (door = 0; door < NUM_OF_DIRS; door++)
-    if (CAN_GO(ch, door))
-      send_to_room(exit_dest_get(char_exit_dir(ch, door)),
+  auto room = char_room_get(ch);
+  if(!room) return;
+
+  room_exits_iterate(room, [&](auto dir, auto exit) {
+    if (auto dest = char_can_go_exit(ch, exit)) {
+      send_to_room(dest,
                    "Your blood freezes as you hear someone's death cry.\r\n");
+    }
+    return true;
+  });
 }
 
 /* Let's clean up necessary things after "death" */

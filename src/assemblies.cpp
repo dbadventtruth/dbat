@@ -18,6 +18,7 @@
 #include "flags.h"
 #include "handler.h"
 #include "object_db.h"
+#include "room_api.h"
 #include "object_impl.h"
 #include "object_macros.h"
 
@@ -26,7 +27,7 @@
 #include "interpreter.h"
 #include "log.h"
 #include "relocate.h"
-#include "room_impl.h"
+
 #include "search.h"
 
 #include <cstring>
@@ -260,14 +261,14 @@ bool assemblyCheckComponents(long lVnum, struct char_data *pCharacter,
     else {
       if (pAssembly->pComponents[i].bInRoom) {
         if ((ppComponentObjects[i] = get_obj_in_list_num(
-                 lRnum, char_room_get(pCharacter)->contents)) == NULL)
+                 lRnum, inv_for_room(char_room_get(pCharacter)))) == NULL)
           bOk = FALSE;
         else {
           obj_from_room(ppComponentObjects[i]);
         }
       } else {
         if ((ppComponentObjects[i] =
-                 get_obj_in_list_num(lRnum, pCharacter->carrying)) == NULL)
+                 get_obj_in_list_num(lRnum, inv_for_char(pCharacter))) == NULL)
           bOk = FALSE;
         else {
           obj_from_char(ppComponentObjects[i]);

@@ -30,6 +30,8 @@
 #include "util_macros.h"
 #include "vehicles.h"
 
+#include "iterate.hpp"
+
 #include <cstring>
 
 /* put an object in a room */
@@ -117,20 +119,20 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   }
   int osect = room_sector_type_get(obj_room_get(object));
   struct room_direction_data *down = obj_exit_dir(object, 5);
-  if (down && (osect == SECT_UNDERWATER || osect == SECT_WATER_NOSWIM)) {
+  auto ddest = down ? exit_dest_get(down) : NULL;
+  if (ddest && (osect == SECT_UNDERWATER || osect == SECT_WATER_NOSWIM)) {
     act("$p @Bsinks to deeper waters.@n", TRUE, 0, object, 0, TO_ROOM);
-    struct room_data *dest = exit_dest_get(down);
     obj_from_room(object);
-    obj_to_room(object, dest);
+    obj_to_room(object, ddest);
   }
   osect = room_sector_type_get(obj_room_get(object));
   down = obj_exit_dir(object, 5);
-  if (down && osect == SECT_FLYING &&
+  ddest = down ? exit_dest_get(down) : NULL;
+  if (ddest && osect == SECT_FLYING &&
       (GET_OBJ_VNUM(object) < 80 || GET_OBJ_VNUM(object) > 83)) {
     act("$p @Cfalls down.@n", TRUE, 0, object, 0, TO_ROOM);
-    struct room_data *dest = exit_dest_get(down);
     obj_from_room(object);
-    obj_to_room(object, dest);
+    obj_to_room(object, ddest);
     if (osect != SECT_FLYING) {
       act("$p @Cfalls down and smacks the ground.@n", TRUE, 0, object, 0,
           TO_ROOM);
@@ -254,7 +256,6 @@ void obj_from_obj(struct obj_data *obj) {
 /* move a player out of a room */
 void char_from_room(struct char_data *ch) {
   struct char_data *temp;
-  int i;
 
   if (ch == NULL || char_room_get(ch) == NULL) {
     log("SYSERR: NULL character or NOWHERE in %s, char_from_room", __FILE__);
@@ -266,23 +267,23 @@ void char_from_room(struct char_data *ch) {
   if (AFF_FLAGGED(ch, AFF_PURSUIT) && FIGHTING(ch) == NULL)
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_PURSUIT);
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i) != NULL)
-      if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT)
-        if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS))
-          char_room_get(ch)->light--;
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT)
+      if (GET_OBJ_VAL(eq, VAL_LIGHT_HOURS))
+        room_light_mod(char_room_get(ch), -1);
+    return true;
+  });
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
-    char_room_get(ch)->light--;
-
-  REMOVE_FROM_LIST(ch, char_room_get(ch)->people, next_in_room, temp);
+    room_light_mod(char_room_get(ch), -1);
+  auto room = char_room_get(ch);
+  REMOVE_FROM_LIST(ch, room->people, next_in_room, temp);
   IN_ROOM(ch) = NOWHERE;
   ch->next_in_room = NULL;
 }
 
 /* place a character in a room */
 void char_to_room(struct char_data *ch, struct room_data *room) {
-  int i;
 
   if (!ch || !room) {
     log("SYSERR: Illegal value(s) passed to char_to_room.");
@@ -290,18 +291,30 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   }
 
   struct room_data *rm = room;
+
+  room_people_iterate(rm, [&](struct char_data *tch) {
+    if (tch == ch) {
+      log("SYSERR: Attempting to char_to_room char %s into room %d, but they "
+          "are already in that room.",
+          GET_NAME(ch), room_vnum_get(rm));
+      return false;
+    }
+    return true;
+  });
+
   ch->next_in_room = rm->people;
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i))
-      if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT)
-        if (GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS))
-          rm->light++;
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT)
+      if (GET_OBJ_VAL(eq, VAL_LIGHT_HOURS))
+        room_light_mod(rm, 1);
+    return true;
+  });
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
-    rm->light++;
+    room_light_mod(rm, 1);
 
   /* Stop fighting now, if we left. */
   if (FIGHTING(ch) && char_room_get(ch) != char_room_get(FIGHTING(ch)) &&
@@ -471,7 +484,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
   if (char_room_get(ch)) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS)) /* if light is ON */
-        char_room_get(ch)->light++;
+        room_light_mod(char_room_get(ch), 1);
   } else
     log("SYSERR: IN_ROOM(ch) = NOWHERE when equipping char %s.", GET_NAME(ch));
 
@@ -501,7 +514,7 @@ struct obj_data *unequip_char(struct char_data *ch, int pos) {
   if (char_room_get(ch)) {
     if (GET_OBJ_TYPE(obj) == ITEM_LIGHT)
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS)) /* if light is ON */
-        char_room_get(ch)->light--;
+        room_light_mod(char_room_get(ch), -1);
   } else
     log("SYSERR: IN_ROOM(ch) = NOWHERE when unequipping char %s.",
         GET_NAME(ch));

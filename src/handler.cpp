@@ -33,8 +33,8 @@
 #include "object_utils.h"
 #include "relocate.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
+#include "iterate.hpp"
 /* external vars */
 
 /* local functions */
@@ -52,40 +52,42 @@ static void update_object(struct obj_data *obj, int use) {
   /* dont update objects with a timer trigger */
   if (!SCRIPT_CHECK(obj, OTRIG_TIMER) && (GET_OBJ_TIMER(obj) > 0))
     GET_OBJ_TIMER(obj) -= use;
-  if (obj->contains)
-    update_object(obj->contains, use);
-  if (obj->next_content)
-    update_object(obj->next_content, use);
+  obj_contents_iterate(obj, [&](auto i) {
+    update_object(i, use);
+    return true;
+  });
 }
 
 void update_char_objects(struct char_data *ch) {
-  int i, j;
+  int j;
 
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i)) {
-      if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT &&
-          GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS) > 0 &&
-          GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_TIME) <= 0) {
-        j = --GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS);
-        GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_TIME) = 3;
-        if (j == 1) {
-          send_to_char(ch, "Your light begins to flicker and fade.\r\n");
-          act("$n's light begins to flicker and fade.", FALSE, ch, 0, 0,
-              TO_ROOM);
-        } else if (j == 0) {
-          send_to_char(ch, "Your light sputters out and dies.\r\n");
-          act("$n's light sputters out and dies.", FALSE, ch, 0, 0, TO_ROOM);
-          char_room_get(ch)->light--;
-        }
-      } else if (GET_OBJ_TYPE(GET_EQ(ch, i)) == ITEM_LIGHT &&
-                 GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_HOURS) > 0) {
-        GET_OBJ_VAL(GET_EQ(ch, i), VAL_LIGHT_TIME) -= 1;
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT &&
+        GET_OBJ_VAL(eq, VAL_LIGHT_HOURS) > 0 &&
+        GET_OBJ_VAL(eq, VAL_LIGHT_TIME) <= 0) {
+      j = --GET_OBJ_VAL(eq, VAL_LIGHT_HOURS);
+      GET_OBJ_VAL(eq, VAL_LIGHT_TIME) = 3;
+      if (j == 1) {
+        send_to_char(ch, "Your light begins to flicker and fade.\r\n");
+        act("$n's light begins to flicker and fade.", FALSE, ch, 0, 0,
+            TO_ROOM);
+      } else if (j == 0) {
+        send_to_char(ch, "Your light sputters out and dies.\r\n");
+        act("$n's light sputters out and dies.", FALSE, ch, 0, 0, TO_ROOM);
+        room_light_mod(char_room_get(ch), -1);
       }
-      update_object(GET_EQ(ch, i), 2);
+    } else if (GET_OBJ_TYPE(eq) == ITEM_LIGHT &&
+               GET_OBJ_VAL(eq, VAL_LIGHT_HOURS) > 0) {
+      GET_OBJ_VAL(eq, VAL_LIGHT_TIME) -= 1;
     }
+    update_object(eq, 2);
+    return true;
+  });
 
-  if (ch->carrying)
-    update_object(ch->carrying, 1);
+  char_inventory_iterate(ch, [&](auto obj) {
+    update_object(obj, 1);
+    return true;
+  });
 }
 
 /* check and see if this item is better */

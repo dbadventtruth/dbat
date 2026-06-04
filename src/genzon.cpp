@@ -15,7 +15,6 @@
 #include "flags.h"
 #include "log.h"
 #include "object_impl.h"
-#include "room_impl.h"
 #include "shop_impl.h"
 #include "zone_impl.h"
 
@@ -320,7 +319,7 @@ void remove_room_zone_commands(struct zone_data *zone, struct room_data *room) {
     default:
       break;
     }
-    if (cmd_room == room->number)
+    if (cmd_room == room_vnum_get(room))
       remove_cmd_from_list(&zone->cmd, subcmd);
     else
       subcmd++;
@@ -451,7 +450,7 @@ int save_zone(struct zone_data *zone) {
       arg1 = cmd->arg1;
       arg2 = cmd->arg2;
       arg3 = cmd->arg3;
-      comment = room->name;
+      comment = room_name_get(room);
     } break;
     case 'R': {
       auto obj = obj_proto_by_id(cmd->arg2);

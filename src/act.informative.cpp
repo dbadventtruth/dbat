@@ -61,6 +61,7 @@
 #include "extract.h"
 #include "fileop.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "races_plus.h"
 #include "random.h"
 #include "relocate.h"
@@ -92,6 +93,8 @@
 #include "mail.h"
 #include "screen.h"
 
+#include "iterate.hpp"
+
 /* local functions */
 static void gen_map(struct char_data *ch, int num);
 static void bringdesc(struct char_data *ch, struct char_data *tch);
@@ -104,8 +107,8 @@ static void print_object_location(int num, struct obj_data *obj,
                                   struct char_data *ch, int recur);
 static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
                              int mode);
-static void list_obj_to_char(struct obj_data *list, struct char_data *ch,
-                             int mode, int show);
+static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
+                             int mode, bool show);
 static void trans_check(struct char_data *ch, struct char_data *vict);
 static int show_obj_modifiers(struct obj_data *obj, struct char_data *ch);
 static void perform_mortal_where(struct char_data *ch, char *arg);
@@ -114,7 +117,7 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch);
 static void diag_obj_to_char(struct obj_data *obj, struct char_data *ch);
 static void look_at_char(struct char_data *i, struct char_data *ch);
 static void list_one_char(struct char_data *i, struct char_data *ch);
-static void list_char_to_char(struct char_data *list, struct char_data *ch);
+static void list_char_to_char(struct room_data *room, struct char_data *ch);
 static void look_in_direction(struct char_data *ch, int dir);
 static void look_in_obj(struct char_data *ch, char *arg);
 static void look_out_window(struct char_data *ch, char *arg);
@@ -128,7 +131,7 @@ static void display_scroll(struct char_data *ch, struct obj_data *obj);
 static void space_to_minus(char *str);
 static void free_history(struct char_data *ch, int type);
 static int yesrace(int num);
-static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
+static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
                           struct char_data *ch);
 // definitions
 ACMD(do_evolve) {
@@ -357,40 +360,39 @@ static void search_room(struct char_data *ch) {
   act("@y$n@Y begins searching the room carefully.@n", TRUE, ch, 0, 0, TO_ROOM);
   WAIT_STATE(ch, PULSE_1SEC);
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
-    if (AFF_FLAGGED(vict, AFF_HIDE) && vict != ch) {
-      if (GET_SUPPRESS(vict) >= 1) {
-        perc *= (GET_SUPPRESS(vict) * 0.01);
-      }
-      prob = GET_DEX(vict) + (GET_INT(vict) * 0.6) +
-             GET_SKILL(vict, SKILL_HIDE) + GET_SKILL(vict, SKILL_MOVE_SILENTLY);
-
-      if (AFF_FLAGGED(vict, AFF_LIQUEFIED)) {
-        prob *= 1.5;
-      }
-      if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 4 || GET_GENOME(ch, 1) == 4)) {
-        perc += 5;
-      }
-      if (IS_MUTANT(vict) &&
-          (GET_GENOME(vict, 0) == 5 || GET_GENOME(vict, 1) == 5)) {
-        prob += 10;
-      }
-      terrain += terrain_bonus(vict);
-      if (perc * bonus >= prob * terrain) { /* Found them. */
-        act("@YYou find @y$N@Y hiding nearby!@n", TRUE, ch, 0, vict, TO_CHAR);
-        act("@y$n@Y has found your hiding spot!@n", TRUE, ch, 0, vict, TO_VICT);
-        act("@y$n@Y has found @y$N's@Y hiding spot!@n", TRUE, ch, 0, vict,
-            TO_NOTVICT);
-        reveal_hiding(vict, 4);
-        found++;
-      }
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
+    if (!AFF_FLAGGED(vict, AFF_HIDE) || vict == ch) {
+      return true;
     }
-  }
+    if (GET_SUPPRESS(vict) >= 1) {
+      perc *= (GET_SUPPRESS(vict) * 0.01);
+    }
+    prob = GET_DEX(vict) + (GET_INT(vict) * 0.6) +
+           GET_SKILL(vict, SKILL_HIDE) + GET_SKILL(vict, SKILL_MOVE_SILENTLY);
 
-  struct obj_data *obj = NULL;
+    if (AFF_FLAGGED(vict, AFF_LIQUEFIED)) {
+      prob *= 1.5;
+    }
+    if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 4 || GET_GENOME(ch, 1) == 4)) {
+      perc += 5;
+    }
+    if (IS_MUTANT(vict) &&
+        (GET_GENOME(vict, 0) == 5 || GET_GENOME(vict, 1) == 5)) {
+      prob += 10;
+    }
+    terrain += terrain_bonus(vict);
+    if (perc * bonus >= prob * terrain) { /* Found them. */
+      act("@YYou find @y$N@Y hiding nearby!@n", TRUE, ch, 0, vict, TO_CHAR);
+      act("@y$n@Y has found your hiding spot!@n", TRUE, ch, 0, vict, TO_VICT);
+      act("@y$n@Y has found @y$N's@Y hiding spot!@n", TRUE, ch, 0, vict,
+          TO_NOTVICT);
+      reveal_hiding(vict, 4);
+      found++;
+    }
+    return true;
+  });
 
-  for (obj = char_room_get(ch)->contents; obj; obj = obj->next_content) {
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (OBJ_FLAGGED(obj, ITEM_BURIED) && perc * bonus > rand_number(50, 200)) {
       act("@YYou uncover @y$p@Y, which had been burried here.@n", TRUE, ch, obj,
           0, TO_CHAR);
@@ -399,7 +401,8 @@ static void search_room(struct char_data *ch) {
       REMOVE_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_BURIED);
       found++;
     }
-  }
+    return true;
+  });
   decCurSTPercent(ch, .001);
 
   if (found == 0) {
@@ -559,12 +562,12 @@ ACMD(do_table) {
   }
 
   if (!(obj =
-            get_obj_in_list_vis(ch, arg, NULL, char_room_get(ch)->contents))) {
+            get_obj_in_list_vis(ch, arg, NULL, inv_for_room(char_room_get(ch))))) {
     send_to_char(ch, "You don't see that table here.\r\n");
     return;
   }
 
-  if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL, obj->contains))) {
+  if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL, inv_for_obj(obj)))) {
     send_to_char(ch, "That card doesn't seem to be on that table.\r\n");
     return;
   }
@@ -591,19 +594,19 @@ ACMD(do_draw) {
   struct obj_data *obj = NULL, *obj2 = NULL, *obj3 = NULL, *next_obj = NULL;
   int drawn = FALSE;
 
-  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have a case.\r\n");
     return;
   }
-  for (obj2 = obj->contains; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
-    if (drawn == FALSE) {
+  obj_contents_iterate(obj, [&](struct obj_data *obj2) {
+    if (!drawn) {
       obj_from_obj(obj2);
       obj_to_char(obj2, ch);
       obj3 = obj2;
       drawn = TRUE;
     }
-  }
+    return !drawn;
+  });
   if (drawn == FALSE) {
     send_to_char(ch, "You don't have any cards in the case!\r\n");
     return;
@@ -630,33 +633,31 @@ ACMD(do_shuffle) {
   struct obj_data *obj = NULL, *obj2 = NULL, *next_obj = NULL;
   int count = 0;
 
-  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, "case", NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have a case.\r\n");
     return;
   }
 
-  for (obj2 = obj->contains; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
-    if (!OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
-      continue;
+  obj_contents_iterate(obj, [&](struct obj_data *obj2) {
+    if (OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
+      count += 1;
     }
-    count += 1;
-  }
+    return true;
+  });
   if (count <= 0) {
     send_to_char(ch, "You don't have any cards in the case!\r\n");
     return;
   }
   int total = count;
-  for (obj2 = obj->contains; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
+  obj_contents_iterate(obj, [&](struct obj_data *obj2) {
     obj_from_obj(obj2);
     obj_to_room(obj2, room_by_id(48));
-  }
+    return true;
+  });
   while (count > 0) {
-    for (obj2 = room_by_id(48)->contents; obj2; obj2 = next_obj) {
-      next_obj = obj2->next_content;
+    room_contents_iterate(room_by_id(48), [&](auto obj2) {
       if (!OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT)) {
-        continue;
+        return true;
       }
       if (obj2 && count > 1 && rand_number(1, 4) == 3) {
         count -= 1;
@@ -667,7 +668,8 @@ ACMD(do_shuffle) {
         obj_from_room(obj2);
         obj_to_obj(obj2, obj);
       }
-    }
+      return true;
+    });
   }
   send_to_char(ch, "You shuffle the cards carefully.\r\n");
   act("$n shuffles their deck.", TRUE, ch, 0, 0, TO_ROOM);
@@ -677,7 +679,6 @@ ACMD(do_shuffle) {
 
 ACMD(do_hand) {
 
-  struct obj_data *obj, *next_obj;
   char arg[MAX_INPUT_LENGTH];
   int count = 0;
 
@@ -691,16 +692,14 @@ ACMD(do_hand) {
   if (!strcasecmp("look", arg)) {
     send_to_char(
         ch, "@CYour hand contains:\r\n@D---------------------------@n\r\n");
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
-      if (obj && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
-        continue;
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (!OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
+        return true;
       }
-      if (obj) {
-        count += 1;
-        send_to_char(ch, "%s\r\n", obj->short_description);
-      }
-    }
+      count += 1;
+      send_to_char(ch, "%s\r\n", obj->short_description);
+      return true;
+    });
     act("$n looks at $s hand.", TRUE, ch, 0, 0, TO_ROOM);
     if (count == 0) {
       send_to_char(ch, "No cards.");
@@ -718,16 +717,14 @@ ACMD(do_hand) {
     send_to_char(ch, "You show off your hand to the room.\r\n");
     act("@C$n's hand contains:\r\n@D---------------------------@n", TRUE, ch, 0,
         0, TO_ROOM);
-    for (obj = ch->carrying; obj; obj = next_obj) {
-      next_obj = obj->next_content;
-      if (obj && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
-        continue;
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (!OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT)) {
+        return true;
       }
-      if (obj) {
-        count += 1;
-        act("$p", TRUE, ch, obj, 0, TO_ROOM);
-      }
-    }
+      count += 1;
+      act("$p", TRUE, ch, obj, 0, TO_ROOM);
+      return true;
+    });
     if (count == 0) {
       act("No cards.", TRUE, ch, 0, 0, TO_ROOM);
     }
@@ -756,7 +753,7 @@ ACMD(do_post) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't seem to have that.\r\n");
     return;
   }
@@ -790,7 +787,7 @@ ACMD(do_post) {
     return;
   } else {
     if (!(obj2 = get_obj_in_list_vis(ch, arg2, NULL,
-                                     char_room_get(ch)->contents))) {
+                                     inv_for_room(char_room_get(ch))))) {
       send_to_char(
           ch, "You can't seem to find the thing you want to post it on.\r\n");
       return;
@@ -839,7 +836,7 @@ ACMD(do_play) {
     return;
   }
 
-  struct obj_data *obj = NULL, *obj2 = NULL, *obj3 = NULL, *next_obj = NULL;
+  struct obj_data *obj = NULL, *obj2 = NULL;
   char arg[MAX_INPUT_LENGTH];
   one_argument(argument, arg);
 
@@ -848,17 +845,17 @@ ACMD(do_play) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't have that card to play.\r\n");
     return;
   }
 
-  for (obj3 = char_room_get(ch)->contents; obj3; obj3 = next_obj) {
-    next_obj = obj3->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj3) {
     if (GET_OBJ_VNUM(obj3) == GET_OBJ_VNUM(SITS(ch)) - 4) {
       obj2 = obj3;
     }
-  }
+    return true;
+  });
 
   if (obj2 == NULL) {
     send_to_char(
@@ -886,7 +883,7 @@ ACMD(do_nickname) {
   }
 
   if (strcasecmp(arg, "ship")) {
-    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+    if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You don't have that item to nickname.\r\n");
       return;
     }
@@ -898,16 +895,16 @@ ACMD(do_nickname) {
   }
 
   if (!strcasecmp(arg, "ship")) {
-    struct obj_data *ship = NULL, *next_obj = NULL, *ship2 = NULL;
+    struct obj_data *ship = NULL, *ship2 = NULL;
     int found = FALSE;
-    for (ship = char_room_get(ch)->contents; ship; ship = next_obj) {
-      next_obj = ship->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto ship) {
       if (GET_OBJ_VNUM(ship) >= 45000 && GET_OBJ_VNUM(ship) <= 45999 &&
           found == FALSE) {
         found = TRUE;
         ship2 = ship;
       }
-    }
+      return true;
+    });
     if (found == TRUE) {
       if (strstr(arg2, "@")) {
         send_to_char(
@@ -982,7 +979,7 @@ ACMD(do_showoff) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You don't seem to have that.\r\n");
     return;
   } else if (!(vict = get_player_vis(ch, arg2, NULL, FIND_CHAR_ROOM))) {
@@ -1617,22 +1614,17 @@ static void bringdesc(struct char_data *ch, struct char_data *tch) {
   }
 }
 
-static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
+static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
                           struct char_data *ch) {
-  int door;
-  struct room_data *room = room_by_id(vnum);
+  
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = exit_dest_get(exit);
+    if (!dest) return true;
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *exit = room->dir_option[door];
-    if (!exit)
-      continue;
-    struct room_data *dest = exit_dest_get(exit);
-    if (!dest)
-      continue;
-    int sect = room_sector_type_get(dest);
+        int sect = room_sector_type_get(dest);
     int geffect = room_geffect_get(dest);
     bool sunken = room_is_sunken(dest);
-    if ((EXIT_FLAGGED(exit, EX_CLOSED) && !EXIT_FLAGGED(exit, EX_SECRET))) {
+    if ((exit_flagged(exit, EX_CLOSED) && !exit_flagged(exit, EX_SECRET))) {
       switch (door) {
       case NORTH:
         map[y - 1][x] = '8';
@@ -1659,7 +1651,7 @@ static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
         map[y + 1][x - 1] = '8';
         break;
       }
-    } else if (!EXIT_FLAGGED(exit, EX_CLOSED)) {
+    } else if (!exit_flagged(exit, EX_CLOSED)) {
       switch (door) {
       case NORTH:
         if (sunken) {
@@ -2135,7 +2127,8 @@ static void map_draw_room(char map[9][10], int x, int y, room_vnum vnum,
         break;
       }
     }
-  }
+    return true;
+  });
 }
 
 ACMD(do_map) { gen_map(ch, 1); }
@@ -2175,38 +2168,40 @@ static void gen_map(struct char_data *ch, int num) {
   struct room_data *room = char_room_get(ch);
 
   /* print out exits */
-  map_draw_room(map, 4, 4, ch->in_room, ch);
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    if (R_EXIT(room, door) && R_EXIT(room, door)->to_room != NOWHERE &&
-        !EXIT_FLAGGED(R_EXIT(room, door), EX_CLOSED)) {
-      switch (door) {
+  map_draw_room(map, 4, 4, room, ch);
+
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = char_can_go_exit(ch, exit);
+    if(!dest) return true;
+    switch (door) {
       case NORTH:
-        map_draw_room(map, 4, 3, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 4, 3, dest, ch);
         break;
       case EAST:
-        map_draw_room(map, 5, 4, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 5, 4, dest, ch);
         break;
       case SOUTH:
-        map_draw_room(map, 4, 5, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 4, 5, dest, ch);
         break;
       case WEST:
-        map_draw_room(map, 3, 4, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 3, 4, dest, ch);
         break;
       case NORTHEAST:
-        map_draw_room(map, 5, 3, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 5, 3, dest, ch);
         break;
       case NORTHWEST:
-        map_draw_room(map, 3, 3, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 3, 3, dest, ch);
         break;
       case SOUTHEAST:
-        map_draw_room(map, 5, 5, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 5, 5, dest, ch);
         break;
       case SOUTHWEST:
-        map_draw_room(map, 3, 5, R_EXIT(room, door)->to_room, ch);
+        map_draw_room(map, 3, 5, dest, ch);
         break;
       }
-    }
-  }
+
+    return true;
+  });
 
   /* make it obvious what room they are in */
   map[4][4] = 'x';
@@ -2224,63 +2219,63 @@ static void gen_map(struct char_data *ch, int num) {
       if (i == 2) {
         sprintf(
             buf2, "@w       @w|%s@w|           %s",
-            (R_EXIT(room, 0) && !EXIT_FLAGGED(R_EXIT(room, 0), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 0), EX_CLOSED) ? " @rN " : " @CN ")
+            (room_dir_option_get(room, 0) && !exit_flagged(room_dir_option_get(room, 0), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 0), EX_CLOSED) ? " @rN " : " @CN ")
                 : "   ",
             map[i]);
       }
       if (i == 3) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|     %s",
-            (R_EXIT(room, 6) && !EXIT_FLAGGED(R_EXIT(room, 6), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 6), EX_CLOSED) ? " @rNW" : " @CNW")
+            (room_dir_option_get(room, 6) && !exit_flagged(room_dir_option_get(room, 6), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 6), EX_CLOSED) ? " @rNW" : " @CNW")
                 : "   ",
-            (R_EXIT(room, 4) && !EXIT_FLAGGED(R_EXIT(room, 4), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 4), EX_CLOSED) ? " @yU " : " @YU ")
+            (room_dir_option_get(room, 4) && !exit_flagged(room_dir_option_get(room, 4), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 4), EX_CLOSED) ? " @yU " : " @YU ")
                 : "   ",
-            (R_EXIT(room, 7) && !EXIT_FLAGGED(R_EXIT(room, 7), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 7), EX_SECRET) ? "@rNE " : "@CNE ")
+            (room_dir_option_get(room, 7) && !exit_flagged(room_dir_option_get(room, 7), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 7), EX_SECRET) ? "@rNE " : "@CNE ")
                 : "   ",
             map[i]);
       }
       if (i == 4) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|     %s",
-            (R_EXIT(room, 3) && !EXIT_FLAGGED(R_EXIT(room, 3), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 3), EX_CLOSED) ? "  @rW" : "  @CW")
+            (room_dir_option_get(room, 3) && !exit_flagged(room_dir_option_get(room, 3), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 3), EX_CLOSED) ? "  @rW" : "  @CW")
                 : "   ",
-            (R_EXIT(room, 10) && !EXIT_FLAGGED(R_EXIT(room, 10), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 10), EX_CLOSED) ? " @rI "
+            (room_dir_option_get(room, 10) && !exit_flagged(room_dir_option_get(room, 10), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 10), EX_CLOSED) ? " @rI "
                                                              : " @mI ")
-                : ((R_EXIT(room, 11) &&
-                    !EXIT_FLAGGED(R_EXIT(room, 11), EX_SECRET))
-                       ? (EXIT_FLAGGED(R_EXIT(room, 11), EX_CLOSED) ? "@rOUT"
+                : ((room_dir_option_get(room, 11) &&
+                    !exit_flagged(room_dir_option_get(room, 11), EX_SECRET))
+                       ? (exit_flagged(room_dir_option_get(room, 11), EX_CLOSED) ? "@rOUT"
                                                                     : "@mOUT")
                        : "@r{ }"),
-            (R_EXIT(room, 1) && !EXIT_FLAGGED(R_EXIT(room, 1), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 1), EX_CLOSED) ? "@rE  " : "@CE  ")
+            (room_dir_option_get(room, 1) && !exit_flagged(room_dir_option_get(room, 1), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 1), EX_CLOSED) ? "@rE  " : "@CE  ")
                 : "   ",
             map[i]);
       }
       if (i == 5) {
         sprintf(
             buf2, "@w @w|%s@w| |%s@w| |%s@w|     %s",
-            (R_EXIT(room, 9) && !EXIT_FLAGGED(R_EXIT(room, 9), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 9), EX_CLOSED) ? " @rSW" : " @CSW")
+            (room_dir_option_get(room, 9) && !exit_flagged(room_dir_option_get(room, 9), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 9), EX_CLOSED) ? " @rSW" : " @CSW")
                 : "   ",
-            (R_EXIT(room, 5) && !EXIT_FLAGGED(R_EXIT(room, 5), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 5), EX_CLOSED) ? " @yD " : " @YD ")
+            (room_dir_option_get(room, 5) && !exit_flagged(room_dir_option_get(room, 5), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 5), EX_CLOSED) ? " @yD " : " @YD ")
                 : "   ",
-            (R_EXIT(room, 8) && !EXIT_FLAGGED(R_EXIT(room, 8), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 8), EX_SECRET) ? "@rSE " : "@CSE ")
+            (room_dir_option_get(room, 8) && !exit_flagged(room_dir_option_get(room, 8), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 8), EX_SECRET) ? "@rSE " : "@CSE ")
                 : "   ",
             map[i]);
       }
       if (i == 6) {
         sprintf(
             buf2, "@w       @w|%s@w|           %s",
-            (R_EXIT(room, 2) && !EXIT_FLAGGED(R_EXIT(room, 2), EX_SECRET))
-                ? (EXIT_FLAGGED(R_EXIT(room, 2), EX_CLOSED) ? " @rS " : " @CS ")
+            (room_dir_option_get(room, 2) && !exit_flagged(room_dir_option_get(room, 2), EX_SECRET))
+                ? (exit_flagged(room_dir_option_get(room, 2), EX_CLOSED) ? " @rS " : " @CS ")
                 : "   ",
             map[i]);
       }
@@ -2891,14 +2886,27 @@ static int show_obj_modifiers(struct obj_data *obj, struct char_data *ch) {
   return (found);
 }
 
-static void list_obj_to_char(struct obj_data *list, struct char_data *ch,
-                             int mode, int show) {
+static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
+                             int mode, bool show) {
   struct obj_data *i, *j, *d;
   bool found = FALSE;
   int num;
+  struct obj_data *obj_list = NULL;
+
+  switch (list.entity_type) {
+  case ENT_CHAR:
+    obj_list = char_carrying_get(list.entity.ch);
+    break;
+  case ENT_OBJ:
+    obj_list = list.entity.obj->contains;
+    break;
+  case ENT_ROOM:
+    obj_list = room_contents_get(list.entity.room);
+    break;
+  }
 
   /* Loop through all objects in the list */
-  for (i = list; i; i = i->next_content) {
+  for (i = obj_list; i; i = i->next_content) {
     if (i->description == NULL)
       continue;
     if (strcasecmp(i->description, "undefined") == 0)
@@ -2906,7 +2914,7 @@ static void list_obj_to_char(struct obj_data *list, struct char_data *ch,
     num = 0;
     d = i;
     if (CONFIG_STACK_OBJS) {
-      for (j = list; j != i; j = j->next_content)
+      for (j = obj_list; j != i; j = j->next_content)
         if ((!strcasecmp(j->short_description, i->short_description) &&
              !strcasecmp(j->description, i->description)) &&
             (j->vnum == i->vnum) &&
@@ -3040,9 +3048,8 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch) {
 }
 
 static void look_at_char(struct char_data *i, struct char_data *ch) {
-  int j, found, clan = FALSE;
+  int found, clan = FALSE;
   char buf[100];
-  struct obj_data *tmp_obj;
 
   if (!ch->desc) {
     return;
@@ -3283,9 +3290,13 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
   }
   diag_char_to_char(i, ch);
   found = FALSE;
-  for (j = 0; !found && j < NUM_WEARS; j++)
-    if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)))
+  char_equipment_iterate(i, [&](auto slot, auto eq) {
+    if (CAN_SEE_OBJ(ch, eq)) {
       found = TRUE;
+      return false;
+    }
+    return true;
+  });
 
   if (found && (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NOEQSEE))) {
     send_to_char(ch, "\r\n"); /* act() does capitalization. */
@@ -3294,44 +3305,35 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
     } else {
       act("The disguised person is using:", FALSE, i, 0, ch, TO_VICT);
     }
-    for (j = 0; j < NUM_WEARS; j++)
-      if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
-          (j != WEAR_WIELD1 && j != WEAR_WIELD2)) {
-        send_to_char(ch, "%s", wear_where[j]);
-        show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
-          struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(i, j);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+    char_equipment_iterate(i, [&](auto slot, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq) && slot != WEAR_WIELD1 && slot != WEAR_WIELD2) {
+        send_to_char(ch, "%s", wear_where[slot]);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
+          obj_contents_iterate(eq, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
-      } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
-                 (!PLR_FLAGGED(i, PLR_THANDW))) {
-        send_to_char(ch, "%s", wear_where[j]);
-        show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(GET_EQ(i, j), ITEM_SHEATH)) {
-          struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(i, j);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+      } else if (CAN_SEE_OBJ(ch, eq) &&
+                 !PLR_FLAGGED(i, PLR_THANDW)) {
+        send_to_char(ch, "%s", wear_where[slot]);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
+          obj_contents_iterate(eq, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
-      } else if (GET_EQ(i, j) && CAN_SEE_OBJ(ch, GET_EQ(i, j)) &&
-                 (PLR_FLAGGED(i, PLR_THANDW))) {
+      } else if (CAN_SEE_OBJ(ch, eq) &&
+                 PLR_FLAGGED(i, PLR_THANDW)) {
         send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
-        show_obj_to_char(GET_EQ(i, j), ch, SHOW_OBJ_SHORT);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
       }
+      return true;
+    });
   }
   if (ch != i && ((GET_SKILL(ch, SKILL_KEEN) && AFF_FLAGGED(ch, AFF_SNEAK)) ||
                   GET_ADMLEVEL(ch))) {
@@ -3342,14 +3344,15 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
           i, TO_VICT);
     if (GET_SKILL(ch, SKILL_KEEN) > axion_dice(0) &&
         (!IS_NPC(i) || GET_ADMLEVEL(ch) > 1)) {
-      for (tmp_obj = i->carrying; tmp_obj; tmp_obj = tmp_obj->next_content) {
+      char_inventory_iterate(i, [&](auto tmp_obj) {
         if (CAN_SEE_OBJ(ch, tmp_obj) &&
             (ADM_FLAGGED(ch, ADM_SEEINV) ||
              (rand_number(0, 20) < GET_LEVEL(ch)))) {
           show_obj_to_char(tmp_obj, ch, SHOW_OBJ_SHORT);
           found = TRUE;
         }
-      }
+        return true;
+      });
       improve_skill(ch, SKILL_KEEN, 1);
     } else if (IS_NPC(i) && GET_ADMLEVEL(ch) < 2) {
       return;
@@ -3881,17 +3884,15 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
   }
 }
 
-static void list_char_to_char(struct char_data *list, struct char_data *ch) {
-  struct char_data *i, *j;
+static void list_char_to_char(struct room_data *room, struct char_data *ch) {
   struct hide_node {
     struct hide_node *next;
     struct char_data *hidden;
   } *hideinfo, *lasthide, *tmphide;
-  int num;
 
   hideinfo = lasthide = NULL;
 
-  for (i = list; i; i = i->next_in_room) {
+  room_people_iterate(room, [&](auto i) {
     if (AFF_FLAGGED(i, AFF_HIDE) &&
         roll_resisted(i, SKILL_HIDE, ch, SKILL_SPOT)) {
       if (GET_SKILL(i, SKILL_HIDE) && !IS_NPC(ch) && i != ch) {
@@ -3906,28 +3907,30 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
         lasthide->next = tmphide;
         lasthide = tmphide;
       }
-      continue;
     }
-  }
+    return true;
+  });
 
-  for (i = list; i; i = i->next_in_room) {
+  room_people_iterate(room, [&](auto i) {
     /* hide npcs whose description starts with a '.' from non-holylighted people
     - Idea from Elaseth of TBA */
     if ((ch == i) || (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_HOLYLIGHT) &&
                       IS_NPC(i) && i->long_descr && *i->long_descr == '.'))
-      continue;
+      return true;
 
     for (tmphide = hideinfo; tmphide; tmphide = tmphide->next)
       if (tmphide->hidden == i)
         break;
     if (tmphide)
-      continue;
+      return true;
 
+    struct char_data *j;
+    int num;
     if (CAN_SEE(ch, i)) {
       num = 0;
       if (CONFIG_STACK_MOBS) {
         /* How many other occurences of this mob are there? */
-        for (j = list; j != i; j = j->next_in_room)
+        for (j = room_people_get(room); j != i; j = j->next_in_room)
           if ((i->vnum == j->vnum) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
               (AFF_FLAGS(i)[1] == AFF_FLAGS(j)[1]) &&
@@ -3947,7 +3950,7 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
            * mob for an earlier "i".  The continue pops us out of
            * the main "i" for loop.
            */
-          continue;
+          return true;
         for (j = i; j; j = j->next_in_room)
           if ((i->vnum == j->vnum) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
@@ -3975,7 +3978,8 @@ static void list_char_to_char(struct char_data *list, struct char_data *ch) {
              AFF_FLAGGED(i, AFF_INFRAVISION))
       send_to_char(
           ch, "@wYou see a pair of glowing red eyes looking your way.@n\r\n");
-  } /* loop through all characters in room */
+    return true;
+  }); /* loop through all characters in room */
 }
 
 static void capitalize_direction(char *out, size_t out_size, int door) {
@@ -3984,10 +3988,10 @@ static void capitalize_direction(char *out, size_t out_size, int door) {
 }
 
 static const char *exit_keyword_or_opening(struct room_direction_data *exit) {
-  if (!exit->keyword)
+  if (!exit_keyword_get(exit))
     return "opening";
 
-  const char *keyword = fname(exit->keyword);
+  const char *keyword = fname(exit_keyword_get(exit));
   if (!keyword || !strcasecmp(keyword, "undefined"))
     return "opening";
 
@@ -3998,11 +4002,11 @@ static bool
 append_immortal_exit_door_details(char *line, size_t line_size,
                                   struct char_data *ch, int door,
                                   struct room_direction_data *exit) {
-  if (!IS_SET(exit->exit_info, EX_ISDOOR) &&
-      !IS_SET(exit->exit_info, EX_SECRET))
+  if (!exit_flagged(exit, EX_ISDOOR) &&
+      !exit_flagged(exit, EX_SECRET))
     return true;
 
-  const char *keyword = fname(exit->keyword);
+  const char *keyword = fname(exit_keyword_get(exit));
   if (!keyword) {
     send_to_char(ch, "@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION %s@n\r\n",
                  dirs[door]);
@@ -4018,11 +4022,11 @@ append_immortal_exit_door_details(char *line, size_t line_size,
 
   snprintf(line + strlen(line), line_size - strlen(line),
            "                    The %s%s %s %s %s%s.\r\n",
-           IS_SET(exit->exit_info, EX_SECRET) ? "@rsecret@w " : "", door_name,
+           exit_flagged(exit, EX_SECRET) ? "@rsecret@w " : "", door_name,
            strstr(plural_probe, "s ") != NULL ? "are" : "is",
-           IS_SET(exit->exit_info, EX_CLOSED) ? "closed" : "open",
-           IS_SET(exit->exit_info, EX_LOCKED) ? "and locked" : "and unlocked",
-           IS_SET(exit->exit_info, EX_PICKPROOF) ? " (pickproof)" : "");
+           exit_flagged(exit, EX_CLOSED) ? "closed" : "open",
+           exit_flagged(exit, EX_LOCKED) ? "and locked" : "and unlocked",
+           exit_flagged(exit, EX_PICKPROOF) ? " (pickproof)" : "");
   return true;
 }
 
@@ -4030,14 +4034,17 @@ static bool character_has_light(struct char_data *ch) {
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     return true;
 
-  for (int i = 0; i < NUM_WEARS; i++) {
-    struct obj_data *eq = GET_EQ(ch, i);
-    if (eq && GET_OBJ_TYPE(eq) == ITEM_LIGHT &&
-        GET_OBJ_VAL(eq, VAL_LIGHT_HOURS))
-      return true;
-  }
+  bool has_light = false;
 
-  return false;
+  char_equipment_iterate(ch, [&](auto slot, auto eq) {
+    if (GET_OBJ_TYPE(eq) == ITEM_LIGHT && GET_OBJ_VAL(eq, VAL_LIGHT_HOURS)) {
+      has_light = true;
+      return false;
+    }
+    return true;
+  });
+
+  return has_light;
 }
 
 static void show_auto_exit_room_details(struct room_data *target_room,
@@ -4136,14 +4143,13 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
   bool door_found = false;
   char exit_lines[NUM_OF_DIRS][500] = {};
 
-  for (int door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *exit = room_dir_option_get(room, door);
-    if (!exit || exit->to_room == NOWHERE)
-      continue;
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    struct room_data *destination = exit_dest_get(exit);
+    if(!destination) return true;
 
     char direction[32];
     capitalize_direction(direction, sizeof(direction), door);
-    struct room_data *destination = exit_dest_get(exit);
+
     char *line = exit_lines[door];
 
     if (immortal_view) {
@@ -4153,8 +4159,8 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
                room_name_get(destination));
       if (!append_immortal_exit_door_details(line, sizeof(exit_lines[door]), ch,
                                              door, exit))
-        return;
-    } else if (!IS_SET(exit->exit_info, EX_CLOSED)) {
+        return false;
+    } else if (!exit_flagged(exit, EX_CLOSED)) {
       door_found = true;
       const char *destination_name =
           IS_DARK(exit_dest_get(exit)) && !CAN_SEE_IN_DARK(ch) && !has_light
@@ -4163,13 +4169,15 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
       snprintf(line, sizeof(exit_lines[door]), "@c%-9s @D-@w %s\r\n", direction,
                destination_name);
     } else if (CONFIG_DISP_CLOSED_DOORS &&
-               !IS_SET(exit->exit_info, EX_SECRET)) {
+               !exit_flagged(exit, EX_SECRET)) {
       door_found = true;
       snprintf(line, sizeof(exit_lines[door]),
                "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", direction,
                exit_keyword_or_opening(exit));
     }
-  }
+
+    return true;
+  });
 
   if (!door_found)
     send_to_char(ch, " None.\r\n");
@@ -4182,23 +4190,22 @@ static void do_auto_exits(struct room_data *target_room, struct char_data *ch,
   show_auto_exit_room_details(target_room, ch);
 }
 
-static void do_auto_exits2(struct room_data *target_room,
+static void do_auto_exits2(struct room_data *room,
                            struct char_data *ch) {
-  int door, slen = 0;
-  struct room_data *room = target_room;
+  int slen = 0;
 
   send_to_char(ch, "\nExits: ");
 
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    struct room_direction_data *exit = room_dir_option_get(room, door);
-    if (!exit || exit->to_room == NOWHERE)
-      continue;
-    if (EXIT_FLAGGED(exit, EX_CLOSED))
-      continue;
+  room_exits_iterate(room, [&](auto door, auto exit) {
+    auto dest = exit_dest_get(exit);
+    if(!dest) return true;
+    if (exit_flagged(exit, EX_CLOSED))
+      return true;
 
     send_to_char(ch, "%s ", abbr_dirs[door]);
     slen++;
-  }
+    return true;
+  });
 
   send_to_char(ch, "%s\r\n", slen ? "" : "None!");
 }
@@ -4502,8 +4509,7 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
   const int geffect = room_geffect_get(trm);
   const char *name = room_name_get(trm);
   const char *description = room_description_get(trm);
-  struct obj_data *contents = room_contents_get(trm);
-  struct char_data *people = room_people_get(trm);
+
   trig_data *t;
 
   if (!ch->desc)
@@ -4532,9 +4538,9 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
     }
 
     send_to_char(ch, "@wLocation: @G%-70s@w\r\n", name);
-    if (SCRIPT(trm)) {
+    if (auto sc = room_script_get(trm)) {
       send_to_char(ch, "@D[@GTriggers");
-      for (t = TRIGGERS(SCRIPT(trm)); t; t = t->next)
+      for (t = TRIGGERS(sc); t; t = t->next)
         send_to_char(ch, " %d", GET_TRIG_VNUM(t));
       send_to_char(ch, "@D] ");
     }
@@ -4608,14 +4614,14 @@ void look_at_room(struct room_data *target_room, struct char_data *ch,
     send_to_char(ch, "@D[@GItems Stored@D: @g%d@D]@n\r\n",
                  check_saveroom_count(ch, NULL));
   }
-  list_obj_to_char(contents, ch, SHOW_OBJ_LONG, FALSE);
-  list_char_to_char(people, ch);
+  list_obj_to_char(inv_for_room(trm), ch, SHOW_OBJ_LONG, FALSE);
+  list_char_to_char(trm, ch);
 }
 
 static void look_in_direction(struct char_data *ch, int dir) {
   if (EXIT(ch, dir)) {
-    if (EXIT(ch, dir)->general_description)
-      send_to_char(ch, "%s", EXIT(ch, dir)->general_description);
+    if (exit_general_description_get(EXIT(ch, dir)))
+      send_to_char(ch, "%s", exit_general_description_get(EXIT(ch, dir)));
     else {
       struct obj_data *obj = char_inventory_search_vnum(ch, 17, FALSE, 0);
       if (!obj) {
@@ -4626,13 +4632,13 @@ static void look_in_direction(struct char_data *ch, int dir) {
       }
     }
 
-    if (EXIT_FLAGGED(EXIT(ch, dir), EX_ISDOOR) && EXIT(ch, dir)->keyword) {
-      if (!EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET) &&
-          EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED))
+    if (exit_flagged(EXIT(ch, dir), EX_ISDOOR) && exit_keyword_get(EXIT(ch, dir))) {
+      if (!exit_flagged(EXIT(ch, dir), EX_SECRET) &&
+          exit_flagged(EXIT(ch, dir), EX_CLOSED))
         send_to_char(ch, "The %s is closed.\r\n",
-                     fname(EXIT(ch, dir)->keyword));
-      else if (!EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED))
-        send_to_char(ch, "The %s is open.\r\n", fname(EXIT(ch, dir)->keyword));
+                     fname(exit_keyword_get(EXIT(ch, dir))));
+      else if (!exit_flagged(EXIT(ch, dir), EX_CLOSED))
+        send_to_char(ch, "The %s is open.\r\n", fname(exit_keyword_get(EXIT(ch, dir))));
     }
   } else
     send_to_char(ch, "Nothing special there...\r\n");
@@ -4666,7 +4672,7 @@ static void look_in_obj(struct char_data *ch, char *arg) {
       } else {
         send_to_char(
             ch, "After seconds of concentration you see the image of %s.\r\n",
-            portal_dest->name);
+            room_name_get(portal_dest));
       }
     } else if (GET_OBJ_VAL(obj, VAL_PORTAL_APPEAR) < MAX_PORTAL_TYPES) {
       /* display the appropriate description from the list of descriptions
@@ -4728,7 +4734,7 @@ static void look_in_obj(struct char_data *ch, char *arg) {
         break;
       }
 
-      list_obj_to_char(obj->contains, ch, SHOW_OBJ_SHORT, TRUE);
+      list_obj_to_char(inv_for_obj(obj), ch, SHOW_OBJ_SHORT, TRUE);
     }
   } else { /* item must be a fountain or drink container */
     if (GET_OBJ_VAL(obj, VAL_DRINKCON_HOWFULL) <= 0 &&
@@ -4789,9 +4795,9 @@ char *find_exdesc(char *word, struct extra_descr_data *list) {
  * suggested fix to this problem.
  */
 static void look_at_target(struct char_data *ch, char *arg, int cmread) {
-  int bits, found = FALSE, j, fnum, i = 0, msg = 1;
+  int bits, found = FALSE, fnum, i = 0, msg = 1;
   struct char_data *found_char = NULL;
-  struct obj_data *obj, *found_obj = NULL;
+  struct obj_data *obj = NULL, *found_obj = NULL;
   char *desc;
   char number[MAX_STRING_LENGTH];
 
@@ -4804,19 +4810,23 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
   }
 
   if (cmread) {
-    for (obj = ch->carrying; obj; obj = obj->next_content) {
-      if (GET_OBJ_TYPE(obj) == ITEM_BOARD) {
+    char_inventory_iterate(ch, [&](auto inv_obj) {
+      if (GET_OBJ_TYPE(inv_obj) == ITEM_BOARD) {
         found = TRUE;
-        break;
+        obj = inv_obj;
+        return false;
       }
-    }
+      return true;
+    });
     if (!obj) {
-      for (obj = char_room_get(ch)->contents; obj; obj = obj->next_content) {
-        if (GET_OBJ_TYPE(obj) == ITEM_BOARD) {
+      room_contents_iterate(char_room_get(ch), [&](auto content) {
+        if (GET_OBJ_TYPE(content) == ITEM_BOARD) {
           found = TRUE;
-          break;
+          obj = content;
+          return false;
         }
-      }
+        return true;
+      });
     }
     if (obj) {
       arg = one_argument(arg, number);
@@ -4864,40 +4874,44 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
     }
 
     /* Does the argument match an extra desc in the room? */
-    if ((desc = find_exdesc(arg, char_room_get(ch)->ex_description)) != NULL &&
+    if ((desc = find_exdesc(arg, room_ex_description_get(char_room_get(ch)))) != NULL &&
         ++i == fnum) {
       send_to_char(ch, "%s", desc);
       return;
     }
 
     /* Does the argument match an extra desc in the char's equipment? */
-    for (j = 0; j < NUM_WEARS && !found; j++)
-      if (GET_EQ(ch, j) && CAN_SEE_OBJ(ch, GET_EQ(ch, j)))
-        if ((desc = find_exdesc(arg, GET_EQ(ch, j)->ex_description)) != NULL &&
+    char_equipment_iterate(ch, [&](auto slot, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq))
+        if ((desc = find_exdesc(arg, eq->ex_description)) != NULL &&
             ++i == fnum) {
           send_to_char(ch, "%s", desc);
-          if (isname(arg, GET_EQ(ch, j)->name)) {
-            if (GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_WEAPON) {
+          if (isname(arg, eq->name)) {
+            if (GET_OBJ_TYPE(eq) == ITEM_WEAPON) {
               send_to_char(ch, "The weapon type of %s is a %s.\r\n",
-                           GET_OBJ_SHORT(GET_EQ(ch, j)),
-                           weapon_type[(int)GET_OBJ_VAL(GET_EQ(ch, j),
+                           GET_OBJ_SHORT(eq),
+                           weapon_type[(int)GET_OBJ_VAL(eq,
                                                         VAL_WEAPON_SKILL)]);
             }
-            if (GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_SPELLBOOK) {
-              display_spells(ch, GET_EQ(ch, j));
+            if (GET_OBJ_TYPE(eq) == ITEM_SPELLBOOK) {
+              display_spells(ch, eq);
             }
-            if (GET_OBJ_TYPE(GET_EQ(ch, j)) == ITEM_SCROLL) {
-              display_scroll(ch, GET_EQ(ch, j));
+            if (GET_OBJ_TYPE(eq) == ITEM_SCROLL) {
+              display_scroll(ch, eq);
             }
-            diag_obj_to_char(GET_EQ(ch, j), ch);
+            diag_obj_to_char(eq, ch);
             send_to_char(ch, "It appears to be made of %s",
-                         material_names[GET_OBJ_MATERIAL(GET_EQ(ch, j))]);
+                         material_names[GET_OBJ_MATERIAL(eq)]);
           }
           found = TRUE;
+          return false;
         }
+      return true;
+    });
 
     /* Does the argument match an extra desc in the char's inventory? */
-    for (obj = ch->carrying; obj && !found; obj = obj->next_content) {
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (found) return false;
       if (CAN_SEE_OBJ(ch, obj))
         if ((desc = find_exdesc(arg, obj->ex_description)) != NULL &&
             ++i == fnum) {
@@ -4925,12 +4939,14 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
             }
           }
           found = TRUE;
+          return false;
         }
-    }
+      return true;
+    });
 
     /* Does the argument match an extra desc of an object in the room? */
-    for (obj = char_room_get(ch)->contents; obj && !found;
-         obj = obj->next_content)
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
+      if (found) return true;
       if (CAN_SEE_OBJ(ch, obj))
         if ((desc = find_exdesc(arg, obj->ex_description)) != NULL &&
             ++i == fnum) {
@@ -4972,7 +4988,10 @@ static void look_at_target(struct char_data *ch, char *arg, int cmread) {
                          add_commas(GET_OBJ_WEIGHT(obj)));
           }
           found = TRUE;
+          return false;
         }
+      return true;
+    });
 
     /* If an object was found back in generic_find */
     if (bits) {
@@ -5011,11 +5030,12 @@ static void look_out_window(struct char_data *ch, char *arg) {
     return;
   } else {
     /* Look for any old window in the room */
-    for (i = char_room_get(ch)->contents; i; i = i->next_content)
+    room_contents_iterate(char_room_get(ch), [&](auto i) {
       if ((GET_OBJ_TYPE(i) == ITEM_WINDOW) && isname("window", i->name)) {
         viewport = i;
-        continue;
       }
+      return true;
+    });
   }
   if (!viewport) {
     /* Nothing suitable to look through */
@@ -5029,18 +5049,15 @@ static void look_out_window(struct char_data *ch, char *arg) {
       /* We are looking out of the room */
       if (GET_OBJ_VAL(viewport, VAL_WINDOW_UNUSED4) < 0) {
         /* Look for the default "outside" room */
-        for (door = 0; door < NUM_OF_DIRS; door++) {
-          struct room_direction_data *exit = EXIT(ch, door);
-          if (!exit)
-            continue;
-          struct room_data *dest = exit_dest_get(exit);
-          if (!dest)
-            continue;
-          if (!room_flagged(dest, ROOM_INDOORS)) {
-            target_room = dest;
-            continue;
-          }
-        }
+        room_exits_iterate(char_room_get(ch), [&](auto door, auto exit) {
+           auto dest = exit_dest_get(exit);
+           if (!dest) return true;
+           if (!room_flagged(dest, ROOM_INDOORS)) {
+             target_room = dest;
+             return false;
+           }
+           return true;
+         });
       } else {
         target_room = room_by_id(GET_OBJ_VAL(viewport, VAL_WINDOW_UNUSED4));
       }
@@ -5319,7 +5336,7 @@ ACMD(do_look) {
   else if (IS_DARK(char_room_get(ch)) && !CAN_SEE_IN_DARK(ch) &&
            !PLR_FLAGGED(ch, PLR_AURALIGHT)) {
     send_to_char(ch, "It is pitch black...\r\n");
-    list_char_to_char(char_room_get(ch)->people, ch); /* glowing red eyes */
+    list_char_to_char(char_room_get(ch), ch); /* glowing red eyes */
   } else {
     char arg[MAX_INPUT_LENGTH], arg2[200];
 
@@ -5381,7 +5398,7 @@ ACMD(do_look) {
       struct extra_descr_data *i;
       int found = 0;
 
-      for (i = char_room_get(ch)->ex_description; i; i = i->next) {
+      for (i = room_ex_description_get(char_room_get(ch)); i; i = i->next) {
         if (*i->keyword != '.') {
           send_to_char(ch, "%s%s:\r\n%s", (found ? "\r\n" : ""), i->keyword,
                        i->description);
@@ -5390,7 +5407,7 @@ ACMD(do_look) {
       }
       if (!found)
         send_to_char(ch, "You couldn't find anything noticeable.\r\n");
-    } else if (find_exdesc(arg, char_room_get(ch)->ex_description) != NULL) {
+    } else if (find_exdesc(arg, room_ex_description_get(char_room_get(ch))) != NULL) {
       look_at_target(ch, arg, 0);
     } else {
       if (subcmd == SCMD_SEARCH)
@@ -6829,7 +6846,7 @@ ACMD(do_inventory) {
       return;
     }
   }
-  list_obj_to_char(ch->carrying, ch, SHOW_OBJ_SHORT, TRUE);
+  list_obj_to_char(inv_for_char(ch), ch, SHOW_OBJ_SHORT, TRUE);
   send_to_char(ch, "\n");
 }
 
@@ -6838,45 +6855,37 @@ ACMD(do_equipment) {
 
   send_to_char(ch, "        @YEquipment Being "
                    "Worn\r\n@D-------------------------------------@w\r\n");
+  
   for (i = 1; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-          (i != WEAR_WIELD1 && i != WEAR_WIELD2)) {
+    if (auto eq = GET_EQ(ch, i); eq && CAN_SEE_OBJ(ch, eq)) {
+      if ((i != WEAR_WIELD1 && i != WEAR_WIELD2)) {
         send_to_char(ch, "%s", wear_where[i]);
-        show_obj_to_char(GET_EQ(ch, i), ch, SHOW_OBJ_SHORT);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
 
-        if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_SHEATH)) {
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(ch, i);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+                          *sheath = eq;
+          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
-      } else if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-                 (!PLR_FLAGGED(ch, PLR_THANDW))) {
+      } else if ((!PLR_FLAGGED(ch, PLR_THANDW))) {
         send_to_char(ch, "%s", wear_where[i]);
-        show_obj_to_char(GET_EQ(ch, i), ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(GET_EQ(ch, i), ITEM_SHEATH)) {
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
+        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
           struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = GET_EQ(ch, i);
-          for (obj2 = sheath->contains; obj2; obj2 = next_obj) {
-            next_obj = obj2->next_content;
-            if (obj2) {
-              send_to_char(ch, "@D  ---- @YSheathed@D ----> @n");
-              show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            }
-          }
-          obj2 = NULL;
+                          *sheath = eq;
+          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
+            send_to_char(ch, "@D  ---- @YSheathed@D ----> @n");
+            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
+            return true;
+          });
         }
-      } else if (CAN_SEE_OBJ(ch, GET_EQ(ch, i)) &&
-                 (PLR_FLAGGED(ch, PLR_THANDW))) {
+      } else if ((PLR_FLAGGED(ch, PLR_THANDW))) {
         send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
-        show_obj_to_char(GET_EQ(ch, i), ch, SHOW_OBJ_SHORT);
+        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
       } else {
         send_to_char(ch, "%s", wear_where[i]);
         send_to_char(ch, "Something.\r\n");
@@ -7120,7 +7129,7 @@ ACMD(do_who) {
         continue;
       if (questwho && !PRF_FLAGGED(tch, PRF_QUEST))
         continue;
-      if (localwho && char_room_get(ch)->zone != char_room_get(tch)->zone)
+      if (localwho && room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(tch)))
         continue;
       if (PRF_FLAGGED(tch, PRF_HIDE) && tch != ch &&
           GET_ADMLEVEL(ch) < ADMLVL_IMMORT) {
@@ -7173,7 +7182,7 @@ ACMD(do_who) {
         continue;
       if (questwho && !PRF_FLAGGED(tch, PRF_QUEST))
         continue;
-      if (localwho && char_room_get(ch)->zone != char_room_get(tch)->zone)
+      if (localwho && room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(tch)))
         continue;
       if (who_room && (char_room_get(tch) != char_room_get(ch)))
         continue;
@@ -7528,19 +7537,19 @@ static void perform_mortal_where(struct char_data *ch, char *arg) {
         continue;
       if (char_room_get(i) == NULL || !CAN_SEE(ch, i))
         continue;
-      if (char_room_get(ch)->zone != char_room_get(i)->zone)
+      if (room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(i)))
         continue;
-      send_to_char(ch, "%-20s - %s\r\n", GET_NAME(i), char_room_get(i)->name);
+      send_to_char(ch, "%-20s - %s\r\n", GET_NAME(i), room_name_get(char_room_get(i)));
     }
   } else { /* print only FIRST char, not all. */
     for (i = character_list; i; i = i->next) {
       if (char_room_get(i) == NULL || i == ch)
         continue;
-      if (!CAN_SEE(ch, i) || char_room_get(i)->zone != char_room_get(ch)->zone)
+      if (!CAN_SEE(ch, i) || room_zone_vnum_get(char_room_get(i)) != room_zone_vnum_get(char_room_get(ch)))
         continue;
       if (!isname(arg, i->name))
         continue;
-      send_to_char(ch, "%-25s - %s\r\n", GET_NAME(i), char_room_get(i)->name);
+      send_to_char(ch, "%-25s - %s\r\n", GET_NAME(i), room_name_get(char_room_get(i)));
       return;
     }
     send_to_char(ch, "Nobody around by that name.\r\n");
@@ -7559,7 +7568,7 @@ static void print_object_location(int num, struct obj_data *obj,
 
   if (obj_room_get(obj) != NULL)
     send_to_char(ch, "[%5d] %s\r\n", obj_room_vnum_get(obj),
-                 obj_room_get(obj)->name);
+                 room_name_get(obj_room_get(obj)));
   else if (obj->carried_by)
     send_to_char(ch, "carried by %s in room [%d]\r\n",
                  PERS(obj->carried_by, ch),
@@ -7638,12 +7647,12 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
           if (d->original)
             send_to_char(ch, "%-20s - [%5d]   %s (in %s)\r\n", GET_NAME(i),
                          char_room_vnum_get(d->character),
-                         char_room_get(d->character)->name,
+                         room_name_get(char_room_get(d->character)),
                          GET_NAME(d->character));
           else {
             send_to_char(ch, "%-20s - [%5d]   %-14s %s\r\n", GET_NAME(i),
                          char_room_vnum_get(i), planet[num2],
-                         char_room_get(i)->name);
+                         room_name_get(char_room_get(i)));
           }
         }
       }
@@ -7655,7 +7664,7 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
       if (CAN_SEE(ch, i) && char_room_get(i) != NULL && isname(arg, i->name)) {
         found = 1;
         send_to_char(ch, "M%3d. %-25s - [%5d] %-25s", ++num, GET_NAME(i),
-                     char_room_vnum_get(i), char_room_get(i)->name);
+                     char_room_vnum_get(i), room_name_get(char_room_get(i)));
         if (IS_NPC(i) && SCRIPT(i)) {
           if (!TRIGGERS(SCRIPT(i))->next)
             send_to_char(ch, "[T%5d] ", GET_TRIG_VNUM(TRIGGERS(SCRIPT(i))));
@@ -8362,26 +8371,25 @@ ACMD(do_scan) {
     send_to_char(ch, "You can't see a damned thing, your eyes are closed!\r\n");
     return;
   }
+  auto room = char_room_get(ch);
   for (i = 0; i < 10; i++) {
-    if (EXIT(ch, i)) {
-      if (IS_DARK(char_room_get(ch)) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) &&
+    if (auto ex = EXIT(ch, i)) {
+      if (IS_DARK(room) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) &&
           (!AFF_FLAGGED(ch, AFF_INFRAVISION))) {
         send_to_char(ch, "%s: DARK\n\r", dirnames[i]);
         continue;
       }
-      if (CAN_GO(ch, i)) {
-        newroom = EXIT(ch, i)->to_room;
-        struct room_data *nrm = exit_dest_get(EXIT(ch, i));
+      if (auto nrm = CAN_GO(ch, i); nrm) {
         send_to_char(ch, "@w-----------------------------------------@n\r\n");
         send_to_char(ch, "          %s%s: %s %s\n\r", CCCYN(ch, C_NRM),
                      dirnames[i],
-                     nrm->name ? nrm->name
-                               : "You don't think you saw what you just saw.",
+                      room_name_get(nrm) ? room_name_get(nrm)
+                                : "You don't think you saw what you just saw.",
                      CCNRM(ch, C_NRM));
         send_to_char(ch, "@W          -----------------          @n\r\n");
 
-        list_obj_to_char(nrm->contents, ch, SHOW_OBJ_LONG, FALSE);
-        list_char_to_char(nrm->people, ch);
+        list_obj_to_char(inv_for_room(nrm), ch, SHOW_OBJ_LONG, FALSE);
+        list_char_to_char(nrm, ch);
         if (room_geffect_get(nrm) >= 1 && room_geffect_get(nrm) <= 5) {
           send_to_char(ch, "@rLava@w is pooling in someplaces here...@n\r\n");
         }
@@ -8390,29 +8398,28 @@ ACMD(do_scan) {
                        "@RLava@r covers pretty much the entire area!@n\r\n");
         }
         /* Check 2nd room away */
-        if (_2ND_EXIT(ch, i) && _2ND_EXIT(ch, i)->to_room) {
-          newroom = _2ND_EXIT(ch, i)->to_room;
+        if (auto ne2 = room_dir_option_get(nrm, i); ne2 && exit_to_room_vnum_get(ne2)) {
+          auto nrm2 = char_can_go_exit(ch, ne2);
 
-          if ((newroom != NOWHERE) &&
-              (!IS_SET(_2ND_EXIT(ch, i)->exit_info, EX_CLOSED))) {
-            if (!IS_DARK(exit_dest_get(_2ND_EXIT(ch, i)))) {
+          if (nrm2) {
+            if (!IS_DARK(nrm2)) {
               send_to_char(ch,
                            "@w-----------------------------------------@n\r\n");
               send_to_char(ch, "          %sFar %s: %s %s\n\r",
                            CCCYN(ch, C_NRM), dirnames[i],
-                           nrm->name
-                               ? nrm->name
+                           room_name_get(nrm2)
+                               ? room_name_get(nrm2)
                                : "You don't think you saw what you just saw.",
                            CCNRM(ch, C_NRM));
               send_to_char(ch, "@W          -----------------          @n\r\n");
 
-              list_obj_to_char(nrm->contents, ch, SHOW_OBJ_LONG, FALSE);
-              list_char_to_char(nrm->people, ch);
-              if (room_geffect_get(nrm) >= 1 && room_geffect_get(nrm) <= 5) {
+              list_obj_to_char(inv_for_room(nrm2), ch, SHOW_OBJ_LONG, FALSE);
+              list_char_to_char(nrm2, ch);
+              if (room_geffect_get(nrm2) >= 1 && room_geffect_get(nrm2) <= 5) {
                 send_to_char(ch,
                              "@rLava@w is pooling in someplaces here...@n\r\n");
               }
-              if (room_geffect_get(nrm) >= 6) {
+              if (room_geffect_get(nrm2) >= 6) {
                 send_to_char(
                     ch, "@RLava@r covers pretty much the entire area!@n\r\n");
               }
@@ -8641,7 +8648,7 @@ ACMD(do_whois) {
   }
 }
 
-#define DOOR_DCHIDE(ch, door) (EXIT(ch, door)->dchide)
+#define DOOR_DCHIDE(ch, door) exit_dchide_get(EXIT(ch, door))
 
 static void search_in_direction(struct char_data *ch, int dir) {
   int check = FALSE, skill_lvl, dchide = 20;
@@ -8663,17 +8670,17 @@ static void search_in_direction(struct char_data *ch, int dir) {
     check = TRUE;
 
   if (EXIT(ch, dir)) {
-    if (EXIT(ch, dir)->general_description &&
-        !EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET))
-      send_to_char(ch, "%s", EXIT(ch, dir)->general_description);
-    else if (!EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET))
+    if (exit_general_description_get(EXIT(ch, dir)) &&
+        !exit_flagged(EXIT(ch, dir), EX_SECRET))
+      send_to_char(ch, "%s", exit_general_description_get(EXIT(ch, dir)));
+    else if (!exit_flagged(EXIT(ch, dir), EX_SECRET))
       send_to_char(ch, "There is a normal exit there.\r\n");
-    else if (EXIT_FLAGGED(EXIT(ch, dir), EX_ISDOOR) &&
-             EXIT_FLAGGED(EXIT(ch, dir), EX_SECRET) && EXIT(ch, dir)->keyword &&
+    else if (exit_flagged(EXIT(ch, dir), EX_ISDOOR) &&
+             exit_flagged(EXIT(ch, dir), EX_SECRET) && exit_keyword_get(EXIT(ch, dir)) &&
              (check == TRUE))
       send_to_char(ch, "There is a hidden door keyword: '%s' %sthere.\r\n",
-                   fname(EXIT(ch, dir)->keyword),
-                   (EXIT_FLAGGED(EXIT(ch, dir), EX_CLOSED)) ? "" : "open ");
+                   fname(exit_keyword_get(EXIT(ch, dir))),
+                   (exit_flagged(EXIT(ch, dir), EX_CLOSED)) ? "" : "open ");
     else
       send_to_char(ch, "There is no exit there.\r\n");
   } else

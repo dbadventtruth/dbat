@@ -16,6 +16,7 @@
 #include "handler.h"
 #include "object_api.h"
 #include "object_db.h"
+#include "iterate.hpp"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "relocate.h"
@@ -468,26 +469,22 @@ int delete_object(obj_vnum vnum) {
       continue;
 
     /* extract_obj() will just axe contents. */
-    if (tmp->contains) {
-      struct obj_data *this_content, *next_content;
-      for (this_content = tmp->contains; this_content;
-           this_content = next_content) {
-        next_content = this_content->next_content;
-        if (auto room = obj_room_get(tmp); room) {
-          /* Transfer stuff from object to room. */
-          obj_from_obj(this_content);
-          obj_to_room(this_content, room);
-        } else if (tmp->worn_by || tmp->carried_by) {
-          /* Transfer stuff from object to person inventory. */
-          obj_from_char(this_content);
-          obj_to_char(this_content, tmp->carried_by);
-        } else if (tmp->in_obj) {
-          /* Transfer stuff from object to containing object. */
-          obj_from_obj(this_content);
-          obj_to_obj(this_content, tmp->in_obj);
-        }
+    obj_contents_iterate(tmp, [&](struct obj_data *this_content) {
+      if (auto room = obj_room_get(tmp); room) {
+        /* Transfer stuff from object to room. */
+        obj_from_obj(this_content);
+        obj_to_room(this_content, room);
+      } else if (tmp->worn_by || tmp->carried_by) {
+        /* Transfer stuff from object to person inventory. */
+        obj_from_char(this_content);
+        obj_to_char(this_content, tmp->carried_by);
+      } else if (tmp->in_obj) {
+        /* Transfer stuff from object to containing object. */
+        obj_from_obj(this_content);
+        obj_to_obj(this_content, tmp->in_obj);
       }
-    }
+      return true;
+    });
     /* Remove from object_list, etc. - handles weight changes, and similar. */
     extract_obj(tmp);
   }

@@ -28,6 +28,7 @@
 #include "extract.h"
 #include "handler.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "json.h"
 #include "log.h"
 #include "object_db.h"
@@ -162,7 +163,6 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
                                  const char *save_type) {
   char filename[MAX_INPUT_LENGTH], tmpfile[MAX_STRING_LENGTH],
       bakfile[MAX_STRING_LENGTH];
-  int j;
   FILE *fp;
 
   if (!get_filename(filename, sizeof(filename), NEW_OBJ_FILES, GET_NAME(ch))) {
@@ -215,26 +215,32 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
     return FALSE;
   }
 
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j)) {
-      if (!Crash_save(GET_EQ(ch, j), fp, j + 1)) {
-        Crash_restore_weight(GET_EQ(ch, j));
+  {
+    bool __failed = false;
+    char_equipment_iterate(ch, [&](auto slot, auto eq) {
+      if (!Crash_save(eq, fp, slot + 1)) {
+        Crash_restore_weight(eq);
         basic_mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s equipment "
                       "position %d",
-                      __FILE__, __LINE__, save_type, GET_NAME(ch), j);
+                      __FILE__, __LINE__, save_type, GET_NAME(ch), slot);
         fclose(fp);
         remove(tmpfile);
-        return FALSE;
+        __failed = true;
+        return false;
       }
       if (ferror(fp)) {
-        Crash_restore_weight(GET_EQ(ch, j));
+        Crash_restore_weight(eq);
         Crash_log_file_error("write", tmpfile, __FILE__, __LINE__);
         fclose(fp);
         remove(tmpfile);
-        return FALSE;
+        __failed = true;
+        return false;
       }
-      Crash_restore_weight(GET_EQ(ch, j));
-    }
+      Crash_restore_weight(eq);
+      return true;
+    });
+    if (__failed) return FALSE;
+  }
 
   if (!Crash_save(ch->carrying, fp, 0)) {
     Crash_restore_weight(ch->carrying);
@@ -676,17 +682,13 @@ static void Crash_restore_weight(struct obj_data *obj) {
  * extract !RENT out of worn containers.
  */
 void Crash_extract_norent_eq(struct char_data *ch) {
-  int j;
-
-  for (j = 0; j < NUM_WEARS; j++) {
-    if (GET_EQ(ch, j) == NULL)
-      continue;
-
-    if (Crash_is_unrentable(GET_EQ(ch, j)))
-      obj_to_char(unequip_char(ch, j), ch);
+  char_equipment_iterate(ch, [&](auto slot, auto eq) {
+    if (Crash_is_unrentable(eq))
+      obj_to_char(unequip_char(ch, slot), ch);
     else
-      Crash_extract_norents(GET_EQ(ch, j));
-  }
+      Crash_extract_norents(eq);
+    return true;
+  });
 }
 
 static void Crash_extract_objs(struct obj_data *obj) {
@@ -757,16 +759,19 @@ void Crash_idlesave(struct char_data *ch) {
   cost *= 2; /* forcerent cost is 2x normal rent */
 
   if (cost > GET_GOLD(ch) + GET_BANK_GOLD(ch)) {
-    for (j = 0; j < NUM_WEARS; j++) /* Unequip players with low gold. */
-      if (GET_EQ(ch, j))
-        obj_to_char(unequip_char(ch, j), ch);
+    char_equipment_iterate(ch, [&](auto slot, auto eq) {
+      obj_to_char(unequip_char(ch, slot), ch);
+      return true;
+    });
 
-    while ((cost > GET_GOLD(ch) + GET_BANK_GOLD(ch)) && ch->carrying) {
-      Crash_extract_expensive(ch->carrying);
+    char_inventory_iterate(ch, [&](auto obj) {
+      if (cost <= GET_GOLD(ch) + GET_BANK_GOLD(ch)) return false;
+      Crash_extract_expensive(obj);
       cost = 0;
       Crash_calculate_rent(ch->carrying, &cost);
       cost *= 2;
-    }
+      return true;
+    });
   }
 
   if (ch->carrying == NULL) {
@@ -781,16 +786,15 @@ void Crash_idlesave(struct char_data *ch) {
   if (!Crash_write_safe_file(ch, RENT_TIMEDOUT, cost, "idlesave"))
     return;
 
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j))
-      Crash_extract_objs(GET_EQ(ch, j));
+  char_equipment_iterate(ch, [&](auto slot, auto eq) {
+    Crash_extract_objs(eq);
+    return true;
+  });
 
   Crash_extract_objs(ch->carrying);
 }
 
 void Crash_rentsave(struct char_data *ch, int cost) {
-  int j;
-
   if (IS_NPC(ch))
     return;
 
@@ -800,16 +804,15 @@ void Crash_rentsave(struct char_data *ch, int cost) {
   if (!Crash_write_safe_file(ch, RENT_RENTED, cost, "rentsave"))
     return;
 
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j))
-      Crash_extract_objs(GET_EQ(ch, j));
+  char_equipment_iterate(ch, [&](auto slot, auto eq) {
+    Crash_extract_objs(eq);
+    return true;
+  });
 
   Crash_extract_objs(ch->carrying);
 }
 
 static void Crash_cryosave(struct char_data *ch, int cost) {
-  int j;
-
   if (IS_NPC(ch))
     return;
 
@@ -821,10 +824,10 @@ static void Crash_cryosave(struct char_data *ch, int cost) {
   if (!Crash_write_safe_file(ch, RENT_CRYO, 0, "cryosave"))
     return;
 
-  for (j = 0; j < NUM_WEARS; j++)
-    if (GET_EQ(ch, j)) {
-      Crash_extract_objs(GET_EQ(ch, j));
-    }
+  char_equipment_iterate(ch, [&](auto slot, auto eq) {
+    Crash_extract_objs(eq);
+    return true;
+  });
 
   Crash_extract_objs(ch->carrying);
   SET_BIT_AR(PLR_FLAGS(ch), PLR_CRYO);

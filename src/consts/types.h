@@ -127,6 +127,25 @@ typedef int (*SpecialFunc)(struct char_data *ch, void *me, int cmd,
 typedef bool (*obj_iter_fn)(struct obj_data *obj, void *ctx);
 typedef bool (*char_iter_fn)(struct char_data *ch, void *ctx);
 
+typedef enum EntityType {
+  ENT_ROOM,
+  ENT_CHAR,
+  ENT_OBJ,
+} EntityType;
+
+struct inventory_data {
+  EntityType entity_type;
+  union {
+    struct room_data *room;
+    struct char_data *ch;
+    struct obj_data *obj;
+  } entity;
+};
+
+#define inv_for_room(r) ((struct inventory_data){ ENT_ROOM, { .room = (r) } })
+#define inv_for_char(c) ((struct inventory_data){ ENT_CHAR, { .ch = (c) } })
+#define inv_for_obj(o)  ((struct inventory_data){ ENT_OBJ, { .obj = (o) } })
+
 #ifdef __cplusplus
 }
 #endif

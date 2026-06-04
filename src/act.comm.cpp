@@ -31,8 +31,9 @@
 #include "object_impl.h"
 #include "object_macros.h"
 #include "room_api.h"
+#include "consts/roomflags.h"
 #include "room_db.h"
-#include "room_impl.h"
+
 #include "stringutils.h"
 #include "util_macros.h"
 #include "weather_db.h"
@@ -53,6 +54,7 @@
 #include "dg_scripts.h"
 #include "improved-edit.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "random.h"
 #include "relocate.h"
 #include "search.h"
@@ -67,6 +69,9 @@
 #include "descriptor_macros.h"
 #include "log.h"
 #include "time_info.h"
+
+#include "iterate.hpp"
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -258,10 +263,22 @@ ACMD(do_say) {
       strcpy(verb, "say");
     }
 
-    for (tch = room->people; tch; tch = tch->next_in_room) {
-      if (tch != ch && tch->desc) {
-        char sayto[100];
-        sprintf(sayto, "to %s ", GET_NAME(tch));
+    room_people_iterate(room, [&](auto tch) {
+      if(tch == ch) return true;
+      if(!tch->desc) return true;
+      char sayto[100];
+      sprintf(sayto, "to %s ", GET_NAME(tch));
+      if (strstr(argument, sayto)) {
+        char saytoo[200];
+        *verb = '\0';
+        sprintf(saytoo, "says to @g%s@W", GET_NAME(tch));
+        search_replace(argument, sayto, "");
+        strcpy(verb, saytoo);
+        sch = tch;
+      } else if (!IS_NPC(tch) && !IS_NPC(ch)) {
+        if (readIntro(ch, tch) == 1) {
+          sprintf(sayto, "to %s ", get_i_name(ch, tch));
+        }
         if (strstr(argument, sayto)) {
           char saytoo[200];
           *verb = '\0';
@@ -269,21 +286,10 @@ ACMD(do_say) {
           search_replace(argument, sayto, "");
           strcpy(verb, saytoo);
           sch = tch;
-        } else if (!IS_NPC(tch) && !IS_NPC(ch)) {
-          if (readIntro(ch, tch) == 1) {
-            sprintf(sayto, "to %s ", get_i_name(ch, tch));
-          }
-          if (strstr(argument, sayto)) {
-            char saytoo[200];
-            *verb = '\0';
-            sprintf(saytoo, "says to @g%s@W", GET_NAME(tch));
-            search_replace(argument, sayto, "");
-            strcpy(verb, saytoo);
-            sch = tch;
-          }
         }
       }
-    }
+      return true;
+    });
     if (!sch) {
       snprintf(buf, sizeof(buf), "@w$n @W%ss, '@C%s@W'@n", verb, argument);
       act(buf, TRUE, ch, 0, 0, TO_ROOM);
@@ -1271,47 +1277,47 @@ static void handle_whisper(char *buf, struct char_data *ch,
                            struct char_data *vict) {
   struct char_data *tch;
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (IS_NPC(tch)) {
-      continue;
+      return true;
     }
     if (tch == ch) {
-      continue;
+      return true;
     }
     if (tch == vict) {
-      continue;
+      return true;
     }
     if (!GET_SKILL(tch, SKILL_LISTEN)) {
-      continue;
+      return true;
     }
-    if (GET_SKILL(tch, SKILL_LISTEN)) {
-      int skill = GET_SKILL(tch, SKILL_LISTEN);
-      int roll1 = rand_number(10, 30);
-      int roll = rand_number(roll1, 110);
+    int skill = GET_SKILL(tch, SKILL_LISTEN);
+    int roll1 = rand_number(10, 30);
+    int roll = rand_number(roll1, 110);
 
-      if (skill >= roll) {
-        send_to_char(tch,
-                     "@WYou overhear everything whispered, @W'@m%s@W'@n\r\n",
-                     overhear(buf, 3));
-      } else if (skill + 10 >= roll) {
-        send_to_char(
-            tch, "@WYou overhear a lot of what is whispered, @W'@m%s@W'@n\r\n",
-            overhear(buf, 2));
-      } else if (skill + 20 >= roll) {
-        send_to_char(
-            tch, "@WYou overhear some of what is whispered, @W'@m%s@W'@n\r\n",
-            overhear(buf, 1));
-      } else if (skill + 30 >= roll) {
-        send_to_char(
-            tch, "@WYou overhear little of what is whispered, @W'@m%s@W'@n\r\n",
-            overhear(buf, 0));
-      } else {
-        send_to_char(
-            tch,
-            "@WYou were unable to overhear anything that was whispered.@n\r\n");
-      }
+    if (skill >= roll) {
+      send_to_char(tch,
+                   "@WYou overhear everything whispered, @W'@m%s@W'@n\r\n",
+                   overhear(buf, 3));
+    } else if (skill + 10 >= roll) {
+      send_to_char(
+          tch, "@WYou overhear a lot of what is whispered, @W'@m%s@W'@n\r\n",
+          overhear(buf, 2));
+    } else if (skill + 20 >= roll) {
+      send_to_char(
+          tch, "@WYou overhear some of what is whispered, @W'@m%s@W'@n\r\n",
+          overhear(buf, 1));
+    } else if (skill + 30 >= roll) {
+      send_to_char(
+          tch,
+          "@WYou overhear little of what is whispered, @W'@m%s@W'@n\r\n",
+          overhear(buf, 0));
+    } else {
+      send_to_char(
+          tch,
+          "@WYou were unable to overhear anything that was whispered.@n\r\n");
     }
-  }
+    return true;
+  });
 }
 
 static char *overhear(char *buf, int type) {
@@ -1472,7 +1478,7 @@ ACMD(do_write) {
   char *papername, *penname;
   char buf1[MAX_STRING_LENGTH], buf2[MAX_STRING_LENGTH];
   if (!(obj = char_inventory_search_type(ch, ITEM_BOARD, FALSE, 0))) {
-    obj = obj_contents_search_type(char_room_get(ch)->contents, ITEM_BOARD,
+    obj = obj_contents_search_type(room_contents_get(char_room_get(ch)), ITEM_BOARD,
                                    FALSE, 0);
   }
 
@@ -1495,16 +1501,16 @@ ACMD(do_write) {
     return;
   }
   if (*penname) { /* there were two arguments */
-    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, ch->carrying))) {
+    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You have no %s.\r\n", papername);
       return;
     }
-    if (!(pen = get_obj_in_list_vis(ch, penname, NULL, ch->carrying))) {
+    if (!(pen = get_obj_in_list_vis(ch, penname, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "You have no %s.\r\n", penname);
       return;
     }
   } else { /* there was one arg.. let's see what we can find */
-    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, ch->carrying))) {
+    if (!(paper = get_obj_in_list_vis(ch, papername, NULL, inv_for_char(ch)))) {
       send_to_char(ch, "There is no %s in your inventory.\r\n", papername);
       return;
     }
@@ -1708,7 +1714,7 @@ ACMD(do_gen_comm) {
           room_flagged(char_room_get(i->character), ROOM_SOUNDPROOF))) {
 
       if (subcmd == SCMD_SHOUT &&
-          ((char_room_get(ch)->zone != char_room_get(i->character)->zone) ||
+          ((room_zone_vnum_get(char_room_get(ch)) != room_zone_vnum_get(char_room_get(i->character))) ||
            !AWAKE(i->character)))
         continue;
 
@@ -1821,7 +1827,7 @@ ACMD(do_respond) {
   }
 
   if (!(obj = char_inventory_search_type(ch, ITEM_BOARD, FALSE, 0))) {
-    if (!(obj = obj_contents_search_type(char_room_get(ch)->contents,
+    if (!(obj = obj_contents_search_type(room_contents_get(char_room_get(ch)),
                                          ITEM_BOARD, FALSE, 0))) {
       send_to_char(
           ch, "Sorry, you may only reply to messages posted on a board.\r\n");

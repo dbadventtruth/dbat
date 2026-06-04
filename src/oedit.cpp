@@ -8,6 +8,7 @@
 #include "board_impl.h"
 #include "boards.h"
 #include "character_api.h"
+#include "room_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
@@ -35,7 +36,6 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
 #include "search.h"
 #include "shop.h"
 #include "shop_db.h"
@@ -1812,10 +1812,10 @@ ACMD(do_iedit) {
 
   if ((k = get_obj_in_equip_vis(ch, arg, NULL, ch->equipment))) {
     found = 1;
-  } else if ((k = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  } else if ((k = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     found = 1;
   } else if ((k = get_obj_in_list_vis(ch, arg, NULL,
-                                      char_room_get(ch)->contents))) {
+                                      inv_for_room(char_room_get(ch))))) {
     found = 1;
   } else if ((k = get_obj_vis(ch, arg, NULL))) {
     found = 1;

@@ -33,6 +33,7 @@
 #include "log.h"
 #include "object_api.h"
 #include "object_db.h"
+#include "iterate.hpp"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "relocate.h"
@@ -51,7 +52,6 @@ void extract_char_final(struct char_data *ch) {
   struct obj_data *chair;
   struct descriptor_data *d;
   struct obj_data *obj;
-  int i;
 
   if (char_room_get(ch) == NULL) {
     log("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)",
@@ -213,16 +213,17 @@ void extract_char_final(struct char_data *ch) {
   }
 
   /* transfer objects to room, if any */
-  while (ch->carrying) {
-    obj = ch->carrying;
+  char_inventory_iterate(ch, [&](auto obj) {
     obj_from_char(obj);
     obj_to_room(obj, char_room_get(ch));
-  }
+    return true;
+  });
 
   /* transfer equipment to room, if any */
-  for (i = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(ch, i))
-      obj_to_room(unequip_char(ch, i), char_room_get(ch));
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    obj_to_room(unequip_char(ch, i), char_room_get(ch));
+    return true;
+  });
 
   if (FIGHTING(ch))
     stop_fighting(ch);
@@ -268,7 +269,6 @@ void extract_char_final(struct char_data *ch) {
  */
 void extract_char(struct char_data *ch) {
   struct follow_type *foll;
-  int i;
   struct obj_data *obj;
 
   if (IS_NPC(ch)) {
@@ -288,18 +288,18 @@ void extract_char(struct char_data *ch) {
         (char_room_get(foll->follower) == char_room_get(ch) ||
          char_room_vnum_get(ch) == 1)) {
       /* transfer objects to char, if any */
-      while (foll->follower->carrying) {
-        obj = foll->follower->carrying;
+      char_inventory_iterate(foll->follower, [&](auto obj) {
         obj_from_char(obj);
         obj_to_char(obj, ch);
-      }
+        return true;
+      });
 
       /* transfer equipment to char, if any */
-      for (i = 0; i < NUM_WEARS; i++)
-        if (GET_EQ(foll->follower, i)) {
-          obj = unequip_char(foll->follower, i);
-          obj_to_char(obj, ch);
-        }
+      char_equipment_iterate(foll->follower, [&](auto i, auto eq) {
+        obj = unequip_char(foll->follower, i);
+        obj_to_char(obj, ch);
+        return true;
+      });
 
       extract_char(foll->follower);
     }
@@ -349,8 +349,10 @@ void extract_obj(struct obj_data *obj) {
     USER(obj) = NULL;
   }
 
-  while (obj->contains)
-    extract_obj(obj->contains);
+  obj_contents_iterate(obj, [&](struct obj_data *o) {
+    extract_obj(o);
+    return true;
+  });
 
   REMOVE_FROM_LIST(obj, object_list, next, temp);
 

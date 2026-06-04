@@ -275,6 +275,14 @@ pub export fn obj_inventory_iterate(obj: *cdb.obj_data, recursive: bool, func: ?
     _ = objContentsListIterate(obj.contains, recursive, callback, ctx);
 }
 
+pub export fn obj_next_content_get(obj: *cdb.obj_data) [*c]cdb.obj_data {
+    return obj.next_content;
+}
+
+pub export fn obj_contains_get(obj: *cdb.obj_data) [*c]cdb.obj_data {
+    return obj.contains;
+}
+
 pub export fn obj_sitting_get(obj: *cdb.obj_data) i64 {
     return charId(obj.sitting);
 }

@@ -33,6 +33,7 @@
 #include "db.h"
 #include "flags.h"
 #include "interpreter.h"
+#include "iterate.hpp"
 #include "races.h"
 #include "room_macros.h"
 #include "time.h"
@@ -86,8 +87,8 @@
 #include "players.h"
 #include "races_plus.h"
 #include "room_api.h"
-#include "room_db.h"
 #include "room_impl.h"
+#include "room_db.h"
 #include "screen.h"
 #include "sensei.h"
 #include "shop.h"
@@ -730,7 +731,7 @@ ACMD(do_transobj) {
     return;
   }
 
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying))) {
+  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
     send_to_char(ch, "You want to send what?\r\n");
     return;
   } else if (!strcasecmp("all", arg2)) {
@@ -850,17 +851,17 @@ ACMD(do_finddoor) {
     len = snprintf(buf, sizeof(buf), "Doors unlocked by key [%d] %s are:\r\n",
                    vnum, key_short);
     room_iterate([&](auto room) {
-      for (d = 0; d < NUM_OF_DIRS; d++) {
-        if (room->dir_option[d] && room->dir_option[d]->key &&
-            room->dir_option[d]->key == vnum) {
+      room_exits_iterate(room, [&](auto d, auto exit) {
+          if (exit_key_get(exit) == vnum) {
           nlen = snprintf(buf + len, sizeof(buf) - len,
-                          "[%3d] Room %d, %s (%s)\r\n", ++num, room->number,
-                          dirs[d], room->dir_option[d]->keyword);
+                          "[%3d] Room %d, %s (%s)\r\n", ++num, room_vnum_get(room),
+                          dirs[d], exit_keyword_get(exit));
           if (len + nlen >= sizeof(buf) || nlen < 0)
-            break;
+            return false;
           len += nlen;
         }
-      } /* for all directions */
+        return true;
+      });
       return true;
     }); /* for all rooms */
     if (num > 0)
@@ -944,10 +945,9 @@ ACMD(do_echo) {
   int found = FALSE, trunc = 0;
   struct char_data *vict = NULL, *next_v = NULL, *tch = NULL;
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (vict == ch)
-      continue;
+      return true;
     if (found == FALSE) {
       sprintf(name, "*%s", GET_NAME(vict));
       if (strstr(argument, CAP(name))) {
@@ -964,7 +964,8 @@ ACMD(do_echo) {
         }
       }
     }
-  }
+    return true;
+  });
 
   if (subcmd == SCMD_SMOTE) {
     if (!strstr(argument, "#")) {
@@ -1320,7 +1321,7 @@ void list_zone_commands_room(struct char_data *ch, room_vnum rvnum) {
     default:
       break;
     }
-    if (cmd_room == room->number) {
+    if (cmd_room == room_vnum_get(room)) {
       count++;
       /* start listing */
       switch (cmd->command) {
@@ -1414,21 +1415,21 @@ static void do_stat_room(struct char_data *ch) {
   struct obj_data *j;
   struct char_data *k;
 
-  send_to_char(ch, "Room name: @c%s@n\r\n", rm->name);
+  send_to_char(ch, "Room name: @c%s@n\r\n", room_name_get(rm));
 
-  sprinttype(rm->sector_type, sector_types, buf2, sizeof(buf2));
+  sprinttype(room_sector_type_get(rm), sector_types, buf2, sizeof(buf2));
   send_to_char(ch, "Zone: [%3d], VNum: [@g%5d@n], IDNum: [%5ld], Type: %s\r\n",
-               room_zone_vnum_get(rm), rm->number,
-               (long)rm->number + ROOM_ID_BASE, buf2);
+               room_zone_vnum_get(rm), room_vnum_get(rm),
+               (long)room_vnum_get(rm) + ROOM_ID_BASE, buf2);
 
   sprintbitarray(rm->room_flags, room_bits, RF_ARRAY_MAX, buf2, sizeof(buf2));
-  send_to_char(ch, "Room Damage: %d, Room Effect: %d\r\n", rm->dmg,
-               rm->geffect);
+  send_to_char(ch, "Room Damage: %d, Room Effect: %d\r\n", room_dmg_get(rm),
+               room_geffect_get(rm));
   send_to_char(ch, "SpecProc: %s, Flags: %s\r\n",
-               rm->func == NULL ? "None" : "Exists", buf2);
+               room_func_get(rm) == NULL ? "None" : "Exists", buf2);
 
   send_to_char(ch, "Description:\r\n%s",
-               rm->description ? rm->description : "  None.\r\n");
+               room_description_get(rm) ? room_description_get(rm) : "  None.\r\n");
 
   if (rm->ex_description) {
     send_to_char(ch, "Extra descs:");
@@ -1439,9 +1440,9 @@ static void do_stat_room(struct char_data *ch) {
 
   send_to_char(ch, "Chars present:");
   column = 14; /* ^^^ strlen ^^^ */
-  for (found = FALSE, k = rm->people; k; k = k->next_in_room) {
+  room_people_iterate(rm, [&](auto k) {
     if (!CAN_SEE(ch, k))
-      continue;
+      return true;
 
     column += send_to_char(ch, "%s @y%s@n(%s)", found++ ? "," : "", GET_NAME(k),
                            !IS_NPC(k) ? "PC" : (!IS_MOB(k) ? "NPC" : "MOB"));
@@ -1450,15 +1451,17 @@ static void do_stat_room(struct char_data *ch) {
       found = FALSE;
       column = 0;
     }
-  }
+    return true;
+  });
 
-  if (rm->contents) {
+  if (room_contents_get(rm)) {
     send_to_char(ch, "Contents:@g");
     column = 9; /* ^^^ strlen ^^^ */
 
-    for (found = 0, j = rm->contents; j; j = j->next_content) {
+    found = 0;
+    room_contents_iterate(rm, [&](auto j) {
       if (!CAN_SEE_OBJ(ch, j))
-        continue;
+        return true;
 
       column +=
           send_to_char(ch, "%s %s", found++ ? "," : "", j->short_description);
@@ -1467,44 +1470,45 @@ static void do_stat_room(struct char_data *ch) {
         found = FALSE;
         column = 0;
       }
-    }
+      return true;
+    });
     send_to_char(ch, "@n");
   }
 
-  for (i = 0; i < NUM_OF_DIRS; i++) {
-    char buf1[128];
+  room_exits_iterate(rm, [&](auto i, auto exit) {
+      char buf1[128];
 
-    if (!rm->dir_option[i])
-      continue;
+      auto dest = exit_dest_get(exit);
 
-    if (rm->dir_option[i]->to_room == NOWHERE)
-      snprintf(buf1, sizeof(buf1), " @cNONE@n");
-    else
-      snprintf(buf1, sizeof(buf1), "@c%5d@n", rm->dir_option[i]->to_room);
+      if (!dest)
+        snprintf(buf1, sizeof(buf1), " @cNONE@n");
+      else
+        snprintf(buf1, sizeof(buf1), "@c%5d (%s)@n", room_vnum_get(dest), room_name_get(dest));
 
-    sprintbit(rm->dir_option[i]->exit_info, exit_bits, buf2, sizeof(buf2));
+      sprintbit(exit_info_get(exit), exit_bits, buf2, sizeof(buf2));
 
-    send_to_char(
-        ch,
-        "Exit @c%-5s@n:  To: [%s], Key: [%5d], Keywrd: %s, Type: %s\r\n  DC "
-        "Lock: [%2d], DC Hide: [%2d], DC Skill: [%4s], DC Move: [%2d]\r\n%s",
-        dirs[i], buf1,
-        rm->dir_option[i]->key == NOTHING ? -1 : rm->dir_option[i]->key,
-        rm->dir_option[i]->keyword ? rm->dir_option[i]->keyword : "None", buf2,
-        rm->dir_option[i]->dclock, rm->dir_option[i]->dchide,
-        rm->dir_option[i]->dcskill == 0
-            ? "None"
-            : spell_info[rm->dir_option[i]->dcskill].name,
-        rm->dir_option[i]->dcmove,
-        rm->dir_option[i]->general_description
-            ? rm->dir_option[i]->general_description
-            : "  No exit description.\r\n");
-  }
+      send_to_char(
+          ch,
+          "Exit @c%-5s@n:  To: [%s], Key: [%5d], Keywrd: %s, Type: %s\r\n  DC "
+          "Lock: [%2d], DC Hide: [%2d], DC Skill: [%4s], DC Move: [%2d]\r\n%s",
+          dirs[i], buf1,
+          exit_key_get(exit),
+          exit_keyword_get(exit) ? exit_keyword_get(exit) : "None", buf2,
+          exit_dclock_get(exit), exit_dchide_get(exit),
+          exit_dcskill_get(exit) == 0
+              ? "None"
+              : spell_info[exit_dcskill_get(exit)].name,
+          exit_dcmove_get(exit),
+          exit_general_description_get(exit)
+              ? exit_general_description_get(exit)
+              : "  No exit description.\r\n");
+      return true;
+    }); /* for all exits */
 
   /* check the room for a script */
   do_sstat_room(ch, rm);
 
-  list_zone_commands_room(ch, rm->number);
+  list_zone_commands_room(ch, room_vnum_get(rm));
 }
 
 static void do_stat_object(struct char_data *ch, struct obj_data *j) {
@@ -1575,7 +1579,7 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
                GET_OBJ_LEVEL(j));
 
   send_to_char(ch, "In room: %d (%s), ", obj_room_vnum_get(j),
-               obj_room_get(j) == NULL ? "Nowhere" : obj_room_get(j)->name);
+               obj_room_get(j) == NULL ? "Nowhere" : room_name_get(obj_room_get(j)));
 
   /*
    * NOTE: In order to make it this far, we must already be able to see the
@@ -1688,21 +1692,23 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
    * more or less useless and just takes up valuable screen space.
    */
 
-  if (j->contains) {
+  {
     int column;
 
     send_to_char(ch, "\r\nContents:@g");
     column = 9; /* ^^^ strlen ^^^ */
+    found = 0;
 
-    for (found = 0, j2 = j->contains; j2; j2 = j2->next_content) {
+    obj_contents_iterate(j, [&](struct obj_data *j2) {
       column +=
           send_to_char(ch, "%s %s", found++ ? "," : "", j2->short_description);
       if (column >= 62) {
-        send_to_char(ch, "%s\r\n", j2->next_content ? "," : "");
+        send_to_char(ch, "%s\r\n", obj_next_content_get(j2) ? "," : "");
         found = FALSE;
         column = 0;
       }
-    }
+      return true;
+    });
     send_to_char(ch, "@n");
   }
 
@@ -1868,17 +1874,21 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
   }
 
   int counts = 0, total = 0;
-  for (i = 0, j = k->carrying; j; j = j->next_content, i++) {
+  i = 0;
+  char_inventory_iterate(k, [&](auto j) {
     counts += check_insidebag(j, 0.5);
     counts++;
-  }
+    i++;
+    return true;
+  });
   total = counts;
   total += i;
-  for (i = 0, i2 = 0; i < NUM_WEARS; i++)
-    if (GET_EQ(k, i)) {
-      i2++;
-      total += check_insidebag(GET_EQ(k, i), 0.5) + 1;
-    }
+  i2 = 0;
+  char_equipment_iterate(k, [&](auto i, auto eq) {
+    i2++;
+    total += check_insidebag(eq, 0.5) + 1;
+    return true;
+  });
   send_to_char(ch,
                "Carried: weight: %d, Total Items (includes bagged items): %d, "
                "EQ: %d\r\n",
@@ -2091,13 +2101,13 @@ ACMD(do_stat) {
     if ((object = get_obj_in_equip_vis(ch, name, &number, ch->equipment)) !=
         NULL)
       do_stat_object(ch, object);
-    else if ((object = get_obj_in_list_vis(ch, name, &number, ch->carrying)) !=
+    else if ((object = get_obj_in_list_vis(ch, name, &number, inv_for_char(ch))) !=
              NULL)
       do_stat_object(ch, object);
     else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_ROOM)) != NULL)
       do_stat_character(ch, victim);
     else if ((object = get_obj_in_list_vis(
-                  ch, name, &number, char_room_get(ch)->contents)) != NULL)
+                  ch, name, &number, inv_for_room(char_room_get(ch)))) != NULL)
       do_stat_object(ch, object);
     else if ((victim = get_char_vis(ch, name, &number, FIND_CHAR_WORLD)) !=
              NULL)
@@ -2428,7 +2438,7 @@ ACMD(do_purge) {
       }
       extract_char(vict);
     } else if ((obj = get_obj_in_list_vis(
-                    ch, buf, NULL, char_room_get(ch)->contents)) != NULL) {
+                    ch, buf, NULL, inv_for_room(char_room_get(ch)))) != NULL) {
       act("$n destroys $p.", FALSE, ch, obj, 0, TO_ROOM);
       extract_obj(obj);
     } else {
@@ -2444,28 +2454,32 @@ ACMD(do_purge) {
         0, TO_ROOM);
     send_to_room(char_room_get(ch), "The world seems a little cleaner.\r\n");
 
-    for (vict = char_room_get(ch)->people; vict; vict = vict->next_in_room) {
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (!IS_NPC(vict))
-        continue;
+        return true;
 
       delete_inv_backup(vict);
 
       /* Dump inventory. */
-      while (vict->carrying)
-        extract_obj(vict->carrying);
+      char_inventory_iterate(vict, [&](auto obj) {
+        extract_obj(obj);
+        return true;
+      });
 
       /* Dump equipment. */
-      for (i = 0; i < NUM_WEARS; i++)
-        if (GET_EQ(vict, i))
-          extract_obj(GET_EQ(vict, i));
+      char_equipment_iterate(vict, [&](auto i, auto eq) {
+        extract_obj(eq);
+        return true;
+      });
 
       /* Dump character. */
       extract_char(vict);
-    }
+      return true;
+    });
 
     /* Clear the ground. */
-    while (char_room_get(ch)->contents)
-      extract_obj(char_room_get(ch)->contents);
+    while (room_contents_get(char_room_get(ch)))
+      extract_obj(room_contents_get(char_room_get(ch)));
   }
 }
 
@@ -2810,16 +2824,17 @@ void perform_immort_vis(struct char_data *ch) { GET_INVIS_LEV(ch) = 0; }
 static void perform_immort_invis(struct char_data *ch, int level) {
   struct char_data *tch;
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (tch == ch)
-      continue;
+      return true;
     if (GET_ADMLEVEL(tch) >= GET_INVIS_LEV(ch) && GET_ADMLEVEL(tch) < level)
       act("You blink and suddenly realize that $n is gone.", FALSE, ch, 0, tch,
           TO_VICT);
     if (GET_ADMLEVEL(tch) < GET_INVIS_LEV(ch) && GET_ADMLEVEL(tch) >= level)
       act("You suddenly realize that $n is standing beside you.", FALSE, ch, 0,
           tch, TO_VICT);
-  }
+    return true;
+  });
 
   GET_INVIS_LEV(ch) = level;
   send_to_char(ch, "Your invisibility level is %d.\r\n", level);
@@ -3132,13 +3147,13 @@ ACMD(do_force) {
            "(GC) %s forced room %d to %s", GET_NAME(ch), char_room_vnum_get(ch),
            to_force);
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_force) {
-      next_force = vict->next_in_room;
-      if (!IS_NPC(vict) && GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
-        continue;
-      act(buf1, TRUE, ch, NULL, vict, TO_VICT);
-      command_interpreter(vict, to_force);
-    }
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
+    if (!IS_NPC(vict) && GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
+      return true;
+    act(buf1, TRUE, ch, NULL, vict, TO_VICT);
+    command_interpreter(vict, to_force);
+    return true;
+  });
   } else { /* force all */
     send_to_char(ch, "%s", CONFIG_OK);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
@@ -3660,32 +3675,28 @@ ACMD(do_show) {
   case 5:
     len = strlcpy(buf, "Errant Rooms\r\n------------\r\n", sizeof(buf));
     room_iterate([&](auto room) {
-      for (j = 0; j < NUM_OF_DIRS; j++) {
-
-        room_vnum v = room_vnum_get(room);
-
-        struct room_direction_data *exit = R_EXIT(room, j);
-        if (!exit)
-          continue;
-        if (exit->to_room == 0) {
+      room_vnum v = room_vnum_get(room);
+      room_exits_iterate(room, [&](auto j, auto exit) {
+        if (exit_to_room_vnum_get(exit) == 0) {
           nlen = snprintf(buf + len, sizeof(buf) - len,
                           "%2d: (void   ) [%5d] %-*s%s (%s)\r\n", ++k, v,
-                          count_color_chars(room->name) + 40, room->name, QNRM,
+                          count_color_chars(room_name_get(room)) + 40, room_name_get(room), QNRM,
                           dirs[j]);
           if (len + nlen >= sizeof(buf) || nlen < 0)
-            break;
+            return false;
           len += nlen;
         }
-        if (!exit_dest_get(exit) && !exit->general_description) {
+        if (!exit_dest_get(exit) && !exit_general_description_get(exit)) {
           nlen = snprintf(buf + len, sizeof(buf) - len,
                           "%2d: (Nowhere) [%5d] %-*s%s (%s)\r\n", ++k, v,
-                          count_color_chars(room->name) + 40, room->name, QNRM,
+                          count_color_chars(room_name_get(room)) + 40, room_name_get(room), QNRM,
                           dirs[j]);
           if (len + nlen >= sizeof(buf) || nlen < 0)
-            break;
+            return false;
           len += nlen;
         }
-      }
+        return true;
+      });
       return true;
     });
     send_to_char(ch, "%s", buf);
@@ -3698,7 +3709,7 @@ ACMD(do_show) {
     room_iterate([&](auto room) {
       if (room_flagged(room, ROOM_DEATH)) {
         nlen = snprintf(buf + len, sizeof(buf) - len, "%2d: [%5d] %s\r\n", ++j,
-                        room_vnum_get(room), room->name);
+                        room_vnum_get(room), room_name_get(room));
         if (len + nlen >= sizeof(buf) || nlen < 0)
           return false;
         len += nlen;
@@ -3717,7 +3728,7 @@ ACMD(do_show) {
     room_iterate([&](auto room) {
       if (room_flagged(room, ROOM_GODROOM)) {
         nlen = snprintf(buf + len, sizeof(buf) - len, "%2d: [%5d] %s\r\n", ++j,
-                        room_vnum_get(room), room->name);
+                        room_vnum_get(room), room_name_get(room));
         if (len + nlen >= sizeof(buf) || nlen < 0)
           return false;
         len += nlen;
@@ -4787,13 +4798,13 @@ ACMD(do_peace) {
   struct char_data *vict, *next_v;
   send_to_room(char_room_get(ch), "Everything is quite peaceful now.\r\n");
 
-  for (vict = char_room_get(ch)->people; vict; vict = next_v) {
-    next_v = vict->next_in_room;
+  room_people_iterate(char_room_get(ch), [&](auto vict) {
     if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch))
-      continue;
+      return true;
     stop_fighting(vict);
     GET_POS(vict) = POS_SITTING;
-  }
+    return true;
+  });
   stop_fighting(ch);
   GET_POS(ch) = POS_STANDING;
 }
@@ -4869,17 +4880,18 @@ ACMD(do_chown) {
   else if (!*buf3)
     send_to_char(ch, "Syntax: chown <object> <character>.\r\n");
   else {
-    for (i = 0; i < NUM_WEARS; i++) {
-      if (GET_EQ(victim, i) && CAN_SEE_OBJ(ch, GET_EQ(victim, i)) &&
-          isname(buf2, GET_EQ(victim, i)->name)) {
+    char_equipment_iterate(victim, [&](auto i, auto eq) {
+      if (CAN_SEE_OBJ(ch, eq) &&
+          isname(buf2, eq->name)) {
         obj_to_char(unequip_char(victim, i), victim);
         k = 1;
       }
-    }
+      return true;
+    });
 
-    if (!(obj = get_obj_in_list_vis(victim, buf2, NULL, victim->carrying))) {
+    if (!(obj = get_obj_in_list_vis(victim, buf2, NULL, inv_for_char(victim)))) {
       if (!k &&
-          !(obj = get_obj_in_list_vis(victim, buf2, NULL, victim->carrying))) {
+          !(obj = get_obj_in_list_vis(victim, buf2, NULL, inv_for_char(victim)))) {
         send_to_char(ch, "%s does not appear to have the %s.\r\n",
                      GET_NAME(victim), buf2);
         return;
@@ -4924,17 +4936,17 @@ ACMD(do_zpurge) {
   for (room = zone->bot; room <= zone->top; room++) {
     struct room_data *roomp = room_by_id(room);
     if (roomp) {
-      for (mob = roomp->people; mob; mob = next_mob) {
-        next_mob = mob->next_in_room;
+      room_people_iterate(roomp, [&](auto mob) {
         if (IS_NPC(mob)) {
           extract_char(mob);
         }
-      }
+        return true;
+      });
 
-      for (obj = roomp->contents; obj; obj = next_obj) {
-        next_obj = obj->next_content;
+      room_contents_iterate(roomp, [&](auto obj) {
         extract_obj(obj);
-      }
+        return true;
+      });
     }
   }
 
@@ -5310,86 +5322,86 @@ ACMD(do_zcheck) {
   /************** Check rooms *****************/
   send_to_char(ch, "\r\nChecking Rooms for limits...\r\n");
   room_iterate([&](auto room) {
-    if (room->zone == zone->number) {
-      for (j = 0; j < NUM_OF_DIRS; j++) {
-        /*check for exit, but ignore off limits if you're in an offlimit zone*/
-        auto dest = exit_dest_get(room->dir_option[j]);
-        if (!dest)
-          continue;
-        if (dest->zone == zone->number)
-          continue;
-        if (dest->zone == room->zone)
-          continue;
+    if(room_zone_vnum_get(room) != zone->number) return true;
+    room_exits_iterate(room, [&](auto j, auto exit) {
+      /*check for exit, but ignore off limits if you're in an offlimit zone*/
+      auto dest = exit_dest_get(exit);
+      if (!dest)
+        return true;
+      if (room_zone_vnum_get(dest) == zone->number)
+        return true;
+      if (room_zone_vnum_get(dest) == room_zone_vnum_get(room))
+        return true;
 
-        for (k = 0; offlimit_zones[k] != -1; k++) {
-          if (dest->zone == real_zone(offlimit_zones[k]) && (found = 1))
-            len += snprintf(
-                buf + len, sizeof(buf) - len,
-                "- Exit %s cannot connect to %d (zone off limits).\r\n",
-                dirs[j], dest->number);
-        } /* for (k.. */
-      } /* cycle directions */
-
-      if (room_flagged(room, ROOM_ATRIUM | ROOM_HOUSE | ROOM_HOUSE_CRASH |
-                                 ROOM_OLC | ROOM_BFS_MARK))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Has illegal affection bits set (%s %s %s %s %s)\r\n",
-                        room_flagged(room, ROOM_ATRIUM) ? "ATRIUM" : "",
-                        room_flagged(room, ROOM_HOUSE) ? "HOUSE" : "",
-                        room_flagged(room, ROOM_HOUSE_CRASH) ? "HCRSH" : "",
-                        room_flagged(room, ROOM_OLC) ? "OLC" : "",
-                        room_flagged(room, ROOM_BFS_MARK) ? "*" : "");
-
-      if ((MIN_ROOM_DESC_LENGTH) &&
-          strlen(room->description) < MIN_ROOM_DESC_LENGTH && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Room description is too short. (%4.4" SZT
-                        " of min. %d characters).\r\n",
-                        strlen(room->description), MIN_ROOM_DESC_LENGTH);
-
-      if (strncmp(room->description, "   ", 3) && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Room description not formatted with indent (/fi in "
-                        "the editor).\r\n");
-
-      /* strcspan = size of text in first arg before any character in second arg
-       */
-      if ((strcspn(room->description, "\r\n") > MAX_COLOUMN_WIDTH) &&
-          (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Room description not wrapped at %d chars (/fi in "
-                        "the editor).\r\n",
-                        MAX_COLOUMN_WIDTH);
-
-      for (ext2 = NULL, ext = room->ex_description; ext; ext = ext->next)
-        if (strncmp(ext->description, "   ", 3))
-          ext2 = ext;
-
-      if (ext2 && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- has unformatted extra description\r\n");
-
-      if (found) {
-        send_to_char(ch, "[%5d] %-30s: \r\n%s", room->number,
-                     room->name ? room->name : "An unnamed room", buf);
-        strcpy(buf, "");
-        len = 0;
-        found = 0;
+      for (k = 0; offlimit_zones[k] != -1; k++) {
+        if (room_zone_vnum_get(dest) == real_zone(offlimit_zones[k]) && (found = 1))
+          len += snprintf(
+              buf + len, sizeof(buf) - len,
+              "- Exit %s cannot connect to %d (zone off limits).\r\n",
+              dirs[j], room_vnum_get(dest));
       }
-    } /*is room in this zone?*/
+      return true;
+    });
+
+    if (room_flagged(room, ROOM_ATRIUM | ROOM_HOUSE | ROOM_HOUSE_CRASH |
+                                ROOM_OLC | ROOM_BFS_MARK))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Has illegal affection bits set (%s %s %s %s %s)\r\n",
+                      room_flagged(room, ROOM_ATRIUM) ? "ATRIUM" : "",
+                      room_flagged(room, ROOM_HOUSE) ? "HOUSE" : "",
+                      room_flagged(room, ROOM_HOUSE_CRASH) ? "HCRSH" : "",
+                      room_flagged(room, ROOM_OLC) ? "OLC" : "",
+                      room_flagged(room, ROOM_BFS_MARK) ? "*" : "");
+
+    if ((MIN_ROOM_DESC_LENGTH) &&
+        strlen(room_description_get(room)) < MIN_ROOM_DESC_LENGTH && (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Room description is too short. (%4.4" SZT
+                      " of min. %d characters).\r\n",
+                      strlen(room_description_get(room)), MIN_ROOM_DESC_LENGTH);
+
+    if (strncmp(room_description_get(room), "   ", 3) && (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Room description not formatted with indent (/fi in "
+                      "the editor).\r\n");
+
+    /* strcspan = size of text in first arg before any character in second arg
+      */
+    if ((strcspn(room_description_get(room), "\r\n") > MAX_COLOUMN_WIDTH) &&
+        (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- Room description not wrapped at %d chars (/fi in "
+                      "the editor).\r\n",
+                      MAX_COLOUMN_WIDTH);
+
+    for (ext2 = NULL, ext = room->ex_description; ext; ext = ext->next)
+      if (strncmp(ext->description, "   ", 3))
+        ext2 = ext;
+
+    if (ext2 && (found = 1))
+      len += snprintf(buf + len, sizeof(buf) - len,
+                      "- has unformatted extra description\r\n");
+
+    if (found) {
+      send_to_char(ch, "[%5d] %-30s: \r\n%s", room_vnum_get(room),
+                    room_name_get(room) ? room_name_get(room) : "An unnamed room", buf);
+      strcpy(buf, "");
+      len = 0;
+      found = 0;
+    }
     return true;
   }); /*checking rooms*/
 
   room_iterate([&](auto room) {
-    if (room->zone == zone->number) {
-      m++;
-      for (j = 0, k = 0; j < NUM_OF_DIRS; j++)
-        if (!room->dir_option[j])
-          k++;
+    if(room_zone_vnum_get(room) != zone->number) return true;
+    m++;
+    room_exits_iterate(room, [&](auto j, auto exit) {
+      k++;
+      return true;
+    });
 
-      if (k == NUM_OF_DIRS)
-        l++;
-    }
+    if (k == NUM_OF_DIRS)
+      l++;
     return true;
   });
   if (l * 3 > m)
@@ -5418,7 +5430,7 @@ static void mob_checkload(struct char_data *ch, mob_vnum mvnum) {
       /* read a mobile */
       if (zone->cmd[cmd_no].arg1 == mvnum) {
         send_to_char(ch, "  [%5d] %s (%d MAX)\r\n", zone->cmd[cmd_no].arg3,
-                     room_by_id(zone->cmd[cmd_no].arg3)->name,
+                     room_name_get(room_by_id(zone->cmd[cmd_no].arg3)),
                      zone->cmd[cmd_no].arg2);
         count += 1;
       }
@@ -5459,7 +5471,7 @@ static void obj_checkload(struct char_data *ch, obj_vnum ovnum) {
         lastroom_r = cmd.arg3;
         if (cmd.arg1 == ovnum) {
           auto room = room_by_id(lastroom_r);
-          send_to_char(ch, "  [%5d] %s (%d Max)\r\n", lastroom_v, room->name,
+          send_to_char(ch, "  [%5d] %s (%d Max)\r\n", lastroom_v, room_name_get(room),
                        cmd.arg2);
           count += 1;
         }
@@ -5468,7 +5480,7 @@ static void obj_checkload(struct char_data *ch, obj_vnum ovnum) {
         if (cmd.arg1 == ovnum) {
           auto room = room_by_id(lastroom_r);
           send_to_char(ch, "  [%5d] %s (Put in another object [%d Max])\r\n",
-                       lastroom_v, room->name, cmd.arg2);
+                       lastroom_v, room_name_get(room), cmd.arg2);
           count += 1;
         }
         break;
@@ -5477,7 +5489,7 @@ static void obj_checkload(struct char_data *ch, obj_vnum ovnum) {
           auto mob = mob_proto_by_id(lastmob_v);
           auto room = room_by_id(lastroom_r);
           send_to_char(ch, "  [%5d] %s (Given to %s [%d][%d Max])\r\n",
-                       lastroom_v, room->name, mob->short_descr, mob->vnum,
+                       lastroom_v, room_name_get(room), mob->short_descr, mob->vnum,
                        cmd.arg2);
           count += 1;
         }
@@ -5487,7 +5499,7 @@ static void obj_checkload(struct char_data *ch, obj_vnum ovnum) {
           auto mob = mob_proto_by_id(lastmob_v);
           auto room = room_by_id(lastroom_r);
           send_to_char(ch, "  [%5d] %s (Equipped to %s [%d][%d Max])\r\n",
-                       lastroom_v, room->name, mob->short_descr, mob->vnum,
+                       lastroom_v, room_name_get(room), mob->short_descr, mob->vnum,
                        cmd.arg2);
           count += 1;
         }
@@ -5498,7 +5510,7 @@ static void obj_checkload(struct char_data *ch, obj_vnum ovnum) {
         if (cmd.arg2 == ovnum) {
           auto room = room_by_id(lastroom_r);
           send_to_char(ch, "  [%5d] %s (Removed from room)\r\n", lastroom_v,
-                       room->name);
+                       room_name_get(room));
           count += 1;
         }
         break;
@@ -5577,7 +5589,7 @@ static void trg_checkload(struct char_data *ch, trig_vnum tvnum) {
         } else if (cmd.arg1 == WLD_TRIGGER) {
           auto room = room_by_id(lastroom_r);
           send_to_char(ch, "room [%5d] %-60s (zedit)\r\n", lastroom_v,
-                       room->name);
+                       room_name_get(room));
           found = 1;
         }
         break;
@@ -5614,7 +5626,7 @@ static void trg_checkload(struct char_data *ch, trig_vnum tvnum) {
 
     for (tpl = room->proto_script; tpl; tpl = tpl->next)
       if (tpl->vnum == tvnum) {
-        send_to_char(ch, "room[%5d] %s\r\n", room->number, room->name);
+        send_to_char(ch, "room[%5d] %s\r\n", room_vnum_get(room), room_name_get(room));
         found = 1;
       }
     return true;
@@ -5668,7 +5680,7 @@ ACMD(do_findkey) {
              (dir = search_block(arg, abbr_dirs, FALSE)) >= 0) {
     if (!EXIT(ch, dir)) {
       send_to_char(ch, "There's no exit in that direction!\r\n");
-    } else if ((key = EXIT(ch, dir)->key) == NOTHING || key == 0) {
+    } else if ((key = exit_key_get(EXIT(ch, dir))) == NOTHING || key == 0) {
       send_to_char(ch, "There's no key for that exit.\r\n");
     } else {
       sprintf(buf, "obj %d", key);

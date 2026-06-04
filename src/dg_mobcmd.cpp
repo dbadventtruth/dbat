@@ -76,6 +76,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <strings.h>
+
+#include "iterate.hpp"
 /*
  * Local functions.
  */
@@ -146,17 +148,15 @@ ACMD(do_masound) {
   skip_spaces(&argument);
 
   was_in_room = char_room_get(ch);
-  for (door = 0; door < NUM_OF_DIRS; door++) {
-    auto ex = char_exit_dir(ch, door);
-    if (!ex)
-      continue;
+  room_exits_iterate(was_in_room, [&](auto door, auto ex) {
     auto dest = exit_dest_get(ex);
     if (!dest)
-      continue;
+      return true;
 
-    IN_ROOM(ch) = dest->number;
+    IN_ROOM(ch) = room_vnum_get(dest);
     sub_write(argument, ch, TRUE, TO_ROOM);
-  }
+    return true;
+  });
 
   IN_ROOM(ch) = room_vnum_get(was_in_room);
 }
@@ -273,7 +273,6 @@ ACMD(do_mjunk) {
   char arg[MAX_INPUT_LENGTH];
   int pos, junk_all = 0;
   obj_data *obj;
-  obj_data *obj_next;
 
   if (!MOB_OR_IMPL(ch)) {
     send_to_char(ch, "Huh?!?\r\n");
@@ -299,16 +298,16 @@ ACMD(do_mjunk) {
       extract_obj(unequip_char(ch, pos));
       return;
     }
-    if ((obj = get_obj_in_list_vis(ch, arg, NULL, ch->carrying)) != NULL)
+    if ((obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch))) != NULL)
       extract_obj(obj);
     return;
   } else {
-    for (obj = ch->carrying; obj != NULL; obj = obj_next) {
-      obj_next = obj->next_content;
+    char_inventory_iterate(ch, [&](auto obj) {
       if (arg[3] == '\0' || isname(arg + 4, obj->name)) {
         extract_obj(obj);
       }
-    }
+      return true;
+    });
     /* Thanks to Carlos Myers for fixing the line below */
     while ((pos = get_obj_pos_in_equip_vis(ch, arg, NULL, ch->equipment)) >= 0)
       extract_obj(unequip_char(ch, pos));
@@ -573,18 +572,17 @@ ACMD(do_mpurge) {
   if (!*arg) {
     /* 'purge' */
     char_data *vnext;
-    obj_data *obj_next;
 
-    for (victim = char_room_get(ch)->people; victim; victim = vnext) {
-      vnext = victim->next_in_room;
+    room_people_iterate(char_room_get(ch), [&](auto victim) {
       if (IS_NPC(victim) && victim != ch)
         extract_char(victim);
-    }
+      return true;
+    });
 
-    for (obj = char_room_get(ch)->contents; obj; obj = obj_next) {
-      obj_next = obj->next_content;
+    room_contents_iterate(char_room_get(ch), [&](auto obj) {
       extract_obj(obj);
-    }
+      return true;
+    });
 
     return;
   }
@@ -729,15 +727,14 @@ ACMD(do_mteleport) {
       return;
     }
 
-    for (vict = char_room_get(ch)->people; vict; vict = next_ch) {
-      next_ch = vict->next_in_room;
-
+    room_people_iterate(char_room_get(ch), [&](auto vict) {
       if (valid_dg_target(vict, DG_ALLOW_GODS)) {
         char_from_room(vict);
         char_to_room(vict, target);
         enter_wtrigger(char_room_get(ch), ch, -1);
       }
-    }
+      return true;
+    });
   } else {
     if (*arg1 == UID_CHAR) {
       if (!(vict = get_char(arg1))) {
@@ -968,7 +965,7 @@ ACMD(do_mforget) {
 ACMD(do_mtransform) {
   char arg[MAX_INPUT_LENGTH];
   char_data *m, tmpmob;
-  obj_data *obj[NUM_WEARS];
+  obj_data *obj[NUM_WEARS] = {};
   int pos;
 
   if (!MOB_OR_IMPL(ch)) {
@@ -1004,12 +1001,10 @@ ACMD(do_mtransform) {
 
     /* move new obj info over to old object and delete new obj */
 
-    for (pos = 0; pos < NUM_WEARS; pos++) {
-      if (GET_EQ(ch, pos))
-        obj[pos] = unequip_char(ch, pos);
-      else
-        obj[pos] = NULL;
-    }
+    char_equipment_iterate(ch, [&](auto pos, auto eq) {
+      obj[pos] = unequip_char(ch, pos);
+      return true;
+    });
 
     /* put the mob in the same room as ch so extract will work */
     char_to_room(m, char_room_get(ch));
@@ -1100,15 +1095,15 @@ ACMD(do_mdoor) {
     return;
   }
 
-  newexit = rm->dir_option[dir];
+  newexit = room_dir_option_get(rm, dir);
 
   /* purge exit */
   if (fd == 0) {
     if (newexit) {
-      if (newexit->general_description)
-        free(newexit->general_description);
-      if (newexit->keyword)
-        free(newexit->keyword);
+      if (exit_general_description_get(newexit))
+        free((char*)exit_general_description_get(newexit));
+      if (exit_keyword_get(newexit))
+        free((char*)exit_keyword_get(newexit));
       free(newexit);
       rm->dir_option[dir] = NULL;
     }
@@ -1122,27 +1117,24 @@ ACMD(do_mdoor) {
 
     switch (fd) {
     case 1: /* description */
-      if (newexit->general_description)
-        free(newexit->general_description);
-      CREATE(newexit->general_description, char, strlen(value) + 3);
-      strcpy(newexit->general_description, value);
-      strcat(newexit->general_description, "\r\n");
+      {
+        char desc_buf[MAX_INPUT_LENGTH + 3];
+        snprintf(desc_buf, sizeof(desc_buf), "%s\r\n", value);
+        exit_general_description_set(newexit, desc_buf);
+      }
       break;
     case 2: /* flags       */
-      newexit->exit_info = (int16_t)asciiflag_conv(value);
+      exit_info_set(newexit, (int16_t)asciiflag_conv(value));
       break;
     case 3: /* key         */
-      newexit->key = atoi(value);
+      exit_key_set(newexit, atoi(value));
       break;
     case 4: /* name        */
-      if (newexit->keyword)
-        free(newexit->keyword);
-      CREATE(newexit->keyword, char, strlen(value) + 1);
-      strcpy(newexit->keyword, value);
+      exit_keyword_set(newexit, value);
       break;
     case 5: /* room        */
       if ((to_room = room_vnum_check(atoi(value))) != NOWHERE)
-        newexit->to_room = to_room;
+        exit_to_room_vnum_set(newexit, to_room);
       else
         mob_log(ch, "mdoor: invalid door target");
       break;

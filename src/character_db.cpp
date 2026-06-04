@@ -6,6 +6,8 @@
 #include "object_api.h"
 #include "object_impl.h"
 
+#include "iterate.hpp"
+
 struct char_data *character_list;
 struct char_data *affect_list;
 
@@ -38,18 +40,18 @@ struct obj_data *char_inventory_search_type(struct char_data *ch, int type,
 int64_t char_legacy_modifier(struct char_data *ch, int location, int specific) {
   int64_t mod = 0;
 
-  for (auto i = 0; i < NUM_WEARS; i++) {
-    if (auto eq = ch->equipment[i]) {
-      for (auto j = 0; j < MAX_OBJ_AFFECT; j++) {
-        if (eq->affected[j].location != location)
-          continue;
-        if (eq->affected[j].specific == specific ||
-            eq->affected[j].specific == -1) {
-          mod += eq->affected[j].modifier;
-        }
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    for (auto j = 0; j < MAX_OBJ_AFFECT; j++) {
+      auto &af = eq->affected[j];
+      if (af.location != location)
+        continue;
+      if (af.specific == specific ||
+          af.specific == -1) {
+        mod += af.modifier;
       }
     }
-  }
+    return true;
+  });
 
   for (auto af = ch->affected; af; af = af->next) {
     if (af->location != location)

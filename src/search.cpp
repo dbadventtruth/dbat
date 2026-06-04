@@ -13,9 +13,10 @@
 #include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
-#include "room_impl.h"
 #include "stringutils.h"
 #include "util_macros.h"
+
+#include "iterate.hpp"
 
 #include <cctype>
 #include <cstddef>
@@ -108,14 +109,22 @@ int get_number(char **name) {
 }
 
 /* Search a given list for an object number, and return a ptr to that obj */
-struct obj_data *get_obj_in_list_num(int num, struct obj_data *list) {
-  struct obj_data *i;
+struct obj_data *get_obj_in_list_num(int num, struct inventory_data list) {
+  struct obj_data *result = NULL;
 
-  for (i = list; i; i = i->next_content)
-    if (GET_OBJ_RNUM(i) == num)
-      return (i);
-
-  return (NULL);
+  auto handler = [&](auto o) {
+    if (GET_OBJ_RNUM(o) == num) {
+      result = o;
+      return false;
+    }
+    return true;
+  };
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
+  }
+  return result;
 }
 
 /* search the entire world for an object number, and return a pointer  */
@@ -211,50 +220,37 @@ struct char_data *get_char_room_vis(struct char_data *ch, char *name,
   if (*number == 0)
     return (get_player_vis(ch, name, NULL, FIND_CHAR_ROOM));
 
-  for (i = char_room_get(ch)->people; i && *number; i = i->next_in_room) {
-    if (!strcasecmp(name, "last") && LASTHIT(i) != 0 &&
-        LASTHIT(i) == GET_IDNUM(ch)) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (isname(name, i->name) &&
-               (IS_NPC(i) || IS_NPC(ch) || GET_ADMLEVEL(i) > 0 ||
-                GET_ADMLEVEL(ch) > 0) &&
-               i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (isname(name, i->name) && i == ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !IS_NPC(ch) &&
-               !strcasecmp(get_i_name(ch, i), CAP(name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !IS_NPC(ch) &&
-               strstr(get_i_name(ch, i), CAP(name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !(strcmp(RACE(i), CAP(name))) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && strstr(RACE(i), CAP(name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && !(strcmp(RACE(i), name)) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    } else if (!IS_NPC(i) && strstr(RACE(i), name) && i != ch) {
-      if (CAN_SEE(ch, i))
-        if (--(*number) == 0)
-          return (i);
-    }
+  {
+    struct char_data *found = NULL;
+    room_people_iterate(char_room_get(ch), [&](auto i) {
+      if (!*number) { return false; }
+      if (!strcasecmp(name, "last") && LASTHIT(i) != 0 &&
+          LASTHIT(i) == GET_IDNUM(ch)) {
+        if (CAN_SEE(ch, i))
+          if (--(*number) == 0) {
+            found = i;
+            return false;
+          }
+      } else if (isname(name, i->name) &&
+                 (IS_NPC(i) || IS_NPC(ch) || GET_ADMLEVEL(i) > 0 ||
+                  GET_ADMLEVEL(ch) > 0) &&
+                 i != ch) {
+        if (CAN_SEE(ch, i))
+          if (--(*number) == 0) {
+            found = i;
+            return false;
+          }
+      } else if (isname(name, i->name) && i == ch) {
+        if (CAN_SEE(ch, i))
+          if (--(*number) == 0) {
+            found = i;
+            return false;
+          }
+      }
+      return true;
+    });
+    if (found)
+      return found;
   }
   return (NULL);
 }
@@ -327,8 +323,7 @@ struct char_data *get_char_vis(struct char_data *ch, char *name, int *number,
 }
 
 struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name,
-                                     int *number, struct obj_data *list) {
-  struct obj_data *i;
+                                     int *number, struct inventory_data list) {
   int num;
 
   if (!number) {
@@ -339,13 +334,23 @@ struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name,
   if (*number == 0)
     return (NULL);
 
-  for (i = list; i && *number; i = i->next_content)
+  struct obj_data *result = NULL;
+
+  auto handler = [&](auto i) {
     if (isname(name, i->name))
       if (CAN_SEE_OBJ(ch, i) || (GET_OBJ_TYPE(i) == ITEM_LIGHT))
-        if (--(*number) == 0)
-          return (i);
-
-  return (NULL);
+        if (--(*number) == 0) {
+          result = i;
+          return false;
+        }
+    return true;
+  };
+  switch (list.entity_type) {
+  case ENT_ROOM: room_contents_iterate(list.entity.room, handler); break;
+  case ENT_CHAR: char_inventory_iterate(list.entity.ch, handler); break;
+  case ENT_OBJ:  obj_contents_iterate(list.entity.obj, handler); break;
+  }
+  return result;
 }
 
 /* search the entire world for an object, and return a pointer  */
@@ -362,12 +367,12 @@ struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number) {
     return (NULL);
 
   /* scan items carried */
-  if ((i = get_obj_in_list_vis(ch, name, number, ch->carrying)) != NULL)
+  if ((i = get_obj_in_list_vis(ch, name, number, inv_for_char(ch))) != NULL)
     return (i);
 
   /* scan room */
   if ((i = get_obj_in_list_vis(ch, name, number,
-                               char_room_get(ch)->contents)) != NULL)
+                                inv_for_room(char_room_get(ch)))) != NULL)
     return (i);
 
   /* ok.. no luck yet. scan the entire obj list   */
@@ -455,7 +460,7 @@ int find_all_dots(char *arg) {
 
 int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
                  struct char_data **tar_ch, struct obj_data **tar_obj) {
-  int i, found, number;
+  int found, number;
   char name_val[MAX_INPUT_LENGTH];
   char *name = name_val;
 
@@ -480,24 +485,28 @@ int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
   }
 
   if (IS_SET(bitvector, FIND_OBJ_EQUIP)) {
-    for (found = FALSE, i = 0; i < NUM_WEARS && !found; i++)
-      if (GET_EQ(ch, i) && isname(name, GET_EQ(ch, i)->name) && --number == 0) {
-        *tar_obj = GET_EQ(ch, i);
+    found = FALSE;
+    char_equipment_iterate(ch, [&](auto i, auto eq) {
+      if (isname(name, eq->name) && --number == 0) {
+        *tar_obj = eq;
         found = TRUE;
+        return false;
       }
+      return true;
+    });
     if (found)
       return (FIND_OBJ_EQUIP);
   }
 
   if (IS_SET(bitvector, FIND_OBJ_INV)) {
-    if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, ch->carrying)) !=
+    if ((*tar_obj = get_obj_in_list_vis(ch, name, &number, inv_for_char(ch))) !=
         NULL)
       return (FIND_OBJ_INV);
   }
 
   if (IS_SET(bitvector, FIND_OBJ_ROOM)) {
     if ((*tar_obj = get_obj_in_list_vis(ch, name, &number,
-                                        char_room_get(ch)->contents)) != NULL)
+                                        inv_for_room(char_room_get(ch)))) != NULL)
       return (FIND_OBJ_ROOM);
   }
 

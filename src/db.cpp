@@ -648,29 +648,21 @@ void destroy_db(void) {
 
   /* Rooms */
   room_iterate([&](auto room) {
-    if (room->name)
-      free(room->name);
-    if (room->description)
-      free(room->description);
+    room_name_set(room, NULL);
+    room_description_set(room, NULL);
     free_extra_descriptions(room->ex_description);
 
     /* free any assigned scripts */
-    if (SCRIPT(room))
+    if (room_script_get(room))
       extract_script(room, WLD_TRIGGER);
     /* free script proto list */
     free_proto_script(room, WLD_TRIGGER);
-
-    for (itr = 0; itr < NUM_OF_DIRS; itr++) {
-      struct room_direction_data *ex = room->dir_option[itr];
-      if (!ex)
-        continue;
-
-      if (ex->general_description)
-        free(ex->general_description);
-      if (ex->keyword)
-        free(ex->keyword);
-      free(ex);
-    }
+    room_exits_iterate(room, [&](auto i, auto exit) {
+      exit_general_description_set(exit, NULL);
+      exit_keyword_set(exit, NULL);
+      free(exit);
+      return true;
+    });
     return true;
   });
 
@@ -1006,14 +998,14 @@ void auc_save() {
   else {
     struct obj_data *obj, *next_obj;
 
-    for (obj = room_by_id(80)->contents; obj; obj = next_obj) {
-      next_obj = obj->next_content;
+    room_contents_iterate(room_by_id(80), [&](auto obj) {
       if (obj) {
         fprintf(fl, "%" I64T " %s %d %d %d %d %ld\n", obj->unique_id,
                 GET_AUCTERN(obj), GET_AUCTER(obj), GET_CURBID(obj),
                 GET_STARTBID(obj), GET_BID(obj), GET_AUCTIME(obj));
       }
-    }
+      return true;
+    });
     fprintf(fl, "~END~\n");
     fclose(fl);
   }
@@ -1496,9 +1488,9 @@ static void parse_room(FILE *fl, int virtual_nr) {
   room_put(virtual_nr, rm);
 
   rm->zone = zone;
-  rm->number = virtual_nr;
-  rm->name = fread_string(fl, buf2);
-  rm->description = fread_string(fl, buf2);
+  room_vnum_set(rm, virtual_nr);
+  room_name_set(rm, fread_string(fl, buf2));
+  room_description_set(rm, fread_string(fl, buf2));
 
   if (!get_line(fl, line)) {
     log("SYSERR: Expecting roomflags/sector type of room #%d but file ended!",
@@ -1543,7 +1535,7 @@ static void parse_room(FILE *fl, int virtual_nr) {
     rm->room_flags[2] = asciiflag_conv(flags3);
     rm->room_flags[3] = asciiflag_conv(flags4);
 
-    rm->sector_type = t[2];
+    room_sector_type_set(rm, t[2]);
     sprintf(flags, "object #%d",
             virtual_nr); /* sprintf: OK (until 399-bit integers) */
 
@@ -1553,11 +1545,11 @@ static void parse_room(FILE *fl, int virtual_nr) {
     exit(1);
   }
 
-  rm->timed = -1;
+  room_timed_set(rm, -1);
 
   int gravity = 0;
 
-  room_vnum vn = rm->number;
+  room_vnum vn = room_vnum_get(rm);
 
   if (room_flagged(rm, ROOM_VEGETA) || room_flagged(rm, ROOM_GRAVITYX10)) {
     gravity = 10;
@@ -1587,7 +1579,7 @@ static void parse_room(FILE *fl, int virtual_nr) {
     gravity = 1000;
   }
 
-  rm->gravity = gravity;
+  room_gravity_set(rm, gravity);
 
   snprintf(buf, sizeof(buf),
            "SYSERR: Format error in room #%d (expecting D/E/S)", virtual_nr);
@@ -1733,6 +1725,7 @@ static void setup_dir(FILE *fl, struct room_data *room, int dir) {
     }
   }
 }
+
 
 /* make sure the start rooms exist & resolve their vnums to rnums */
 static void check_start_rooms(void) {}
@@ -2110,9 +2103,6 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch) {
     letter = fread_letter(mob_f);
     ungetc(letter, mob_f);
   }
-
-  for (j = 0; j < NUM_WEARS; j++)
-    ch->equipment[j] = NULL;
 
   /* Uncomment to force all mob files to be rewritten. Good for initial
    * AUTOBALANCE setup. if (bitsavetodisk) {
@@ -3971,7 +3961,7 @@ static bool reset_command_equip(struct reset_context *ctx, obj_vnum vnum,
   auto obj = read_object(vnum, VIRTUAL);
   add_unique_id(obj);
 
-  obj->in_room = room->number;
+  obj->in_room = room_vnum_get(room);
   load_otrigger(obj);
 
   if (wear_otrigger(obj, ctx->mob, wear_loc)) {
@@ -3993,7 +3983,7 @@ static bool reset_command_remove(struct reset_context *ctx, room_vnum rv,
   struct obj_data *obj = nullptr;
   if (!room)
     goto finish;
-  obj = get_obj_in_list_num(vnum, room->contents);
+  obj = get_obj_in_list_num(vnum, inv_for_room(room));
   if (obj)
     extract_obj(obj);
 
@@ -4012,19 +4002,19 @@ static bool reset_command_door(struct reset_context *ctx, room_vnum rv, int dir,
   struct room_direction_data *exit = nullptr;
   if (!room)
     goto finish;
-  exit = room->dir_option[dir];
+  exit = room_dir_option_get(room, dir);
   if (!exit)
     goto finish;
 
   switch (state) {
   case 0: /* open */
-    REMOVE_BIT(exit->exit_info, EX_CLOSED);
+    exit_flag_set(exit, EX_CLOSED, false);
     break;
   case 1: /* closed */
-    SET_BIT(exit->exit_info, EX_CLOSED);
+    exit_flag_set(exit, EX_CLOSED, true);
     break;
   case 2: /* locked */
-    SET_BIT(exit->exit_info, EX_CLOSED | EX_LOCKED);
+    exit_flag_set(exit, EX_CLOSED | EX_LOCKED, true);
     break;
   default:
     ZONE_ERROR("invalid door state");
@@ -4080,10 +4070,8 @@ static bool reset_command_trigger(struct reset_context *ctx, int attach_type,
       ctx->cmd->command = '*'; /* skip command */
       return false;
     }
-    if (!SCRIPT(room)) {
-      CREATE(SCRIPT(room), struct script_data, 1);
-    }
-    add_trigger(SCRIPT(room), proto, -1);
+    struct script_data *sc = room_script_ensure(room);
+    add_trigger(sc, proto, -1);
   } break;
   default:
     ZONE_ERROR("invalid trigger attach type");
@@ -4129,10 +4117,8 @@ static bool reset_command_variable(struct reset_context *ctx, int attach_type,
       ctx->cmd->command = '*'; /* skip command */
       return false;
     }
-    if (!SCRIPT(room)) {
-      CREATE(SCRIPT(room), struct script_data, 1);
-    }
-    add_var(&(SCRIPT(room)->global_vars), name, value, unused);
+    struct script_data *sc = room_script_ensure(room);
+    add_var(&(sc->global_vars), name, value, unused);
   } break;
   default:
     ZONE_ERROR("invalid variable attach type");

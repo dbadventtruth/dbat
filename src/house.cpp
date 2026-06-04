@@ -19,6 +19,7 @@
 
 #include "character_api.h"
 #include "character_impl.h"
+#include "consts/directions.h"
 #include "character_macros.h"
 #include "consts/admlevel.h"
 #include "consts/applies.h"
@@ -34,7 +35,7 @@
 #include "relocate.h"
 #include "room_api.h"
 #include "room_db.h"
-#include "room_impl.h"
+
 #include "stringutils.h"
 #include "util_macros.h"
 
@@ -159,12 +160,12 @@ void House_crashsave(room_vnum vnum) {
     perror("SYSERR: Error saving house file");
     return;
   }
-  if (!House_save(room->contents, fp, 0)) {
+  if (!House_save(room_contents_get(room), fp, 0)) {
     fclose(fp);
     return;
   }
   fclose(fp);
-  House_restore_weight(room->contents);
+  House_restore_weight(room_contents_get(room));
   room_flag_set(room, ROOM_HOUSE_CRASH, FALSE);
 }
 
@@ -349,7 +350,7 @@ void hcontrol_build_house(struct char_data *ch, char *arg) {
     send_to_char(ch, "'%s' is not a valid direction.\r\n", arg1);
     return;
   }
-  if (!real_house->dir_option[exit_num]) {
+  if (!room_dir_option_get(real_house, exit_num)) {
     send_to_char(ch, "There is no exit %s from room %d.\r\n", dirs[exit_num],
                  virt_house);
     return;

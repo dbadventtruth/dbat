@@ -1,10 +1,15 @@
 #pragma once
+#include "consts/directions.h"
+#include "consts/itemdata.h"
 
 #include "character_db.h"
+#include "character_api.h"
 #include "dgscript_db.h"
 #include "guild_db.h"
 #include "object_db.h"
+#include "object_api.h"
 #include "room_db.h"
+#include "room_api.h"
 #include "shop_db.h"
 #include "zone_db.h"
 
@@ -110,6 +115,78 @@ inline void room_iterate(bool (*func)(struct room_data *room)) {
     return;
   }
   room_iterate([&](struct room_data *room) { return func(room); });
+}
+
+template <typename Func> inline void room_exits_iterate(struct room_data *room, Func &&func) {
+  if(!room) return;
+
+  for(auto i = 0; i < NUM_OF_DIRS; i++) {
+    if(auto exit = room_dir_option_get(room, i); exit) {
+      if(!func(i, exit)) {
+        break;
+      }
+    }
+  }
+}
+
+template <typename Func> inline void room_people_iterate(struct room_data *room, Func &&func) {
+  if(!room) return;
+
+  struct char_data *next = nullptr;
+  for (auto c = room_people_get(room); c; c = next) {
+    next = char_next_in_room_get(c);
+    if (!func(c)) {
+      break;
+    }
+  }
+}
+
+template <typename Func> inline void room_contents_iterate(struct room_data *room, Func &&func) {
+  if(!room) return;
+
+  struct obj_data *next = nullptr;
+  for (auto o = room_contents_get(room); o; o = next) {
+    next = obj_next_content_get(o);
+    if (!func(o)) {
+      break;
+    }
+  }
+}
+
+template <typename Func> inline void obj_contents_iterate(struct obj_data *obj, Func &&func) {
+  if(!obj) return;
+
+  struct obj_data *next = nullptr;
+  for (auto o = obj_contains_get(obj); o; o = next) {
+    next = obj_next_content_get(o);
+    if (!func(o)) {
+      break;
+    }
+  }
+}
+
+template <typename Func> inline void char_inventory_iterate(struct char_data *ch, Func &&func) {
+  if(!ch) return;
+
+  struct obj_data *next = nullptr;
+  for (auto o = char_carrying_get(ch); o; o = next) {
+    next = obj_next_content_get(o);
+    if (!func(o)) {
+      break;
+    }
+  }
+}
+
+template <typename Func> inline void char_equipment_iterate(struct char_data *ch, Func &&func) {
+  if(!ch) return;
+
+  for (auto i = 0; i < NUM_WEARS; i++) {
+    if (auto o = char_equipment_get(ch, i); o) {
+      if (!func(i, o)) {
+        break;
+      }
+    }
+  }
 }
 
 template <typename Func> inline void zone_iterate(Func &&func) {

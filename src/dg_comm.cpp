@@ -43,11 +43,12 @@
 #include "object_macros.h"
 #include "races_plus.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "search.h"
 #include "spells.h"
 #include "stringutils.h"
 #include "util_macros.h"
+
+#include "iterate.hpp"
 
 #include <cstring>
 
@@ -189,12 +190,12 @@ void sub_write(char *arg, struct char_data *ch, int8_t find_invis,
       if (find_invis)
         obj = get_obj_in_room(char_room_get(ch), name);
       else if (!(obj = get_obj_in_list_vis(ch, name, NULL,
-                                           char_room_get(ch)->contents)))
+                                           inv_for_room(char_room_get(ch)))))
         ;
       else if (!(obj = get_obj_in_equip_vis(ch, name, &tmp, ch->equipment)))
         ;
       else
-        obj = get_obj_in_list_vis(ch, name, NULL, ch->carrying);
+        obj = get_obj_in_list_vis(ch, name, NULL, inv_for_char(ch));
 
       otokens[i] = (void *)obj;
       tokens[++i] = ++s;
@@ -217,9 +218,11 @@ void sub_write(char *arg, struct char_data *ch, int8_t find_invis,
     sub_write_to_char(ch, tokens, otokens, type);
 
   if (IS_SET(targets, TO_ROOM))
-    for (to = char_room_get(ch)->people; to; to = to->next_in_room)
+    room_people_iterate(char_room_get(ch), [&](auto to) {
       if (to != ch && SENDOK(to))
         sub_write_to_char(to, tokens, otokens, type);
+      return true;
+    });
 }
 
 void send_to_zone(char *messg, struct zone_data *zone) {
@@ -276,7 +279,7 @@ void send_to_sense(int type, char *messg, struct char_data *ch) {
     if (!GET_SKILL(tch, SKILL_SENSE)) {
       continue;
     }
-    if (((char_room_get(ch)->zone != char_room_get(tch)->zone && type == 0) ||
+    if (((room_zone_get(char_room_get(ch)) != room_zone_get(char_room_get(tch)) && type == 0) ||
          !AWAKE(tch))) {
       continue;
     }
@@ -389,7 +392,7 @@ void send_to_scouter(char *messg, struct char_data *ch, int num, int type) {
     if (tch == ch) {
       continue;
     } else {
-      if ((((char_room_get(ch)->zone != char_room_get(tch)->zone) &&
+      if ((((room_zone_get(char_room_get(ch)) != room_zone_get(char_room_get(tch))) &&
             type == 0) ||
            !AWAKE(tch))) {
         continue;

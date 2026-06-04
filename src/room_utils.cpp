@@ -1,6 +1,5 @@
 #include "room_utils.h"
 #include "room_api.h"
-#include "room_impl.h"
 
 #include "character_impl.h"
 #include "character_macros.h"
@@ -17,13 +16,17 @@
 #include "object_macros.h"
 #include "weather_db.h"
 
+#include "iterate.hpp"
+
 int num_pc_in_room(struct room_data *room) {
   int i = 0;
-  struct char_data *ch;
 
-  for (ch = room->people; ch != NULL; ch = ch->next_in_room)
-    if (!IS_NPC(ch))
+  room_people_iterate(room, [&](struct char_data *ch) {
+    if (!IS_NPC(ch)) {
       i++;
+    }
+    return true;
+  });
 
   return (i);
 }
@@ -33,14 +36,15 @@ bool cook_element(struct room_data *room) {
   struct obj_data *obj, *next_obj;
   int found = FALSE;
 
-  for (obj = room->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(room, [&](auto obj) {
     if (GET_OBJ_TYPE(obj) == ITEM_CAMPFIRE) {
       found = 1;
     } else if (GET_OBJ_VNUM(obj) == 19093) {
       found = 2;
+      return false;
     }
-  }
+    return true;
+  });
   return (found);
 }
 
@@ -52,7 +56,7 @@ bool room_is_dark(struct room_data *room) {
 
   struct room_data *rm = room;
 
-  if (rm->light)
+  if (room_light_get(rm))
     return (FALSE);
 
   if (cook_element(rm))

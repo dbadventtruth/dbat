@@ -42,7 +42,7 @@
 #include "object_macros.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
+
 #include "room_macros.h"
 #include "search.h"
 #include "spells.h"
@@ -71,8 +71,8 @@ static struct bfs_queue_struct *bfs_queue_head = 0, *bfs_queue_tail = 0;
 #define MARK(room) (room_flag_set(room, ROOM_BFS_MARK, TRUE))
 #define UNMARK(room) (room_flag_set(room, ROOM_BFS_MARK, FALSE))
 #define IS_MARKED(room) (room_flagged(room, ROOM_BFS_MARK))
-#define TOROOM(x, y) (exit_dest_get((x)->dir_option[(y)]))
-#define IS_CLOSED(x, y) (EXIT_FLAGGED((x)->dir_option[(y)], EX_CLOSED))
+#define TOROOM(x, y) (exit_dest_get(room_dir_option_get(x, y)))
+#define IS_CLOSED(x, y) (exit_flagged(room_dir_option_get(x, y), EX_CLOSED))
 
 int VALID_EDGE(struct room_data *x, int y) {
   if (!x || !TOROOM(x, y))
@@ -144,12 +144,13 @@ int find_first_step(struct room_data *src, struct room_data *target) {
   });
   MARK(src);
   /* first, enqueue the first steps, saving which direction we're going. */
-  for (curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++) {
-    if (VALID_EDGE(src, curr_dir)) {
-      MARK(TOROOM(src, curr_dir));
-      bfs_enqueue(TOROOM(src, curr_dir), curr_dir);
+  room_exits_iterate(src, [&](auto dir, auto exit) {
+    if (VALID_EDGE(src, dir)) {
+      MARK(TOROOM(src, dir));
+      bfs_enqueue(TOROOM(src, dir), dir);
     }
-  }
+    return true;
+  });
   /* now, do the classic BFS. */
   while (bfs_queue_head) {
     if (bfs_queue_head->room == target) {
@@ -157,12 +158,13 @@ int find_first_step(struct room_data *src, struct room_data *target) {
       bfs_clear_queue();
       return (curr_dir);
     } else {
-      for (curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++)
-        if (VALID_EDGE(bfs_queue_head->room, curr_dir)) {
-          MARK(TOROOM(bfs_queue_head->room, curr_dir));
-          bfs_enqueue(TOROOM(bfs_queue_head->room, curr_dir),
-                      bfs_queue_head->dir);
+      room_exits_iterate(bfs_queue_head->room, [&](auto dir, auto exit) {
+        if (VALID_EDGE(bfs_queue_head->room, dir)) {
+          MARK(TOROOM(bfs_queue_head->room, dir));
+          bfs_enqueue(TOROOM(bfs_queue_head->room, dir), bfs_queue_head->dir);
         }
+        return true;
+      });
       bfs_dequeue();
     }
   }
@@ -349,15 +351,15 @@ ACMD(do_sradar) {
 ACMD(do_radar) {
   int room = 0, dir, num = 0, found = FALSE, found2 = FALSE, fcount = 0;
   struct char_data *tch;
-  struct obj_data *obj, *obj2, *next_obj;
 
-  for (obj2 = ch->carrying; obj2; obj2 = next_obj) {
-    next_obj = obj2->next_content;
+
+  char_inventory_iterate(ch, [&](auto obj2) {
     if (GET_OBJ_VNUM(obj2) == 12 && (!OBJ_FLAGGED(obj2, ITEM_BROKEN)) &&
         (!OBJ_FLAGGED(obj2, ITEM_FORGED))) {
       found2 = TRUE;
     }
-  }
+    return true;
+  });
   if (found2 == FALSE) {
     send_to_char(ch, "You do not even have a dragon radar!\r\n");
     return;
@@ -374,10 +376,9 @@ ACMD(do_radar) {
         TO_ROOM);
     while (num < 20000) {
       if (room_by_id(room)) {
-        for (obj = room_by_id(room)->contents; obj; obj = next_obj) {
-          next_obj = obj->next_content;
+        room_contents_iterate(room_by_id(room), [&](auto obj) {
           if (OBJ_FLAGGED(obj, ITEM_FORGED)) {
-            continue;
+            return true;
           } else if (GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 ||
                      GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 ||
                      GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 ||
@@ -409,15 +410,15 @@ ACMD(do_radar) {
             }
             found = TRUE;
           }
-        }
-        for (tch = room_by_id(room)->people; tch; tch = tch->next_in_room) {
+          return true;
+        });
+        room_people_iterate(room_by_id(room), [&](auto tch) {
           if (tch == ch) {
-            continue;
+            return true;
           }
-          for (obj = tch->carrying; obj; obj = next_obj) {
-            next_obj = obj->next_content;
+          char_inventory_iterate(tch, [&](auto obj) {
             if (OBJ_FLAGGED(obj, ITEM_FORGED)) {
-              continue;
+              return true;
             } else if (GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 ||
                        GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 ||
                        GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 ||
@@ -450,8 +451,10 @@ ACMD(do_radar) {
               }
               found = TRUE;
             }
-          }
-        }
+            return true;
+          });
+          return true;
+        });
       }
       num += 1;
       room += 1;

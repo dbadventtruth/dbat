@@ -28,7 +28,6 @@
 #include "object_impl.h"
 #include "races_plus.h"
 #include "room_api.h"
-#include "room_impl.h"
 #include "shop.h"
 #include "shop_impl.h"
 #include "stringutils.h"
@@ -158,21 +157,25 @@ ACMD(do_oasis_links) {
   first = zone->bot;
 
   send_to_char(ch, "Zone %d is linked to the following zones:\r\n", zvnum);
-  room_iterate([&](auto room) {
-    if (room_vnum_get(room) >= first) {
-      for (j = 0; j < NUM_OF_DIRS; j++) {
-        if (room->dir_option[j]) {
-          struct room_data *trm = exit_dest_get(room->dir_option[j]);
-          if (!trm)
-            continue;
-          auto tz = room_zone_get(trm);
-          send_to_char(ch, "%3d %-30s at %5d (%-5s) ---> %5d\r\n", tz->number,
-                       tz->name, room_vnum_get(room), dirs[j], trm->number);
-        }
+  for(int i = first; i <= last; i++) {
+    auto room = room_by_id(i);
+    if (!room) continue;
+    room_exits_iterate(room, [&](auto dir, auto exit) {
+      auto dest = exit_dest_get(exit);
+      if (!dest) return true;
+      auto dzone = room_zone_get(dest);
+      auto rzone = room_zone_get(room);
+       if (dzone != rzone) {
+        send_to_char(ch, "  %s (%d) via %s\r\n", dzone->name,
+                     dzone->number, dirs[dir]);
       }
-    }
-    return true;
-  });
+      if (rzone != dzone) {
+        send_to_char(ch, "  %s (%d) via %s\r\n", dzone->name,
+                     dzone->number, dirs[dir]);
+      }
+      return true;
+    });
+  }
 }
 
 /******************************************************************************/
@@ -206,22 +209,21 @@ void list_rooms(struct char_data *ch, struct zone_data *zone, room_vnum vmin,
       continue;
 
     counter++;
+    auto name = room_name_get(rm);
 
-    send_to_char(ch, "%4d) [@g%-5d@n] @[1]%-*s@n %s", counter, rm->number,
-                 count_color_chars(rm->name) + 44, rm->name,
-                 rm->proto_script ? "[TRIG] " : "");
+    send_to_char(ch, "%4d) [@g%-5d@n] @[1]%-*s@n %s", counter, room_vnum_get(rm),
+                 count_color_chars(name) + 44, name,
+                 room_proto_script_get(rm) ? "[TRIG] " : "");
 
-    for (j = 0; j < NUM_OF_DIRS; j++) {
-      struct room_direction_data *exit = rm->dir_option[j];
-      if (exit == NULL)
-        continue;
+    room_exits_iterate(rm, [&](auto dir, auto exit) {
       struct room_data *dest = exit_dest_get(exit);
       if (!dest)
-        continue;
+        return true;
 
-      if (dest->zone != rm->zone)
-        send_to_char(ch, "(@y%d@n)", dest->number);
-    }
+      if (room_zone_get(dest) != room_zone_get(rm))
+        send_to_char(ch, "(@y%d@n)", room_vnum_get(dest));
+      return true;
+    });
 
     send_to_char(ch, "\r\n");
   }

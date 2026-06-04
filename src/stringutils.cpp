@@ -33,7 +33,7 @@ int levenshtein_distance(char *s1, char *s2) {
   return i;
 }
 
-int count_color_chars(char *string) {
+int count_color_chars(const char *string) {
   int i, len;
   int num = 0;
 

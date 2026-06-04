@@ -75,6 +75,9 @@ size_t obj_inventory_count(struct obj_data *obj, bool recursive);
 bool obj_search_vnum_match(struct obj_data *obj, void *ctx);
 bool obj_search_type_match(struct obj_data *obj, void *ctx);
 
+struct obj_data* obj_contains_get(struct obj_data *obj);
+struct obj_data* obj_next_content_get(struct obj_data *obj);
+
 void obj_contents_list_iterate(struct obj_data *obj, bool recursive,
                                obj_iter_fn func, void *ctx);
 void obj_inventory_iterate(struct obj_data *obj, bool recursive,
@@ -84,10 +87,6 @@ struct obj_data *obj_contents_search_vnum(struct obj_data *obj, obj_vnum vnum,
                                           bool recursive, int flags);
 struct obj_data *obj_contents_search_type(struct obj_data *obj, int type,
                                           bool recursive, int flags);
-struct obj_data *obj_inventory_search_vnum(struct obj_data *obj, obj_vnum vnum,
-                                           bool recursive, int flags);
-struct obj_data *obj_inventory_search_type(struct obj_data *obj, int type,
-                                           bool recursive, int flags);
 
 #ifdef __cplusplus
 }

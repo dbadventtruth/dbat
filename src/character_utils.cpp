@@ -34,7 +34,6 @@
 #include "random.h"
 #include "relocate.h"
 #include "room_db.h"
-#include "room_impl.h"
 #include "skills.h"
 #include "spells.h"
 #include "stringutils.h"
@@ -58,6 +57,8 @@
 #include "room_utils.h"
 #include "time_info.h"
 #include "weather_db.h"
+
+#include "iterate.hpp"
 
 #include <string>
 
@@ -1033,11 +1034,10 @@ int64_t getMaxCarryWeight(char_data *ch) {
 int64_t getCurGearWeight(char_data *ch) {
   int64_t total_weight = 0;
 
-  for (int i = 0; i < NUM_WEARS; i++) {
-    if (GET_EQ(ch, i)) {
-      total_weight += GET_OBJ_WEIGHT(GET_EQ(ch, i));
-    }
-  }
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    total_weight += GET_OBJ_WEIGHT(eq);
+    return true;
+  });
   return total_weight;
 }
 
@@ -1099,13 +1099,13 @@ void dispel_ash(struct char_data *ch) {
   struct obj_data *obj, *next_obj, *ash = nullptr;
   int there = FALSE;
 
-  for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 1306) {
       there = TRUE;
       ash = obj;
     }
-  }
+    return true;
+  });
 
   if (ash) {
     int roll = axion_dice(0);
@@ -3206,18 +3206,19 @@ void handle_evolution(struct char_data *ch, int64_t dmg) {
 void demon_refill_lf(struct char_data *ch, int64_t num) {
   struct char_data *tch = NULL;
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (!IS_DEMON(tch))
-      continue;
+      return true;
     if ((getCurLF(tch)) >= (getMaxLF(tch)))
-      continue;
+      return true;
     else {
       incCurLF(ch, num);
       act("@CYou feel the life energy from @c$N@C's cursed body flow out and "
           "you draw it into yourself!@n",
           TRUE, tch, 0, ch, TO_CHAR);
     }
-  }
+    return true;
+  });
 }
 
 void mob_talk(struct char_data *ch, const char *speech) {
@@ -3229,13 +3230,13 @@ void mob_talk(struct char_data *ch, const char *speech) {
     return;
   }
 
-  for (tch = char_room_get(ch)->people; tch; tch = tch->next_in_room) {
+  room_people_iterate(char_room_get(ch), [&](auto tch) {
     if (!IS_NPC(tch))
-      continue;
+      return true;
     if (!IS_HUMANOID(tch))
-      continue;
+      return true;
     if (stop == 0)
-      continue;
+      return true;
     else {
       vict = tch;
       stop = mob_respond(ch, vict, speech);
@@ -3243,7 +3244,8 @@ void mob_talk(struct char_data *ch, const char *speech) {
         stop = 0;
       }
     }
-  } /* End for loop */
+    return true;
+  });
 } /* End Mob Talk */
 
 int mob_respond(struct char_data *ch, struct char_data *vict,
@@ -3759,17 +3761,16 @@ int planet_check(struct char_data *ch, struct char_data *vict) {
 void purge_homing(struct char_data *ch) {
 
   struct obj_data *obj = NULL, *next_obj = NULL;
-  for (obj = char_room_get(ch)->contents; obj; obj = next_obj) {
-    next_obj = obj->next_content;
+  room_contents_iterate(char_room_get(ch), [&](auto obj) {
     if (GET_OBJ_VNUM(obj) == 80 || GET_OBJ_VNUM(obj) == 81) {
       if (TARGET(obj) == ch || USER(obj) == ch) {
         act("$p @wloses its target and flies off into the distance.@n", TRUE, 0,
             obj, 0, TO_ROOM);
         extract_obj(obj);
-        continue;
       }
     }
-  }
+    return true;
+  });
 }
 
 void improve_skill(struct char_data *ch, int skill, int num) {
@@ -4927,7 +4928,7 @@ struct room_direction_data *char_exit_dir(struct char_data *ch, int dir) {
     return NULL;
   }
 
-  return room->dir_option[dir];
+  return room_dir_option_get(room, dir);
 }
 
 struct room_direction_data *char_exit_dir_2nd(struct char_data *ch, int dir) {
@@ -4945,7 +4946,7 @@ struct room_direction_data *char_exit_dir_2nd(struct char_data *ch, int dir) {
     return NULL;
   }
 
-  return dest->dir_option[dir];
+  return room_dir_option_get(dest, dir);
 }
 
 struct room_direction_data *char_exit_dir_3rd(struct char_data *ch, int dir) {
@@ -4963,25 +4964,29 @@ struct room_direction_data *char_exit_dir_3rd(struct char_data *ch, int dir) {
     return NULL;
   }
 
-  return dest->dir_option[dir];
+  return room_dir_option_get(dest, dir);
 }
 
-bool char_can_go_dir(struct char_data *ch, int dir) {
-
-  struct room_direction_data *exit = char_exit_dir(ch, dir);
+struct room_data* char_can_go_exit(struct char_data *ch, struct room_direction_data *exit) {
   if (!exit)
-    return false;
+    return NULL;
 
-  if (EXIT_FLAGGED(exit, EX_CLOSED)) {
-    return false;
+  if (exit_flagged(exit, EX_CLOSED)) {
+    return NULL;
   }
 
   struct room_data *dest = exit_dest_get(exit);
   if (!dest) {
-    return false;
+    return NULL;
   }
 
-  return true;
+  return dest;
+}
+
+struct room_data* char_can_go_dir(struct char_data *ch, int dir) {
+
+  struct room_direction_data *exit = char_exit_dir(ch, dir);
+  return char_can_go_exit(ch, exit);
 }
 
 #define SELF(sub, obj) ((sub) == (obj))

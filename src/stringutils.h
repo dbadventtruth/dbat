@@ -22,7 +22,7 @@ void prune_crlf(char *txt);
    c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' ||     \
    c == 'o' || c == 'e' || c == 'u' || c == 'l')
 
-int count_color_chars(char *string);
+int count_color_chars(const char *string);
 char *one_word(char *argument, char *first_arg);
 char *any_one_arg(char *argument, char *first_arg);
 char *one_argument(char *argument, char *first_arg);

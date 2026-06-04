@@ -31,7 +31,6 @@
 #include "descriptor_macros.h"
 #include "dg_comm.h"
 #include "flags.h"
-#include "interpreter.h"
 #include "object_api.h"
 #include "object_db.h"
 #include "object_impl.h"
@@ -39,8 +38,6 @@
 #include "races_plus.h"
 #include "random.h"
 #include "room_api.h"
-#include "room_impl.h"
-#include "room_macros.h"
 #include "util_macros.h"
 #include "weather_db.h"
 

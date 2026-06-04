@@ -4,6 +4,7 @@ const bitflags = @import("flags.zig");
 const obj_api = @import("object_api.zig");
 
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
+extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
 
 pub export fn room_id_get(room: *cdb.room_data) cdb.room_vnum {
     return room.number;
@@ -151,6 +152,29 @@ pub export fn room_dir_option_get(room: *cdb.room_data, dir: c_int) [*c]cdb.room
 
 pub export fn room_people_get(room: *cdb.room_data) [*c]cdb.char_data {
     return room.people;
+}
+
+pub export fn room_ex_description_get(room: *cdb.room_data) [*c]cdb.extra_descr_data {
+    return room.ex_description;
+}
+
+pub export fn room_script_get(room: *cdb.room_data) [*c]cdb.script_data {
+    return room.script;
+}
+
+pub export fn room_proto_script_get(room: *cdb.room_data) [*c]cdb.trig_proto_list {
+    return room.proto_script;
+}
+
+pub export fn room_script_ensure(room: *cdb.room_data) [*c]cdb.script_data {
+    if (room.script == null) {
+        room.script = @ptrCast(@alignCast(calloc(1, @sizeOf(cdb.script_data)) orelse return null));
+    }
+    return room.script;
+}
+
+pub export fn room_script_set(room: *cdb.room_data, script: ?*cdb.script_data) void {
+    room.script = script;
 }
 
 pub export fn room_contents_get(room: *cdb.room_data) [*c]cdb.obj_data {
