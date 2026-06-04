@@ -8366,9 +8366,10 @@ ACMD(do_scan) {
     send_to_char(ch, "You can't see a damned thing, your eyes are closed!\r\n");
     return;
   }
+  auto room = char_room_get(ch);
   for (i = 0; i < 10; i++) {
-    if (EXIT(ch, i)) {
-      if (IS_DARK(char_room_get(ch)) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) &&
+    if (auto ex = EXIT(ch, i)) {
+      if (IS_DARK(room) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) &&
           (!AFF_FLAGGED(ch, AFF_INFRAVISION))) {
         send_to_char(ch, "%s: DARK\n\r", dirnames[i]);
         continue;
@@ -8392,29 +8393,28 @@ ACMD(do_scan) {
                        "@RLava@r covers pretty much the entire area!@n\r\n");
         }
         /* Check 2nd room away */
-        if (auto nrm2 = _2ND_EXIT(ch, i); nrm2 && exit_to_room_vnum_get(nrm2)) {
-          newroom = exit_to_room_vnum_get(nrm2);
+        if (auto ne2 = room_dir_option_get(nrm, i); ne2 && exit_to_room_vnum_get(ne2)) {
+          auto nrm2 = char_can_go_exit(ch, ne2);
 
-          if ((newroom != NOWHERE) &&
-              (!exit_flagged(_2ND_EXIT(ch, i), EX_CLOSED))) {
-            if (!IS_DARK(exit_dest_get(_2ND_EXIT(ch, i)))) {
+          if (nrm2) {
+            if (!IS_DARK(nrm2)) {
               send_to_char(ch,
                            "@w-----------------------------------------@n\r\n");
               send_to_char(ch, "          %sFar %s: %s %s\n\r",
                            CCCYN(ch, C_NRM), dirnames[i],
-                           room_name_get(nrm)
-                               ? room_name_get(nrm)
+                           room_name_get(nrm2)
+                               ? room_name_get(nrm2)
                                : "You don't think you saw what you just saw.",
                            CCNRM(ch, C_NRM));
               send_to_char(ch, "@W          -----------------          @n\r\n");
 
-              list_obj_to_char(room_contents_get(nrm), ch, SHOW_OBJ_LONG, FALSE);
-              list_char_to_char(room_people_get(nrm), ch);
-              if (room_geffect_get(nrm) >= 1 && room_geffect_get(nrm) <= 5) {
+              list_obj_to_char(room_contents_get(nrm2), ch, SHOW_OBJ_LONG, FALSE);
+              list_char_to_char(room_people_get(nrm2), ch);
+              if (room_geffect_get(nrm2) >= 1 && room_geffect_get(nrm2) <= 5) {
                 send_to_char(ch,
                              "@rLava@w is pooling in someplaces here...@n\r\n");
               }
-              if (room_geffect_get(nrm) >= 6) {
+              if (room_geffect_get(nrm2) >= 6) {
                 send_to_char(
                     ch, "@RLava@r covers pretty much the entire area!@n\r\n");
               }
