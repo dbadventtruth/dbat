@@ -67,7 +67,6 @@ struct obj_data {
 
   int32_t id;        /* used by DG triggers              */
   time_t generation; /* creation time for dupe check     */
-  int64_t unique_id; /* random bits for dupe check       */
 
   struct script_data *script; /* script info for the object       */
 

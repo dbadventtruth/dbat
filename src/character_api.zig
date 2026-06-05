@@ -132,6 +132,7 @@ const derived_names = [_][]const u8{
     "agility",
     "armor",
     "autoskill_bonus",
+    "burden",
     "constitution",
     "damage_bonus",
     "fish_pole_bonus",
@@ -140,11 +141,17 @@ const derived_names = [_][]const u8{
     "ki",
     "lifeforce",
     "powerlevel",
+    "powerlevel_effective",
     "regen_bonus",
     "speed",
     "stamina",
     "strength",
     "weight",
+    "weight_carried",
+    "weight_carry_capacity",
+    "weight_equipment",
+    "weight_inventory",
+    "weight_total",
     "wisdom",
 };
 
@@ -248,6 +255,24 @@ pub const CharacterData = struct {
         self.conditions.deinit();
     }
 };
+
+pub const CharacterStatEntry = struct {
+    name: []const u8,
+    value: i64,
+};
+
+pub fn characterStatEntry(ch: *const cdb.char_data, index: usize) ?CharacterStatEntry {
+    if (index >= stat_names.len) return null;
+    const ptr = ch.zigdata orelse return null;
+    const data: *const CharacterData = @ptrCast(@alignCast(ptr));
+    const id: StatId = @intCast(index);
+    if (!data.stats.present.isSet(id)) return null;
+    return .{ .name = stat_names[index], .value = data.stats.values[index] };
+}
+
+pub fn characterStatCount() usize {
+    return stat_names.len;
+}
 
 const MobProtoData = struct {
     stats: StatStorage,
@@ -750,6 +775,13 @@ pub export fn char_meter_get(ch: *cdb.char_data, meter: ?[*:0]const u8) i64 {
     return zigdata.meters.get(name) orelse meter_scale;
 }
 
+pub export fn char_meter_full(ch: *cdb.char_data, meter: ?[*:0]const u8) bool {
+    const name = statName(meter) orelse return false;
+    const zigdata = char_ensure_zigdata(ch) orelse return false;
+    if (zigdata.meters.get(name)) |value| return value >= meter_scale;
+    return false;
+}
+
 pub export fn char_meter_set(ch: *cdb.char_data, meter: ?[*:0]const u8, value: i64) i64 {
     const name = statName(meter) orelse return 0;
     const clamped = clampMeter(value);
@@ -757,12 +789,10 @@ pub export fn char_meter_set(ch: *cdb.char_data, meter: ?[*:0]const u8, value: i
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
     if (zigdata.meters.getPtr(name)) |existing| {
         existing.* = clamped;
-        syncLegacyMeter(ch, name, clamped);
         return clamped;
     }
 
     zigdata.meters.put(lua_api.internString(name), clamped) catch return 0;
-    syncLegacyMeter(ch, name, clamped);
     return clamped;
 }
 
@@ -808,24 +838,6 @@ fn charMeterMaxName(ch: *cdb.char_data, name: []const u8) i64 {
 
 fn clampMeter(value: i64) i64 {
     return @min(@max(value, 0), meter_scale);
-}
-
-fn syncLegacyMeter(ch: *cdb.char_data, name: []const u8, value: i64) void {
-    const as_float = meterFixedToFloat(value);
-    if (std.mem.eql(u8, name, "powerlevel")) ch.health = as_float;
-    if (std.mem.eql(u8, name, "ki")) ch.energy = as_float;
-    if (std.mem.eql(u8, name, "stamina")) ch.stamina = as_float;
-    if (std.mem.eql(u8, name, "lifeforce")) ch.life = as_float;
-}
-
-pub fn meterFloatToFixed(value: f64) i64 {
-    if (std.math.isNan(value)) return 0;
-    const clamped = @min(@max(value, 0.0), 1.0);
-    return @intFromFloat(clamped * @as(f64, @floatFromInt(meter_scale)));
-}
-
-pub fn meterFixedToFloat(value: i64) f64 {
-    return @as(f64, @floatFromInt(clampMeter(value))) / @as(f64, @floatFromInt(meter_scale));
 }
 
 pub export fn char_skill_base_get(ch: *cdb.char_data, skill: ?[*:0]const u8) i64 {
@@ -1022,10 +1034,62 @@ pub export fn char_condition_remove_tag(ch: *cdb.char_data, tag: ?[*:0]const u8,
 }
 
 pub export fn char_condition_update(ch: *cdb.char_data) void {
+    char_condition_update_context(ch, "manual", 0, 0);
+}
+
+pub export fn char_condition_update_with_context(ch: *cdb.char_data, kind: ?[*:0]const u8, pulses: i64, seconds: i64) void {
+    char_condition_update_context(ch, statName(kind) orelse "manual", pulses, seconds);
+}
+
+pub export fn char_condition_update_all(kind: ?[*:0]const u8, pulses: i64, seconds: i64) void {
+    const update_kind = statName(kind) orelse "manual";
+    const iterator = characters.char_iterator_create() orelse return;
+    defer characters.char_iterator_free(iterator);
+
+    var ids = std.array_list.Managed(i64).init(std.heap.page_allocator);
+    defer ids.deinit();
+
+    while (characters.char_next(iterator)) |ch| {
+        if (cdb.char_is_extracted(ch)) continue;
+        ids.append(cdb.char_id_get(ch)) catch return;
+    }
+
+    for (ids.items) |id| {
+        const ch = characters.char_by_id(id) orelse continue;
+        if (cdb.char_is_extracted(ch)) continue;
+        char_condition_update_context(ch, update_kind, pulses, seconds);
+    }
+}
+
+fn char_condition_update_context(ch: *cdb.char_data, kind: []const u8, pulses: i64, seconds: i64) void {
     if (ch.zigdata == null) return;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+
+    var names = std.array_list.Managed([:0]u8).init(std.heap.page_allocator);
+    defer {
+        for (names.items) |name| std.heap.page_allocator.free(name);
+        names.deinit();
+    }
+
     var it = zigdata.conditions.keyIterator();
-    while (it.next()) |key| lua_api.callConditionHook(ch, key.*, "on_update");
+    while (it.next()) |key| names.append(std.heap.page_allocator.dupeZ(u8, key.*) catch return) catch return;
+
+    for (names.items) |name| {
+        const instance = conditionGet(ch, name.ptr) orelse continue;
+        if (instance.duration == 0) {
+            _ = char_condition_remove(ch, name.ptr, "expired");
+            continue;
+        }
+
+        lua_api.callConditionUpdateHook(ch, name, kind, pulses, seconds);
+        const updated = conditionGet(ch, name.ptr) orelse continue;
+        if (seconds > 0 and updated.duration > 0) {
+            updated.duration = @max(0, updated.duration - seconds);
+            conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+        }
+        const after_duration = conditionGet(ch, name.ptr) orelse continue;
+        if (after_duration.duration == 0) _ = char_condition_remove(ch, name.ptr, "expired");
+    }
 }
 
 pub export fn char_condition_stacks_get(ch: *cdb.char_data, condition: ?[*:0]const u8) i64 {

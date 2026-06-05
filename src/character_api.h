@@ -101,6 +101,7 @@ int64_t char_meter_mod_int(struct char_data *ch, const char *meter,
                            int64_t mod);
 int64_t char_meter_current(struct char_data *ch, const char *meter);
 int64_t char_meter_max(struct char_data *ch, const char *meter);
+bool char_meter_full(struct char_data *ch, const char *meter);
 
 int64_t char_skill_base_get(struct char_data *ch, const char *skill);
 int64_t char_skill_base_set(struct char_data *ch, const char *skill,
@@ -160,6 +161,9 @@ bool char_condition_remove(struct char_data *ch, const char *condition,
 int char_condition_remove_tag(struct char_data *ch, const char *tag,
                               const char *reason);
 void char_condition_update(struct char_data *ch);
+void char_condition_update_with_context(struct char_data *ch, const char *kind,
+                                        int64_t pulses, int64_t seconds);
+void char_condition_update_all(const char *kind, int64_t pulses, int64_t seconds);
 int64_t char_condition_stacks_get(struct char_data *ch, const char *condition);
 int64_t char_condition_stacks_set(struct char_data *ch, const char *condition,
                                   int64_t value);
@@ -194,6 +198,8 @@ const char *char_transform_string_get(struct char_data *ch,
                                       const char *transform, const char *key);
 bool char_transform_string_set(struct char_data *ch, const char *transform,
                                const char *key, const char *value);
+
+bool char_is_extracted(struct char_data *ch);
 
 #ifdef __cplusplus
 }

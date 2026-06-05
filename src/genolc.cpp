@@ -12,6 +12,7 @@
 #include "dgscript_impl.h"
 #include "extradesc_impl.h"
 #include "flags.h"
+#include "config_db.h"
 #include "guild_impl.h"
 #include "log.h"
 #include "object_impl.h"
@@ -64,6 +65,8 @@ char *str_udup(const char *txt) {
 
 /* Original use: to be called at shutdown time.  */
 int save_all(void) {
+  if(config_info.test_mode) return TRUE;
+  
   while (save_list) {
     if (save_list->type < 0 || save_list->type > SL_MAX) {
       switch (save_list->type) {

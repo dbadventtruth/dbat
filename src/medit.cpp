@@ -212,7 +212,8 @@ ACMD(do_oasis_medit) {
          zone->number, GET_OLC_ZONE(ch));
 }
 
-void medit_save_to_disk(zone_vnum foo) { save_mobiles(zone_by_id(foo)); }
+void medit_save_to_disk(zone_vnum foo) { if(config_info.test_mode) return;
+  save_mobiles(zone_by_id(foo)); }
 
 void medit_setup_new(struct descriptor_data *d) {
   struct char_data *mob;

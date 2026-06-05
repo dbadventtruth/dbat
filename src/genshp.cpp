@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "config_db.h"
 #include "character_db.h"
 #include "character_impl.h"
 #include "consts/admlevel.h"
@@ -378,6 +379,7 @@ int add_shop(struct shop_data *nshp) {
 /*-------------------------------------------------------------------*/
 
 int save_shops(struct zone_data *zone) {
+  if(config_info.test_mode) return TRUE;
   int i, j, rshop;
   FILE *shop_file;
   char fname[128], oldname[128];

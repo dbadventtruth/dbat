@@ -139,6 +139,7 @@ struct config_data {
   struct advance_data advance;     /* char advancement stuff */
   struct tick_data ticks;          /* game tick stuff 	 */
   struct creation_data creation;   /* char creation method	 */
+  bool test_mode;
 };
 
 extern struct config_data config_info;

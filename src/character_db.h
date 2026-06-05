@@ -23,6 +23,10 @@ void char_unsubscribe(int64_t id, const char *list_name);
 void char_clear_subscriptions(int64_t id);
 void char_for_each(const char *list_name, void (*func)(struct char_data *ch));
 
+void *char_iterator_create();
+struct char_data *char_next(void *iterator);
+void char_iterator_free(void *iterator);
+
 void *mob_proto_iterator_create();
 struct mob_proto_data *mob_proto_next(void *iterator);
 void mob_proto_iterator_free(void *iterator);

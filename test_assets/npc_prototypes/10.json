@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile ten",
+  "description": "A tenth simple test mobile stands here.\r\n",
+  "short_description": "a tenth test mobile",
+  "long_description": "A tenth test mobile marks the end of the prototype set.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 10,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 10,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 100, "ki": 100, "stamina": 100, "strength": 17, "intelligence": 12, "wisdom": 12, "agility": 17, "constitution": 17, "speed": 17, "height": 172, "weight": 73, "alignment": 0 }
+}

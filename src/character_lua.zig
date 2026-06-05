@@ -4,13 +4,19 @@ const cdb = @import("cdb");
 const objects_lua = @import("object_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const zones_lua = @import("zone_lua.zig");
+const lua_meta = @import("lua_meta.zig");
 
 const Lua = zlua.Lua;
 const character_metatable = "dbat.Character";
+const mob_proto_metatable = "dbat.MobPrototype";
 const condition_metatable = "dbat.Condition";
 
 const CharacterHandle = extern struct {
     id: i64,
+};
+
+const MobProtoHandle = extern struct {
+    vnum: cdb.mob_vnum,
 };
 
 const ConditionHandle = extern struct {
@@ -18,14 +24,26 @@ const ConditionHandle = extern struct {
     condition: [64:0]u8,
 };
 
+const sex_neutral: c_int = 0;
+const sex_male: c_int = 1;
+const sex_female: c_int = 2;
+
 pub fn register(lua: *Lua) void {
     registerCharacterMetatable(lua);
+    registerMobProtoMetatable(lua);
     registerConditionMetatable(lua);
 
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaCharacterById));
     lua.setField(-2, "by_id");
+    lua.pushFunction(zlua.wrap(luaCharactersAll));
+    lua.setField(-2, "all");
     lua.setField(-2, "characters");
+
+    lua.newTable();
+    lua.pushFunction(zlua.wrap(luaMobProtoById));
+    lua.setField(-2, "by_id");
+    lua.setField(-2, "mob_protos");
 }
 
 fn luaCharacterById(lua: *Lua) i32 {
@@ -43,6 +61,22 @@ fn luaCharacterById(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharactersAll(lua: *Lua) i32 {
+    lua.newTable();
+    const iterator = cdb.char_iterator_create();
+    defer cdb.char_iterator_free(iterator);
+
+    var index: usize = 1;
+    while (cdb.char_next(iterator)) |ch| {
+        if (cdb.char_is_extracted(ch)) continue;
+        pushCharacter(lua, cdb.char_id_get(ch));
+        lua.setIndex(-2, @intCast(index));
+        index += 1;
+    }
+
+    return valueIterator(lua);
+}
+
 fn registerCharacterMetatable(lua: *Lua) void {
     lua.newMetatable(character_metatable) catch {
         lua.pop(1);
@@ -53,10 +87,17 @@ fn registerCharacterMetatable(lua: *Lua) void {
     lua.setField(-2, "__index");
 
     addMethod(lua, "__tostring", luaCharacterToString);
+    addMethod(lua, "reftype", luaCharacterRefType);
     addMethod(lua, "is_npc", luaCharacterIsNpc);
     addMethod(lua, "valid", luaCharacterValid);
     addMethod(lua, "is_same", luaCharacterIsSame);
+    addMethod(lua, "update", luaCharacterUpdate);
     addMethod(lua, "send", luaCharacterSend);
+    addMethod(lua, "send_text", luaCharacterSendText);
+    addMethod(lua, "extract", luaCharacterExtract);
+    addMethod(lua, "can_see_in_dark", luaCharacterCanSeeInDark);
+    addMethod(lua, "can_see_char", luaCharacterCanSeeChar);
+    addMethod(lua, "can_see_obj", luaCharacterCanSeeObj);
     addMethod(lua, "id_get", luaCharacterIdGet);
     addMethod(lua, "proto_id_get", luaCharacterProtoIdGet);
     addMethod(lua, "proto_id_set", luaCharacterProtoIdSet);
@@ -65,6 +106,9 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "room_vnum_get", luaCharacterRoomVnumGet);
     addMethod(lua, "room_vnum_set", luaCharacterRoomVnumSet);
     addMethod(lua, "room_get", luaCharacterRoomGet);
+    addMethod(lua, "from_room", luaCharacterFromRoom);
+    addMethod(lua, "to_room", luaCharacterToRoom);
+    addMethod(lua, "unequip", luaCharacterUnequip);
     addMethod(lua, "zone_vnum_get", luaCharacterZoneVnumGet);
     addMethod(lua, "zone_get", luaCharacterZoneGet);
     addMethod(lua, "reveal_hiding", luaCharacterRevealHiding);
@@ -81,12 +125,10 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "long_description_set", luaCharacterLongDescriptionSet);
     addMethod(lua, "title_get", luaCharacterTitleGet);
     addMethod(lua, "title_set", luaCharacterTitleSet);
-    addMethod(lua, "class_get", luaCharacterClassGet);
-    addMethod(lua, "class_set", luaCharacterClassSet);
-    addMethod(lua, "class_mod", luaCharacterClassMod);
+    addMethod(lua, "sensei_get", luaCharacterSenseiGet);
+    addMethod(lua, "sensei_set", luaCharacterSenseiSet);
     addMethod(lua, "race_get", luaCharacterRaceGet);
     addMethod(lua, "race_set", luaCharacterRaceSet);
-    addMethod(lua, "race_mod", luaCharacterRaceMod);
     addMethod(lua, "size_get", luaCharacterSizeGet);
     addMethod(lua, "size_set", luaCharacterSizeSet);
     addMethod(lua, "size_mod", luaCharacterSizeMod);
@@ -155,6 +197,26 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "inventory", luaCharacterInventoryGet);
     addMethod(lua, "equipment", luaCharacterEquipmentGet);
 
+    lua_meta.mergeMethods(lua, "lua.meta.character");
+
+    lua.pop(1);
+}
+
+fn registerMobProtoMetatable(lua: *Lua) void {
+    lua.newMetatable(mob_proto_metatable) catch {
+        lua.pop(1);
+        return;
+    };
+
+    lua.pushValue(-1);
+    lua.setField(-2, "__index");
+
+    addMethod(lua, "__tostring", luaMobProtoToString);
+    addMethod(lua, "reftype", luaMobProtoRefType);
+    addMethod(lua, "valid", luaMobProtoValid);
+    addMethod(lua, "vnum_get", luaMobProtoVnumGet);
+    addMethod(lua, "spawn", luaMobProtoSpawn);
+
     lua.pop(1);
 }
 
@@ -190,6 +252,13 @@ pub fn pushCharacter(lua: *Lua, id: i64) void {
     lua.setMetatable(-2);
 }
 
+pub fn pushMobProto(lua: *Lua, vnum: cdb.mob_vnum) void {
+    const handle = lua.newUserdata(MobProtoHandle, 0);
+    handle.* = .{ .vnum = vnum };
+    _ = lua.getMetatableRegistry(mob_proto_metatable);
+    lua.setMetatable(-2);
+}
+
 pub fn pushCondition(lua: *Lua, character_id: i64, condition: []const u8) void {
     const handle = lua.newUserdata(ConditionHandle, 0);
     handle.character_id = character_id;
@@ -206,10 +275,35 @@ fn checkCharacterHandle(lua: *Lua) *CharacterHandle {
     };
 }
 
-fn checkCharacter(lua: *Lua) *cdb.char_data {
-    const handle = checkCharacterHandle(lua);
-    return cdb.char_by_id(handle.id) orelse {
+pub fn checkCharacter(lua: *Lua) *cdb.char_data {
+    return checkCharacterAt(lua, 1);
+}
+
+pub fn checkCharacterAt(lua: *Lua, index: i32) *cdb.char_data {
+    const handle = lua.testUserdata(CharacterHandle, index, character_metatable) catch {
+        lua.raiseErrorStr("expected dbat.Character", .{});
+    };
+    return characterByHandleId(handle.id) orelse {
         lua.raiseErrorStr("stale dbat.Character handle for character %d", .{handle.id});
+    };
+}
+
+fn characterByHandleId(id: i64) ?*cdb.char_data {
+    const ch = cdb.char_by_id(id) orelse return null;
+    if (cdb.char_is_extracted(ch)) return null;
+    return ch;
+}
+
+fn checkMobProtoHandle(lua: *Lua) *MobProtoHandle {
+    return lua.testUserdata(MobProtoHandle, 1, mob_proto_metatable) catch {
+        lua.raiseErrorStr("expected dbat.MobPrototype", .{});
+    };
+}
+
+fn checkMobProto(lua: *Lua) *cdb.mob_proto_data {
+    const handle = checkMobProtoHandle(lua);
+    return cdb.mob_proto_by_id(handle.vnum) orelse {
+        lua.raiseErrorStr("stale dbat.MobPrototype handle for mobile prototype %d", .{handle.vnum});
     };
 }
 
@@ -220,7 +314,7 @@ fn checkConditionHandle(lua: *Lua) *ConditionHandle {
 }
 
 fn conditionCharacter(lua: *Lua, handle: *ConditionHandle) *cdb.char_data {
-    return cdb.char_by_id(handle.character_id) orelse lua.raiseErrorStr("stale dbat.Condition character", .{});
+    return characterByHandleId(handle.character_id) orelse lua.raiseErrorStr("stale dbat.Condition character", .{});
 }
 
 fn conditionName(handle: *ConditionHandle) [*:0]const u8 {
@@ -252,6 +346,62 @@ fn intCastOrError(lua: *Lua, comptime T: type, value: zlua.Integer, label: [:0]c
     return std.math.cast(T, value) orelse lua.raiseErrorStr("%s out of range", .{label.ptr});
 }
 
+fn legacyForDefinitionId(lua: *Lua, comptime category: [:0]const u8, id: [:0]const u8) ?c_int {
+    const top = lua.getTop();
+    defer lua.setTop(top);
+
+    if (lua.getGlobal("dbat") != .table) return null;
+    if (lua.getField(-1, "registry") != .table) return null;
+    if (lua.getField(-1, category) != .table) return null;
+    if (lua.getField(-1, id) != .table) return null;
+    if (lua.getField(-1, "legacy_id") != .number) return null;
+    const legacy_id = lua.toInteger(-1) catch return null;
+    return std.math.cast(c_int, legacy_id) orelse null;
+}
+
+fn pushDefinitionIdForLegacy(lua: *Lua, comptime category: [:0]const u8, legacy_id: c_int) bool {
+    const top = lua.getTop();
+    var id_buf: [128]u8 = undefined;
+    var id_len: usize = 0;
+    var found = false;
+
+    if (lua.getGlobal("dbat") == .table and
+        lua.getField(-1, "registry") == .table and
+        lua.getField(-1, category) == .table)
+    {
+        lua.pushNil();
+        while (lua.next(-2)) {
+            defer lua.pop(1);
+            if (!lua.isTable(-1)) continue;
+            if (lua.getField(-1, "legacy_id") != .number) {
+                lua.pop(1);
+                continue;
+            }
+            const value = lua.toInteger(-1) catch blk: {
+                lua.pop(1);
+                break :blk null;
+            };
+            lua.pop(1);
+            if (value == null or value.? != legacy_id) continue;
+            if (lua.getField(-1, "id") != .string) {
+                lua.pop(1);
+                continue;
+            }
+            const id = lua.toString(-1) catch "";
+            lua.pop(1);
+            id_len = @min(id.len, id_buf.len);
+            @memcpy(id_buf[0..id_len], id[0..id_len]);
+            found = true;
+            break;
+        }
+    }
+
+    lua.setTop(top);
+    if (!found) return false;
+    _ = lua.pushString(id_buf[0..id_len]);
+    return true;
+}
+
 fn luaCharacterIsNpc(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     lua.pushBoolean(cdb.char_is_npc(ch));
@@ -260,7 +410,7 @@ fn luaCharacterIsNpc(lua: *Lua) i32 {
 
 fn luaCharacterValid(lua: *Lua) i32 {
     const handle = checkCharacterHandle(lua);
-    lua.pushBoolean(cdb.char_by_id(handle.id) != null);
+    lua.pushBoolean(characterByHandleId(handle.id) != null);
     return 1;
 }
 
@@ -274,9 +424,17 @@ fn luaCharacterIsSame(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharacterUpdate(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const kind = if (lua.isNoneOrNil(2)) "manual" else string(lua, 2);
+    const seconds: i64 = if (lua.isNoneOrNil(3)) 0 else intCastOrError(lua, i64, integer(lua, 3), "update seconds");
+    cdb.char_condition_update_with_context(ch, kind, 0, seconds);
+    return 0;
+}
+
 fn luaCharacterToString(lua: *Lua) i32 {
     const handle = checkCharacterHandle(lua);
-    if (cdb.char_by_id(handle.id)) |ch| {
+    if (characterByHandleId(handle.id)) |ch| {
         _ = lua.pushFString("dbat.Character(%d, %s)", .{ handle.id, cdb.char_name_get(ch) });
     } else {
         _ = lua.pushFString("dbat.Character(%d, stale)", .{handle.id});
@@ -284,10 +442,43 @@ fn luaCharacterToString(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaCharacterRefType(lua: *Lua) i32 {
+    _ = checkCharacter(lua);
+    _ = lua.pushString("character");
+    return 1;
+}
+
 fn luaCharacterSend(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     if (ch.desc != null) cdb.desc_send_text(ch.desc, string(lua, 2));
     return 0;
+}
+
+fn luaCharacterSendText(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const text = string(lua, 2);
+    _ = cdb.send_to_char(ch, "%s", text.ptr);
+    return 0;
+}
+
+fn luaCharacterExtract(lua: *Lua) i32 {
+    cdb.extract_char(checkCharacter(lua));
+    return 0;
+}
+
+fn luaCharacterCanSeeInDark(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_can_see_in_dark(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterCanSeeChar(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_can_see_char(checkCharacter(lua), checkCharacterAt(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterCanSeeObj(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_can_see_obj(checkCharacter(lua), objects_lua.checkObjectAt(lua, 2)));
+    return 1;
 }
 
 fn luaCharacterIdGet(lua: *Lua) i32 {
@@ -332,6 +523,91 @@ fn luaCharacterRoomGet(lua: *Lua) i32 {
         return 1;
     }
     rooms_lua.pushRoom(lua, room.*.number);
+    return 1;
+}
+
+fn luaCharacterFromRoom(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    if (cdb.char_room_get(ch) != null) cdb.char_from_room(ch);
+    return 0;
+}
+
+fn luaCharacterToRoom(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const room = rooms_lua.checkRoomAt(lua, 2);
+    if (cdb.char_room_get(ch) != null) cdb.char_from_room(ch);
+    cdb.char_to_room(ch, room);
+    return 0;
+}
+
+fn luaCharacterUnequip(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const pos = intCastOrError(lua, c_int, integer(lua, 2), "equipment position");
+    const obj = cdb.unequip_char(ch, pos);
+    if (obj == null) {
+        lua.pushNil();
+        return 1;
+    }
+    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    return 1;
+}
+
+fn luaMobProtoById(lua: *Lua) i32 {
+    const vnum = lua.toInteger(1) catch {
+        lua.pushNil();
+        return 1;
+    };
+    const mob_vnum = std.math.cast(cdb.mob_vnum, vnum) orelse {
+        lua.pushNil();
+        return 1;
+    };
+    if (cdb.mob_proto_by_id(mob_vnum) == null) {
+        lua.pushNil();
+        return 1;
+    }
+    pushMobProto(lua, mob_vnum);
+    return 1;
+}
+
+fn luaMobProtoToString(lua: *Lua) i32 {
+    const handle = checkMobProtoHandle(lua);
+    _ = checkMobProto(lua);
+    _ = lua.pushFString("dbat.MobPrototype(%d)", .{handle.vnum});
+    return 1;
+}
+
+fn luaMobProtoRefType(lua: *Lua) i32 {
+    _ = checkMobProto(lua);
+    _ = lua.pushString("mob_prototype");
+    return 1;
+}
+
+fn luaMobProtoValid(lua: *Lua) i32 {
+    const handle = checkMobProtoHandle(lua);
+    lua.pushBoolean(cdb.mob_proto_by_id(handle.vnum) != null);
+    return 1;
+}
+
+fn luaMobProtoVnumGet(lua: *Lua) i32 {
+    lua.pushInteger(checkMobProtoHandle(lua).vnum);
+    return 1;
+}
+
+fn luaMobProtoSpawn(lua: *Lua) i32 {
+    const handle = checkMobProtoHandle(lua);
+    _ = checkMobProto(lua);
+    const mob = cdb.mob_spawn(handle.vnum);
+    if (mob == null) {
+        lua.pushNil();
+        return 1;
+    }
+
+    if (!lua.isNoneOrNil(2)) {
+        const room = rooms_lua.checkRoomAt(lua, 2);
+        cdb.char_to_room(mob, room);
+    }
+
+    pushCharacter(lua, cdb.char_id_get(mob));
     return 1;
 }
 
@@ -429,40 +705,32 @@ fn luaCharacterTitleSet(lua: *Lua) i32 {
     return 0;
 }
 
-fn luaCharacterClassGet(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_class_get(checkCharacter(lua)));
+fn luaCharacterSenseiGet(lua: *Lua) i32 {
+    const legacy_id = cdb.char_class_get(checkCharacter(lua));
+    if (!pushDefinitionIdForLegacy(lua, "senseis", legacy_id)) lua.pushNil();
     return 1;
 }
 
-fn luaCharacterClassSet(lua: *Lua) i32 {
-    cdb.char_class_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "class"));
+fn luaCharacterSenseiSet(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const id = string(lua, 2);
+    const legacy_id = legacyForDefinitionId(lua, "senseis", id) orelse lua.raiseErrorStr("unknown sensei '%s'", .{id.ptr});
+    cdb.char_class_set(ch, legacy_id);
     return 0;
 }
 
-fn luaCharacterClassMod(lua: *Lua) i32 {
-    const ch = checkCharacter(lua);
-    const value = cdb.char_class_get(ch) + intCastOrError(lua, c_int, integer(lua, 2), "class delta");
-    cdb.char_class_set(ch, value);
-    lua.pushInteger(value);
-    return 1;
-}
-
 fn luaCharacterRaceGet(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_race_get(checkCharacter(lua)));
+    const legacy_id = cdb.char_race_get(checkCharacter(lua));
+    if (!pushDefinitionIdForLegacy(lua, "races", legacy_id)) lua.pushNil();
     return 1;
 }
 
 fn luaCharacterRaceSet(lua: *Lua) i32 {
-    cdb.char_race_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "race"));
-    return 0;
-}
-
-fn luaCharacterRaceMod(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
-    const value = cdb.char_race_get(ch) + intCastOrError(lua, c_int, integer(lua, 2), "race delta");
-    cdb.char_race_set(ch, value);
-    lua.pushInteger(value);
-    return 1;
+    const id = string(lua, 2);
+    const legacy_id = legacyForDefinitionId(lua, "races", id) orelse lua.raiseErrorStr("unknown race '%s'", .{id.ptr});
+    cdb.char_race_set(ch, legacy_id);
+    return 0;
 }
 
 fn luaCharacterSizeGet(lua: *Lua) i32 {
@@ -484,12 +752,27 @@ fn luaCharacterSizeMod(lua: *Lua) i32 {
 }
 
 fn luaCharacterSexGet(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_sex_get(checkCharacter(lua)));
+    const sex = switch (cdb.char_sex_get(checkCharacter(lua))) {
+        sex_neutral => "neutral",
+        sex_male => "male",
+        sex_female => "female",
+        else => "neutral",
+    };
+    _ = lua.pushString(sex);
     return 1;
 }
 
 fn luaCharacterSexSet(lua: *Lua) i32 {
-    cdb.char_sex_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "sex"));
+    const value = string(lua, 2);
+    const sex: c_int = if (std.mem.eql(u8, value, "neutral"))
+        sex_neutral
+    else if (std.mem.eql(u8, value, "male"))
+        sex_male
+    else if (std.mem.eql(u8, value, "female"))
+        sex_female
+    else
+        lua.raiseErrorStr("unknown sex '%s'", .{value.ptr});
+    cdb.char_sex_set(checkCharacter(lua), sex);
     return 0;
 }
 
@@ -953,8 +1236,8 @@ fn pushEquipmentIterator(lua: *Lua, ch: *cdb.char_data) i32 {
     lua.newTable();
     var pos: usize = 0;
     while (true) : (pos += 1) {
-        const obj = cdb.char_equipment_get(ch, pos);
         if (pos >= cdb.NUM_WEARS) break;
+        const obj = cdb.char_equipment_get(ch, pos);
         if (obj == null) continue;
         objects_lua.pushObject(lua, cdb.obj_id_get(obj));
         lua.setIndex(-2, @intCast(pos));

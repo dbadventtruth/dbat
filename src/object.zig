@@ -126,6 +126,26 @@ const ObjProtoIterator = struct {
     iter: ObjProtoMap.Iterator,
 };
 
+const ObjIterator = struct {
+    iter: std.AutoHashMap(i64, *cdb.obj_data).ValueIterator,
+};
+
+pub export fn obj_iterator_create() ?*anyopaque {
+    const iterator = allocator.create(ObjIterator) catch return null;
+    iterator.* = .{ .iter = objs_by_id.valueIterator() };
+    return iterator;
+}
+
+pub export fn obj_next(iterator_ptr: ?*anyopaque) ?*cdb.obj_data {
+    const iterator: *ObjIterator = @ptrCast(@alignCast(iterator_ptr orelse return null));
+    return (iterator.iter.next() orelse return null).*;
+}
+
+pub export fn obj_iterator_free(iterator_ptr: ?*anyopaque) void {
+    const iterator = iterator_ptr orelse return;
+    allocator.destroy(@as(*ObjIterator, @ptrCast(@alignCast(iterator))));
+}
+
 pub export fn obj_proto_iterator_create() ?*anyopaque {
     const iterator = allocator.create(ObjProtoIterator) catch return null;
     iterator.* = .{ .iter = obj_proto_map.iterator() };

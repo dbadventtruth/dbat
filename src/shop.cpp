@@ -919,7 +919,6 @@ static void shopping_buy(char *arg, struct char_data *ch,
     /* Test if producing shop ! */
     if (shop_producing(obj, shop)) {
       obj = read_object(obj->vnum, VIRTUAL);
-      add_unique_id(obj);
     } else {
       obj_from_char(obj);
       SHOP_SORT(shop)--;

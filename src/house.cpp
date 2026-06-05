@@ -10,6 +10,7 @@
 #include "house.h"
 #include "comm.h"
 #include "db.h"
+#include "config_db.h"
 #include "handler.h"
 #include "interpreter.h"
 
@@ -509,6 +510,8 @@ ACMD(do_house) {
 
 /* crash-save all the houses */
 void House_save_all(void) {
+  if(config_info.test_mode) return;
+
   int i;
   struct room_data *real_house = NULL;
 
@@ -739,7 +742,7 @@ int House_load(room_vnum rvnum) {
             break;
           case 'U':
             get_line(fl, line);
-            sscanf(line, "%" I64T, &temp->unique_id);
+            // sscanf(line, "%" I64T, &temp->unique_id);
             get_line(fl, line);
             break;
           case 'S':

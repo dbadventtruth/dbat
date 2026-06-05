@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile one",
+  "description": "A simple test mobile stands here.\r\n",
+  "short_description": "a test mobile",
+  "long_description": "A test mobile waits for reset validation.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 1,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 1,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 10, "ki": 10, "stamina": 10, "strength": 8, "intelligence": 8, "wisdom": 8, "agility": 8, "constitution": 8, "speed": 8, "height": 172, "weight": 73, "alignment": 0 }
+}

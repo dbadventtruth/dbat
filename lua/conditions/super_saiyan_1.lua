@@ -1,5 +1,5 @@
-local RACE_SAIYAN = 1
-local RACE_HALFBREED = 7
+local RACE_SAIYAN = "saiyan"
+local RACE_HALFBREED = "halfbreed"
 local PLR_LSSJ = 68
 
 local function data(ch)

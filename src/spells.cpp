@@ -478,7 +478,6 @@ ASPELL(spell_portal) {
   GET_OBJ_VAL(portal, VAL_PORTAL_HEALTH) = 100;
   GET_OBJ_VAL(portal, VAL_PORTAL_MAXHEALTH) = 100;
   GET_OBJ_TIMER(portal) = (int)(level / 10);
-  add_unique_id(portal);
   obj_to_room(portal, char_room_get(ch));
   act("$n opens a portal in thin air.", TRUE, ch, 0, 0, TO_ROOM);
   act("You open a portal out of thin air.", TRUE, ch, 0, 0, TO_CHAR);
@@ -488,7 +487,6 @@ ASPELL(spell_portal) {
   GET_OBJ_VAL(tportal, VAL_PORTAL_HEALTH) = 100;
   GET_OBJ_VAL(tportal, VAL_PORTAL_MAXHEALTH) = 100;
   GET_OBJ_TIMER(tportal) = (int)(level / 10);
-  add_unique_id(portal);
   obj_to_room(tportal, char_room_get(victim));
   act("A shimmering portal appears out of thin air.", TRUE, victim, 0, 0,
       TO_ROOM);

@@ -504,7 +504,6 @@ ACMD(do_mload) {
     /* special handling to make objects able to load on a person/in a
      * container/worn etc. */
     if (!target || !*target) {
-      add_unique_id(object);
       if (CAN_WEAR(object, ITEM_WEAR_TAKE)) {
         obj_to_char(object, ch);
       } else {
@@ -536,7 +535,6 @@ ACMD(do_mload) {
       return;
     }
     /* neither char nor container found - just dump it in room */
-    add_unique_id(object);
     obj_to_room(object, char_room_get(ch));
     load_otrigger(object);
     return;

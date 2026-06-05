@@ -56,8 +56,11 @@ void sedit_save_internally(struct descriptor_data *d) {
   add_shop(OLC_SHOP(d));
 }
 
-void sedit_save_to_disk(struct zone_data *zone) { save_shops(zone); }
-
+void sedit_save_to_disk(struct zone_data *zone) { 
+  if(config_info.test_mode) return;
+  save_shops(zone); 
+}
+  
 /*-------------------------------------------------------------------*\
   utility functions
 \*-------------------------------------------------------------------*/

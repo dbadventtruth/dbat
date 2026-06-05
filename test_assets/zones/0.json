@@ -1,0 +1,13 @@
+{
+  "kind": "zone",
+  "id": 0,
+  "name": "Test Void",
+  "builders": "test",
+  "lifespan": 5,
+  "bottom": 0,
+  "top": 0,
+  "reset_mode": 2,
+  "min_level": 0,
+  "max_level": 0,
+  "reset_commands": []
+}

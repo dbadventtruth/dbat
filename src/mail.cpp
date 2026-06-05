@@ -654,7 +654,6 @@ void postmaster_receive_mail(struct char_data *ch, struct char_data *mailman,
     *bla = '\0';
     *blm = '\0';
     SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_UNIQUE_SAVE);
-    add_unique_id(obj);
     GET_OBJ_MATERIAL(obj) = MATERIAL_PAPER;
     GET_OBJ_VAL(obj, VAL_NOTE_HEALTH) = 100;
     GET_OBJ_VAL(obj, VAL_NOTE_MAXHEALTH) = 100;

@@ -440,7 +440,10 @@ void zedit_save_internally(struct descriptor_data *d) {
 
 /*-------------------------------------------------------------------*/
 
-void zedit_save_to_disk(int zone) { save_zone(zone_by_id(zone)); }
+void zedit_save_to_disk(int zone) { 
+  if(config_info.test_mode) return;
+  save_zone(zone_by_id(zone));
+}
 
 /*-------------------------------------------------------------------*/
 

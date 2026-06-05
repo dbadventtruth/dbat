@@ -825,7 +825,6 @@ void remove_limb(struct char_data *vict, int num) {
   GET_OBJ_VAL(body_part, 4) = 1;
   GET_OBJ_VAL(body_part, 5) = 1;
   GET_OBJ_WEIGHT(body_part) = rand_number(4, 10);
-  add_unique_id(body_part);
   obj_to_room(body_part, char_room_get(vict));
 }
 
@@ -910,7 +909,9 @@ void fight_stack() {
       DRAGGING(ch) = NULL;
     }
 
-    if (GET_LIFEPERC(ch) > 0 && ch->health < (double)GET_LIFEPERC(ch) / 100 &&
+    if (GET_LIFEPERC(ch) > 0 &&
+        char_meter_get(ch, "powerlevel") / 1000000.0 <
+            (double)GET_LIFEPERC(ch) / 100 &&
         (getCurLF(ch)) > 0 && !IS_ANDROID(ch)) {
       if (rand_number(1, 15) >= 14) {
         if ((getCurLF(ch)) >= (getMaxLF(ch)) * 0.05 ||

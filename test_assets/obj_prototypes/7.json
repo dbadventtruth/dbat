@@ -1,0 +1,15 @@
+{
+  "kind": "object_prototype",
+  "proto_id": 7,
+  "type": 10,
+  "level": 4,
+  "weight": 1,
+  "cost": 7,
+  "timer": 0,
+  "size": 0,
+  "name": "test token seven",
+  "description": "A seventh test token is lying here.",
+  "short_description": "a seventh test token",
+  "values": [7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "wear_flags": [0]
+}

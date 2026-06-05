@@ -185,7 +185,6 @@ static void log_zone_error(struct zone_data *zone, int cmd_no,
 static void reset_time(void);
 static int suntzu_armor_convert(struct obj_data *obj);
 static int suntzu_weapon_convert(int wp_type);
-static void free_obj_unique_hash();
 static void mob_autobalance(struct char_data *ch);
 static bool directory_exists(const char *path);
 static void json_import_or_die(const char *label, int result);
@@ -760,32 +759,10 @@ void destroy_db(void) {
 
   free_feats();
 
-  free_obj_unique_hash();
-
   log("Freeing Assemblies.");
   free_assemblies();
 }
 
-/* You can define this to anything you want; 1 would work but it would
-   be very inefficient. I would recommend that it actually be close to
-   your total number of in-game objects if not double or triple it just
-   to minimize collisions. The only O(n) [n=NUM_OBJ_UNIQUE_POOLS]
-   operation is initialization of the hash table, all other operations
-   that have to traverse are O(n) [n=num elements in pool], so more
-   pools are better.
-     - Elie Rosenblum Dec. 12 2003 */
-#define NUM_OBJ_UNIQUE_POOLS 5000
-
-struct obj_unique_hash_elem **obj_unique_hash_pools = NULL;
-
-void init_obj_unique_hash() {
-  int i;
-  CREATE(obj_unique_hash_pools, struct obj_unique_hash_elem *,
-         NUM_OBJ_UNIQUE_POOLS);
-  for (i = 0; i < NUM_OBJ_UNIQUE_POOLS; i++) {
-    obj_unique_hash_pools[i] = NULL;
-  }
-}
 
 static bool directory_exists(const char *path) {
   struct stat st;
@@ -800,13 +777,11 @@ static void json_import_or_die(const char *label, int result) {
 }
 
 static void load_assets(void) {
-  constexpr bool use_json_assets = true;
+  constexpr bool use_json_assets = false;
   constexpr const char *asset_root = "data/assets";
 
   if (use_json_assets && directory_exists(asset_root)) {
-    log("Loading level tables.");
-    load_levels();
-
+    
     log("Loading JSON zone table.");
     json_import_or_die("zones", json_import_zones("data/assets/zones"));
 
@@ -816,8 +791,7 @@ static void load_assets(void) {
     log("Loading JSON exits.");
     json_import_or_die("exits", json_import_room_exits("data/assets/exits"));
 
-    log("Checking start rooms.");
-    check_start_rooms();
+
 
     log("Loading JSON triggers and generating index.");
     json_import_or_die("dgscripts",
@@ -831,21 +805,13 @@ static void load_assets(void) {
     json_import_or_die("obj_prototypes", json_import_obj_prototypes(
                                              "data/assets/obj_prototypes"));
 
-    log("Loading disabled commands list...");
-    load_disabled();
+    
 
-    if (converting) {
-      log("Saving converted worldfiles to disk.");
-      save_all();
-    }
+    log("Loading JSON shops.");
+    json_import_or_die("shops", json_import_shops("data/assets/shops"));
 
-    if (!no_specials) {
-      log("Loading JSON shops.");
-      json_import_or_die("shops", json_import_shops("data/assets/shops"));
-
-      log("Loading JSON guild masters.");
-      json_import_or_die("guilds", json_import_guilds("data/assets/guilds"));
-    }
+    log("Loading JSON guild masters.");
+    json_import_or_die("guilds", json_import_guilds("data/assets/guilds"));
 
     if (SELFISHMETER >= 10) {
       log("Loading Shadow Dragons.");
@@ -862,6 +828,35 @@ static void load_assets(void) {
 
   log("Loading help entries.");
   index_boot(DB_BOOT_HLP);
+}
+
+static void load_test_assets() {
+  log("Loading TEST JSON zone table.");
+  json_import_or_die("zones", json_import_zones("test_assets/zones"));
+
+  log("Loading TEST JSON rooms.");
+  json_import_or_die("rooms", json_import_rooms("test_assets/rooms"));
+
+  log("Loading TEST JSON exits.");
+  json_import_or_die("exits", json_import_room_exits("test_assets/exits"));
+
+  log("Loading TEST JSON triggers and generating index.");
+  json_import_or_die("dgscripts",
+                      json_import_dgscripts("test_assets/dgscripts"));
+
+  log("Loading TEST JSON mobs and generating index.");
+  json_import_or_die("npc_prototypes", json_import_npc_prototypes(
+                                            "test_assets/npc_prototypes"));
+
+  log("Loading TEST JSON objs and generating index.");
+  json_import_or_die("obj_prototypes", json_import_obj_prototypes(
+                                            "test_assets/obj_prototypes"));
+
+  log("Loading TEST JSON shops.");
+  json_import_or_die("shops", json_import_shops("test_assets/shops"));
+
+  log("Loading TEST JSON guild masters.");
+  json_import_or_die("guilds", json_import_guilds("test_assets/guilds"));
 }
 
 /* body of the booting system */
@@ -897,7 +892,20 @@ void boot_db(void) {
   log("Loading feats.");
   assign_feats();
 
-  load_assets();
+  log("Loading level tables.");
+  load_levels();
+
+  log("Loading disabled commands list...");
+  load_disabled();
+
+  if(config_info.test_mode) {
+    log("Test mode enabled -- skipping asset loading.");
+    load_test_assets();
+  } else {
+    load_assets();
+    log("Checking start rooms.");
+    check_start_rooms();
+  }
 
   log("Setting up context sensitive help system for OLC");
   boot_context_help();
@@ -916,11 +924,6 @@ void boot_db(void) {
     no_mail = 1;
   }
 
-  if (auto_pwipe) {
-    log("Cleaning out inactive players.");
-    clean_pfiles();
-  }
-
   log("Loading social messages.");
   boot_social_messages();
 
@@ -932,32 +935,33 @@ void boot_db(void) {
 
   log("Assigning function pointers:");
 
-  if (!no_specials) {
+  if(!config_info.test_mode) {
     log("   Mobiles.");
     assign_mobiles();
-    log("   Shopkeepers.");
-    assign_the_shopkeepers();
     log("   Objects.");
     assign_objects();
     log("   Rooms.");
     assign_rooms();
-    log("   Guildmasters.");
-    assign_the_guilds();
   }
 
-  log("Init Object Unique Hash");
-  init_obj_unique_hash();
-
-  log("Booting assembled objects.");
-  assemblyBootAssemblies();
+  log("   Shopkeepers.");
+  assign_the_shopkeepers();
+  log("   Guildmasters.");
+  assign_the_guilds();
 
   log("Sorting command list and spells.");
   sort_commands();
   sort_spells();
   sort_feats();
 
-  log("Booting boards system.");
-  init_boards();
+  if(!config_info.test_mode) {
+
+    log("Booting assembled objects.");
+    assemblyBootAssemblies();
+
+    log("Booting boards system.");
+    init_boards();
+  }
 
   log("Reading banned site and invalid-name list.");
   load_banned();
@@ -970,7 +974,7 @@ void boot_db(void) {
   }
 
   /* Moved here so the object limit code works. -gg 6/24/98 */
-  if (!mini_mud) {
+  if (!config_info.test_mode) {
     log("Booting houses.");
     House_boot();
   }
@@ -1000,7 +1004,7 @@ void auc_save() {
 
     room_contents_iterate(room_by_id(80), [&](auto obj) {
       if (obj) {
-        fprintf(fl, "%" I64T " %s %d %d %d %d %ld\n", obj->unique_id,
+        fprintf(fl, "%" I64T " %s %d %d %d %d %ld\n", 0,
                 GET_AUCTERN(obj), GET_AUCTER(obj), GET_CURBID(obj),
                 GET_STARTBID(obj), GET_BID(obj), GET_AUCTIME(obj));
       }
@@ -1026,14 +1030,12 @@ void auc_load(struct obj_data *obj) {
       get_line(fl, line);
       sscanf(line, "%" I64T " %s %d %d %d %d %ld\n", &oID, filler, &aID, &bID,
              &startc, &cost, &timer);
-      if (obj->unique_id == oID) {
-        GET_AUCTERN(obj) = strdup(filler);
-        GET_AUCTER(obj) = aID;
-        GET_CURBID(obj) = bID;
-        GET_STARTBID(obj) = startc;
-        GET_BID(obj) = cost;
-        GET_AUCTIME(obj) = timer;
-      }
+      GET_AUCTERN(obj) = strdup(filler);
+      GET_AUCTER(obj) = aID;
+      GET_CURBID(obj) = bID;
+      GET_STARTBID(obj) = startc;
+      GET_BID(obj) = cost;
+      GET_AUCTIME(obj) = timer;
     }
     fclose(fl);
   }
@@ -1756,9 +1758,6 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr) {
   char_stat_set(ch, "powerlevel", t[3]);
   char_stat_set(ch, "ki", t[4]);
   char_stat_set(ch, "stamina", t[5]);
-  ch->health = 1.0;
-  ch->energy = 1.0;
-  ch->stamina = 1.0;
 
   if (!get_line(mob_f, line)) {
     log("SYSERR: Format error in mob #%d, second line after S flag\n"
@@ -2832,10 +2831,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   character_list = mob;
   mob->next_affect = NULL;
 
-  mob->energy = 1.0;
-  mob->stamina = 1.0;
-  mob->health = 1.0;
-
   if (IS_HOSHIJIN(mob) && GET_SEX(mob) == SEX_MALE) {
     mob->hairl = 0;
     mob->hairc = 0;
@@ -3408,173 +3403,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 
 struct char_data *mob_spawn(mob_vnum nr) { return read_mobile(nr, VIRTUAL); }
 
-struct obj_unique_hash_elem {
-  time_t generation;
-  int64_t unique_id;
-  struct obj_data *obj;
-  struct obj_unique_hash_elem *next_e;
-};
-
-static void free_obj_unique_hash() {
-  int i;
-  struct obj_unique_hash_elem *elem;
-  struct obj_unique_hash_elem *next_elem;
-  if (obj_unique_hash_pools) {
-    for (i = 0; i < NUM_OBJ_UNIQUE_POOLS; i++) {
-      elem = obj_unique_hash_pools[i];
-      while (elem) {
-        next_elem = elem->next_e;
-        free(elem);
-        elem = next_elem;
-      }
-    }
-    free(obj_unique_hash_pools);
-  }
-}
-
-void add_unique_id(struct obj_data *obj) {
-  struct obj_unique_hash_elem *elem;
-  int i;
-  if (!obj_unique_hash_pools)
-    init_obj_unique_hash();
-  if (obj->unique_id == -1) {
-    if (sizeof(long long) > sizeof(long))
-      obj->unique_id =
-          (((long long)circle_random()) << (sizeof(long long) * 4)) +
-          circle_random();
-    else
-      obj->unique_id = circle_random();
-  }
-  if (CONFIG_ALL_ITEMS_UNIQUE) {
-    if (!IS_SET_AR(GET_OBJ_EXTRA(obj), ITEM_UNIQUE_SAVE))
-      SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_UNIQUE_SAVE);
-  }
-  CREATE(elem, struct obj_unique_hash_elem, 1);
-  elem->generation = obj->generation;
-  elem->unique_id = obj->unique_id;
-  elem->obj = obj;
-  i = obj->unique_id % NUM_OBJ_UNIQUE_POOLS;
-  elem->next_e = obj_unique_hash_pools[i];
-  obj_unique_hash_pools[i] = elem;
-}
-
-void remove_unique_id(struct obj_data *obj) {
-  struct obj_unique_hash_elem *elem, **ptr, *tmp;
-
-  if (obj == NULL || obj->unique_id < 0)
-    return;
-
-  ptr = obj_unique_hash_pools + (obj->unique_id % NUM_OBJ_UNIQUE_POOLS);
-
-  if (!(ptr && *ptr))
-    return;
-
-  elem = *ptr;
-
-  while (elem) {
-    tmp = elem->next_e;
-    if (elem->obj == obj) {
-      free(elem);
-      *ptr = tmp;
-    } else {
-      ptr = &(elem->next_e);
-    }
-    elem = tmp;
-  }
-}
-
-void log_dupe_objects(struct obj_data *obj1, struct obj_data *obj2) {
-  mudlog(BRF, ADMLVL_GOD, TRUE,
-         "DUPE: Dupe object found: %s [%d] [%" TMT ":%" I64T "]",
-         obj1->short_description ? obj1->short_description : "<No name>",
-         GET_OBJ_VNUM(obj1), obj1->generation, obj1->unique_id);
-  mudlog(BRF, ADMLVL_GOD, TRUE,
-         "DUPE: First: In room: %d (%s), "
-         "In object: %s, Carried by: %s, Worn by: %s",
-         obj_room_vnum_get(obj1),
-         obj_room_get(obj1) == NULL ? "Nowhere" : obj_room_get(obj1)->name,
-         obj1->in_obj ? obj1->in_obj->short_description : "None",
-         obj1->carried_by ? GET_NAME(obj1->carried_by) : "Nobody",
-         obj1->worn_by ? GET_NAME(obj1->worn_by) : "Nobody");
-  mudlog(BRF, ADMLVL_GOD, TRUE,
-         "DUPE: Newer: In room: %d (%s), "
-         "In object: %s, Carried by: %s, Worn by: %s",
-         obj_room_vnum_get(obj2),
-         obj_room_get(obj2) == NULL ? "Nowhere" : obj_room_get(obj2)->name,
-         obj2->in_obj ? obj2->in_obj->short_description : "None",
-         obj2->carried_by ? GET_NAME(obj2->carried_by) : "Nobody",
-         obj2->worn_by ? GET_NAME(obj2->worn_by) : "Nobody");
-}
-
-void check_unique_id(struct obj_data *obj) {
-  struct obj_unique_hash_elem *elem;
-  if (!obj || obj->unique_id == -1)
-    return;
-  elem = obj_unique_hash_pools[obj->unique_id % NUM_OBJ_UNIQUE_POOLS];
-  while (elem) {
-    if (elem->obj == obj) {
-      log("SYSERR: check_unique_id checking for existing object?!");
-    }
-    if (elem->generation == obj->generation &&
-        elem->unique_id == obj->unique_id) {
-      log_dupe_objects(elem->obj, obj);
-      SET_BIT_AR(GET_OBJ_EXTRA(obj), ITEM_PURGE);
-    }
-    elem = elem->next_e;
-  }
-}
-
-char *sprintuniques(int low, int high) {
-  int i, count = 0, remain, header;
-  struct obj_unique_hash_elem *q;
-  char *str, *ptr;
-  remain = 40;
-  for (i = 0; i < NUM_OBJ_UNIQUE_POOLS; i++) {
-    q = obj_unique_hash_pools[i];
-    remain += 40;
-    while (q) {
-      count++;
-      remain +=
-          80 +
-          (q->obj->short_description ? strlen(q->obj->short_description) : 20);
-      q = q->next_e;
-    }
-  }
-  if (count < 1) {
-    return strdup("No objects in unique hash.\r\n");
-  }
-  CREATE(str, char, remain + 1);
-  ptr = str;
-  count = snprintf(ptr, remain, "Unique object hashes (vnums %d - %d)\r\n", low,
-                   high);
-  ptr += count;
-  remain -= count;
-  for (i = 0; i < NUM_OBJ_UNIQUE_POOLS; i++) {
-    header = 0;
-    q = obj_unique_hash_pools[i];
-    while (q) {
-      if (GET_OBJ_VNUM(q->obj) >= low && GET_OBJ_VNUM(q->obj) <= high) {
-        if (!header) {
-          header = 1;
-          count = snprintf(ptr, remain, "|-Hash %d\r\n", i);
-          ptr += count;
-          remain -= count;
-        }
-        count =
-            snprintf(ptr, remain,
-                     "| |- [@g%6d@n] - [@y%10" TMT ":%-19" I64T "@n] - %s\r\n",
-                     GET_OBJ_VNUM(q->obj), q->generation, q->unique_id,
-                     q->obj->short_description ? q->obj->short_description
-                                               : "<Unknown>");
-        ptr += count;
-        remain -= count;
-      }
-      q = q->next_e;
-    }
-  }
-  return str;
-}
-
 /* create an object, and add it to the object list */
 struct obj_data *create_obj(void) {
   struct obj_data *obj;
@@ -3589,7 +3417,6 @@ struct obj_data *create_obj(void) {
   (void)obj_register_id(GET_ID(obj), obj);
 
   obj->generation = time(0);
-  obj->unique_id = -1;
 
   assign_triggers(obj, OBJ_TRIGGER);
 
@@ -3626,7 +3453,6 @@ struct obj_data *read_object(obj_vnum nr, int type) /* and obj_rnum */
   (void)obj_register_id(GET_ID(obj), obj);
 
   obj->generation = time(0);
-  obj->unique_id = -1;
 
   assign_triggers(obj, OBJ_TRIGGER);
   if (GET_OBJ_VNUM(obj) == 65) {
@@ -3874,7 +3700,6 @@ static bool reset_command_put(struct reset_context *ctx, obj_vnum vnum,
   }
 
   auto obj = read_object(vnum, VIRTUAL);
-  add_unique_id(obj);
   obj_to_obj(obj, to);
   load_otrigger(obj);
   ctx->obj = obj;
@@ -3910,7 +3735,6 @@ static bool reset_command_give(struct reset_context *ctx, obj_vnum vnum,
   }
 
   auto obj = read_object(vnum, VIRTUAL);
-  add_unique_id(obj);
   obj_to_char(obj, ctx->mob);
   load_otrigger(obj);
   ctx->obj = obj;
@@ -3955,7 +3779,6 @@ static bool reset_command_equip(struct reset_context *ctx, obj_vnum vnum,
   auto room = char_room_get(ctx->mob);
 
   auto obj = read_object(vnum, VIRTUAL);
-  add_unique_id(obj);
 
   obj->in_room = room_vnum_get(room);
   load_otrigger(obj);
@@ -4476,7 +4299,6 @@ void obj_free_instance(struct obj_data *obj) {
   if (obj == NULL)
     return;
 
-  remove_unique_id(obj);
   free_object_strings(obj);
   if (obj->proto_script)
     free_proto_script(obj, OBJ_TRIGGER);
@@ -4898,10 +4720,6 @@ int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate) {
 
   if (obj->generation)
     if (!OBJ_SAVE_FPRINTF(fp, obj, "generation", "G\n%ld\n", obj->generation))
-      return 0;
-  if (obj->unique_id)
-    if (!OBJ_SAVE_FPRINTF(fp, obj, "unique id", "U\n%" I64T "\n",
-                          obj->unique_id))
       return 0;
 
   if (!OBJ_SAVE_FPRINTF(fp, obj, "size", "Z\n%d\n", GET_OBJ_SIZE(obj)))

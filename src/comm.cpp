@@ -640,6 +640,7 @@ void heartbeat(int heart_pulse) {
   }
 
   if (!(heart_pulse % (1 * PASSES_PER_SEC))) { /* EVERY second */
+    char_condition_update_all("second", PULSE_1SEC, 1);
     copyover_check();
   }
 

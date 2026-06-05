@@ -1,0 +1,18 @@
+{
+  "kind": "npc_prototype",
+  "name": "test mobile six",
+  "description": "A sixth simple test mobile stands here.\r\n",
+  "short_description": "a sixth test mobile",
+  "long_description": "A sixth test mobile looks ready for tests.\r\n",
+  "class": 0,
+  "race": 0,
+  "size": -1,
+  "sex": 0,
+  "level": 6,
+  "admin_level": 0,
+  "height": 172,
+  "weight": 73,
+  "proto_id": 6,
+  "mob_flags": [3],
+  "stats": { "powerlevel": 60, "ki": 60, "stamina": 60, "strength": 13, "intelligence": 10, "wisdom": 10, "agility": 13, "constitution": 13, "speed": 13, "height": 172, "weight": 73, "alignment": 0 }
+}

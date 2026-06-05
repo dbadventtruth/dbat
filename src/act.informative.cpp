@@ -3038,7 +3038,7 @@ static void diag_char_to_char(struct char_data *i, struct char_data *ch) {
   };
   int percent, ar_index;
 
-  percent = (int)(i->health * 100.0);
+  percent = (int)(char_meter_get(i, "powerlevel") / 10000);
 
   for (ar_index = 0; diagnosis[ar_index].percent >= 0; ar_index++)
     if (percent >= diagnosis[ar_index].percent) {
@@ -3393,7 +3393,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
     send_to_char(ch, "%s", i->long_descr);
 
     if (IS_NPC(i)) {
-      double health = i->health;
+      double health = char_meter_get(i, "powerlevel") / 1000000.0;
       if (health <= 0.1) {
         act("@R...Should be DEAD soon.@w", TRUE, i, 0, ch, TO_VICT);
       } else if (health <= 0.2) {
@@ -5555,8 +5555,8 @@ ACMD(do_score) {
                  add_commas(GET_MAX_MOVE(ch)));
     send_to_char(ch,
                  "    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n",
-                 add_commas((getEffBasePL(ch))), add_commas((getEffBaseKI(ch))),
-                 add_commas((getEffBaseST(ch))));
+                  add_commas((getEffBasePL(ch))), add_commas((getBaseKI(ch))),
+                  add_commas((getBaseST(ch))));
     if (!IS_ANDROID(ch) && (getCurLF(ch)) > 0) {
       send_to_char(ch,
                    "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife "

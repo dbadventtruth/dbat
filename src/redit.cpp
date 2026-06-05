@@ -344,6 +344,7 @@ void redit_save_internally(struct descriptor_data *d) {
 /*------------------------------------------------------------------------*/
 
 void redit_save_to_disk(struct zone_data *zone) {
+  if(config_info.test_mode) return;
   save_rooms(zone); /* :) */
   update_space();
 }

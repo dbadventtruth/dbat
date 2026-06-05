@@ -1,4 +1,4 @@
-local RACE_SAIYAN = 1
+local RACE_SAIYAN = "saiyan"
 local PLR_LSSJ = 68
 
 local self_msg = "@WYou roar and then stand at your full height. You flex every muscle in your body as you feel your strength grow! Your eyes begin to glow @wwhite@W with energy, your hair turns @Ygold@W, and at the same time a @wbright @Yg@yo@Yl@yd@Ye@yn@W aura flashes up around your body! You release your @YL@ye@Dg@We@wn@Yd@ya@Dr@Yy@W power upon the universe!@n"

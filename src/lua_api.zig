@@ -197,6 +197,29 @@ pub fn loadedCount() usize {
     return loaded_entries;
 }
 
+pub fn runFile(path: []const u8) !bool {
+    if (!initialized) return error.NotInitialized;
+    const lua = lua_state.?;
+    const top = lua.getTop();
+    defer lua.setTop(top);
+
+    const path_z = try allocator.dupeZ(u8, path);
+    defer allocator.free(path_z);
+
+    switch (zlua.lang) {
+        .lua51, .luajit => try lua.loadFile(path_z),
+        else => try lua.loadFile(path_z, .text),
+    }
+
+    lua.protectedCall(.{ .results = 1 }) catch |err| {
+        reportLuaError(path, err);
+        return err;
+    };
+
+    if (lua.isBoolean(-1)) return lua.toBoolean(-1);
+    return true;
+}
+
 pub fn pushThing(category: []const u8, slug: []const u8) !bool {
     const lua = lua_state.?;
     const top = lua.getTop();
@@ -560,6 +583,35 @@ pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hoo
     };
 }
 
+pub fn callConditionUpdateHook(ch: *cdb.char_data, condition: []const u8, kind: []const u8, pulses: i64, seconds: i64) void {
+    if (!initialized or condition.len == 0) return;
+    if (!(pushThing("conditions", condition) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "on_update") != .function) {
+        lua.pop(1);
+        return;
+    }
+
+    characters_lua.pushCharacter(lua, ch.id);
+    characters_lua.pushCondition(lua, ch.id, condition);
+
+    lua.newTable();
+    _ = lua.pushString(kind);
+    lua.setField(-2, "kind");
+    lua.pushInteger(pulses);
+    lua.setField(-2, "pulses");
+    lua.pushInteger(seconds);
+    lua.setField(-2, "seconds");
+
+    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("condition {s}.on_update failed: {s}", .{ condition, message });
+        lua.pop(1);
+    };
+}
+
 pub fn emitConditionModifiers(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache, condition: []const u8) void {
     if (!initialized or condition.len == 0) return;
     if (!(pushThing("conditions", condition) catch return)) return;
@@ -837,6 +889,57 @@ fn openDbat(lua: *Lua) i32 {
     lua.pushFunction(zlua.wrap(luaAddCommas));
     lua.setField(-2, "format_number");
 
+    registerTestModule(lua);
+
+    return 1;
+}
+
+fn registerTestModule(lua: *Lua) void {
+    lua.newTable();
+    lua.pushFunction(zlua.wrap(luaTestModeEnabled));
+    lua.setField(-2, "mode_enabled");
+    lua.pushFunction(zlua.wrap(luaTestMobProtoExists));
+    lua.setField(-2, "mob_proto_exists");
+    lua.pushFunction(zlua.wrap(luaTestObjProtoExists));
+    lua.setField(-2, "obj_proto_exists");
+    lua.pushFunction(zlua.wrap(luaTestLoadedLuaEntries));
+    lua.setField(-2, "loaded_lua_entries");
+    lua.setField(-2, "test");
+}
+
+fn luaTestModeEnabled(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.config_info.test_mode);
+    return 1;
+}
+
+fn luaTestMobProtoExists(lua: *Lua) i32 {
+    const vnum = lua.toInteger(1) catch {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    const mob_vnum = std.math.cast(cdb.mob_vnum, vnum) orelse {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    lua.pushBoolean(cdb.mob_proto_by_id(mob_vnum) != null);
+    return 1;
+}
+
+fn luaTestObjProtoExists(lua: *Lua) i32 {
+    const vnum = lua.toInteger(1) catch {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    const obj_vnum = std.math.cast(cdb.obj_vnum, vnum) orelse {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    lua.pushBoolean(cdb.obj_proto_by_id(obj_vnum) != null);
+    return 1;
+}
+
+fn luaTestLoadedLuaEntries(lua: *Lua) i32 {
+    lua.pushInteger(@intCast(loaded_entries));
     return 1;
 }
 

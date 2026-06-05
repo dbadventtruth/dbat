@@ -126,6 +126,26 @@ const MobProtoIterator = struct {
     iter: MobProtoMap.Iterator,
 };
 
+const CharIterator = struct {
+    iter: std.AutoHashMap(i64, *cdb.char_data).ValueIterator,
+};
+
+pub export fn char_iterator_create() ?*anyopaque {
+    const iterator = allocator.create(CharIterator) catch return null;
+    iterator.* = .{ .iter = chars_by_id.valueIterator() };
+    return iterator;
+}
+
+pub export fn char_next(iterator_ptr: ?*anyopaque) ?*cdb.char_data {
+    const iterator: *CharIterator = @ptrCast(@alignCast(iterator_ptr orelse return null));
+    return (iterator.iter.next() orelse return null).*;
+}
+
+pub export fn char_iterator_free(iterator_ptr: ?*anyopaque) void {
+    const iterator = iterator_ptr orelse return;
+    allocator.destroy(@as(*CharIterator, @ptrCast(@alignCast(iterator))));
+}
+
 pub export fn mob_proto_iterator_create() ?*anyopaque {
     const iterator = allocator.create(MobProtoIterator) catch return null;
     iterator.* = .{ .iter = mob_proto_map.iterator() };

@@ -109,6 +109,12 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
 
+    const test_mode_step = b.step("test-mode", "Run headless DBAT test mode");
+    const test_mode_cmd = b.addRunArtifact(exe);
+    test_mode_cmd.addArg("-t");
+    test_mode_step.dependOn(&test_mode_cmd.step);
+    test_mode_cmd.step.dependOn(b.getInstallStep());
+
     const include_audit_step = b.step("include-audit", "Audit header include hygiene");
     const include_audit = b.addSystemCommand(&.{ "python3", "tools/include_audit.py" });
     include_audit_step.dependOn(&include_audit.step);
@@ -121,5 +127,6 @@ pub fn build(b: *std.Build) void {
 
     if (b.args) |args| {
         run_cmd.addArgs(args);
+        test_mode_cmd.addArgs(args);
     }
 }
