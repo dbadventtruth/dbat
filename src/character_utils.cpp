@@ -893,21 +893,15 @@ void loseBaseAllPercent(char_data *ch, double amt) {
 }
 
 int64_t getMaxCarryWeight(char_data *ch) {
-  return MAX(1L, (getMaxPL(ch) / 200) + (GET_STR(ch) * 50));
+  return char_der_total_get(ch, "weight_carry_capacity");
 }
 
 int64_t getCurGearWeight(char_data *ch) {
-  int64_t total_weight = 0;
-
-  char_equipment_iterate(ch, [&](auto i, auto eq) {
-    total_weight += GET_OBJ_WEIGHT(eq);
-    return true;
-  });
-  return total_weight;
+  return char_der_total_get(ch, "weight_equipment");
 }
 
 int64_t getCurCarriedWeight(char_data *ch) {
-  return getCurGearWeight(ch) + ch->carry_weight;
+  return char_der_total_get(ch, "weight_carried");
 }
 
 int64_t getAvailableCarryWeight(char_data *ch) {

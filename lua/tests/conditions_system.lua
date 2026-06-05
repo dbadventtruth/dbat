@@ -10,6 +10,11 @@ test:case("condition definitions expose tags", function(t)
   t:assert(bless ~= nil, "bless condition should be registered")
   t:eq(dbat.condition_has_tag("bless", "blessing"), true)
   t:eq(dbat.condition_has_tag("bless", "missing_tag"), false)
+
+  t:assert(dbat.get("conditions", "multiform") ~= nil, "multiform condition should be registered")
+  t:assert(dbat.get("conditions", "multiform_original") ~= nil, "multiform_original condition should be registered")
+  t:eq(dbat.condition_has_tag("multiform", "multiform_clone"), true)
+  t:eq(dbat.condition_has_tag("multiform_original", "multiform_original"), true)
 end)
 
 test:case("condition apply variables stores numbers and strings", function(t)
@@ -41,6 +46,17 @@ test:case("condition removal clears active tags", function(t)
   t:eq(ch:condition_has("bless"), false)
   t:eq(ch:condition_has_tag("lifeforce_bonus"), false)
   t:eq(ch:condition("bless"), nil)
+end)
+
+test:case("multiform conditions store clone state", function(t)
+  local original = mob()
+  local clone = mob()
+
+  t:eq(original:condition_apply_number("multiform_original", "clones", 3), true)
+  t:eq(clone:condition_apply_number("multiform", "original_id", original:id_get()), true)
+
+  t:eq(original:condition_number_get("multiform_original", "clones"), 3)
+  t:eq(clone:condition_number_get("multiform", "original_id"), original:id_get())
 end)
 
 return test:run()

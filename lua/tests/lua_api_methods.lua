@@ -53,4 +53,20 @@ test:case("race and sensei APIs use string ids", function(t)
   ch:extract()
 end)
 
+test:case("sex API uses string ids", function(t)
+  local room = assert(dbat.rooms.by_id(1))
+  local ch = assert(dbat.mob_protos.by_id(1):spawn(room))
+
+  ch:sex_set("male")
+  t:eq(ch:sex_get(), "male")
+
+  ch:sex_set("female")
+  t:eq(ch:sex_get(), "female")
+
+  ch:sex_set("neutral")
+  t:eq(ch:sex_get(), "neutral")
+
+  ch:extract()
+end)
+
 return test:run()

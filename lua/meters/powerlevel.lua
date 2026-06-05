@@ -1,5 +1,5 @@
 return {
     id = "powerlevel",
     name = "Power Level",
-    derived_stat = "powerlevel",
+    derived_stat = "powerlevel_effective",
 }

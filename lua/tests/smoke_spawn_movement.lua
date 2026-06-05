@@ -59,6 +59,15 @@ test:case("object can equip and unequip", function(t)
   t:eq(obj:worn_by_get(), mob:id_get())
   t:eq(obj:worn_on_get(), 0)
 
+  local found_slot = nil
+  local found_obj = nil
+  for slot, equipped in mob:equipment() do
+    found_slot = slot
+    found_obj = equipped
+  end
+  t:eq(found_slot, 0)
+  t:assert(found_obj:is_same(obj))
+
   local removed = mob:unequip(0)
   t:assert(removed ~= nil, "unequip should return the object")
   t:eq(removed:id_get(), obj:id_get())

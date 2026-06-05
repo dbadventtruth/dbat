@@ -24,6 +24,10 @@ const ConditionHandle = extern struct {
     condition: [64:0]u8,
 };
 
+const sex_neutral: c_int = 0;
+const sex_male: c_int = 1;
+const sex_female: c_int = 2;
+
 pub fn register(lua: *Lua) void {
     registerCharacterMetatable(lua);
     registerMobProtoMetatable(lua);
@@ -748,12 +752,27 @@ fn luaCharacterSizeMod(lua: *Lua) i32 {
 }
 
 fn luaCharacterSexGet(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_sex_get(checkCharacter(lua)));
+    const sex = switch (cdb.char_sex_get(checkCharacter(lua))) {
+        sex_neutral => "neutral",
+        sex_male => "male",
+        sex_female => "female",
+        else => "neutral",
+    };
+    _ = lua.pushString(sex);
     return 1;
 }
 
 fn luaCharacterSexSet(lua: *Lua) i32 {
-    cdb.char_sex_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "sex"));
+    const value = string(lua, 2);
+    const sex: c_int = if (std.mem.eql(u8, value, "neutral"))
+        sex_neutral
+    else if (std.mem.eql(u8, value, "male"))
+        sex_male
+    else if (std.mem.eql(u8, value, "female"))
+        sex_female
+    else
+        lua.raiseErrorStr("unknown sex '%s'", .{value.ptr});
+    cdb.char_sex_set(checkCharacter(lua), sex);
     return 0;
 }
 
@@ -1217,8 +1236,8 @@ fn pushEquipmentIterator(lua: *Lua, ch: *cdb.char_data) i32 {
     lua.newTable();
     var pos: usize = 0;
     while (true) : (pos += 1) {
-        const obj = cdb.char_equipment_get(ch, pos);
         if (pos >= cdb.NUM_WEARS) break;
+        const obj = cdb.char_equipment_get(ch, pos);
         if (obj == null) continue;
         objects_lua.pushObject(lua, cdb.obj_id_get(obj));
         lua.setIndex(-2, @intCast(pos));

@@ -5,4 +5,5 @@ return {
     transforms = require("lua.libs.transforms"),
     utils = require("lua.libs.utils"),
     search = require("lua.libs.search"),
+    multiform = require("lua.libs.multiform"),
 }

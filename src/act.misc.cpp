@@ -257,6 +257,7 @@ ACMD(do_multiform) {
         extract_char(tch);
       }
     }
+    char_condition_remove(ch, "multiform_original", "command");
     return;
   }
 
@@ -318,6 +319,13 @@ static void generate_multiform(struct char_data *ch, int count) {
     return;
   }
 
+  if (char_condition_has(ch, "multiform_original")) {
+    char_condition_number_mod(ch, "multiform_original", "clones", count);
+  } else {
+    char_condition_apply_with_number(ch, "multiform_original", "skill",
+                                     "multiform", "clones", count);
+  }
+
   char clone_name[MAX_INPUT_LENGTH];
   snprintf(clone_name, sizeof(clone_name), "%s's Clone", ch->name);
 
@@ -352,10 +360,10 @@ static void generate_multiform(struct char_data *ch, int count) {
     clone->distfea = ch->distfea;
     clone->aura = ch->aura;
 
-    char_stat_set(clone, "weight", char_stat_get(ch, "weight"));
-    char_stat_set(clone, "height", char_stat_get(ch, "height"));
-    clone->size = ch->size;
-    char_stat_set(clone, "level", char_stat_get(ch, "level"));
+    for(const char* stat :   {"weight", "height", "level", "powerlevel", "ki", "stamina"}) {
+      char_stat_set(clone, stat, char_stat_get(ch, stat));
+    }
+
     clone->time = ch->time;
 
     clone->tail_growth = ch->tail_growth;
@@ -363,9 +371,6 @@ static void generate_multiform(struct char_data *ch, int count) {
 
     // Copying these values, but it shouldn't matter because clones no longer
     // work this way.
-    char_stat_set(clone, "powerlevel", char_stat_get(ch, "powerlevel"));
-    char_stat_set(clone, "ki", char_stat_get(ch, "ki"));
-    char_stat_set(clone, "stamina", char_stat_get(ch, "stamina"));
 
     // Bioandroid Genome copy...
     clone->genome[0] = ch->genome[0];
@@ -377,10 +382,11 @@ static void generate_multiform(struct char_data *ch, int count) {
       clone->limb_condition[l] = ch->limb_condition[l];
     }
 
-    char_stat_set(clone, "level", GET_CLASS_LEVEL(ch));
     GET_CLONES(ch) += 1;
 
     GET_ORIGINAL(clone) = ch;
+    char_condition_apply_with_number(clone, "multiform", "skill", "multiform",
+                                     "original_id", char_id_get(ch));
     char_to_room(clone, char_room_get(ch));
     add_follower(clone, ch);
   }
