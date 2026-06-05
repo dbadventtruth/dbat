@@ -1758,9 +1758,6 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr) {
   char_stat_set(ch, "powerlevel", t[3]);
   char_stat_set(ch, "ki", t[4]);
   char_stat_set(ch, "stamina", t[5]);
-  ch->health = 1.0;
-  ch->energy = 1.0;
-  ch->stamina = 1.0;
 
   if (!get_line(mob_f, line)) {
     log("SYSERR: Format error in mob #%d, second line after S flag\n"
@@ -2833,10 +2830,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   mob->next = character_list;
   character_list = mob;
   mob->next_affect = NULL;
-
-  mob->energy = 1.0;
-  mob->stamina = 1.0;
-  mob->health = 1.0;
 
   if (IS_HOSHIJIN(mob) && GET_SEX(mob) == SEX_MALE) {
     mob->hairl = 0;

@@ -218,12 +218,6 @@ struct char_data {
   int64_t max_move; /* Max move for PC/NPC			*/
   int64_t max_ki;   /* Max ki for PC/NPC			*/
 
-  // resource meters, ranges from 0 to 1.0
-  double health;
-  double energy;
-  double stamina;
-  double life;
-
   // charge systemm
   int64_t charge;
   int64_t chargeto;

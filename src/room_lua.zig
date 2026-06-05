@@ -3,6 +3,7 @@ const zlua = @import("zlua");
 const cdb = @import("cdb");
 const characters_lua = @import("character_lua.zig");
 const objects_lua = @import("object_lua.zig");
+const lua_meta = @import("lua_meta.zig");
 
 const Lua = zlua.Lua;
 const room_metatable = "dbat.Room";
@@ -51,10 +52,15 @@ fn registerRoomMetatable(lua: *Lua) void {
     lua.pushFunction(zlua.wrap(luaRoomToString));
     lua.setField(-2, "__tostring");
 
+    lua.pushFunction(zlua.wrap(luaRoomRefType));
+    lua.setField(-2, "reftype");
+
     lua.pushFunction(zlua.wrap(luaRoomValid));
     lua.setField(-2, "valid");
     lua.pushFunction(zlua.wrap(luaRoomIsSame));
     lua.setField(-2, "is_same");
+    lua.pushFunction(zlua.wrap(luaRoomIsDark));
+    lua.setField(-2, "is_dark");
     lua.pushFunction(zlua.wrap(luaRoomIdGet));
     lua.setField(-2, "id_get");
     lua.pushFunction(zlua.wrap(luaRoomVnumGet));
@@ -97,6 +103,8 @@ fn registerRoomMetatable(lua: *Lua) void {
     lua.setField(-2, "people_get");
     lua.pushFunction(zlua.wrap(luaRoomPeopleGet));
     lua.setField(-2, "people");
+
+    lua_meta.mergeMethods(lua, "lua.meta.room");
 
     lua.pop(1);
 }
@@ -145,6 +153,11 @@ fn luaRoomIsSame(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaRoomIsDark(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.room_is_dark(checkRoom(lua)));
+    return 1;
+}
+
 fn luaRoomToString(lua: *Lua) i32 {
     const handle = checkRoomHandle(lua);
     if (cdb.room_by_id(handle.vnum)) |room| {
@@ -152,6 +165,12 @@ fn luaRoomToString(lua: *Lua) i32 {
     } else {
         _ = lua.pushFString("dbat.Room(%d, stale)", .{handle.vnum});
     }
+    return 1;
+}
+
+fn luaRoomRefType(lua: *Lua) i32 {
+    _ = checkRoom(lua);
+    _ = lua.pushString("room");
     return 1;
 }
 

@@ -1,7 +1,7 @@
 local test = require("lua.test").new()
 local dbat = require("dbat")
 
-local RACE_SAIYAN = 1
+local RACE_SAIYAN = "saiyan"
 
 local function mob()
   return dbat.mob_protos.by_id(1):spawn(dbat.rooms.by_id(1))

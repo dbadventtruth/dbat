@@ -1,5 +1,5 @@
-local RACE_SAIYAN = 1
-local RACE_HALFBREED = 7
+local RACE_SAIYAN = "saiyan"
+local RACE_HALFBREED = "halfbreed"
 local PLR_LSSJ = 68
 
 local self_msg = "@WSomething inside your mind snaps as your rage spills over! Lightning begins to strike the ground all around you as you feel torrents of power rushing through every fiber of your being. Your hair suddenly turns golden as your eyes change to the color of emeralds. In a final rush of power a golden aura rushes up around your body! You have become a @CSuper @YSaiyan@W!@n"

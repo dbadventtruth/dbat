@@ -3,4 +3,6 @@ return {
     comm = require("lua.libs.comm"),
     text = require("lua.libs.text"),
     transforms = require("lua.libs.transforms"),
+    utils = require("lua.libs.utils"),
+    search = require("lua.libs.search"),
 }

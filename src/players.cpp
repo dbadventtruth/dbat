@@ -294,14 +294,14 @@ int load_char(const char *name, struct char_data *ch) {
     GET_TRP(ch) = PFDEF_SKIN;
     GET_CLAN(ch) = strdup("None.");
     GET_HOME(ch) = PFDEF_HOMETOWN;
-    ch->health = 1.0;
+    char_meter_set(ch, "powerlevel", 1000000);
     GET_RELAXCOUNT(ch) = PFDEF_EYE;
     GET_BLESSLVL(ch) = PFDEF_HEIGHT;
-    ch->life = 1.0;
+    char_meter_set(ch, "lifeforce", 1000000);
     GET_POS(ch) = POS_STANDING;
     GET_MAJINIZED(ch) = PFDEF_BASEPL;
-    ch->energy = 1.0;
-    ch->stamina = 1.0;
+    char_meter_set(ch, "ki", 1000000);
+    char_meter_set(ch, "stamina", 1000000);
     GET_HAIRL(ch) = PFDEF_HAIRL;
     GET_HAIRC(ch) = PFDEF_HAIRC;
     GET_SKIN(ch) = PFDEF_SKIN;

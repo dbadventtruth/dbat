@@ -1,4 +1,4 @@
-local RACE_SAIYAN = 1
+local RACE_SAIYAN = "saiyan"
 local PLR_LSSJ = 68
 
 local function data(ch)

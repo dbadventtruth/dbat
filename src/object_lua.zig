@@ -3,6 +3,7 @@ const zlua = @import("zlua");
 const cdb = @import("cdb");
 const characters_lua = @import("character_lua.zig");
 const rooms_lua = @import("room_lua.zig");
+const lua_meta = @import("lua_meta.zig");
 
 const Lua = zlua.Lua;
 const object_metatable = "dbat.Object";
@@ -23,6 +24,8 @@ pub fn register(lua: *Lua) void {
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaObjectById));
     lua.setField(-2, "by_id");
+    lua.pushFunction(zlua.wrap(luaObjectsAll));
+    lua.setField(-2, "all");
     lua.setField(-2, "objects");
 
     lua.newTable();
@@ -46,6 +49,21 @@ fn luaObjectById(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaObjectsAll(lua: *Lua) i32 {
+    lua.newTable();
+    const iterator = cdb.obj_iterator_create();
+    defer cdb.obj_iterator_free(iterator);
+
+    var index: usize = 1;
+    while (cdb.obj_next(iterator)) |obj| {
+        pushObject(lua, cdb.obj_id_get(obj));
+        lua.setIndex(-2, @intCast(index));
+        index += 1;
+    }
+
+    return valueIterator(lua);
+}
+
 fn registerObjectMetatable(lua: *Lua) void {
     lua.newMetatable(object_metatable) catch {
         lua.pop(1);
@@ -56,8 +74,10 @@ fn registerObjectMetatable(lua: *Lua) void {
     lua.setField(-2, "__index");
 
     addMethod(lua, "__tostring", luaObjectToString);
+    addMethod(lua, "reftype", luaObjectRefType);
     addMethod(lua, "valid", luaObjectValid);
     addMethod(lua, "is_same", luaObjectIsSame);
+    addMethod(lua, "extract", luaObjectExtract);
     addMethod(lua, "id_get", luaObjectIdGet);
     addMethod(lua, "proto_id_get", luaObjectProtoIdGet);
     addMethod(lua, "proto_id_set", luaObjectProtoIdSet);
@@ -121,6 +141,8 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "inventory_get", luaObjectInventoryGet);
     addMethod(lua, "inventory", luaObjectInventoryGet);
 
+    lua_meta.mergeMethods(lua, "lua.meta.object");
+
     lua.pop(1);
 }
 
@@ -134,6 +156,7 @@ fn registerObjProtoMetatable(lua: *Lua) void {
     lua.setField(-2, "__index");
 
     addMethod(lua, "__tostring", luaObjProtoToString);
+    addMethod(lua, "reftype", luaObjProtoRefType);
     addMethod(lua, "valid", luaObjProtoValid);
     addMethod(lua, "vnum_get", luaObjProtoVnumGet);
     addMethod(lua, "spawn", luaObjProtoSpawn);
@@ -167,6 +190,19 @@ fn checkObjectHandle(lua: *Lua) *ObjectHandle {
 }
 
 fn checkObject(lua: *Lua) *cdb.obj_data {
+    return checkObjectAt(lua, 1);
+}
+
+pub fn checkObjectAt(lua: *Lua, index: i32) *cdb.obj_data {
+    const handle = lua.testUserdata(ObjectHandle, index, object_metatable) catch {
+        lua.raiseErrorStr("expected dbat.Object", .{});
+    };
+    return cdb.obj_by_id(handle.id) orelse {
+        lua.raiseErrorStr("stale dbat.Object handle for object %d", .{handle.id});
+    };
+}
+
+fn checkObjectSelf(lua: *Lua) *cdb.obj_data {
     const handle = checkObjectHandle(lua);
     return cdb.obj_by_id(handle.id) orelse {
         lua.raiseErrorStr("stale dbat.Object handle for object %d", .{handle.id});
@@ -227,6 +263,11 @@ fn luaObjectIsSame(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaObjectExtract(lua: *Lua) i32 {
+    cdb.extract_obj(checkObject(lua));
+    return 0;
+}
+
 fn luaObjectToString(lua: *Lua) i32 {
     const handle = checkObjectHandle(lua);
     if (cdb.obj_by_id(handle.id)) |obj| {
@@ -234,6 +275,12 @@ fn luaObjectToString(lua: *Lua) i32 {
     } else {
         _ = lua.pushFString("dbat.Object(%d, stale)", .{handle.id});
     }
+    return 1;
+}
+
+fn luaObjectRefType(lua: *Lua) i32 {
+    _ = checkObject(lua);
+    _ = lua.pushString("object");
     return 1;
 }
 
@@ -340,6 +387,12 @@ fn luaObjProtoToString(lua: *Lua) i32 {
     const handle = checkObjProtoHandle(lua);
     _ = checkObjProto(lua);
     _ = lua.pushFString("dbat.ObjectPrototype(%d)", .{handle.vnum});
+    return 1;
+}
+
+fn luaObjProtoRefType(lua: *Lua) i32 {
+    _ = checkObjProto(lua);
+    _ = lua.pushString("object_prototype");
     return 1;
 }
 
