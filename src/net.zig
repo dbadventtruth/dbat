@@ -13,6 +13,7 @@ var global_io: std.Io = undefined;
 var initialized = false;
 
 var listener_fd: ?cdb.socklen_t = null;
+var listener_read_ready = false;
 var connections: std.array_list.Managed(*Connection) = undefined;
 var accept_callback: ?*const fn (fd: cdb.socklen_t, host: [*:0]const u8, conn: *Connection) callconv(.c) ?*cdb.descriptor_data = null;
 
@@ -23,6 +24,8 @@ pub const Connection = struct {
     input: std.array_list.Managed(u8),
     output: std.array_list.Managed(u8),
     close_requested: bool = false,
+    read_ready: bool = false,
+    write_ready: bool = false,
 
     fn create(fd: cdb.socklen_t) !*Connection {
         const conn = try allocator.create(Connection);
@@ -68,6 +71,7 @@ pub fn deinit() void {
     }
     connections.deinit();
     listener_fd = null;
+    listener_read_ready = false;
     accept_callback = null;
     initialized = false;
 }
@@ -160,6 +164,8 @@ pub export fn net_connection_free_line(line: ?[*:0]u8) void {
 
 pub export fn net_accept_all_pending() c_int {
     const listener = listener_fd orelse return 0;
+    if (!listener_read_ready) return 0;
+    listener_read_ready = false;
     var accepted: c_int = 0;
     while (true) {
         var addr: cdb.struct_sockaddr_storage = .{};
@@ -189,28 +195,23 @@ pub export fn net_read_all_pending() c_int {
     while (index < connections.items.len) {
         const conn = connections.items[index];
         var advanced = true;
-        while (!conn.close_requested) {
-            const n = posix.read(@intCast(conn.fd), &buffer) catch |err| switch (err) {
-                error.WouldBlock => break,
-                error.ConnectionResetByPeer, error.SocketUnconnected => blk: {
-                    conn.close_requested = true;
-                    break :blk 0;
-                },
-                else => blk: {
-                    conn.close_requested = true;
-                    break :blk 0;
-                },
-            };
-            if (n == 0) {
+        if (!conn.read_ready) {
+            index += 1;
+            continue;
+        }
+        conn.read_ready = false;
+        const n = netRead(conn, &buffer) catch |err| switch (err) {
+            error.WouldBlock => 0,
+            else => blk: {
                 conn.close_requested = true;
-                break;
-            }
+                break :blk 0;
+            },
+        };
+        if (n > 0) {
             read_count += 1;
             if (conn.desc) |desc| {
-                if (cdb.descriptor_process_bytes(desc, buffer[0..n].ptr, n) < 0) {
+                if (cdb.descriptor_process_bytes(desc, buffer[0..n].ptr, n) < 0)
                     conn.close_requested = true;
-                    break;
-                }
             }
         }
         if (conn.close_requested) {
@@ -228,18 +229,25 @@ pub export fn net_flush_all_outputs() c_int {
     while (index < connections.items.len) {
         const conn = connections.items[index];
         var advanced = true;
-        while (conn.output.items.len > 0 and !conn.close_requested) {
-            const written = cdb.write(@intCast(conn.fd), conn.output.items.ptr, conn.output.items.len);
-            if (written < 0) {
+        if (conn.output.items.len > 0 and conn.write_ready and !conn.close_requested) {
+            conn.write_ready = false;
+            const n = netWrite(conn, conn.output.items) catch |err| switch (err) {
+                error.WouldBlock => 0,
+                else => blk: {
+                    conn.close_requested = true;
+                    break :blk 0;
+                },
+            };
+            if (n > 0) {
+                const remaining = conn.output.items[n..];
+                std.mem.copyForwards(u8, conn.output.items[0..remaining.len], remaining);
+                conn.output.resize(remaining.len) catch unreachable;
+                flushed += 1;
+            } else if (conn.output.items.len > 0 and n == 0) {
+                // Leave buffered output queued for the next writable wakeup.
+            } else if (conn.close_requested) {
                 conn.close_requested = true;
-                break;
             }
-            if (written == 0) break;
-            const n: usize = @intCast(written);
-            const remaining = conn.output.items[n..];
-            std.mem.copyForwards(u8, conn.output.items[0..remaining.len], remaining);
-            conn.output.resize(remaining.len) catch unreachable;
-            flushed += 1;
         }
         if (conn.close_requested) {
             closeConnection(conn);
@@ -252,6 +260,12 @@ pub export fn net_flush_all_outputs() c_int {
 
 pub export fn net_wait(timeout_ms: c_int) c_int {
     if (!initialized) return 0;
+
+    listener_read_ready = false;
+    for (connections.items) |conn| {
+        conn.read_ready = false;
+        conn.write_ready = false;
+    }
 
     var fds = std.array_list.Managed(posix.pollfd).init(allocator);
     defer fds.deinit();
@@ -267,7 +281,40 @@ pub export fn net_wait(timeout_ms: c_int) c_int {
     }
 
     if (fds.items.len == 0) return 0;
-    return @intCast(posix.poll(fds.items, timeout_ms) catch return -1);
+    const ready = posix.poll(fds.items, timeout_ms) catch return -1;
+    var fd_index: usize = 0;
+    if (listener_fd != null) {
+        listener_read_ready = (fds.items[fd_index].revents & (std.os.linux.POLL.IN | std.os.linux.POLL.ERR | std.os.linux.POLL.HUP)) != 0;
+        fd_index += 1;
+    }
+    for (connections.items) |conn| {
+        const revents = fds.items[fd_index].revents;
+        conn.read_ready = (revents & (std.os.linux.POLL.IN | std.os.linux.POLL.ERR | std.os.linux.POLL.HUP)) != 0;
+        conn.write_ready = (revents & std.os.linux.POLL.OUT) != 0;
+        if ((revents & (std.os.linux.POLL.ERR | std.os.linux.POLL.HUP | std.os.linux.POLL.NVAL)) != 0) conn.close_requested = true;
+        fd_index += 1;
+    }
+    return @intCast(ready);
+}
+
+const NetIoError = error{ WouldBlock, ConnectionClosed } || ionet.Stream.Reader.Error || ionet.Stream.Writer.Error;
+
+fn netRead(conn: *Connection, buffer: []u8) NetIoError!usize {
+    var vecs: [1][]u8 = .{buffer};
+    const n = global_io.vtable.netRead(global_io.userdata, @intCast(conn.fd), &vecs) catch |err| switch (err) {
+        error.ConnectionResetByPeer, error.SocketUnconnected => return error.ConnectionClosed,
+        else => |value| return value,
+    };
+    if (n == 0) return error.ConnectionClosed;
+    return n;
+}
+
+fn netWrite(conn: *Connection, bytes: []const u8) NetIoError!usize {
+    var data: [1][]const u8 = .{bytes};
+    return global_io.vtable.netWrite(global_io.userdata, @intCast(conn.fd), "", &data, 1) catch |err| switch (err) {
+        error.ConnectionResetByPeer, error.SocketUnconnected => return error.ConnectionClosed,
+        else => |value| return value,
+    };
 }
 
 pub export fn net_copyover_dump(path: ?[*:0]const u8) bool {
