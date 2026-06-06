@@ -2308,6 +2308,13 @@ struct descriptor_data *descriptor_accept_connection(socklen_t desc,
   return newd;
 }
 
+void descriptor_fd_inherit_across_exec(socklen_t fd) {
+  int flags = fcntl(fd, F_GETFD);
+  if (flags < 0)
+    return;
+  fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+}
+
 /*
  * Send all of the output that we've accumulated for a player out to
  * the player's descriptor.

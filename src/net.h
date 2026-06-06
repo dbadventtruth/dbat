@@ -15,6 +15,7 @@ struct descriptor_data;
 typedef struct descriptor_data *(*net_accept_descriptor_fn)(socklen_t fd, const char *host, struct net_connection *conn);
 
 bool net_listener_adopt(socklen_t fd);
+int net_listener_open(uint16_t port);
 void net_accept_callback_set(net_accept_descriptor_fn callback);
 
 struct net_connection *net_connection_create(socklen_t fd);

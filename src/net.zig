@@ -2,6 +2,7 @@ const std = @import("std");
 const cdb = @import("cdb");
 
 const Allocator = std.mem.Allocator;
+const ionet = std.Io.net;
 const posix = std.posix;
 
 extern fn malloc(size: usize) ?[*]u8;
@@ -73,7 +74,22 @@ pub fn deinit() void {
 
 pub export fn net_listener_adopt(fd: cdb.socklen_t) bool {
     listener_fd = fd;
+    cdb.nonblock(fd);
     return true;
+}
+
+pub export fn net_listener_open(port: u16) c_int {
+    if (!initialized) return -1;
+    const address = ionet.IpAddress{ .ip4 = ionet.Ip4Address.unspecified(port) };
+    const server = ionet.IpAddress.listen(&address, global_io, .{
+        .kernel_backlog = 5,
+        .reuse_address = true,
+    }) catch return -1;
+    const fd: c_int = @intCast(server.socket.handle);
+    listener_fd = @intCast(fd);
+    cdb.descriptor_fd_inherit_across_exec(@intCast(fd));
+    cdb.nonblock(@intCast(fd));
+    return fd;
 }
 
 pub export fn net_accept_callback_set(callback: ?*const fn (fd: cdb.socklen_t, host: [*:0]const u8, conn: *Connection) callconv(.c) ?*cdb.descriptor_data) void {

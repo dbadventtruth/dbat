@@ -106,8 +106,11 @@ pub fn main(init: std.process.Init) u8 {
 
     if (!cdb.fCopyOver and !cdb.config_info.test_mode) {
         cdb.log("Opening mother connection on port %d.", cdb.port);
-        cdb.mother_desc = cdb.init_socket(cdb.port);
-        _ = cdb.net_listener_adopt(cdb.mother_desc);
+        const listener_fd = cdb.net_listener_open(cdb.port);
+        if (listener_fd < 0) {
+            std.process.fatal("failed to open listener on port {d}", .{cdb.port});
+        }
+        cdb.mother_desc = @intCast(listener_fd);
     }
 
     cdb.event_init();

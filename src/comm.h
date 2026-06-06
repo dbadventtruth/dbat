@@ -62,6 +62,7 @@ struct descriptor_data *descriptor_accept_connection(socklen_t desc,
                                                      struct net_connection *conn);
 int descriptor_process_bytes(struct descriptor_data *d, const char *bytes,
                              size_t len);
+void descriptor_fd_inherit_across_exec(socklen_t fd);
 
 #define TO_ROOM 1
 #define TO_VICT 2
