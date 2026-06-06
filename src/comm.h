@@ -4,9 +4,13 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
+#include "game.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct net_connection;
 
 #if CIRCLE_GNU_LIBC_MEMORY_TRACK
 #include <mcheck.h>
@@ -47,6 +51,18 @@ void perform_act(const char *orig, struct char_data *ch, struct obj_data *obj,
 char *act(const char *str, int hide_invisible, struct char_data *ch,
           struct obj_data *obj, const void *vict_obj, int type);
 void close_socket(struct descriptor_data *d);
+void copyover_recover_begin(void);
+const char *copyover_descriptor_character_name(const struct descriptor_data *d);
+int copyover_descriptor_saved_loadroom(const struct descriptor_data *d);
+void copyover_recover_descriptor(socklen_t desc, const char *name,
+                                 const char *host, int saved_loadroom,
+                                 const char *username,
+                                 struct net_connection *conn);
+struct descriptor_data *descriptor_accept_connection(socklen_t desc,
+                                                     struct net_connection *conn);
+int descriptor_process_bytes(struct descriptor_data *d, const char *bytes,
+                             size_t len);
+void descriptor_fd_inherit_across_exec(socklen_t fd);
 
 #define TO_ROOM 1
 #define TO_VICT 2
@@ -78,7 +94,6 @@ void show_help(struct descriptor_data *t, const char *entry);
 extern unsigned long pulse;
 extern FILE *logfile;
 extern int circle_shutdown, circle_reboot;
-extern socklen_t mother_desc;
 extern uint16_t port;
 extern int buf_switches, buf_largecount, buf_overflows;
 extern int no_specials, scheck;
@@ -107,7 +122,6 @@ void echo_on(struct descriptor_data *d);
 void circle_sleep(struct timeval *timeout);
 int get_from_q(struct txt_q *queue, char *dest, int *aliased);
 void signal_setup(void);
-void game_loop(socklen_t mother_desc);
 socklen_t init_socket(uint16_t port);
 int new_descriptor(socklen_t s);
 extern int max_players;
@@ -123,7 +137,6 @@ void record_usage(void);
 char *make_prompt(struct descriptor_data *point);
 void check_idle_passwords(void);
 void check_idle_menu(void);
-void heartbeat(int heart_pulse);
 struct in_addr *get_bind_addr(void);
 
 void cleanup_game_world();

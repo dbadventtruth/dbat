@@ -8,6 +8,8 @@
 extern "C" {
 #endif
 
+struct net_connection;
+
 struct txt_block {
   char *text;
   int aliased;
@@ -87,6 +89,7 @@ struct descriptor_data {
   int customfile;
   char *title;
   int rbank;
+  struct net_connection *conn;
   // Lua stuff
   void *lua_repl;
 };

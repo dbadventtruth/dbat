@@ -31,6 +31,8 @@ pub const players_json = @import("player_files_json.zig");
 pub const assembly_json = @import("assembly_json.zig");
 pub const dgscripts_json = @import("dgscript_json.zig");
 pub const dgscripts = @import("dgscript.zig");
+pub const net = @import("net.zig");
+pub const game = @import("game.zig");
 
 // This stupid comptime and its function ensures that the C API functions aren't optimized out because Zig doesn't call them directly. They are called from C, so we have to force them to be included in the final binary.
 comptime {
@@ -49,6 +51,8 @@ comptime {
     forceApiExports(lua_api);
     forceApiExports(json_api);
     forceApiExports(dgscripts);
+    forceApiExports(net);
+    forceApiExports(game);
     std.testing.refAllDecls(flags_json);
     std.testing.refAllDecls(extradesc_json);
     std.testing.refAllDecls(dgscripts_json);
@@ -76,6 +80,8 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !void {
     guilds.init(allocator);
     zones.init(allocator);
     dgscripts.init(allocator);
+    net.init(allocator, io);
+    game.init(io);
     json_api.init(io);
     players_json.init(io);
     try lua_api.init(allocator, io);
@@ -85,6 +91,8 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !void {
 
 pub fn deinit() void {
     lua_api.deinit();
+    game.deinit();
+    net.deinit();
     dgscripts.deinit();
     zones.deinit();
     guilds.deinit();

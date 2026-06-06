@@ -82,6 +82,7 @@
 #include "log.h"
 #include "mail.h"
 #include "modify.h"
+#include "net.h"
 #include "objsave.h"
 #include "races_plus.h"
 #include "screen.h"
@@ -128,7 +129,6 @@ int dg_act_check;        /* toggle for act_trigger */
 unsigned long pulse = 0; /* number of pulses since game start */
 bool fCopyOver;          /* Are we booting in copyover mode? */
 uint16_t port;
-socklen_t mother_desc;
 char *last_act_message = NULL;
 
 /***********************************************************************
@@ -136,90 +136,106 @@ char *last_act_message = NULL;
  ***********************************************************************/
 int enter_player_game(struct descriptor_data *d);
 
-/* Reload players after a copyover */
-void copyover_recover() {
-  struct descriptor_data *d;
-  FILE *fp;
-  char host[1024];
-  int desc, player_i;
-  bool fOld;
-  char name[MAX_INPUT_LENGTH];
-  char username[100];
-  int saved_loadroom = NOWHERE;
-  int set_loadroom = NOWHERE;
-
+void copyover_recover_begin(void) {
   log("Copyover recovery initiated");
   PCOUNTDAY = time(0) + 60;
-  fp = fopen(COPYOVER_FILE, "r");
+}
 
-  if (!fp) {
-    perror("copyover_recover:fopen");
-    log("Copyover file not found. Exitting.\n\r");
+const char *copyover_descriptor_character_name(const struct descriptor_data *d) {
+  if (!d || !d->character)
+    return "";
+  return GET_NAME(d->character);
+}
+
+int copyover_descriptor_saved_loadroom(const struct descriptor_data *d) {
+  if (!d || !d->character)
+    return 300;
+  if (char_room_vnum_get(d->character) > 1)
+    return char_room_vnum_get(d->character);
+  if (char_room_vnum_get(d->character) <= 1 && GET_WAS_IN(d->character) > 1)
+    return GET_WAS_IN(d->character);
+  return 300;
+}
+
+void copyover_recover_descriptor(socklen_t desc, const char *name,
+                                 const char *host, int saved_loadroom,
+                                 const char *username,
+                                 struct net_connection *conn) {
+  struct descriptor_data *d;
+  int player_i;
+  bool fOld;
+  int set_loadroom = NOWHERE;
+
+  fOld = TRUE;
+
+  /* Write something, and check if it goes error-free */
+  if (write_to_descriptor(desc, "\n\rFolding initiated...\n\r") < 0) {
+    if (conn)
+      net_connection_destroy(conn);
+    close(desc); /* nope */
+    return;
+  }
+
+  /* create a new descriptor */
+  CREATE(d, struct descriptor_data, 1);
+  memset((char *)d, 0, sizeof(struct descriptor_data));
+  init_descriptor(d, desc); /* set up various stuff */
+  d->conn = conn;
+  if (conn)
+    net_connection_descriptor_set(conn, d);
+
+  strncpy(d->host, host ? host : "", HOST_LENGTH);
+  d->host[HOST_LENGTH] = '\0';
+  d->next = descriptor_list;
+  descriptor_list = d;
+
+  d->connected = CON_CLOSE;
+
+  /* Now, find the pfile */
+
+  CREATE(d->character, struct char_data, 1);
+  clear_char(d->character);
+  d->character->desc = d;
+
+  if ((player_i = load_char(name, d->character)) >= 0) {
+    GET_PFILEPOS(d->character) = player_i;
+    if (!PLR_FLAGGED(d->character, PLR_DELETED)) {
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_CRYO);
+      userLoad(d, const_cast<char *>(username ? username : "Empty"));
+    }
+    /*else
+      fOld = FALSE;*/
+  } else
+    fOld = FALSE;
+
+  if (!fOld) /* Player file not found?! */ {
+    write_to_descriptor(desc, "\n\rSomehow, your character was lost during "
+                              "the folding. Sorry.\n\r");
+    close_socket(d);
+  } else {
+    write_to_descriptor(desc, "\n\rFolding complete.\n\r");
+    set_loadroom = GET_LOADROOM(d->character);
+    GET_LOADROOM(d->character) = saved_loadroom;
+    enter_player_game(d);
+    GET_LOADROOM(d->character) = set_loadroom;
+    d->connected = CON_PLAYING;
+    look_at_room(char_room_get(d->character), d->character, 0);
+    if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
+      GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
+    }
+  }
+}
+
+/* Reload players after a copyover */
+void copyover_recover() {
+  log("Copyover recovery initiated");
+  PCOUNTDAY = time(0) + 60;
+  if (!net_copyover_recover(COPYOVER_FILE)) {
+    log("Copyover recovery failed. Exitting.\n\r");
     exit(1);
   }
-
-  unlink(COPYOVER_FILE); /* In case it crashes - doesn't prevent reading */
-  for (;;) {
-    fOld = TRUE;
-    fscanf(fp, "%d %s %s %d %s\n", &desc, name, host, &saved_loadroom,
-           username);
-    if (desc == -1)
-      break;
-
-    /* Write something, and check if it goes error-free */
-    if (write_to_descriptor(desc, "\n\rFolding initiated...\n\r") < 0) {
-      close(desc); /* nope */
-      continue;
-    }
-
-    /* create a new descriptor */
-    CREATE(d, struct descriptor_data, 1);
-    memset((char *)d, 0, sizeof(struct descriptor_data));
-    init_descriptor(d, desc); /* set up various stuff */
-
-    strcpy(d->host, host);
-    d->next = descriptor_list;
-    descriptor_list = d;
-
-    d->connected = CON_CLOSE;
-
-    /* Now, find the pfile */
-
-    CREATE(d->character, struct char_data, 1);
-    clear_char(d->character);
-    d->character->desc = d;
-
-    if ((player_i = load_char(name, d->character)) >= 0) {
-      GET_PFILEPOS(d->character) = player_i;
-      if (!PLR_FLAGGED(d->character, PLR_DELETED)) {
-        REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
-        REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
-        REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_CRYO);
-        userLoad(d, username);
-      }
-      /*else
-        fOld = FALSE;*/
-    } else
-      fOld = FALSE;
-
-    if (!fOld) /* Player file not found?! */ {
-      write_to_descriptor(desc, "\n\rSomehow, your character was lost during "
-                                "the folding. Sorry.\n\r");
-      close_socket(d);
-    } else {
-      write_to_descriptor(desc, "\n\rFolding complete.\n\r");
-      set_loadroom = GET_LOADROOM(d->character);
-      GET_LOADROOM(d->character) = saved_loadroom;
-      enter_player_game(d);
-      GET_LOADROOM(d->character) = set_loadroom;
-      d->connected = CON_PLAYING;
-      look_at_room(char_room_get(d->character), d->character, 0);
-      if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
-        GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
-      }
-    }
-  }
-  fclose(fp);
 }
 
 void load_spacemap() {
@@ -337,133 +353,13 @@ int get_max_players(void) {
   return (max_descs);
 }
 
-/*
- * game_loop contains the main loop which drives the entire MUD.  It
- * cycles once every 0.10 seconds and is responsible for accepting new
- * new connections, polling existing connections for input, dequeueing
- * output and sending it out to players, and calling "heartbeat" functions
- * such as mobile_activity().
- */
-void game_loop(socklen_t cmmother_desc) {
-  fd_set input_set, output_set, exc_set, null_set;
-  struct timeval last_time, opt_time, process_time, temp_time;
-  struct timeval before_sleep, now, timeout;
+
+static void connections_handle_commands() {
   char comm[MAX_INPUT_LENGTH];
+  int aliased;
+
   struct descriptor_data *d, *next_d;
-  int missed_pulses, maxdesc, aliased, top_desc;
-
-  /* initialize various time values */
-  null_time.tv_sec = 0;
-  null_time.tv_usec = 0;
-  opt_time.tv_usec = OPT_USEC;
-  opt_time.tv_sec = 0;
-  FD_ZERO(&null_set);
-
-  gettimeofday(&last_time, (struct timezone *)0);
-
-  /* The Main Loop.  The Big Cheese.  The Top Dog.  The Head Honcho.  The.. */
-  while (!circle_shutdown) {
-
-    /* Sleep if we don't have any connections */
-    if (descriptor_list == NULL) {
-      top_desc = cmmother_desc;
-      log("No connections.  Going to sleep.");
-      FD_ZERO(&input_set);
-      FD_SET(cmmother_desc, &input_set);
-
-      if (select(top_desc + 1, &input_set, (fd_set *)0, (fd_set *)0, NULL) <
-          0) {
-        if (errno == EINTR)
-          log("Waking up to process signal.");
-        else
-          perror("SYSERR: Select coma");
-      } else
-        log("New connection.  Waking up.");
-      gettimeofday(&last_time, (struct timezone *)0);
-    }
-    /* Set up the input, output, and exception sets for select(). */
-    FD_ZERO(&input_set);
-    FD_ZERO(&output_set);
-    FD_ZERO(&exc_set);
-    FD_SET(cmmother_desc, &input_set);
-
-    maxdesc = cmmother_desc;
-    for (d = descriptor_list; d; d = d->next) {
-      if (d->descriptor > maxdesc)
-        maxdesc = d->descriptor;
-      FD_SET(d->descriptor, &input_set);
-      FD_SET(d->descriptor, &output_set);
-      FD_SET(d->descriptor, &exc_set);
-    }
-
-    /*
-     * At this point, we have completed all input, output and heartbeat
-     * activity from the previous iteration, so we have to put ourselves
-     * to sleep until the next 0.1 second tick.  The first step is to
-     * calculate how long we took processing the previous iteration.
-     */
-
-    gettimeofday(&before_sleep, (struct timezone *)0); /* current time */
-    timediff(&process_time, &before_sleep, &last_time);
-
-    /*
-     * If we were asleep for more than one pass, count missed pulses and sleep
-     * until we're resynchronized with the next upcoming pulse.
-     */
-    if (process_time.tv_sec == 0 && process_time.tv_usec < OPT_USEC) {
-      missed_pulses = 0;
-    } else {
-      missed_pulses = process_time.tv_sec * PASSES_PER_SEC;
-      missed_pulses += process_time.tv_usec / OPT_USEC;
-      process_time.tv_sec = 0;
-      process_time.tv_usec = process_time.tv_usec % OPT_USEC;
-    }
-
-    /* Calculate the time we should wake up */
-    timediff(&temp_time, &opt_time, &process_time);
-    timeadd(&last_time, &before_sleep, &temp_time);
-
-    /* Now keep sleeping until that time has come */
-    gettimeofday(&now, (struct timezone *)0);
-    timediff(&timeout, &last_time, &now);
-
-    /* Go to sleep */
-    do {
-      circle_sleep(&timeout);
-      gettimeofday(&now, (struct timezone *)0);
-      timediff(&timeout, &last_time, &now);
-    } while (timeout.tv_usec || timeout.tv_sec);
-
-    /* Poll (without blocking) for new input, output, and exceptions */
-    if (select(maxdesc + 1, &input_set, &output_set, &exc_set, &null_time) <
-        0) {
-      perror("SYSERR: Select poll");
-      return;
-    }
-    /* If there are new connections waiting, accept them. */
-    if (FD_ISSET(cmmother_desc, &input_set))
-      new_descriptor(cmmother_desc);
-
-    /* Kick out the freaky folks in the exception set and marked for close */
-    for (d = descriptor_list; d; d = next_d) {
-      next_d = d->next;
-      if (FD_ISSET(d->descriptor, &exc_set)) {
-        FD_CLR(d->descriptor, &input_set);
-        FD_CLR(d->descriptor, &output_set);
-        close_socket(d);
-      }
-    }
-
-    /* Process descriptors with input pending */
-    for (d = descriptor_list; d; d = next_d) {
-      next_d = d->next;
-      if (FD_ISSET(d->descriptor, &input_set))
-        if (process_input(d) < 0)
-          close_socket(d);
-    }
-
-    /* Process commands we just read from process_input */
-    for (d = descriptor_list; d; d = next_d) {
+      for (d = descriptor_list; d; d = next_d) {
       next_d = d->next;
 
       /*
@@ -512,84 +408,60 @@ void game_loop(socklen_t cmmother_desc) {
         command_interpreter(d->character, comm); /* Send it to interpreter */
       }
     }
+}
 
-    /* Send queued output out to the operating system (ultimately to user). */
-    for (d = descriptor_list; d; d = next_d) {
-      next_d = d->next;
-      if (*(d->output) && FD_ISSET(d->descriptor, &output_set)) {
-        /* Output for this player is ready */
-        if (process_output(d) < 0) {
-          // commented out close_socket since process_output already does this,
-          // so having it here causes a double-free crash
-          // close_socket(d);
-          log("ERROR: Tried to send output to dead socket!");
-        } else
-          d->has_prompt = 1;
-      }
+void game_legacy_process_commands(void) { connections_handle_commands(); }
+
+void game_legacy_send_outputs(void) {
+  struct descriptor_data *d, *next_d;
+  for (d = descriptor_list; d; d = next_d) {
+    next_d = d->next;
+    if (*(d->output)) {
+      if (process_output(d) < 0) {
+        log("ERROR: Tried to send output to dead socket!");
+      } else
+        d->has_prompt = 1;
     }
+  }
 
-    /* Print prompts for other descriptors who had no other output */
-    for (d = descriptor_list; d; d = d->next) {
-      if (!d->has_prompt) {
-        write_to_output(d, "@n");
-        /*write_to_descriptor(d->descriptor, make_prompt(d), d->comp);*/
-        d->has_prompt = TRUE;
-      }
+  for (d = descriptor_list; d; d = d->next) {
+    if (!d->has_prompt) {
+      write_to_output(d, "@n");
+      d->has_prompt = TRUE;
     }
+  }
+}
 
-    /* Kick out folks in the CON_CLOSE or CON_DISCONNECT state */
-    for (d = descriptor_list; d; d = next_d) {
+static void connections_close_pending() {
+  struct descriptor_data *d, *next_d;
+  for (d = descriptor_list; d; d = next_d) {
       next_d = d->next;
       if (STATE(d) == CON_CLOSE || STATE(d) == CON_DISCONNECT)
         close_socket(d);
     }
-
-    /*
-     * Now, we execute as many pulses as necessary--just one if we haven't
-     * missed any pulses, or make up for lost time if we missed a few
-     * pulses by sleeping for too long.
-     */
-    missed_pulses++;
-
-    if (missed_pulses <= 0) {
-      log("SYSERR: **BAD** MISSED_PULSES NONPOSITIVE (%d), TIME GOING "
-          "BACKWARDS!!",
-          missed_pulses);
-      missed_pulses = 1;
-    }
-
-    /* If we missed more than 30 seconds worth of pulses, just do 30 secs */
-    if (missed_pulses > 30 RL_SEC) {
-      log("SYSERR: Missed %d seconds worth of pulses.",
-          missed_pulses / PASSES_PER_SEC);
-      missed_pulses = 30 RL_SEC;
-    }
-
-    /* Now execute the heartbeat functions */
-    while (missed_pulses--)
-      heartbeat(++pulse);
-
-    /* Check for any signals we may have received. */
-    if (reread_wizlist) {
-      reread_wizlist = FALSE;
-      mudlog(CMP, ADMLVL_IMMORT, TRUE, "Signal received - rereading wizlists.");
-      reboot_wizlists();
-    }
-    if (emergency_unban) {
-      emergency_unban = FALSE;
-      mudlog(BRF, ADMLVL_IMMORT, TRUE,
-             "Received SIGUSR2 - completely unrestricting game (emergent)");
-      ban_list = NULL;
-      circle_restrict = 0;
-      num_invalid = 0;
-    }
-
-    /* Update tics for deadlock protection */
-    tics_passed++;
-  }
 }
 
-void heartbeat(int heart_pulse) {
+void game_legacy_close_pending(void) { connections_close_pending(); }
+
+void game_legacy_post_tick(void) {
+  if (reread_wizlist) {
+    reread_wizlist = FALSE;
+    mudlog(CMP, ADMLVL_IMMORT, TRUE, "Signal received - rereading wizlists.");
+    reboot_wizlists();
+  }
+  if (emergency_unban) {
+    emergency_unban = FALSE;
+    mudlog(BRF, ADMLVL_IMMORT, TRUE,
+           "Received SIGUSR2 - completely unrestricting game (emergent)");
+    ban_list = NULL;
+    circle_restrict = 0;
+    num_invalid = 0;
+  }
+
+  tics_passed++;
+}
+
+void heartbeat_legacy(int heart_pulse) {
   static int mins_since_crashsave = 0;
 
   event_process();
@@ -609,6 +481,7 @@ void heartbeat(int heart_pulse) {
   if (!(heart_pulse % (PULSE_IDLEPWD / 15))) { /* 1 second */
     // dball_load();
   }
+  
   if (!(heart_pulse % (PULSE_2SEC))) {
     base_update();
     fish_update();
@@ -630,6 +503,7 @@ void heartbeat(int heart_pulse) {
   if (!(heart_pulse % (PULSE_IDLEPWD / 15))) {
     fight_stack();
   }
+
   if (!(heart_pulse % ((PULSE_IDLEPWD / 15) * 2))) {
     if (rand_number(1, 2) == 2) {
       homing_update();
@@ -649,6 +523,7 @@ void heartbeat(int heart_pulse) {
     check_time_triggers();
     affect_update();
   }
+
   if (!(heart_pulse % ((SECS_PER_MUD_HOUR / 3) * PASSES_PER_SEC))) {
     point_update();
   }
@@ -2112,6 +1987,75 @@ int new_descriptor(socklen_t s) {
   return (0);
 }
 
+struct descriptor_data *descriptor_accept_connection(socklen_t desc,
+                                                     struct net_connection *conn) {
+  int sockets_connected = 0;
+  struct descriptor_data *newd;
+  struct sockaddr_in peer;
+  socklen_t peer_len = sizeof(peer);
+
+  nonblock(desc);
+
+  if (set_sendbuf(desc) < 0) {
+    close(desc);
+    if (conn)
+      net_connection_destroy(conn);
+    return NULL;
+  }
+
+  for (newd = descriptor_list; newd; newd = newd->next)
+    sockets_connected++;
+
+  if (sockets_connected >= CONFIG_MAX_PLAYING) {
+    const char *full_msg =
+        "Sorry, CircleMUD is full right now... please try again later!\r\n";
+    write(desc, full_msg, strlen(full_msg));
+    close(desc);
+    if (conn)
+      net_connection_destroy(conn);
+    return NULL;
+  }
+
+  CREATE(newd, struct descriptor_data, 1);
+  memset((char *)newd, 0, sizeof(struct descriptor_data));
+
+  if (getpeername(desc, (struct sockaddr *)&peer, &peer_len) == 0) {
+    strncpy(newd->host, (char *)inet_ntoa(peer.sin_addr), HOST_LENGTH);
+    newd->host[HOST_LENGTH] = '\0';
+  } else {
+    strncpy(newd->host, "unknown", HOST_LENGTH);
+    newd->host[HOST_LENGTH] = '\0';
+  }
+
+  if (isbanned(newd->host) == BAN_ALL) {
+    mudlog(CMP, ADMLVL_GOD, TRUE, "Connection attempt denied from [%s]",
+           newd->host);
+    close(desc);
+    free(newd);
+    if (conn)
+      net_connection_destroy(conn);
+    return NULL;
+  }
+
+  init_descriptor(newd, desc);
+  newd->conn = conn;
+  if (conn)
+    net_connection_descriptor_set(conn, newd);
+
+  newd->next = descriptor_list;
+  descriptor_list = newd;
+
+  set_color(newd);
+  return newd;
+}
+
+void descriptor_fd_inherit_across_exec(socklen_t fd) {
+  int flags = fcntl(fd, F_GETFD);
+  if (flags < 0)
+    return;
+  fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+}
+
 /*
  * Send all of the output that we've accumulated for a player out to
  * the player's descriptor.
@@ -2279,6 +2223,9 @@ int write_to_descriptor(socklen_t desc, const char *txt) {
   ssize_t bytes_written;
   size_t total = strlen(txt), write_total = 0;
 
+  if (net_connection_send_fd(desc, txt, total))
+    return total;
+
   while (total > 0) {
     bytes_written = perform_socket_write(desc, txt, total);
 
@@ -2352,6 +2299,122 @@ ssize_t perform_socket_read(socklen_t desc, char *read_point,
  * character. (Do you really need 256 characters on a line?)
  * -gg 1/21/2000
  */
+int descriptor_process_bytes(struct descriptor_data *t, const char *bytes,
+                             size_t len) {
+  int buf_length, failed_subst;
+  size_t space_left;
+  char *ptr, *read_point, *write_point, *nl_pos = NULL;
+  char tmp[MAX_INPUT_LENGTH];
+
+  buf_length = strlen(t->inbuf);
+  space_left = MAX_RAW_INPUT_LENGTH - buf_length - 1;
+  if (len > space_left) {
+    log("WARNING: descriptor_process_bytes: about to close connection: input overflow");
+    return (-1);
+  }
+
+  memcpy(t->inbuf + buf_length, bytes, len);
+  t->inbuf[buf_length + len] = '\0';
+
+  for (ptr = t->inbuf + buf_length; *ptr && !nl_pos; ptr++)
+    if (ISNEWL(*ptr))
+      nl_pos = ptr;
+
+  if (nl_pos == NULL)
+    return (0);
+
+  read_point = t->inbuf;
+
+  while (nl_pos != NULL) {
+    write_point = tmp;
+    space_left = MAX_INPUT_LENGTH - 1;
+
+    for (ptr = read_point; (space_left > 1) && (ptr < nl_pos); ptr++) {
+      if (*ptr == '\b' || *ptr == 127) {
+        if (write_point > tmp) {
+          if (*(--write_point) == '$') {
+            write_point--;
+            space_left += 2;
+          } else
+            space_left++;
+        }
+      } else if (isascii(*ptr) && isprint(*ptr)) {
+        if ((*(write_point++) = *ptr) == '$') {
+          *(write_point++) = '$';
+          space_left -= 2;
+        } else
+          space_left--;
+      }
+    }
+
+    *write_point = '\0';
+
+    if ((space_left <= 0) && (ptr < nl_pos)) {
+      char buffer[MAX_INPUT_LENGTH + 64];
+
+      snprintf(buffer, sizeof(buffer), "Line too long.  Truncated to:\r\n%s\r\n",
+               tmp);
+      if (write_to_descriptor(t->descriptor, buffer) < 0)
+        return (-1);
+    }
+    if (t->snoop_by)
+      write_to_output(t->snoop_by, "%% %s\r\n", tmp);
+    failed_subst = 0;
+
+    if (*tmp == '!' && !(*(tmp + 1)))
+      strcpy(tmp, t->last_input);
+    else if (*tmp == '!' && *(tmp + 1)) {
+      char *commandln = (tmp + 1);
+      int starting_pos = t->history_pos,
+          cnt = (t->history_pos == 0 ? HISTORY_SIZE - 1 : t->history_pos - 1);
+
+      skip_spaces(&commandln);
+      for (; cnt != starting_pos; cnt--) {
+        if (t->history[cnt] && is_abbrev(commandln, t->history[cnt])) {
+          strcpy(tmp, t->history[cnt]);
+          strcpy(t->last_input, tmp);
+          write_to_output(t, "%s\r\n", tmp);
+          break;
+        }
+        if (cnt == 0)
+          cnt = HISTORY_SIZE;
+      }
+    } else if (*tmp == '^') {
+      if (!(failed_subst = perform_subst(t, t->last_input, tmp)))
+        strcpy(t->last_input, tmp);
+    } else {
+      strcpy(t->last_input, tmp);
+      if (t->history[t->history_pos])
+        free(t->history[t->history_pos]);
+      t->history[t->history_pos] = strdup(tmp);
+      if (++t->history_pos >= HISTORY_SIZE)
+        t->history_pos = 0;
+    }
+
+    if ((*tmp == '-') && (*(tmp + 1) == '-') && !(*(tmp + 2))) {
+      write_to_output(t, "All queued commands cancelled.\r\n");
+      flush_queues(t);
+    }
+    if (!failed_subst)
+      write_to_q(tmp, &t->input, 0);
+
+    while (ISNEWL(*nl_pos))
+      nl_pos++;
+
+    read_point = ptr = nl_pos;
+    for (nl_pos = NULL; *ptr && !nl_pos; ptr++)
+      if (ISNEWL(*ptr))
+        nl_pos = ptr;
+  }
+
+  write_point = t->inbuf;
+  while (*read_point)
+    *(write_point++) = *(read_point++);
+  *write_point = '\0';
+
+  return (1);
+}
+
 int process_input(struct descriptor_data *t) {
   int buf_length, failed_subst;
   ssize_t bytes_read;
@@ -2612,6 +2675,11 @@ void close_socket(struct descriptor_data *d) {
   struct descriptor_data *temp;
 
   REMOVE_FROM_LIST(d, descriptor_list, next, temp);
+  if (d->conn) {
+    net_connection_descriptor_set(d->conn, NULL);
+    net_connection_destroy(d->conn);
+    d->conn = NULL;
+  }
   close(d->descriptor);
   flush_queues(d);
 
