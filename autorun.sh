@@ -32,13 +32,6 @@
 #
 ulimit -c unlimited
 
-# The port on which to run the MUD
-PORT=1280
-
-# Default flags to pass to the MUD server (see admin.txt for a description
-# of all flags).
-FLAGS='-q'
-
 # Load local overrides from .env if present (e.g., PORT=4000).
 if [ -r .env ]; then
   set -a
@@ -52,9 +45,9 @@ while ( : ) do
 
   DATE=`date`
   echo "autorun starting game $DATE" >> syslog
-  echo "running zig-out/bin/dbat $FLAGS $PORT" >> syslog
+  echo "running zig-out/bin/dbat" >> syslog
 
-  zig-out/bin/dbat $FLAGS $PORT >> syslog 2>&1
+  zig-out/bin/dbat > syslog 2>&1
 
   tail -30 syslog > syslog.CRASH
 

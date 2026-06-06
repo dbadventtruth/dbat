@@ -83,5 +83,6 @@ __pycache__
 *.pyc
 .env
 /.vs
+copyover.dat
 
 compile_commands.json
