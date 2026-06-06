@@ -444,6 +444,8 @@ static void connections_handle_commands() {
     }
 }
 
+void game_legacy_process_commands(void) { connections_handle_commands(); }
+
 static void connections_send_output(struct fd_sets &fds) {
   struct descriptor_data *d, *next_d;
     for (d = descriptor_list; d; d = next_d) {
@@ -470,6 +472,26 @@ static void connections_send_output(struct fd_sets &fds) {
     }
 }
 
+void game_legacy_send_outputs(void) {
+  struct descriptor_data *d, *next_d;
+  for (d = descriptor_list; d; d = next_d) {
+    next_d = d->next;
+    if (*(d->output)) {
+      if (process_output(d) < 0) {
+        log("ERROR: Tried to send output to dead socket!");
+      } else
+        d->has_prompt = 1;
+    }
+  }
+
+  for (d = descriptor_list; d; d = d->next) {
+    if (!d->has_prompt) {
+      write_to_output(d, "@n");
+      d->has_prompt = TRUE;
+    }
+  }
+}
+
 static void connections_close_pending() {
   struct descriptor_data *d, *next_d;
   for (d = descriptor_list; d; d = next_d) {
@@ -478,6 +500,8 @@ static void connections_close_pending() {
         close_socket(d);
     }
 }
+
+void game_legacy_close_pending(void) { connections_close_pending(); }
 
 void game_legacy_network_wait(socklen_t cmmother_desc) {
   struct fd_sets fds;
@@ -2222,6 +2246,68 @@ int new_descriptor(socklen_t s) {
   return (0);
 }
 
+struct descriptor_data *descriptor_accept_connection(socklen_t desc,
+                                                     struct net_connection *conn) {
+  int sockets_connected = 0;
+  struct descriptor_data *newd;
+  struct sockaddr_in peer;
+  socklen_t peer_len = sizeof(peer);
+
+  nonblock(desc);
+
+  if (set_sendbuf(desc) < 0) {
+    close(desc);
+    if (conn)
+      net_connection_destroy(conn);
+    return NULL;
+  }
+
+  for (newd = descriptor_list; newd; newd = newd->next)
+    sockets_connected++;
+
+  if (sockets_connected >= CONFIG_MAX_PLAYING) {
+    const char *full_msg =
+        "Sorry, CircleMUD is full right now... please try again later!\r\n";
+    write(desc, full_msg, strlen(full_msg));
+    close(desc);
+    if (conn)
+      net_connection_destroy(conn);
+    return NULL;
+  }
+
+  CREATE(newd, struct descriptor_data, 1);
+  memset((char *)newd, 0, sizeof(struct descriptor_data));
+
+  if (getpeername(desc, (struct sockaddr *)&peer, &peer_len) == 0) {
+    strncpy(newd->host, (char *)inet_ntoa(peer.sin_addr), HOST_LENGTH);
+    newd->host[HOST_LENGTH] = '\0';
+  } else {
+    strncpy(newd->host, "unknown", HOST_LENGTH);
+    newd->host[HOST_LENGTH] = '\0';
+  }
+
+  if (isbanned(newd->host) == BAN_ALL) {
+    mudlog(CMP, ADMLVL_GOD, TRUE, "Connection attempt denied from [%s]",
+           newd->host);
+    close(desc);
+    free(newd);
+    if (conn)
+      net_connection_destroy(conn);
+    return NULL;
+  }
+
+  init_descriptor(newd, desc);
+  newd->conn = conn;
+  if (conn)
+    net_connection_descriptor_set(conn, newd);
+
+  newd->next = descriptor_list;
+  descriptor_list = newd;
+
+  set_color(newd);
+  return newd;
+}
+
 /*
  * Send all of the output that we've accumulated for a player out to
  * the player's descriptor.
@@ -2389,6 +2475,9 @@ int write_to_descriptor(socklen_t desc, const char *txt) {
   ssize_t bytes_written;
   size_t total = strlen(txt), write_total = 0;
 
+  if (net_connection_send_fd(desc, txt, total))
+    return total;
+
   while (total > 0) {
     bytes_written = perform_socket_write(desc, txt, total);
 
@@ -2462,6 +2551,122 @@ ssize_t perform_socket_read(socklen_t desc, char *read_point,
  * character. (Do you really need 256 characters on a line?)
  * -gg 1/21/2000
  */
+int descriptor_process_bytes(struct descriptor_data *t, const char *bytes,
+                             size_t len) {
+  int buf_length, failed_subst;
+  size_t space_left;
+  char *ptr, *read_point, *write_point, *nl_pos = NULL;
+  char tmp[MAX_INPUT_LENGTH];
+
+  buf_length = strlen(t->inbuf);
+  space_left = MAX_RAW_INPUT_LENGTH - buf_length - 1;
+  if (len > space_left) {
+    log("WARNING: descriptor_process_bytes: about to close connection: input overflow");
+    return (-1);
+  }
+
+  memcpy(t->inbuf + buf_length, bytes, len);
+  t->inbuf[buf_length + len] = '\0';
+
+  for (ptr = t->inbuf + buf_length; *ptr && !nl_pos; ptr++)
+    if (ISNEWL(*ptr))
+      nl_pos = ptr;
+
+  if (nl_pos == NULL)
+    return (0);
+
+  read_point = t->inbuf;
+
+  while (nl_pos != NULL) {
+    write_point = tmp;
+    space_left = MAX_INPUT_LENGTH - 1;
+
+    for (ptr = read_point; (space_left > 1) && (ptr < nl_pos); ptr++) {
+      if (*ptr == '\b' || *ptr == 127) {
+        if (write_point > tmp) {
+          if (*(--write_point) == '$') {
+            write_point--;
+            space_left += 2;
+          } else
+            space_left++;
+        }
+      } else if (isascii(*ptr) && isprint(*ptr)) {
+        if ((*(write_point++) = *ptr) == '$') {
+          *(write_point++) = '$';
+          space_left -= 2;
+        } else
+          space_left--;
+      }
+    }
+
+    *write_point = '\0';
+
+    if ((space_left <= 0) && (ptr < nl_pos)) {
+      char buffer[MAX_INPUT_LENGTH + 64];
+
+      snprintf(buffer, sizeof(buffer), "Line too long.  Truncated to:\r\n%s\r\n",
+               tmp);
+      if (write_to_descriptor(t->descriptor, buffer) < 0)
+        return (-1);
+    }
+    if (t->snoop_by)
+      write_to_output(t->snoop_by, "%% %s\r\n", tmp);
+    failed_subst = 0;
+
+    if (*tmp == '!' && !(*(tmp + 1)))
+      strcpy(tmp, t->last_input);
+    else if (*tmp == '!' && *(tmp + 1)) {
+      char *commandln = (tmp + 1);
+      int starting_pos = t->history_pos,
+          cnt = (t->history_pos == 0 ? HISTORY_SIZE - 1 : t->history_pos - 1);
+
+      skip_spaces(&commandln);
+      for (; cnt != starting_pos; cnt--) {
+        if (t->history[cnt] && is_abbrev(commandln, t->history[cnt])) {
+          strcpy(tmp, t->history[cnt]);
+          strcpy(t->last_input, tmp);
+          write_to_output(t, "%s\r\n", tmp);
+          break;
+        }
+        if (cnt == 0)
+          cnt = HISTORY_SIZE;
+      }
+    } else if (*tmp == '^') {
+      if (!(failed_subst = perform_subst(t, t->last_input, tmp)))
+        strcpy(t->last_input, tmp);
+    } else {
+      strcpy(t->last_input, tmp);
+      if (t->history[t->history_pos])
+        free(t->history[t->history_pos]);
+      t->history[t->history_pos] = strdup(tmp);
+      if (++t->history_pos >= HISTORY_SIZE)
+        t->history_pos = 0;
+    }
+
+    if ((*tmp == '-') && (*(tmp + 1) == '-') && !(*(tmp + 2))) {
+      write_to_output(t, "All queued commands cancelled.\r\n");
+      flush_queues(t);
+    }
+    if (!failed_subst)
+      write_to_q(tmp, &t->input, 0);
+
+    while (ISNEWL(*nl_pos))
+      nl_pos++;
+
+    read_point = ptr = nl_pos;
+    for (nl_pos = NULL; *ptr && !nl_pos; ptr++)
+      if (ISNEWL(*ptr))
+        nl_pos = ptr;
+  }
+
+  write_point = t->inbuf;
+  while (*read_point)
+    *(write_point++) = *(read_point++);
+  *write_point = '\0';
+
+  return (1);
+}
+
 int process_input(struct descriptor_data *t) {
   int buf_length, failed_subst;
   ssize_t bytes_read;

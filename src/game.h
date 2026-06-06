@@ -16,6 +16,9 @@ void game_loop_legacy(socklen_t mother_desc);
 void heartbeat_legacy(int heart_pulse);
 void game_legacy_network_wait(socklen_t mother_desc);
 bool game_legacy_network_pump(socklen_t mother_desc);
+void game_legacy_process_commands(void);
+void game_legacy_send_outputs(void);
+void game_legacy_close_pending(void);
 void game_legacy_post_tick(void);
 
 #ifdef __cplusplus

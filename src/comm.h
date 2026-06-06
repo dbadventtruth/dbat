@@ -58,6 +58,10 @@ void copyover_recover_descriptor(socklen_t desc, const char *name,
                                  const char *host, int saved_loadroom,
                                  const char *username,
                                  struct net_connection *conn);
+struct descriptor_data *descriptor_accept_connection(socklen_t desc,
+                                                     struct net_connection *conn);
+int descriptor_process_bytes(struct descriptor_data *d, const char *bytes,
+                             size_t len);
 
 #define TO_ROOM 1
 #define TO_VICT 2

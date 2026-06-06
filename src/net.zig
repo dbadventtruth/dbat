@@ -2,6 +2,7 @@ const std = @import("std");
 const cdb = @import("cdb");
 
 const Allocator = std.mem.Allocator;
+const posix = std.posix;
 
 extern fn malloc(size: usize) ?[*]u8;
 extern fn free(ptr: ?*anyopaque) void;
@@ -20,6 +21,7 @@ pub const Connection = struct {
     host: [:0]u8,
     input: std.array_list.Managed(u8),
     output: std.array_list.Managed(u8),
+    close_requested: bool = false,
 
     fn create(fd: cdb.socklen_t) !*Connection {
         const conn = try allocator.create(Connection);
@@ -119,6 +121,11 @@ pub export fn net_connection_send(conn: ?*Connection, bytes: ?[*]const u8, len: 
     return true;
 }
 
+pub export fn net_connection_send_fd(fd: cdb.socklen_t, bytes: ?[*]const u8, len: usize) bool {
+    const conn = connectionByFd(fd) orelse return false;
+    return net_connection_send(conn, bytes, len);
+}
+
 pub export fn net_connection_pop_line(conn: ?*Connection) ?[*:0]u8 {
     const value = conn orelse return null;
     const end = std.mem.indexOf(u8, value.input.items, "\r\n") orelse return null;
@@ -136,21 +143,115 @@ pub export fn net_connection_free_line(line: ?[*:0]u8) void {
 }
 
 pub export fn net_accept_all_pending() c_int {
-    // Socket accept is intentionally not wired yet. When wired, this will create a
-    // Connection and call accept_callback(fd, host, conn) to allocate/link descriptor_data.
-    if (listener_fd == null) return 0;
-    if (accept_callback == null) return 0;
-    return 0;
+    const listener = listener_fd orelse return 0;
+    var accepted: c_int = 0;
+    while (true) {
+        var addr: cdb.struct_sockaddr_storage = .{};
+        var addr_len: cdb.socklen_t = @sizeOf(cdb.struct_sockaddr_storage);
+        const fd = cdb.accept(@intCast(listener), @ptrCast(&addr), &addr_len);
+        if (fd < 0) break;
+
+        const conn = Connection.create(@intCast(fd)) catch {
+            _ = cdb.close(fd);
+            continue;
+        };
+        const desc = cdb.descriptor_accept_connection(@intCast(fd), @ptrCast(conn));
+        if (desc) |value| {
+            conn.desc = value;
+            allocator.free(conn.host);
+            conn.host = allocator.dupeZ(u8, std.mem.sliceTo(value.*.host[0..], 0)) catch allocator.dupeZ(u8, "") catch unreachable;
+            accepted += 1;
+        }
+    }
+    return accepted;
 }
 
 pub export fn net_read_all_pending() c_int {
-    // Future seam: read nonblocking bytes from each Connection fd into input buffers.
-    return 0;
+    var read_count: c_int = 0;
+    var index: usize = 0;
+    var buffer: [4096]u8 = undefined;
+    while (index < connections.items.len) {
+        const conn = connections.items[index];
+        var advanced = true;
+        while (!conn.close_requested) {
+            const n = posix.read(@intCast(conn.fd), &buffer) catch |err| switch (err) {
+                error.WouldBlock => break,
+                error.ConnectionResetByPeer, error.SocketUnconnected => blk: {
+                    conn.close_requested = true;
+                    break :blk 0;
+                },
+                else => blk: {
+                    conn.close_requested = true;
+                    break :blk 0;
+                },
+            };
+            if (n == 0) {
+                conn.close_requested = true;
+                break;
+            }
+            read_count += 1;
+            if (conn.desc) |desc| {
+                if (cdb.descriptor_process_bytes(desc, buffer[0..n].ptr, n) < 0) {
+                    conn.close_requested = true;
+                    break;
+                }
+            }
+        }
+        if (conn.close_requested) {
+            closeConnection(conn);
+            advanced = false;
+        }
+        if (advanced) index += 1;
+    }
+    return read_count;
 }
 
 pub export fn net_flush_all_outputs() c_int {
-    // Future seam: flush queued output bytes from each Connection to its fd.
-    return 0;
+    var flushed: c_int = 0;
+    var index: usize = 0;
+    while (index < connections.items.len) {
+        const conn = connections.items[index];
+        var advanced = true;
+        while (conn.output.items.len > 0 and !conn.close_requested) {
+            const written = cdb.write(@intCast(conn.fd), conn.output.items.ptr, conn.output.items.len);
+            if (written < 0) {
+                conn.close_requested = true;
+                break;
+            }
+            if (written == 0) break;
+            const n: usize = @intCast(written);
+            const remaining = conn.output.items[n..];
+            std.mem.copyForwards(u8, conn.output.items[0..remaining.len], remaining);
+            conn.output.resize(remaining.len) catch unreachable;
+            flushed += 1;
+        }
+        if (conn.close_requested) {
+            closeConnection(conn);
+            advanced = false;
+        }
+        if (advanced) index += 1;
+    }
+    return flushed;
+}
+
+pub export fn net_wait(timeout_ms: c_int) c_int {
+    if (!initialized) return 0;
+
+    var fds = std.array_list.Managed(posix.pollfd).init(allocator);
+    defer fds.deinit();
+
+    if (listener_fd) |fd| {
+        fds.append(.{ .fd = @intCast(fd), .events = std.os.linux.POLL.IN, .revents = 0 }) catch return -1;
+    }
+
+    for (connections.items) |conn| {
+        var events: i16 = std.os.linux.POLL.IN;
+        if (conn.output.items.len > 0) events |= std.os.linux.POLL.OUT;
+        fds.append(.{ .fd = @intCast(conn.fd), .events = events, .revents = 0 }) catch return -1;
+    }
+
+    if (fds.items.len == 0) return 0;
+    return @intCast(posix.poll(fds.items, timeout_ms) catch return -1);
 }
 
 pub export fn net_copyover_dump(path: ?[*:0]const u8) bool {
@@ -171,6 +272,22 @@ fn unregisterConnection(conn: *Connection) void {
             _ = connections.swapRemove(index);
             return;
         }
+    }
+}
+
+fn connectionByFd(fd: cdb.socklen_t) ?*Connection {
+    for (connections.items) |conn| {
+        if (conn.fd == fd) return conn;
+    }
+    return null;
+}
+
+fn closeConnection(conn: *Connection) void {
+    if (conn.desc) |desc| {
+        cdb.close_socket(desc);
+    } else {
+        _ = cdb.close(@intCast(conn.fd));
+        conn.destroy();
     }
 }
 

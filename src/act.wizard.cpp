@@ -2636,6 +2636,7 @@ static void execute_copyover(void) {
 
   /* exec - descriptors are inherited */
 
+  net_flush_all_outputs();
   execl(EXE_FILE, "zig-out/bin/dbat", "-C", (char *)NULL);
   /* Failed - sucessful exec will not return */
 
