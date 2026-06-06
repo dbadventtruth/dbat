@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+struct net_connection;
+
 #if CIRCLE_GNU_LIBC_MEMORY_TRACK
 #include <mcheck.h>
 #endif
@@ -49,6 +51,13 @@ void perform_act(const char *orig, struct char_data *ch, struct obj_data *obj,
 char *act(const char *str, int hide_invisible, struct char_data *ch,
           struct obj_data *obj, const void *vict_obj, int type);
 void close_socket(struct descriptor_data *d);
+void copyover_recover_begin(void);
+const char *copyover_descriptor_character_name(const struct descriptor_data *d);
+int copyover_descriptor_saved_loadroom(const struct descriptor_data *d);
+void copyover_recover_descriptor(socklen_t desc, const char *name,
+                                 const char *host, int saved_loadroom,
+                                 const char *username,
+                                 struct net_connection *conn);
 
 #define TO_ROOM 1
 #define TO_VICT 2

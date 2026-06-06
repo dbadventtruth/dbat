@@ -34,6 +34,7 @@ int net_read_all_pending(void);
 int net_flush_all_outputs(void);
 
 bool net_copyover_dump(const char *path);
+bool net_copyover_recover(const char *path);
 
 #ifdef __cplusplus
 }

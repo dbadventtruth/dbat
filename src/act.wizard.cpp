@@ -79,6 +79,7 @@
 #include "local_limits.h"
 #include "log.h"
 #include "maputils.h"
+#include "net.h"
 #include "oasis.h"
 #include "object_api.h"
 #include "object_impl.h"
@@ -2596,16 +2597,8 @@ ACMD(do_copyover) {
 }
 
 static void execute_copyover(void) {
-  FILE *fp;
   struct descriptor_data *d, *d_next;
-  char buf[100], buf2[100];
-
-  fp = fopen(COPYOVER_FILE, "w");
-
-  if (!fp) {
-    send_to_imm("Copyover file not writeable, aborted.\n\r");
-    return;
-  }
+  char buf[100];
 
   /* Consider changing all saved areas here, if you use OLC */
   save_all();
@@ -2616,22 +2609,12 @@ static void execute_copyover(void) {
   for (d = descriptor_list; d; d = d_next) {
     struct char_data *och = d->character;
     d_next = d->next; /* We delete from the list , so need to save this */
-    if (!d->character || d->connected > CON_PLAYING) {
+    if (!d->character || d->connected != CON_PLAYING) {
       write_to_descriptor(
           d->descriptor,
           "\n\rSorry, we are rebooting. Come back in a few seconds.\n\r");
       close_socket(d); /* throw'em out */
     } else {
-      if (char_room_vnum_get(och) > 1) {
-        fprintf(fp, "%d %s %s %d %s\n", d->descriptor, GET_NAME(och), d->host,
-                char_room_vnum_get(och), d->user);
-      } else if (char_room_vnum_get(och) <= 1 && GET_WAS_IN(och) > 1) {
-        fprintf(fp, "%d %s %s %d %s\n", d->descriptor, GET_NAME(och), d->host,
-                GET_WAS_IN(och), d->user);
-      } else {
-        fprintf(fp, "%d %s %s 300 %s\n", d->descriptor, GET_NAME(och), d->host,
-                d->user);
-      }
       log("printing descriptor name and host of connected players");
       /* save och */
       Crash_rentsave(och, 0);
@@ -2640,8 +2623,10 @@ static void execute_copyover(void) {
     }
   }
 
-  fprintf(fp, "-1\n");
-  fclose(fp);
+  if (!net_copyover_dump(COPYOVER_FILE)) {
+    send_to_imm("Copyover file not writeable, aborted.\n\r");
+    return;
+  }
 
   /* Close reserve and other always-open files and release other resources
      since we are now using ASCII pfiles, closing the player_fl would crash
@@ -2651,9 +2636,7 @@ static void execute_copyover(void) {
 
   /* exec - descriptors are inherited */
 
-  sprintf(buf, "%d", port);
-  sprintf(buf2, "-C%d", mother_desc);
-  execl(EXE_FILE, "zig-out/bin/dbat", buf2, buf, (char *)NULL);
+  execl(EXE_FILE, "zig-out/bin/dbat", "-C", (char *)NULL);
   /* Failed - sucessful exec will not return */
 
   perror("do_copyover: execl");

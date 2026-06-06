@@ -63,18 +63,9 @@ fn parseRuntimeOptions(init: std.process.Init, test_options: *test_mode.Options)
             test_options.filter = arg["--test-filter=".len..];
             cdb.config_info.test_mode = true;
         } else if (std.mem.eql(u8, arg, "-C")) {
-            const value = args.next() orelse std.process.fatal("-C requires a descriptor argument", .{});
             cdb.fCopyOver = true;
-            cdb.mother_desc = std.fmt.parseInt(@TypeOf(cdb.mother_desc), value, 10) catch {
-                std.process.fatal("invalid -C descriptor: {s}", .{value});
-            };
         } else if (std.mem.startsWith(u8, arg, "-C")) {
-            const value = arg[2..];
-            if (value.len == 0) std.process.fatal("-C requires a descriptor argument", .{});
-            cdb.fCopyOver = true;
-            cdb.mother_desc = std.fmt.parseInt(@TypeOf(cdb.mother_desc), value, 10) catch {
-                std.process.fatal("invalid -C descriptor: {s}", .{value});
-            };
+            std.process.fatal("-C no longer accepts an inline descriptor argument", .{});
         } else {
             std.process.fatal("unknown argument: {s}", .{arg});
         }
@@ -116,6 +107,7 @@ pub fn main(init: std.process.Init) u8 {
     if (!cdb.fCopyOver and !cdb.config_info.test_mode) {
         cdb.log("Opening mother connection on port %d.", cdb.port);
         cdb.mother_desc = cdb.init_socket(cdb.port);
+        _ = cdb.net_listener_adopt(cdb.mother_desc);
     }
 
     cdb.event_init();
@@ -130,7 +122,9 @@ pub fn main(init: std.process.Init) u8 {
 
     _ = cdb.remove(cdb.KILLSCRIPT_FILE);
     if (cdb.fCopyOver) {
-        cdb.copyover_recover();
+        if (!cdb.net_copyover_recover(cdb.COPYOVER_FILE)) {
+            std.process.fatal("copyover recovery failed", .{});
+        }
     }
 
     if (cdb.config_info.test_mode) {

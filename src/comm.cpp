@@ -137,90 +137,106 @@ char *last_act_message = NULL;
  ***********************************************************************/
 int enter_player_game(struct descriptor_data *d);
 
-/* Reload players after a copyover */
-void copyover_recover() {
-  struct descriptor_data *d;
-  FILE *fp;
-  char host[1024];
-  int desc, player_i;
-  bool fOld;
-  char name[MAX_INPUT_LENGTH];
-  char username[100];
-  int saved_loadroom = NOWHERE;
-  int set_loadroom = NOWHERE;
-
+void copyover_recover_begin(void) {
   log("Copyover recovery initiated");
   PCOUNTDAY = time(0) + 60;
-  fp = fopen(COPYOVER_FILE, "r");
+}
 
-  if (!fp) {
-    perror("copyover_recover:fopen");
-    log("Copyover file not found. Exitting.\n\r");
+const char *copyover_descriptor_character_name(const struct descriptor_data *d) {
+  if (!d || !d->character)
+    return "";
+  return GET_NAME(d->character);
+}
+
+int copyover_descriptor_saved_loadroom(const struct descriptor_data *d) {
+  if (!d || !d->character)
+    return 300;
+  if (char_room_vnum_get(d->character) > 1)
+    return char_room_vnum_get(d->character);
+  if (char_room_vnum_get(d->character) <= 1 && GET_WAS_IN(d->character) > 1)
+    return GET_WAS_IN(d->character);
+  return 300;
+}
+
+void copyover_recover_descriptor(socklen_t desc, const char *name,
+                                 const char *host, int saved_loadroom,
+                                 const char *username,
+                                 struct net_connection *conn) {
+  struct descriptor_data *d;
+  int player_i;
+  bool fOld;
+  int set_loadroom = NOWHERE;
+
+  fOld = TRUE;
+
+  /* Write something, and check if it goes error-free */
+  if (write_to_descriptor(desc, "\n\rFolding initiated...\n\r") < 0) {
+    if (conn)
+      net_connection_destroy(conn);
+    close(desc); /* nope */
+    return;
+  }
+
+  /* create a new descriptor */
+  CREATE(d, struct descriptor_data, 1);
+  memset((char *)d, 0, sizeof(struct descriptor_data));
+  init_descriptor(d, desc); /* set up various stuff */
+  d->conn = conn;
+  if (conn)
+    net_connection_descriptor_set(conn, d);
+
+  strncpy(d->host, host ? host : "", HOST_LENGTH);
+  d->host[HOST_LENGTH] = '\0';
+  d->next = descriptor_list;
+  descriptor_list = d;
+
+  d->connected = CON_CLOSE;
+
+  /* Now, find the pfile */
+
+  CREATE(d->character, struct char_data, 1);
+  clear_char(d->character);
+  d->character->desc = d;
+
+  if ((player_i = load_char(name, d->character)) >= 0) {
+    GET_PFILEPOS(d->character) = player_i;
+    if (!PLR_FLAGGED(d->character, PLR_DELETED)) {
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
+      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_CRYO);
+      userLoad(d, const_cast<char *>(username ? username : "Empty"));
+    }
+    /*else
+      fOld = FALSE;*/
+  } else
+    fOld = FALSE;
+
+  if (!fOld) /* Player file not found?! */ {
+    write_to_descriptor(desc, "\n\rSomehow, your character was lost during "
+                              "the folding. Sorry.\n\r");
+    close_socket(d);
+  } else {
+    write_to_descriptor(desc, "\n\rFolding complete.\n\r");
+    set_loadroom = GET_LOADROOM(d->character);
+    GET_LOADROOM(d->character) = saved_loadroom;
+    enter_player_game(d);
+    GET_LOADROOM(d->character) = set_loadroom;
+    d->connected = CON_PLAYING;
+    look_at_room(char_room_get(d->character), d->character, 0);
+    if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
+      GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
+    }
+  }
+}
+
+/* Reload players after a copyover */
+void copyover_recover() {
+  log("Copyover recovery initiated");
+  PCOUNTDAY = time(0) + 60;
+  if (!net_copyover_recover(COPYOVER_FILE)) {
+    log("Copyover recovery failed. Exitting.\n\r");
     exit(1);
   }
-
-  unlink(COPYOVER_FILE); /* In case it crashes - doesn't prevent reading */
-  for (;;) {
-    fOld = TRUE;
-    fscanf(fp, "%d %s %s %d %s\n", &desc, name, host, &saved_loadroom,
-           username);
-    if (desc == -1)
-      break;
-
-    /* Write something, and check if it goes error-free */
-    if (write_to_descriptor(desc, "\n\rFolding initiated...\n\r") < 0) {
-      close(desc); /* nope */
-      continue;
-    }
-
-    /* create a new descriptor */
-    CREATE(d, struct descriptor_data, 1);
-    memset((char *)d, 0, sizeof(struct descriptor_data));
-    init_descriptor(d, desc); /* set up various stuff */
-
-    strcpy(d->host, host);
-    d->next = descriptor_list;
-    descriptor_list = d;
-
-    d->connected = CON_CLOSE;
-
-    /* Now, find the pfile */
-
-    CREATE(d->character, struct char_data, 1);
-    clear_char(d->character);
-    d->character->desc = d;
-
-    if ((player_i = load_char(name, d->character)) >= 0) {
-      GET_PFILEPOS(d->character) = player_i;
-      if (!PLR_FLAGGED(d->character, PLR_DELETED)) {
-        REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
-        REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
-        REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_CRYO);
-        userLoad(d, username);
-      }
-      /*else
-        fOld = FALSE;*/
-    } else
-      fOld = FALSE;
-
-    if (!fOld) /* Player file not found?! */ {
-      write_to_descriptor(desc, "\n\rSomehow, your character was lost during "
-                                "the folding. Sorry.\n\r");
-      close_socket(d);
-    } else {
-      write_to_descriptor(desc, "\n\rFolding complete.\n\r");
-      set_loadroom = GET_LOADROOM(d->character);
-      GET_LOADROOM(d->character) = saved_loadroom;
-      enter_player_game(d);
-      GET_LOADROOM(d->character) = set_loadroom;
-      d->connected = CON_PLAYING;
-      look_at_room(char_room_get(d->character), d->character, 0);
-      if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
-        GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
-      }
-    }
-  }
-  fclose(fp);
 }
 
 void load_spacemap() {

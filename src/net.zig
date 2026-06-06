@@ -159,6 +159,12 @@ pub export fn net_copyover_dump(path: ?[*:0]const u8) bool {
     return true;
 }
 
+pub export fn net_copyover_recover(path: ?[*:0]const u8) bool {
+    if (!initialized) return false;
+    recoverSnapshot(cString(path)) catch return false;
+    return true;
+}
+
 fn unregisterConnection(conn: *Connection) void {
     for (connections.items, 0..) |item, index| {
         if (item == conn) {
@@ -172,13 +178,20 @@ fn writeSnapshot(path: []const u8) !void {
     var root = std.json.Value{ .object = std.json.ObjectMap.empty };
 
     try root.object.put(allocator, "version", .{ .integer = 1 });
+    try root.object.put(allocator, "process_id", .{ .integer = cdb.getpid() });
     try root.object.put(allocator, "listener_fd", .{ .integer = listener_fd orelse 0 });
 
     var array = std.json.Array.init(allocator);
     errdefer array.deinit();
     for (connections.items) |conn| {
-        if (connectionCharacterId(conn) == 0) continue;
+        if (!shouldDumpConnection(conn.desc)) continue;
         try array.append(try connectionToJson(conn));
+    }
+    var desc = cdb.descriptor_list;
+    while (desc != null) : (desc = desc.*.next) {
+        if (descriptorHasRegisteredConnection(desc.?)) continue;
+        if (!shouldDumpConnection(desc)) continue;
+        try array.append(try descriptorToJson(desc.?));
     }
     try root.object.put(allocator, "connections", .{ .array = array });
 
@@ -189,22 +202,81 @@ fn writeSnapshot(path: []const u8) !void {
     try std.Io.Dir.cwd().writeFile(global_io, .{ .sub_path = path, .data = out.written() });
 }
 
+fn recoverSnapshot(path: []const u8) !void {
+    const bytes = try std.Io.Dir.cwd().readFileAlloc(global_io, path, allocator, .limited(16 * 1024 * 1024));
+    defer allocator.free(bytes);
+
+    var parsed = try std.json.parseFromSlice(std.json.Value, allocator, bytes, .{});
+    defer parsed.deinit();
+
+    const root = parsed.value.object;
+    const listener_value = root.get("listener_fd") orelse return error.InvalidCopyoverSnapshot;
+    const recovered_listener_fd: cdb.socklen_t = @intCast(listener_value.integer);
+    _ = net_listener_adopt(recovered_listener_fd);
+    cdb.mother_desc = recovered_listener_fd;
+
+    cdb.copyover_recover_begin();
+
+    const connections_value = root.get("connections") orelse return error.InvalidCopyoverSnapshot;
+    for (connections_value.array.items) |item| {
+        try recoverConnection(item.object);
+    }
+
+    _ = cdb.unlink(path.ptr);
+}
+
 fn connectionToJson(conn: *const Connection) !std.json.Value {
-    var object = std.json.Value{ .object = std.json.ObjectMap.empty };
+    const desc = conn.desc orelse return descriptorToJson(null);
+    var object = try descriptorToJson(desc);
 
     try object.object.put(allocator, "fd", .{ .integer = conn.fd });
-    try object.object.put(allocator, "character_id", .{ .integer = connectionCharacterId(conn) });
-    try object.object.put(allocator, "state", .{ .integer = connectionState(conn) });
     try object.object.put(allocator, "host", .{ .string = try allocator.dupe(u8, conn.host) });
     try object.object.put(allocator, "input_b64", .{ .string = try encodeBase64(conn.input.items) });
     try object.object.put(allocator, "output_b64", .{ .string = try encodeBase64(conn.output.items) });
     return object;
 }
 
+fn descriptorToJson(desc: ?*const cdb.descriptor_data) !std.json.Value {
+    var object = std.json.Value{ .object = std.json.ObjectMap.empty };
+    const value = desc orelse return object;
+
+    try object.object.put(allocator, "fd", .{ .integer = value.descriptor });
+    try object.object.put(allocator, "character_id", .{ .integer = descriptorCharacterId(value) });
+    try object.object.put(allocator, "state", .{ .integer = value.connected });
+    try object.object.put(allocator, "host", .{ .string = try allocator.dupe(u8, std.mem.sliceTo(&value.host, 0)) });
+    try object.object.put(allocator, "name", .{ .string = try allocator.dupe(u8, std.mem.span(cdb.copyover_descriptor_character_name(value))) });
+    try object.object.put(allocator, "username", .{ .string = try allocator.dupe(u8, cString(value.user)) });
+    try object.object.put(allocator, "saved_loadroom", .{ .integer = descriptorLoadRoom(value) });
+    try object.object.put(allocator, "input_b64", .{ .string = try encodeBase64(&.{}) });
+    try object.object.put(allocator, "output_b64", .{ .string = try encodeBase64(&.{}) });
+    return object;
+}
+
+fn recoverConnection(object: std.json.ObjectMap) !void {
+    const fd: cdb.socklen_t = @intCast((object.get("fd") orelse return error.InvalidCopyoverSnapshot).integer);
+    const host = (object.get("host") orelse return error.InvalidCopyoverSnapshot).string;
+    const name = (object.get("name") orelse return error.InvalidCopyoverSnapshot).string;
+    const username = if (object.get("username")) |value| value.string else "Empty";
+    const saved_loadroom: c_int = @intCast((object.get("saved_loadroom") orelse return error.InvalidCopyoverSnapshot).integer);
+
+    const conn = try Connection.create(fd);
+    errdefer conn.destroy();
+    allocator.free(conn.host);
+    conn.host = try allocator.dupeZ(u8, host);
+    if (object.get("input_b64")) |value| try decodeBase64Append(&conn.input, value.string);
+    if (object.get("output_b64")) |value| try decodeBase64Append(&conn.output, value.string);
+
+    const name_z = try allocator.dupeZ(u8, name);
+    defer allocator.free(name_z);
+    const username_z = try allocator.dupeZ(u8, username);
+    defer allocator.free(username_z);
+
+    cdb.copyover_recover_descriptor(fd, name_z.ptr, conn.host.ptr, saved_loadroom, username_z.ptr, @ptrCast(conn));
+}
+
 fn connectionCharacterId(conn: *const Connection) i64 {
     const desc = conn.desc orelse return 0;
-    const ch = desc.character orelse return 0;
-    return cdb.char_id_get(ch);
+    return descriptorCharacterId(desc);
 }
 
 fn connectionState(conn: *const Connection) c_int {
@@ -212,11 +284,40 @@ fn connectionState(conn: *const Connection) c_int {
     return desc.connected;
 }
 
+fn shouldDumpConnection(desc: ?*const cdb.descriptor_data) bool {
+    const value = desc orelse return false;
+    return value.connected == cdb.CON_PLAYING and value.character != null;
+}
+
+fn descriptorHasRegisteredConnection(desc: *const cdb.descriptor_data) bool {
+    for (connections.items) |conn| {
+        if (conn.desc == desc) return true;
+    }
+    return false;
+}
+
+fn descriptorCharacterId(desc: *const cdb.descriptor_data) i64 {
+    const ch = desc.character orelse return 0;
+    return cdb.char_id_get(ch);
+}
+
+fn descriptorLoadRoom(desc: *const cdb.descriptor_data) c_int {
+    return cdb.copyover_descriptor_saved_loadroom(desc);
+}
+
 fn encodeBase64(bytes: []const u8) ![]u8 {
     const encoder = std.base64.standard.Encoder;
     const out = try allocator.alloc(u8, encoder.calcSize(bytes.len));
     _ = encoder.encode(out, bytes);
     return out;
+}
+
+fn decodeBase64Append(list: *std.array_list.Managed(u8), text: []const u8) !void {
+    const decoder = std.base64.standard.Decoder;
+    const len = try decoder.calcSizeForSlice(text);
+    const start = list.items.len;
+    try list.resize(start + len);
+    try decoder.decode(list.items[start..], text);
 }
 
 fn cOwnedLine(bytes: []const u8) ![*:0]u8 {
