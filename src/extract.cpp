@@ -281,6 +281,7 @@ void extract_char(struct char_data *ch) {
       SET_BIT_AR(PLR_FLAGS(ch), PLR_NOTDEADYET);
     else
       return;
+    game_active_player_leave();
   }
 
   for (foll = ch->followers; foll; foll = foll->next) {

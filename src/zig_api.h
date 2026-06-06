@@ -45,6 +45,8 @@
 #include "object_impl.h"
 #include "object_api.h"
 #include "object_db.h"
+#include "net.h"
+#include "game.h"
 #include "dg_scripts.h"
 #include "player_impl.h"
 #include "player_db.h"

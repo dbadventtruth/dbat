@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
+#include "game.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -107,7 +109,6 @@ void echo_on(struct descriptor_data *d);
 void circle_sleep(struct timeval *timeout);
 int get_from_q(struct txt_q *queue, char *dest, int *aliased);
 void signal_setup(void);
-void game_loop(socklen_t mother_desc);
 socklen_t init_socket(uint16_t port);
 int new_descriptor(socklen_t s);
 extern int max_players;
@@ -123,7 +124,6 @@ void record_usage(void);
 char *make_prompt(struct descriptor_data *point);
 void check_idle_passwords(void);
 void check_idle_menu(void);
-void heartbeat(int heart_pulse);
 struct in_addr *get_bind_addr(void);
 
 void cleanup_game_world();

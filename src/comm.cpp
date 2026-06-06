@@ -82,6 +82,7 @@
 #include "log.h"
 #include "mail.h"
 #include "modify.h"
+#include "net.h"
 #include "objsave.h"
 #include "races_plus.h"
 #include "screen.h"
@@ -337,133 +338,46 @@ int get_max_players(void) {
   return (max_descs);
 }
 
-/*
- * game_loop contains the main loop which drives the entire MUD.  It
- * cycles once every 0.10 seconds and is responsible for accepting new
- * new connections, polling existing connections for input, dequeueing
- * output and sending it out to players, and calling "heartbeat" functions
- * such as mobile_activity().
- */
-void game_loop(socklen_t cmmother_desc) {
-  fd_set input_set, output_set, exc_set, null_set;
-  struct timeval last_time, opt_time, process_time, temp_time;
-  struct timeval before_sleep, now, timeout;
-  char comm[MAX_INPUT_LENGTH];
+struct fd_sets {
+  fd_set input_set;
+  fd_set output_set;
+  fd_set exc_set;
+  fd_set null_set;
+};
+
+static void accept_new_connections(socklen_t cmmother_desc, struct fd_sets &fds) {
+  if (FD_ISSET(cmmother_desc, &fds.input_set))
+    new_descriptor(cmmother_desc);
+}
+
+static void close_marked_connections(struct fd_sets &fds) {
   struct descriptor_data *d, *next_d;
-  int missed_pulses, maxdesc, aliased, top_desc;
-
-  /* initialize various time values */
-  null_time.tv_sec = 0;
-  null_time.tv_usec = 0;
-  opt_time.tv_usec = OPT_USEC;
-  opt_time.tv_sec = 0;
-  FD_ZERO(&null_set);
-
-  gettimeofday(&last_time, (struct timezone *)0);
-
-  /* The Main Loop.  The Big Cheese.  The Top Dog.  The Head Honcho.  The.. */
-  while (!circle_shutdown) {
-
-    /* Sleep if we don't have any connections */
-    if (descriptor_list == NULL) {
-      top_desc = cmmother_desc;
-      log("No connections.  Going to sleep.");
-      FD_ZERO(&input_set);
-      FD_SET(cmmother_desc, &input_set);
-
-      if (select(top_desc + 1, &input_set, (fd_set *)0, (fd_set *)0, NULL) <
-          0) {
-        if (errno == EINTR)
-          log("Waking up to process signal.");
-        else
-          perror("SYSERR: Select coma");
-      } else
-        log("New connection.  Waking up.");
-      gettimeofday(&last_time, (struct timezone *)0);
+  for (d = descriptor_list; d; d = next_d) {
+    next_d = d->next;
+    if (FD_ISSET(d->descriptor, &fds.exc_set)) {
+      FD_CLR(d->descriptor, &fds.input_set);
+      FD_CLR(d->descriptor, &fds.output_set);
+      close_socket(d);
     }
-    /* Set up the input, output, and exception sets for select(). */
-    FD_ZERO(&input_set);
-    FD_ZERO(&output_set);
-    FD_ZERO(&exc_set);
-    FD_SET(cmmother_desc, &input_set);
+  }
+}
 
-    maxdesc = cmmother_desc;
-    for (d = descriptor_list; d; d = d->next) {
-      if (d->descriptor > maxdesc)
-        maxdesc = d->descriptor;
-      FD_SET(d->descriptor, &input_set);
-      FD_SET(d->descriptor, &output_set);
-      FD_SET(d->descriptor, &exc_set);
-    }
-
-    /*
-     * At this point, we have completed all input, output and heartbeat
-     * activity from the previous iteration, so we have to put ourselves
-     * to sleep until the next 0.1 second tick.  The first step is to
-     * calculate how long we took processing the previous iteration.
-     */
-
-    gettimeofday(&before_sleep, (struct timezone *)0); /* current time */
-    timediff(&process_time, &before_sleep, &last_time);
-
-    /*
-     * If we were asleep for more than one pass, count missed pulses and sleep
-     * until we're resynchronized with the next upcoming pulse.
-     */
-    if (process_time.tv_sec == 0 && process_time.tv_usec < OPT_USEC) {
-      missed_pulses = 0;
-    } else {
-      missed_pulses = process_time.tv_sec * PASSES_PER_SEC;
-      missed_pulses += process_time.tv_usec / OPT_USEC;
-      process_time.tv_sec = 0;
-      process_time.tv_usec = process_time.tv_usec % OPT_USEC;
-    }
-
-    /* Calculate the time we should wake up */
-    timediff(&temp_time, &opt_time, &process_time);
-    timeadd(&last_time, &before_sleep, &temp_time);
-
-    /* Now keep sleeping until that time has come */
-    gettimeofday(&now, (struct timezone *)0);
-    timediff(&timeout, &last_time, &now);
-
-    /* Go to sleep */
-    do {
-      circle_sleep(&timeout);
-      gettimeofday(&now, (struct timezone *)0);
-      timediff(&timeout, &last_time, &now);
-    } while (timeout.tv_usec || timeout.tv_sec);
-
-    /* Poll (without blocking) for new input, output, and exceptions */
-    if (select(maxdesc + 1, &input_set, &output_set, &exc_set, &null_time) <
-        0) {
-      perror("SYSERR: Select poll");
-      return;
-    }
-    /* If there are new connections waiting, accept them. */
-    if (FD_ISSET(cmmother_desc, &input_set))
-      new_descriptor(cmmother_desc);
-
-    /* Kick out the freaky folks in the exception set and marked for close */
-    for (d = descriptor_list; d; d = next_d) {
-      next_d = d->next;
-      if (FD_ISSET(d->descriptor, &exc_set)) {
-        FD_CLR(d->descriptor, &input_set);
-        FD_CLR(d->descriptor, &output_set);
+static void connections_read_input(struct fd_sets &fds) {
+  struct descriptor_data *d, *next_d;
+  for (d = descriptor_list; d; d = next_d) {
+    next_d = d->next;
+    if (FD_ISSET(d->descriptor, &fds.input_set))
+      if (process_input(d) < 0)
         close_socket(d);
-      }
-    }
+  }
+}
 
-    /* Process descriptors with input pending */
-    for (d = descriptor_list; d; d = next_d) {
-      next_d = d->next;
-      if (FD_ISSET(d->descriptor, &input_set))
-        if (process_input(d) < 0)
-          close_socket(d);
-    }
+static void connections_handle_commands() {
+  char comm[MAX_INPUT_LENGTH];
+  int aliased;
 
-    /* Process commands we just read from process_input */
-    for (d = descriptor_list; d; d = next_d) {
+  struct descriptor_data *d, *next_d;
+      for (d = descriptor_list; d; d = next_d) {
       next_d = d->next;
 
       /*
@@ -512,11 +426,13 @@ void game_loop(socklen_t cmmother_desc) {
         command_interpreter(d->character, comm); /* Send it to interpreter */
       }
     }
+}
 
-    /* Send queued output out to the operating system (ultimately to user). */
+static void connections_send_output(struct fd_sets &fds) {
+  struct descriptor_data *d, *next_d;
     for (d = descriptor_list; d; d = next_d) {
       next_d = d->next;
-      if (*(d->output) && FD_ISSET(d->descriptor, &output_set)) {
+      if (*(d->output) && FD_ISSET(d->descriptor, &fds.output_set)) {
         /* Output for this player is ready */
         if (process_output(d) < 0) {
           // commented out close_socket since process_output already does this,
@@ -536,13 +452,204 @@ void game_loop(socklen_t cmmother_desc) {
         d->has_prompt = TRUE;
       }
     }
+}
 
-    /* Kick out folks in the CON_CLOSE or CON_DISCONNECT state */
-    for (d = descriptor_list; d; d = next_d) {
+static void connections_close_pending() {
+  struct descriptor_data *d, *next_d;
+  for (d = descriptor_list; d; d = next_d) {
       next_d = d->next;
       if (STATE(d) == CON_CLOSE || STATE(d) == CON_DISCONNECT)
         close_socket(d);
     }
+}
+
+void game_legacy_network_wait(socklen_t cmmother_desc) {
+  struct fd_sets fds;
+  int top_desc = cmmother_desc;
+
+  log("No connections.  Going to sleep.");
+  FD_ZERO(&fds.input_set);
+  FD_SET(cmmother_desc, &fds.input_set);
+
+  if (select(top_desc + 1, &fds.input_set, (fd_set *)0, (fd_set *)0, NULL) < 0) {
+    if (errno == EINTR)
+      log("Waking up to process signal.");
+    else
+      perror("SYSERR: Select coma");
+  } else {
+    log("New connection.  Waking up.");
+  }
+}
+
+bool game_legacy_network_pump(socklen_t cmmother_desc) {
+  struct fd_sets fds;
+  struct descriptor_data *d;
+  int maxdesc = cmmother_desc;
+
+  FD_ZERO(&fds.input_set);
+  FD_ZERO(&fds.output_set);
+  FD_ZERO(&fds.exc_set);
+  FD_SET(cmmother_desc, &fds.input_set);
+
+  for (d = descriptor_list; d; d = d->next) {
+    if (d->descriptor > maxdesc)
+      maxdesc = d->descriptor;
+    FD_SET(d->descriptor, &fds.input_set);
+    FD_SET(d->descriptor, &fds.output_set);
+    FD_SET(d->descriptor, &fds.exc_set);
+  }
+
+  if (select(maxdesc + 1, &fds.input_set, &fds.output_set, &fds.exc_set, &null_time) < 0) {
+    perror("SYSERR: Select poll");
+    return false;
+  }
+
+  accept_new_connections(cmmother_desc, fds);
+  close_marked_connections(fds);
+  connections_read_input(fds);
+  connections_handle_commands();
+  connections_send_output(fds);
+  connections_close_pending();
+  return true;
+}
+
+void game_legacy_post_tick(void) {
+  if (reread_wizlist) {
+    reread_wizlist = FALSE;
+    mudlog(CMP, ADMLVL_IMMORT, TRUE, "Signal received - rereading wizlists.");
+    reboot_wizlists();
+  }
+  if (emergency_unban) {
+    emergency_unban = FALSE;
+    mudlog(BRF, ADMLVL_IMMORT, TRUE,
+           "Received SIGUSR2 - completely unrestricting game (emergent)");
+    ban_list = NULL;
+    circle_restrict = 0;
+    num_invalid = 0;
+  }
+
+  tics_passed++;
+}
+
+/*
+ * game_loop contains the main loop which drives the entire MUD.  It
+ * cycles once every 0.10 seconds and is responsible for accepting new
+ * new connections, polling existing connections for input, dequeueing
+ * output and sending it out to players, and calling "heartbeat" functions
+ * such as mobile_activity().
+ */
+void game_loop_legacy(socklen_t cmmother_desc) {
+  struct fd_sets fds;
+  struct timeval last_time, opt_time, process_time, temp_time;
+  struct timeval before_sleep, now, timeout;
+  struct descriptor_data *d, *next_d;
+  int missed_pulses, maxdesc, top_desc;
+
+  /* initialize various time values */
+  null_time.tv_sec = 0;
+  null_time.tv_usec = 0;
+  opt_time.tv_usec = OPT_USEC;
+  opt_time.tv_sec = 0;
+  FD_ZERO(&fds.null_set);
+
+  gettimeofday(&last_time, (struct timezone *)0);
+
+  /* The Main Loop.  The Big Cheese.  The Top Dog.  The Head Honcho.  The.. */
+  while (!circle_shutdown) {
+
+    /* Sleep if we don't have any connections */
+    if (descriptor_list == NULL) {
+      top_desc = cmmother_desc;
+      log("No connections.  Going to sleep.");
+      FD_ZERO(&fds.input_set);
+      FD_SET(cmmother_desc, &fds.input_set);
+
+      if (select(top_desc + 1, &fds.input_set, (fd_set *)0, (fd_set *)0, NULL) <
+          0) {
+        if (errno == EINTR)
+          log("Waking up to process signal.");
+        else
+          perror("SYSERR: Select coma");
+      } else
+        log("New connection.  Waking up.");
+      gettimeofday(&last_time, (struct timezone *)0);
+    }
+    /* Set up the input, output, and exception sets for select(). */
+    FD_ZERO(&fds.input_set);
+    FD_ZERO(&fds.output_set);
+    FD_ZERO(&fds.exc_set);
+    FD_SET(cmmother_desc, &fds.input_set);
+
+    maxdesc = cmmother_desc;
+    for (d = descriptor_list; d; d = d->next) {
+      if (d->descriptor > maxdesc)
+        maxdesc = d->descriptor;
+      FD_SET(d->descriptor, &fds.input_set);
+      FD_SET(d->descriptor, &fds.output_set);
+      FD_SET(d->descriptor, &fds.exc_set);
+    }
+
+    /*
+     * At this point, we have completed all input, output and heartbeat
+     * activity from the previous iteration, so we have to put ourselves
+     * to sleep until the next 0.1 second tick.  The first step is to
+     * calculate how long we took processing the previous iteration.
+     */
+
+    gettimeofday(&before_sleep, (struct timezone *)0); /* current time */
+    timediff(&process_time, &before_sleep, &last_time);
+
+    /*
+     * If we were asleep for more than one pass, count missed pulses and sleep
+     * until we're resynchronized with the next upcoming pulse.
+     */
+    if (process_time.tv_sec == 0 && process_time.tv_usec < OPT_USEC) {
+      missed_pulses = 0;
+    } else {
+      missed_pulses = process_time.tv_sec * PASSES_PER_SEC;
+      missed_pulses += process_time.tv_usec / OPT_USEC;
+      process_time.tv_sec = 0;
+      process_time.tv_usec = process_time.tv_usec % OPT_USEC;
+    }
+
+    /* Calculate the time we should wake up */
+    timediff(&temp_time, &opt_time, &process_time);
+    timeadd(&last_time, &before_sleep, &temp_time);
+
+    /* Now keep sleeping until that time has come */
+    gettimeofday(&now, (struct timezone *)0);
+    timediff(&timeout, &last_time, &now);
+
+    /* Go to sleep */
+    do {
+      circle_sleep(&timeout);
+      gettimeofday(&now, (struct timezone *)0);
+      timediff(&timeout, &last_time, &now);
+    } while (timeout.tv_usec || timeout.tv_sec);
+
+    /* Poll (without blocking) for new input, output, and exceptions */
+    if (select(maxdesc + 1, &fds.input_set, &fds.output_set, &fds.exc_set, &null_time) <
+        0) {
+      perror("SYSERR: Select poll");
+      return;
+    }
+    /* If there are new connections waiting, accept them. */
+    accept_new_connections(cmmother_desc, fds);
+
+    /* Kick out the freaky folks in the exception set and marked for close */
+    close_marked_connections(fds);
+
+    /* Process descriptors with input pending */
+    connections_read_input(fds);
+
+    /* Process commands we just read from process_input */
+    connections_handle_commands();
+
+    /* Send queued output out to the operating system (ultimately to user). */
+    connections_send_output(fds);
+
+    /* Kick out folks in the CON_CLOSE or CON_DISCONNECT state */
+    connections_close_pending();
 
     /*
      * Now, we execute as many pulses as necessary--just one if we haven't
@@ -569,27 +676,11 @@ void game_loop(socklen_t cmmother_desc) {
     while (missed_pulses--)
       heartbeat(++pulse);
 
-    /* Check for any signals we may have received. */
-    if (reread_wizlist) {
-      reread_wizlist = FALSE;
-      mudlog(CMP, ADMLVL_IMMORT, TRUE, "Signal received - rereading wizlists.");
-      reboot_wizlists();
-    }
-    if (emergency_unban) {
-      emergency_unban = FALSE;
-      mudlog(BRF, ADMLVL_IMMORT, TRUE,
-             "Received SIGUSR2 - completely unrestricting game (emergent)");
-      ban_list = NULL;
-      circle_restrict = 0;
-      num_invalid = 0;
-    }
-
-    /* Update tics for deadlock protection */
-    tics_passed++;
+    game_legacy_post_tick();
   }
 }
 
-void heartbeat(int heart_pulse) {
+void heartbeat_legacy(int heart_pulse) {
   static int mins_since_crashsave = 0;
 
   event_process();
@@ -609,6 +700,7 @@ void heartbeat(int heart_pulse) {
   if (!(heart_pulse % (PULSE_IDLEPWD / 15))) { /* 1 second */
     // dball_load();
   }
+  
   if (!(heart_pulse % (PULSE_2SEC))) {
     base_update();
     fish_update();
@@ -630,6 +722,7 @@ void heartbeat(int heart_pulse) {
   if (!(heart_pulse % (PULSE_IDLEPWD / 15))) {
     fight_stack();
   }
+
   if (!(heart_pulse % ((PULSE_IDLEPWD / 15) * 2))) {
     if (rand_number(1, 2) == 2) {
       homing_update();
@@ -649,6 +742,7 @@ void heartbeat(int heart_pulse) {
     check_time_triggers();
     affect_update();
   }
+
   if (!(heart_pulse % ((SECS_PER_MUD_HOUR / 3) * PASSES_PER_SEC))) {
     point_update();
   }
@@ -2612,6 +2706,11 @@ void close_socket(struct descriptor_data *d) {
   struct descriptor_data *temp;
 
   REMOVE_FROM_LIST(d, descriptor_list, next, temp);
+  if (d->conn) {
+    net_connection_descriptor_set(d->conn, NULL);
+    net_connection_destroy(d->conn);
+    d->conn = NULL;
+  }
   close(d->descriptor);
   flush_queues(d);
 
