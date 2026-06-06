@@ -73,7 +73,6 @@ fn parseRuntimeOptions(init: std.process.Init, test_options: *test_mode.Options)
 
     if (cdb.config_info.test_mode) {
         cdb.fCopyOver = false;
-        cdb.mother_desc = 0;
     }
 }
 
@@ -110,7 +109,6 @@ pub fn main(init: std.process.Init) u8 {
         if (listener_fd < 0) {
             std.process.fatal("failed to open listener on port {d}", .{cdb.port});
         }
-        cdb.mother_desc = @intCast(listener_fd);
     }
 
     cdb.event_init();
@@ -136,7 +134,7 @@ pub fn main(init: std.process.Init) u8 {
     } else {
         // Running normal gameplay loop.
         cdb.log("Entering game loop.");
-        cdb.game_loop(cdb.mother_desc);
+        cdb.game_loop();
 
         cdb.Crash_save_all();
 
@@ -145,7 +143,7 @@ pub fn main(init: std.process.Init) u8 {
             cdb.close_socket(cdb.descriptor_list);
         }
 
-        _ = cdb.close(@intCast(cdb.mother_desc));
+        cdb.net_listener_close();
 
         if (cdb.circle_reboot != 2) {
             _ = cdb.save_all();

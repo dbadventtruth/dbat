@@ -19,12 +19,7 @@ pub fn deinit() void {
     has_io = false;
 }
 
-pub export fn game_loop(mother_desc: cdb.socklen_t) void {
-    if (!has_io) {
-        cdb.game_loop_legacy(mother_desc);
-        return;
-    }
-
+pub export fn game_loop() void {
     var last = std.Io.Timestamp.now(io, .awake);
     while (cdb.circle_shutdown == 0) {
         const before_wait = std.Io.Timestamp.now(io, .awake);

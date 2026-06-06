@@ -63,6 +63,7 @@ pub fn init(alloc: Allocator, io: std.Io) void {
 }
 
 pub fn deinit() void {
+    net_listener_close();
     for (connections.items) |conn| {
         allocator.free(conn.host);
         conn.input.deinit();
@@ -94,6 +95,14 @@ pub export fn net_listener_open(port: u16) c_int {
     cdb.descriptor_fd_inherit_across_exec(@intCast(fd));
     cdb.nonblock(@intCast(fd));
     return fd;
+}
+
+pub export fn net_listener_close() void {
+    if (listener_fd) |fd| {
+        _ = cdb.close(@intCast(fd));
+        listener_fd = null;
+    }
+    listener_read_ready = false;
 }
 
 pub export fn net_accept_callback_set(callback: ?*const fn (fd: cdb.socklen_t, host: [*:0]const u8, conn: *Connection) callconv(.c) ?*cdb.descriptor_data) void {
@@ -200,7 +209,7 @@ pub export fn net_read_all_pending() c_int {
             continue;
         }
         conn.read_ready = false;
-        const n = netRead(conn, &buffer) catch |err| switch (err) {
+        const n = fdRead(conn, &buffer) catch |err| switch (err) {
             error.WouldBlock => 0,
             else => blk: {
                 conn.close_requested = true;
@@ -231,7 +240,7 @@ pub export fn net_flush_all_outputs() c_int {
         var advanced = true;
         if (conn.output.items.len > 0 and conn.write_ready and !conn.close_requested) {
             conn.write_ready = false;
-            const n = netWrite(conn, conn.output.items) catch |err| switch (err) {
+            const n = fdWrite(conn, conn.output.items) catch |err| switch (err) {
                 error.WouldBlock => 0,
                 else => blk: {
                     conn.close_requested = true;
@@ -297,11 +306,11 @@ pub export fn net_wait(timeout_ms: c_int) c_int {
     return @intCast(ready);
 }
 
-const NetIoError = error{ WouldBlock, ConnectionClosed } || ionet.Stream.Reader.Error || ionet.Stream.Writer.Error;
+const NetIoError = error{ WouldBlock, ConnectionClosed } || posix.ReadError;
 
-fn netRead(conn: *Connection, buffer: []u8) NetIoError!usize {
-    var vecs: [1][]u8 = .{buffer};
-    const n = global_io.vtable.netRead(global_io.userdata, @intCast(conn.fd), &vecs) catch |err| switch (err) {
+fn fdRead(conn: *Connection, buffer: []u8) NetIoError!usize {
+    const n = posix.read(@intCast(conn.fd), buffer) catch |err| switch (err) {
+        error.WouldBlock => return error.WouldBlock,
         error.ConnectionResetByPeer, error.SocketUnconnected => return error.ConnectionClosed,
         else => |value| return value,
     };
@@ -309,12 +318,10 @@ fn netRead(conn: *Connection, buffer: []u8) NetIoError!usize {
     return n;
 }
 
-fn netWrite(conn: *Connection, bytes: []const u8) NetIoError!usize {
-    var data: [1][]const u8 = .{bytes};
-    return global_io.vtable.netWrite(global_io.userdata, @intCast(conn.fd), "", &data, 1) catch |err| switch (err) {
-        error.ConnectionResetByPeer, error.SocketUnconnected => return error.ConnectionClosed,
-        else => |value| return value,
-    };
+fn fdWrite(conn: *Connection, bytes: []const u8) NetIoError!usize {
+    const written = cdb.write(@intCast(conn.fd), bytes.ptr, bytes.len);
+    if (written < 0) return error.ConnectionClosed;
+    return @intCast(written);
 }
 
 pub export fn net_copyover_dump(path: ?[*:0]const u8) bool {
@@ -393,7 +400,6 @@ fn recoverSnapshot(path: []const u8) !void {
     const listener_value = root.get("listener_fd") orelse return error.InvalidCopyoverSnapshot;
     const recovered_listener_fd: cdb.socklen_t = @intCast(listener_value.integer);
     _ = net_listener_adopt(recovered_listener_fd);
-    cdb.mother_desc = recovered_listener_fd;
 
     cdb.copyover_recover_begin();
 

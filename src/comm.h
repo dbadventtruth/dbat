@@ -94,7 +94,6 @@ void show_help(struct descriptor_data *t, const char *entry);
 extern unsigned long pulse;
 extern FILE *logfile;
 extern int circle_shutdown, circle_reboot;
-extern socklen_t mother_desc;
 extern uint16_t port;
 extern int buf_switches, buf_largecount, buf_overflows;
 extern int no_specials, scheck;
