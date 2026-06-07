@@ -6,7 +6,6 @@ var has_io = false;
 var active_players: usize = 0;
 
 const tick = std.Io.Duration.fromMilliseconds(100);
-const max_catchup_pulses = 30 * 10;
 
 pub fn init(runtime_io: std.Io) void {
     io = runtime_io;
@@ -20,20 +19,13 @@ pub fn deinit() void {
 }
 
 pub export fn game_loop() void {
-    var last = std.Io.Timestamp.now(io, .awake);
+    var next_tick_ns = nowNs() + tick.nanoseconds;
     while (cdb.circle_shutdown == 0) {
-        const before_wait = std.Io.Timestamp.now(io, .awake);
-        const elapsed_before_wait = last.durationTo(before_wait);
-        const wait_ms: c_int = if (elapsed_before_wait.nanoseconds >= tick.nanoseconds)
-            0
-        else
-            @intCast(@max(@as(i96, 1), @divTrunc(tick.nanoseconds - elapsed_before_wait.nanoseconds, std.time.ns_per_ms)));
+        const before_wait_ns = nowNs();
+        const wait_ms: c_int = waitUntilMs(before_wait_ns, next_tick_ns);
         if (cdb.net_wait(wait_ms) < 0) {
             std.Io.sleep(io, .fromMilliseconds(@intCast(wait_ms)), .awake) catch {};
         }
-
-        const now = std.Io.Timestamp.now(io, .awake);
-        const elapsed = last.durationTo(now);
 
         _ = cdb.net_accept_all_pending();
         _ = cdb.net_read_all_pending();
@@ -41,20 +33,17 @@ pub export fn game_loop() void {
 
         cdb.extract_pending_chars();
 
-        if (active_players > 0 and elapsed.nanoseconds >= tick.nanoseconds) {
-            last = now;
-            var pulses_due: usize = @intCast(@divTrunc(elapsed.nanoseconds, tick.nanoseconds));
-            if (pulses_due > max_catchup_pulses) {
-                cdb.log("SYSERR: Missed %d seconds worth of pulses.", @as(c_int, @intCast(pulses_due / 10)));
-                pulses_due = max_catchup_pulses;
+        const current_ns = nowNs();
+        if (active_players == 0) {
+            next_tick_ns = current_ns + tick.nanoseconds;
+        } else if (current_ns >= next_tick_ns) {
+            const late_ns = current_ns - next_tick_ns;
+            if (late_ns >= std.time.ns_per_s) {
+                cdb.log("SYSERR: Missed %d seconds worth of pulses.", @as(c_int, @intCast(@divTrunc(late_ns, std.time.ns_per_s))));
             }
-
-            while (pulses_due > 0) : (pulses_due -= 1) {
-                cdb.pulse += 1;
-                heartbeat(@intCast(cdb.pulse));
-            }
-        } else if (active_players == 0) {
-            last = now;
+            next_tick_ns = current_ns + tick.nanoseconds;
+            cdb.pulse += 1;
+            heartbeat(@intCast(cdb.pulse));
         }
 
         cdb.extract_pending_chars();
@@ -65,6 +54,17 @@ pub export fn game_loop() void {
 
         cdb.game_legacy_post_tick();
     }
+}
+
+fn nowNs() i96 {
+    return std.Io.Timestamp.now(io, .awake).nanoseconds;
+}
+
+fn waitUntilMs(now_ns: i96, deadline_ns: i96) c_int {
+    if (now_ns >= deadline_ns) return 0;
+    const remaining = deadline_ns - now_ns;
+    if (remaining <= 0) return 0;
+    return @intCast(@max(@as(i96, 1), @divTrunc(remaining, std.time.ns_per_ms)));
 }
 
 pub export fn heartbeat(heart_pulse: c_int) void {

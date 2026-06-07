@@ -89,6 +89,8 @@ var active_repl: ?*LuaRepl = null;
 var intern_arena: std.heap.ArenaAllocator = undefined;
 var interned_strings: std.StringHashMap([]const u8) = undefined;
 var interner_initialized = false;
+var definition_cache: DefinitionCache = undefined;
+var definition_cache_initialized = false;
 
 pub const StatDefinition = struct {
     default_value: i64 = 0,
@@ -133,12 +135,66 @@ pub const ConditionDefinition = struct {
     stackable: bool = false,
 };
 
+const ConditionMetadata = struct {
+    definition: ConditionDefinition,
+    tags: std.StringHashMap(void),
+    exclusive_tags: std.StringHashMap(void),
+
+    fn init(alloc: std.mem.Allocator, definition: ConditionDefinition) ConditionMetadata {
+        return .{
+            .definition = definition,
+            .tags = std.StringHashMap(void).init(alloc),
+            .exclusive_tags = std.StringHashMap(void).init(alloc),
+        };
+    }
+
+    fn deinit(self: *ConditionMetadata) void {
+        self.tags.deinit();
+        self.exclusive_tags.deinit();
+    }
+};
+
+const DefinitionCache = struct {
+    stats: std.StringHashMap(StatDefinition),
+    derived: std.StringHashMap(DerivedDefinition),
+    meters: std.StringHashMap(MeterDefinition),
+    conditions: std.StringHashMap(ConditionMetadata),
+
+    fn init(alloc: std.mem.Allocator) DefinitionCache {
+        return .{
+            .stats = std.StringHashMap(StatDefinition).init(alloc),
+            .derived = std.StringHashMap(DerivedDefinition).init(alloc),
+            .meters = std.StringHashMap(MeterDefinition).init(alloc),
+            .conditions = std.StringHashMap(ConditionMetadata).init(alloc),
+        };
+    }
+
+    fn clear(self: *DefinitionCache) void {
+        self.stats.clearRetainingCapacity();
+        self.derived.clearRetainingCapacity();
+        self.meters.clearRetainingCapacity();
+        var conditions = self.conditions.iterator();
+        while (conditions.next()) |entry| entry.value_ptr.deinit();
+        self.conditions.clearRetainingCapacity();
+    }
+
+    fn deinit(self: *DefinitionCache) void {
+        self.clear();
+        self.stats.deinit();
+        self.derived.deinit();
+        self.meters.deinit();
+        self.conditions.deinit();
+    }
+};
+
 pub fn init(alloc: std.mem.Allocator, runtime_io: std.Io) !void {
     allocator = alloc;
     io = runtime_io;
     intern_arena = std.heap.ArenaAllocator.init(alloc);
     interned_strings = std.StringHashMap([]const u8).init(alloc);
     interner_initialized = true;
+    definition_cache = DefinitionCache.init(alloc);
+    definition_cache_initialized = true;
     lua_state = try Lua.init(alloc);
     initialized = true;
 
@@ -155,6 +211,8 @@ pub fn deinit() void {
     lua_state = null;
     initialized = false;
     loaded_entries = 0;
+    definition_cache.deinit();
+    definition_cache_initialized = false;
     interned_strings.deinit();
     intern_arena.deinit();
     interner_initialized = false;
@@ -163,9 +221,10 @@ pub fn deinit() void {
 pub fn internString(text: []const u8) []const u8 {
     if (!interner_initialized or text.len == 0) return text;
     if (interned_strings.get(text)) |existing| return existing;
-    const owned = intern_arena.allocator().dupe(u8, text) catch return text;
-    interned_strings.put(owned, owned) catch return owned;
-    return owned;
+    const owned = intern_arena.allocator().dupeZ(u8, text) catch return text;
+    const slice = owned[0..text.len];
+    interned_strings.put(slice, slice) catch return slice;
+    return slice;
 }
 
 pub export fn lua_reload() bool {
@@ -187,6 +246,7 @@ pub fn state() *Lua {
 
 pub fn load_lua() !void {
     loaded_entries = 0;
+    definition_cache.clear();
     inline for (categories) |category| {
         try loadCategory(category);
     }
@@ -225,11 +285,6 @@ pub fn pushThing(category: []const u8, slug: []const u8) !bool {
     const top = lua.getTop();
     errdefer lua.setTop(top);
 
-    const category_z = try allocator.dupeZ(u8, category);
-    defer allocator.free(category_z);
-    const slug_z = try allocator.dupeZ(u8, slug);
-    defer allocator.free(slug_z);
-
     if (lua.getGlobal("dbat") != .table) {
         lua.setTop(top);
         return false;
@@ -238,11 +293,13 @@ pub fn pushThing(category: []const u8, slug: []const u8) !bool {
         lua.setTop(top);
         return false;
     }
-    if (lua.getField(-1, category_z) != .table) {
+    _ = lua.pushString(category);
+    if (lua.getTable(-2) != .table) {
         lua.setTop(top);
         return false;
     }
-    if (lua.getField(-1, slug_z) == .nil) {
+    _ = lua.pushString(slug);
+    if (lua.getTable(-2) == .nil) {
         lua.setTop(top);
         return false;
     }
@@ -454,33 +511,12 @@ fn pushTokens(lua: *Lua, text: []const u8) !void {
 
 pub fn statDefinition(name: []const u8) ?StatDefinition {
     if (!initialized or name.len == 0) return null;
-    if (!(pushThing("stats", name) catch return null)) return null;
-    defer pop(1);
-
-    return .{
-        .default_value = optionalIntegerField(-1, "default_value") orelse 0,
-        .min_value = optionalIntegerField(-1, "min_value"),
-        .max_value = optionalIntegerField(-1, "max_value"),
-    };
+    return definition_cache.stats.get(name);
 }
 
 pub fn derivedDefinition(name: []const u8) ?DerivedDefinition {
     if (!initialized or name.len == 0) return null;
-    if (!(pushThing("derived", name) catch return null)) return null;
-    defer pop(1);
-
-    var definition = DerivedDefinition{
-        .min_value = optionalIntegerField(-1, "min_value"),
-        .max_value = optionalIntegerField(-1, "max_value"),
-    };
-    if (optionalStringField(-1, "base_stat")) |base_stat| {
-        const len = @min(base_stat.len, definition.base_stat_storage.len);
-        @memcpy(definition.base_stat_storage[0..len], base_stat[0..len]);
-        definition.base_stat_len = len;
-    }
-    definition.no_modifiers = hasTag(-1, "no_modifiers");
-    readLegacyModifiers(-1, &definition);
-    return definition;
+    return definition_cache.derived.get(name);
 }
 
 pub fn calculateDerivedBase(ch: *cdb.char_data, name: []const u8) ?i64 {
@@ -507,60 +543,58 @@ pub fn calculateDerivedBase(ch: *cdb.char_data, name: []const u8) ?i64 {
 
 pub fn meterDefinition(name: []const u8) ?MeterDefinition {
     if (!initialized or name.len == 0) return null;
-    if (!(pushThing("meters", name) catch return null)) return null;
-    defer pop(1);
-
-    var definition = MeterDefinition{};
-    const derived_stat = optionalStringField(-1, "derived_stat") orelse optionalStringField(-1, "derived");
-    if (derived_stat) |value| {
-        const len = @min(value.len, definition.derived_stat_storage.len);
-        @memcpy(definition.derived_stat_storage[0..len], value[0..len]);
-        definition.derived_stat_len = len;
-    }
-    return definition;
+    return definition_cache.meters.get(name);
 }
 
 pub fn conditionDefinition(name: []const u8) ?ConditionDefinition {
     if (!initialized or name.len == 0) return null;
-    if (!(pushThing("conditions", name) catch return null)) return null;
-    defer pop(1);
-    return .{
-        .persistent = optionalBoolField(-1, "persistent") orelse false,
-        .stackable = optionalBoolField(-1, "stackable") orelse false,
+    const metadata = definition_cache.conditions.get(name) orelse {
+        if (!(pushThing("conditions", name) catch return null)) return null;
+        defer pop(1);
+        return .{
+            .persistent = optionalBoolField(-1, "persistent") orelse false,
+            .stackable = optionalBoolField(-1, "stackable") orelse false,
+        };
     };
+    return metadata.definition;
 }
 
 pub fn conditionHasTag(name: []const u8, tag: []const u8) bool {
     if (!initialized or name.len == 0 or tag.len == 0) return false;
-    if (!(pushThing("conditions", name) catch return false)) return false;
-    defer pop(1);
-    return hasStringInField(-1, "tags", tag);
+    const metadata = definition_cache.conditions.get(name) orelse {
+        if (!(pushThing("conditions", name) catch return false)) return false;
+        defer pop(1);
+        return hasStringInField(-1, "tags", tag);
+    };
+    return metadata.tags.contains(tag);
 }
 
 pub fn conditionsConflict(new_condition: []const u8, active_condition: []const u8) bool {
     if (!initialized or new_condition.len == 0 or active_condition.len == 0) return false;
-    if (!(pushThing("conditions", new_condition) catch return false)) return false;
-    defer pop(1);
-
-    const lua = lua_state.?;
-    if (lua.getField(-1, "exclusive_tags") != .table) {
-        lua.pop(1);
-        return false;
-    }
-    defer lua.pop(1);
-
-    const table_index = lua.getTop();
-    var pos: zlua.Integer = 1;
-    while (lua.getIndex(table_index, pos) != .nil) : (pos += 1) {
-        const tag = lua.toString(-1) catch {
+    const metadata = definition_cache.conditions.get(new_condition) orelse {
+        if (!(pushThing("conditions", new_condition) catch return false)) return false;
+        defer pop(1);
+        const lua = lua_state.?;
+        if (lua.getField(-1, "exclusive_tags") != .table) {
             lua.pop(1);
-            continue;
-        };
-        const found = conditionHasTag(active_condition, tag);
-        lua.pop(1);
-        if (found) return true;
-    }
-    lua.pop(1);
+            return false;
+        }
+        defer lua.pop(1);
+        const table_index = lua.getTop();
+        var pos: zlua.Integer = 1;
+        while (lua.getIndex(table_index, pos) != .nil) : (pos += 1) {
+            const tag = lua.toString(-1) catch {
+                lua.pop(1);
+                continue;
+            };
+            const found = conditionHasTag(active_condition, tag);
+            lua.pop(1);
+            if (found) return true;
+        }
+        return false;
+    };
+    var it = metadata.exclusive_tags.keyIterator();
+    while (it.next()) |tag| if (conditionHasTag(active_condition, tag.*)) return true;
     return false;
 }
 
@@ -718,7 +752,6 @@ fn optionalBoolField(index: i32, comptime field_name: [:0]const u8) ?bool {
 
 fn addModifierFromLua(cache: *modifiers_api.ModifierCache, source_category: []const u8, source_id: []const u8, index: i32) void {
     const lua = lua_state.?;
-    const modifier_allocator = cache.allocator;
     if (lua.getField(index, "target") != .table) {
         lua.pop(1);
         return;
@@ -738,14 +771,13 @@ fn addModifierFromLua(cache: *modifiers_api.ModifierCache, source_category: []co
     const label = optionalStringField(index, "label") orelse source_id;
 
     cache.add(.{
-        .source_category = modifier_allocator.dupe(u8, source_category) catch return,
-        .source_id = modifier_allocator.dupe(u8, source_id) catch return,
-        .target_category = modifier_allocator.dupe(u8, target_category) catch return,
-        .target_id = modifier_allocator.dupe(u8, target_id) catch return,
+        .source_category = internString(source_category),
+        .source_id = internString(source_id),
+        .target_category = internString(target_category),
+        .target_id = internString(target_id),
         .kind = kind,
         .value = value,
-        .label = modifier_allocator.dupe(u8, label) catch return,
-        .owned_strings = true,
+        .label = internString(label),
     }) catch {};
 }
 
@@ -828,6 +860,78 @@ fn readLegacyModifiers(index: i32, definition: *DerivedDefinition) void {
         definition.legacy_modifiers[definition.legacy_modifier_count] = .{ .location = location_int, .specific = specific_int };
         definition.legacy_modifier_count += 1;
         lua.pop(1);
+    }
+}
+
+fn cacheReturnedValue(category: []const u8, id: []const u8, index: i32) !void {
+    if (std.mem.eql(u8, category, "stats")) return cacheStatDefinition(id, index);
+    if (std.mem.eql(u8, category, "derived")) return cacheDerivedDefinition(id, index);
+    if (std.mem.eql(u8, category, "meters")) return cacheMeterDefinition(id, index);
+    if (std.mem.eql(u8, category, "conditions")) return cacheConditionDefinition(id, index);
+}
+
+fn cacheStatDefinition(id: []const u8, index: i32) !void {
+    const definition_index = lua_state.?.absIndex(index);
+    try definition_cache.stats.put(internString(id), .{
+        .default_value = optionalIntegerField(definition_index, "default_value") orelse 0,
+        .min_value = optionalIntegerField(definition_index, "min_value"),
+        .max_value = optionalIntegerField(definition_index, "max_value"),
+    });
+}
+
+fn cacheDerivedDefinition(id: []const u8, index: i32) !void {
+    const definition_index = lua_state.?.absIndex(index);
+    var definition = DerivedDefinition{
+        .min_value = optionalIntegerField(definition_index, "min_value"),
+        .max_value = optionalIntegerField(definition_index, "max_value"),
+    };
+    if (optionalStringField(definition_index, "base_stat")) |base_stat| {
+        const len = @min(base_stat.len, definition.base_stat_storage.len);
+        @memcpy(definition.base_stat_storage[0..len], base_stat[0..len]);
+        definition.base_stat_len = len;
+    }
+    definition.no_modifiers = hasTag(definition_index, "no_modifiers");
+    readLegacyModifiers(definition_index, &definition);
+    try definition_cache.derived.put(internString(id), definition);
+}
+
+fn cacheMeterDefinition(id: []const u8, index: i32) !void {
+    const definition_index = lua_state.?.absIndex(index);
+    var definition = MeterDefinition{};
+    const derived_stat = optionalStringField(definition_index, "derived_stat") orelse optionalStringField(definition_index, "derived");
+    if (derived_stat) |value| {
+        const len = @min(value.len, definition.derived_stat_storage.len);
+        @memcpy(definition.derived_stat_storage[0..len], value[0..len]);
+        definition.derived_stat_len = len;
+    }
+    try definition_cache.meters.put(internString(id), definition);
+}
+
+fn cacheConditionDefinition(id: []const u8, index: i32) !void {
+    const definition_index = lua_state.?.absIndex(index);
+    var metadata = ConditionMetadata.init(allocator, .{
+        .persistent = optionalBoolField(definition_index, "persistent") orelse false,
+        .stackable = optionalBoolField(definition_index, "stackable") orelse false,
+    });
+    errdefer metadata.deinit();
+    try cacheStringSet(definition_index, "tags", &metadata.tags);
+    try cacheStringSet(definition_index, "exclusive_tags", &metadata.exclusive_tags);
+    try definition_cache.conditions.put(internString(id), metadata);
+}
+
+fn cacheStringSet(index: i32, comptime field_name: [:0]const u8, set: *std.StringHashMap(void)) !void {
+    const lua = lua_state.?;
+    if (lua.getField(index, field_name) != .table) {
+        lua.pop(1);
+        return;
+    }
+    defer lua.pop(1);
+
+    var pos: zlua.Integer = 1;
+    while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
+        defer lua.pop(1);
+        const value = lua.toString(-1) catch continue;
+        try set.put(internString(value), {});
     }
 }
 
@@ -1056,6 +1160,7 @@ fn loadThing(category: []const u8, slug: []const u8, path: []const u8) !void {
 
 fn registerReturnedValue(category: []const u8, slug: []const u8, path: []const u8) !void {
     const lua = lua_state.?;
+    try cacheReturnedValue(category, slug, 1);
 
     const category_z = try allocator.dupeZ(u8, category);
     defer allocator.free(category_z);
