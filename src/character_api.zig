@@ -51,11 +51,6 @@ const SkillData = struct {
 pub const ConditionSource = struct {
     category: []const u8,
     id: []const u8,
-
-    pub fn deinit(self: *ConditionSource, alloc: std.mem.Allocator) void {
-        alloc.free(self.category);
-        alloc.free(self.id);
-    }
 };
 
 pub const ConditionInstance = struct {
@@ -75,19 +70,15 @@ pub const ConditionInstance = struct {
         };
     }
 
-    pub fn deinit(self: *ConditionInstance, alloc: std.mem.Allocator) void {
-        for (self.sources.items) |*source| source.deinit(alloc);
+    pub fn deinit(self: *ConditionInstance, _: std.mem.Allocator) void {
         self.sources.deinit();
         self.numbers.deinit();
-        var string_it = self.strings.iterator();
-        while (string_it.next()) |entry| {
-            alloc.free(entry.value_ptr.*);
-        }
         self.strings.deinit();
     }
 };
 
 const meter_scale: i64 = 1_000_000;
+var condition_update_ids: std.array_list.Managed(i64) = .init(std.heap.page_allocator);
 
 const stat_names = [_][]const u8{
     "agility",
@@ -970,9 +961,9 @@ pub export fn char_condition_apply_with_variables(ch: *cdb.char_data, condition:
     if (lua_api.conditionDefinition(name) == null) return false;
     if (ch.zigdata) |ptr| {
         const zigdata: *CharacterData = @ptrCast(@alignCast(ptr));
-        var to_remove = std.array_list.Managed([:0]u8).init(std.heap.page_allocator);
+        var to_remove = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
         defer {
-            for (to_remove.items) |item| std.heap.page_allocator.free(item);
+            for (to_remove.items) |item| std.heap.c_allocator.free(item);
             to_remove.deinit();
         }
 
@@ -980,7 +971,7 @@ pub export fn char_condition_apply_with_variables(ch: *cdb.char_data, condition:
         while (it.next()) |key| {
             if (std.mem.eql(u8, key.*, name)) continue;
             if (!lua_api.conditionsConflict(name, key.*)) continue;
-            to_remove.append(std.heap.page_allocator.dupeZ(u8, key.*) catch return false) catch return false;
+            to_remove.append(std.heap.c_allocator.dupeZ(u8, key.*) catch return false) catch return false;
         }
 
         for (to_remove.items) |item| _ = char_condition_remove(ch, item.ptr, "exclusive");
@@ -999,8 +990,12 @@ pub export fn char_condition_apply_with_numbers2(ch: *cdb.char_data, condition: 
 }
 
 pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u8, reason: ?[*:0]const u8) bool {
-    _ = reason;
     const name = statName(condition) orelse return false;
+    return char_condition_remove_name(ch, name, reason);
+}
+
+fn char_condition_remove_name(ch: *cdb.char_data, name: []const u8, reason: ?[*:0]const u8) bool {
+    _ = reason;
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var removed = zigdata.conditions.fetchRemove(name) orelse return false;
@@ -1014,16 +1009,16 @@ pub export fn char_condition_remove_tag(ch: *cdb.char_data, tag: ?[*:0]const u8,
     const tag_name = statName(tag) orelse return 0;
     if (ch.zigdata == null) return 0;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    var to_remove = std.array_list.Managed([:0]u8).init(std.heap.page_allocator);
+    var to_remove = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
     defer {
-        for (to_remove.items) |item| std.heap.page_allocator.free(item);
+        for (to_remove.items) |item| std.heap.c_allocator.free(item);
         to_remove.deinit();
     }
 
     var it = zigdata.conditions.keyIterator();
     while (it.next()) |key| {
         if (!lua_api.conditionHasTag(key.*, tag_name)) continue;
-        to_remove.append(std.heap.page_allocator.dupeZ(u8, key.*) catch return 0) catch return 0;
+        to_remove.append(std.heap.c_allocator.dupeZ(u8, key.*) catch return 0) catch return 0;
     }
 
     var removed: c_int = 0;
@@ -1046,15 +1041,14 @@ pub export fn char_condition_update_all(kind: ?[*:0]const u8, pulses: i64, secon
     const iterator = characters.char_iterator_create() orelse return;
     defer characters.char_iterator_free(iterator);
 
-    var ids = std.array_list.Managed(i64).init(std.heap.page_allocator);
-    defer ids.deinit();
+    condition_update_ids.clearRetainingCapacity();
 
     while (characters.char_next(iterator)) |ch| {
         if (cdb.char_is_extracted(ch)) continue;
-        ids.append(cdb.char_id_get(ch)) catch return;
+        condition_update_ids.append(cdb.char_id_get(ch)) catch return;
     }
 
-    for (ids.items) |id| {
+    for (condition_update_ids.items) |id| {
         const ch = characters.char_by_id(id) orelse continue;
         if (cdb.char_is_extracted(ch)) continue;
         char_condition_update_context(ch, update_kind, pulses, seconds);
@@ -1065,30 +1059,30 @@ fn char_condition_update_context(ch: *cdb.char_data, kind: []const u8, pulses: i
     if (ch.zigdata == null) return;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
 
-    var names = std.array_list.Managed([:0]u8).init(std.heap.page_allocator);
+    var names = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
     defer {
-        for (names.items) |name| std.heap.page_allocator.free(name);
+        for (names.items) |n| std.heap.c_allocator.free(n);
         names.deinit();
     }
 
     var it = zigdata.conditions.keyIterator();
-    while (it.next()) |key| names.append(std.heap.page_allocator.dupeZ(u8, key.*) catch return) catch return;
+    while (it.next()) |key| names.append(std.heap.c_allocator.dupeZ(u8, key.*) catch return) catch return;
 
-    for (names.items) |name| {
-        const instance = conditionGet(ch, name.ptr) orelse continue;
+    for (names.items) |name_z| {
+        const instance = conditionGet(ch, name_z.ptr) orelse continue;
         if (instance.duration == 0) {
-            _ = char_condition_remove(ch, name.ptr, "expired");
+            _ = char_condition_remove(ch, name_z.ptr, "expired");
             continue;
         }
 
-        lua_api.callConditionUpdateHook(ch, name, kind, pulses, seconds);
-        const updated = conditionGet(ch, name.ptr) orelse continue;
+        lua_api.callConditionUpdateHook(ch, std.mem.sliceTo(name_z, 0), kind, pulses, seconds);
+        const updated = conditionGet(ch, name_z.ptr) orelse continue;
         if (seconds > 0 and updated.duration > 0) {
             updated.duration = @max(0, updated.duration - seconds);
             conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
         }
-        const after_duration = conditionGet(ch, name.ptr) orelse continue;
-        if (after_duration.duration == 0) _ = char_condition_remove(ch, name.ptr, "expired");
+        const after_duration = conditionGet(ch, name_z.ptr) orelse continue;
+        if (after_duration.duration == 0) _ = char_condition_remove(ch, name_z.ptr, "expired");
     }
 }
 
@@ -1234,6 +1228,10 @@ pub export fn char_transform_string_set(ch: *cdb.char_data, transform: ?[*:0]con
 
 fn conditionGet(ch: *cdb.char_data, condition: ?[*:0]const u8) ?*ConditionInstance {
     const name = statName(condition) orelse return null;
+    return conditionGetName(ch, name);
+}
+
+fn conditionGetName(ch: *cdb.char_data, name: []const u8) ?*ConditionInstance {
     if (ch.zigdata == null) return null;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     return zigdata.conditions.getPtr(name);
@@ -1250,8 +1248,8 @@ fn addConditionSource(instance: *ConditionInstance, source_category: ?[*:0]const
     const category = if (source_category) |ptr| std.mem.span(ptr) else "unknown";
     const id = if (source_id) |ptr| std.mem.span(ptr) else "unknown";
     try instance.sources.append(.{
-        .category = try std.heap.page_allocator.dupe(u8, category),
-        .id = try std.heap.page_allocator.dupe(u8, id),
+        .category = lua_api.internString(category),
+        .id = lua_api.internString(id),
     });
 }
 
@@ -1281,11 +1279,10 @@ fn putOwnedNumber(instance: *ConditionInstance, key: []const u8, value: i64) !vo
 
 fn putOwnedString(instance: *ConditionInstance, key: []const u8, value: []const u8) !void {
     if (instance.strings.getPtr(key)) |existing| {
-        std.heap.page_allocator.free(existing.*);
-        existing.* = try std.heap.page_allocator.dupeZ(u8, value);
+        existing.* = lua_api.internString(value);
         return;
     }
-    try instance.strings.put(lua_api.internString(key), try std.heap.page_allocator.dupeZ(u8, value));
+    try instance.strings.put(lua_api.internString(key), lua_api.internString(value));
 }
 
 fn putOwnedTransformNumber(data: *TransformData, key: []const u8, value: i64) !void {

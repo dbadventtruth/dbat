@@ -53,8 +53,8 @@ pub const ModifierCache = struct {
     }
 
     pub fn modifiersFor(self: *ModifierCache, category: []const u8, id: []const u8) ?[]const Modifier {
-        const key = targetKey(self.allocator, category, id) catch return null;
-        defer self.allocator.free(key);
+        var key_buf: [128]u8 = undefined;
+        const key = targetKeyStack(&key_buf, category, id) orelse return null;
         const list = self.by_target.getPtr(key) orelse return null;
         return list.items;
     }
@@ -93,6 +93,10 @@ pub const ModifierCache = struct {
 
 fn targetKey(allocator: std.mem.Allocator, category: []const u8, id: []const u8) ![]u8 {
     return std.fmt.allocPrint(allocator, "{s}:{s}", .{ category, id });
+}
+
+fn targetKeyStack(buf: []u8, category: []const u8, id: []const u8) ?[]const u8 {
+    return std.fmt.bufPrint(buf, "{s}:{s}", .{ category, id }) catch null;
 }
 
 pub fn addLegacyDerivedFlat(cache: *ModifierCache, ch: *cdb.char_data, target_id: []const u8, location: c_int, specific: c_int) void {
