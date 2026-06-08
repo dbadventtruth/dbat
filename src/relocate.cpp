@@ -209,7 +209,7 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
     /* top level object.  Subtract weight from inventory if necessary. */
     GET_OBJ_WEIGHT(tmp_obj) += GET_OBJ_WEIGHT(obj);
     if (tmp_obj->carried_by)
-      IS_CARRYING_W(tmp_obj->carried_by) += GET_OBJ_WEIGHT(obj);
+      char_der_invalidate(tmp_obj->carried_by);
   }
 
   struct room_data *rm = obj_room_get(obj_to);
@@ -241,7 +241,7 @@ void obj_from_obj(struct obj_data *obj) {
     /* Subtract weight from char that carries the object */
     GET_OBJ_WEIGHT(temp) -= GET_OBJ_WEIGHT(obj);
     if (temp->carried_by)
-      IS_CARRYING_W(temp->carried_by) -= GET_OBJ_WEIGHT(obj);
+      char_der_invalidate(temp->carried_by);
   }
 
   struct room_data *rm = obj_room_get(obj_from);
@@ -337,21 +337,7 @@ void obj_to_char(struct obj_data *object, struct char_data *ch) {
     ch->carrying = object;
     object->carried_by = ch;
     IN_ROOM(object) = NOWHERE;
-    IS_CARRYING_W(ch) += GET_OBJ_WEIGHT(object);
-    IS_CARRYING_N(ch)++;
-    if ((GET_KAIOKEN(ch) <= 0 && !AFF_FLAGGED(ch, AFF_METAMORPH)) &&
-        !OBJ_FLAGGED(object, ITEM_THROW)) {
-
-    } else if (GET_HIT(ch) > getMaxPL(ch)) {
-      if (GET_KAIOKEN(ch) > 0) {
-        send_to_char(ch, "@RThe strain of the weight has reduced your kaioken "
-                         "somewhat!@n\n");
-      } else if (AFF_FLAGGED(ch, AFF_METAMORPH)) {
-        send_to_char(
-            ch,
-            "@RYour metamorphosis strains under the additional weight!@n\n");
-      }
-    }
+    char_der_invalidate(ch);
 
     /* set flag for crash-save system, but not on mobs! */
     if (GET_OBJ_VAL(object, 0) != 0) {
@@ -375,16 +361,15 @@ void obj_from_char(struct obj_data *object) {
     log("SYSERR: NULL object passed to obj_from_char.");
     return;
   }
-  REMOVE_FROM_LIST(object, object->carried_by->carrying, next_content, temp);
+  auto ch = object->carried_by;
+  REMOVE_FROM_LIST(object, ch->carrying, next_content, temp);
 
   /* set flag for crash-save system, but not on mobs! */
-  if (!IS_NPC(object->carried_by))
-    SET_BIT_AR(PLR_FLAGS(object->carried_by), PLR_CRASH);
+  if (!IS_NPC(ch))
+    SET_BIT_AR(PLR_FLAGS(ch), PLR_CRASH);
 
-  int64_t previous = getMaxPL(object->carried_by);
-
-  IS_CARRYING_W(object->carried_by) -= GET_OBJ_WEIGHT(object);
-  IS_CARRYING_N(object->carried_by)--;
+  int64_t previous = getMaxPL(ch);
+  char_der_invalidate(ch);
 
   if (GET_OBJ_VAL(object, 0) != 0) {
     if (GET_OBJ_VNUM(object) == 16705 || GET_OBJ_VNUM(object) == 16706 ||
@@ -488,11 +473,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
   } else
     log("SYSERR: IN_ROOM(ch) = NOWHERE when equipping char %s.", GET_NAME(ch));
 
-  for (j = 0; j < MAX_OBJ_AFFECT; j++)
-    affect_modify_ar(ch, obj->affected[j].location, obj->affected[j].modifier,
-                     obj->affected[j].specific, GET_OBJ_PERM(obj), TRUE);
-
-  affect_total(ch);
+  char_der_invalidate(ch);
 }
 
 struct obj_data *unequip_char(struct char_data *ch, int pos) {
@@ -521,11 +502,7 @@ struct obj_data *unequip_char(struct char_data *ch, int pos) {
 
   GET_EQ(ch, pos) = NULL;
 
-  for (j = 0; j < MAX_OBJ_AFFECT; j++)
-    affect_modify_ar(ch, obj->affected[j].location, obj->affected[j].modifier,
-                     obj->affected[j].specific, GET_OBJ_PERM(obj), FALSE);
-
-  affect_total(ch);
+  char_der_invalidate(ch);
 
   return (obj);
 }
