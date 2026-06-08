@@ -5547,35 +5547,35 @@ ACMD(do_score) {
                      "         <@GStamina@D>@n\n");
     send_to_char(ch,
                  "    @wCurrent   @D-[@R%-16s@D]-[@R%-16s@D]-[@R%-16s@D]@n\n",
-                 add_commas(getCurPL(ch)), add_commas((getCurKI(ch))),
-                 add_commas((getCurST(ch))));
+                 add_commas(char_meter_current(ch, "powerlevel")), add_commas(char_meter_current(ch, "ki")),
+                 add_commas((char_meter_current(ch, "stamina"))));
     send_to_char(ch,
                  "    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n",
-                 add_commas(getMaxPL(ch)), add_commas(GET_MAX_MANA(ch)),
-                 add_commas(GET_MAX_MOVE(ch)));
+                 add_commas(char_meter_max(ch, "powerlevel")), add_commas(char_meter_max(ch, "ki")),
+                 add_commas(char_meter_max(ch, "stamina")));
     send_to_char(ch,
                  "    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n",
-                  add_commas((getEffBasePL(ch))), add_commas((getBaseKI(ch))),
-                  add_commas((getBaseST(ch))));
-    if (!IS_ANDROID(ch) && (getCurLF(ch)) > 0) {
+                  add_commas((char_stat_get(ch, "powerlevel"))), add_commas((char_stat_get(ch, "ki"))),
+                  add_commas((char_stat_get(ch, "stamina"))));
+    if (!IS_ANDROID(ch) && char_meter_current(ch, "lifeforce") > 0) {
       send_to_char(ch,
                    "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife "
-                   "Percent@D-[@Y%3d%s@D]@n\n",
-                   add_commas((getCurLF(ch))), "/", add_commas((getMaxLF(ch))),
-                   GET_LIFEPERC(ch), "%");
+                   "Percent@D-[@Y%3ld%s@D]@n\n",
+                   add_commas((char_meter_current(ch, "lifeforce"))), "/", add_commas((char_meter_max(ch, "lifeforce"))),
+                   char_stat_get(ch, "life_percent"), "%");
     } else if (!IS_ANDROID(ch)) {
       send_to_char(ch,
                    "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife "
-                   "Percent@D-[@Y%3d%s@D]@n\n",
-                   add_commas(0), "/", add_commas((getMaxLF(ch))),
-                   GET_LIFEPERC(ch), "%");
+                   "Percent@D-[@Y%3ld%s@D]@n\n",
+                   add_commas(0), "/", add_commas((char_meter_max(ch, "lifeforce"))),
+                   char_stat_get(ch, "life_percent"), "%");
     }
   }
   if (view == full || view == stats) {
     send_to_char(ch, "  @cO@D-----------------------------@D[ @cStatistics "
                      "@D]-----------------------------@cO@n\n");
     send_to_char(
-        ch, "      @D<@wCharacter Level@D: @w%-3d@D> <@wRPP@D: @w%-3d@D>\n",
+        ch, "      @D<@wCharacter Level@D: @w%-3ld@D> <@wRPP@D: @w%-3d@D>\n",
         GET_LEVEL(ch), GET_RP(ch));
     send_to_char(
         ch,
@@ -5583,18 +5583,18 @@ ACMD(do_score) {
         add_commas(GET_SPEEDI(ch)), add_commas(GET_ARMOR(ch)));
     send_to_char(
         ch,
-        "    @D[    @RStrength@D|@G%2d (%3d)@D] [     @YAgility@D|@G%2d "
-        "(%3d)@D] [      @BSpeed@D|@G%2d (%3d)@D]@n\n",
-        (int)char_stat_get(ch, "strength"), GET_STR(ch),
-        (int)char_stat_get(ch, "agility"), GET_DEX(ch),
-        (int)char_stat_get(ch, "speed"), GET_CHA(ch));
+        "    @D[    @RStrength@D|@G%2ld (%3ld)@D] [     @YAgility@D|@G%2ld "
+        "(%3ld)@D] [      @BSpeed@D|@G%2ld (%3ld)@D]@n\n",
+        char_stat_get(ch, "strength"), GET_STR(ch),
+        char_stat_get(ch, "agility"), GET_DEX(ch),
+        char_stat_get(ch, "speed"), GET_CHA(ch));
     send_to_char(
         ch,
-        "    @D[@gConstitution@D|@G%2d (%3d)@D] [@CIntelligence@D|@G%2d "
-        "(%3d)@D] [     @MWisdom@D|@G%2d (%3d)@D]@n\n",
-        (int)char_stat_get(ch, "constitution"), GET_CON(ch),
-        (int)char_stat_get(ch, "intelligence"), GET_INT(ch),
-        (int)char_stat_get(ch, "wisdom"), GET_WIS(ch));
+        "    @D[@gConstitution@D|@G%2ld (%3ld)@D] [@CIntelligence@D|@G%2ld "
+        "(%3ld)@D] [     @MWisdom@D|@G%2ld (%3ld)@D]@n\n",
+        char_stat_get(ch, "constitution"), GET_CON(ch),
+        char_stat_get(ch, "intelligence"), GET_INT(ch),
+        char_stat_get(ch, "wisdom"), GET_WIS(ch));
   }
   if (view == full || view == other) {
     send_to_char(ch, "  @cO@D-----------------------------@D[   @cOther    "
@@ -5617,7 +5617,7 @@ ACMD(do_score) {
       send_to_char(ch, "                             @D<@GEvolution @D>@n\n");
       send_to_char(
           ch,
-          "      @D[ @CEvo Level@D| @W%-15d@D] [   @CEvo Exp@D| @W%-15s@D]\n",
+          "      @D[ @CEvo Level@D| @W%-15ld@D] [   @CEvo Exp@D| @W%-15s@D]\n",
           GET_MOLT_LEVEL(ch), add_commas(GET_MOLT_EXP(ch)));
       send_to_char(ch, "      @D[ @CThreshold@D| @W%-15s@D]@n\n",
                    add_commas(molt_threshold(ch)));

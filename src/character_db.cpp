@@ -46,7 +46,7 @@ int64_t char_legacy_modifier(struct char_data *ch, int location, int specific) {
       if (af.location != location)
         continue;
       if (af.specific == specific ||
-          af.specific == -1) {
+          specific == -1) {
         mod += af.modifier;
       }
     }

@@ -10,7 +10,8 @@ return {
 
         local sup = ch:stat_get("suppression")
         if sup > 0 then
-            local suppression_remaining = scale - (sup * 10000)
+            local suppression_remaining = sup * 10000
+            if suppression_remaining > scale then suppression_remaining = scale end
             if suppression_remaining < remaining then remaining = suppression_remaining end
         end
 
