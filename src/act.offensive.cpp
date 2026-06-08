@@ -13470,10 +13470,12 @@ ACMD(do_bite) {
           act("@R$N@r was poisoned by your bite!@n", TRUE, ch, 0, vict,
               TO_CHAR);
           act("@rYou were poisoned by the bite!@n", TRUE, ch, 0, vict, TO_VICT);
-          vict->poisonby = ch;
           int duration = (GET_INT(ch) / 50) + 1;
-          assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0,
-                        0);
+          char idbuf[20];
+          snprintf(idbuf, sizeof(idbuf), "%d", ch->id);
+          char_condition_add(ch, "poison", "character", idbuf);
+          char_condition_duration_set(ch, "poison", duration * SECS_PER_MUD_HOUR);
+          char_condition_number_set(ch, "poison", "poison_by", ch->id);
         }
       }
 
@@ -14708,7 +14710,7 @@ ACMD(do_slam) {
         } else if ((GET_POS(vict) == POS_STANDING ||
                     GET_POS(vict) == POS_FIGHTING) &&
                    !AFF_FLAGGED(vict, AFF_KNOCKED)) {
-          GET_POS(vict) = POS_SITTING;
+          char_position_set(vict, POS_SITTING);
         }
         if (room_dmg_get(char_room_get(vict)) <= 95 &&
             !room_flagged(char_room_get(vict), ROOM_SPACE)) {
@@ -16706,7 +16708,7 @@ ACMD(do_charge) {
     send_to_char(ch, "Your mind is still strained from psychic attacks...\r\n");
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_POISON)) {
+  if (char_condition_has(ch, "poison")) {
     send_to_char(ch, "You feel too sick from the poison to concentrate.\r\n");
     return;
   }

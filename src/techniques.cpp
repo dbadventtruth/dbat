@@ -196,7 +196,7 @@ void tech_handle_crashdown(char_data *ch, char_data *vict) {
     act("@w$N@w is knocked out of the air!@n", TRUE, ch, 0, vict, TO_NOTVICT);
     REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FLYING);
     GET_ALT(vict) = 0;
-    GET_POS(vict) = POS_SITTING;
+    char_position_set(vict, POS_SITTING);
   } else {
     handle_knockdown(vict);
   }

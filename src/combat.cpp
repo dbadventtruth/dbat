@@ -140,13 +140,13 @@ void damage_weapon(struct char_data *ch, struct obj_data *obj,
 
   int result = ranking - material;
 
-  if (AFF_FLAGGED(ch, AFF_CURSE)) {
+  if (char_condition_has(ch, "curse")) {
     result += 3;
-  } else if (AFF_FLAGGED(ch, AFF_BLESS) && rand_number(1, 3) == 3) {
+  } else if (char_condition_has(ch, "bless") && rand_number(1, 3) == 3) {
     if (result > 1) {
       result = 1;
     }
-  } else if (AFF_FLAGGED(ch, AFF_BLESS)) {
+  } else if (char_condition_has(ch, "bless")) {
     result = 0;
   }
 
@@ -989,7 +989,7 @@ void handle_knockdown(struct char_data *ch) {
   } else {
     act("@mYou are knocked off your feet!@n", TRUE, ch, 0, 0, TO_CHAR);
     act("@W$n@m is knocked off $s feet!@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
   }
 }
 
@@ -1912,11 +1912,11 @@ void damage_eq(struct char_data *vict, int location) {
     if (GET_OBJ_VNUM(eq) == 20099 || GET_OBJ_VNUM(eq) == 20098)
       loss = 1;
 
-    if (AFF_FLAGGED(vict, AFF_CURSE)) {
+    if (char_condition_has(vict, "curse")) {
       loss *= 3;
-    } else if (AFF_FLAGGED(vict, AFF_BLESS) && rand_number(1, 3) == 3) {
+    } else if (char_condition_has(vict, "bless") && rand_number(1, 3) == 3) {
       loss = 1;
-    } else if (AFF_FLAGGED(vict, AFF_BLESS)) {
+    } else if (char_condition_has(vict, "bless")) {
       return;
     }
 
@@ -1934,13 +1934,13 @@ void damage_eq(struct char_data *vict, int location) {
                GET_OBJ_VAL(eq, VAL_ALL_MATERIAL) == MATERIAL_SILK) {
       act("@WYour $p@W rips a little!@n", FALSE, 0, eq, vict, TO_VICT);
       act("@C$N's@W $p@W rips a little!@n", FALSE, 0, eq, vict, TO_NOTVICT);
-      if (AFF_FLAGGED(vict, AFF_BLESS)) {
+      if (char_condition_has(vict, "bless")) {
         send_to_char(vict, "@c...But your blessing seems to have partly mended "
                            "this damage.@n\r\n");
         act("@c...but @C$N's@c body glows blue for a moment and the damage "
             "mends a little.@n",
             TRUE, 0, 0, vict, TO_NOTVICT);
-      } else if (AFF_FLAGGED(vict, AFF_CURSE)) {
+      } else if (char_condition_has(vict, "curse")) {
         send_to_char(vict, "@r...and your curse seems to have made the damage "
                            "three times worse!@n\r\n");
         act("@c...but @C$N's@c body glows red for a moment and the damage grow "
@@ -1950,13 +1950,13 @@ void damage_eq(struct char_data *vict, int location) {
     } else {
       act("@WYour $p@W cracks a little!@n", FALSE, 0, eq, vict, TO_VICT);
       act("@C$N's@W $p@W cracks a little!@n", FALSE, 0, eq, vict, TO_NOTVICT);
-      if (AFF_FLAGGED(vict, AFF_BLESS)) {
+      if (char_condition_has(vict, "bless")) {
         send_to_char(vict, "@c...But your blessing seems to have partly mended "
                            "this damage.@n\r\n");
         act("@c...but @C$N's@c body glows blue for a moment and the damage "
             "mends a little.@n",
             TRUE, 0, 0, vict, TO_NOTVICT);
-      } else if (AFF_FLAGGED(vict, AFF_CURSE)) {
+      } else if (char_condition_has(vict, "curse")) {
         send_to_char(vict, "@r...and your curse seems to have made the damage "
                            "three times worse!@n\r\n");
         act("@c...but @C$N's@c body glows red for a moment and the damage grow "
@@ -4738,7 +4738,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
       cureStatusKnockedOutAnnounced(vict, true);
       if (IS_NPC(vict) && rand_number(1, 20) >= 12) {
         act("@W$n@W stands up.@n", FALSE, vict, 0, 0, TO_ROOM);
-        GET_POS(vict) = POS_STANDING;
+        char_position_set(vict, POS_STANDING);
       }
     }
     if (IS_NPC(ch)) {
@@ -4813,7 +4813,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         if (FIGHTING(ch)) {
           stop_fighting(ch);
         }
-        GET_POS(vict) = POS_SLEEPING;
+        char_position_set(vict, POS_SLEEPING);
         if (!IS_NPC(ch)) {
           SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
         }
@@ -4853,7 +4853,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
       if (FIGHTING(ch)) {
         stop_fighting(ch);
       }
-      GET_POS(vict) = POS_SLEEPING;
+      char_position_set(vict, POS_SLEEPING);
       if (!IS_NPC(ch)) {
         SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
       }
@@ -4904,7 +4904,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         if (FIGHTING(ch)) {
           stop_fighting(ch);
         }
-        GET_POS(vict) = POS_SITTING;
+        char_position_set(vict, POS_SITTING);
         char_from_room(vict);
         char_to_room(vict, room_by_id(sensei_start_room(vict->chclass)));
       }
@@ -4978,7 +4978,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
           send_to_char(ch, "@D[@GDamage@W: @R%s@D]@n\r\n", add_commas(dmg));
           send_to_char(vict, "@D[@rDamage@W: @R%s@D]@n\r\n", add_commas(dmg));
           int64_t healhp = (long double)(GET_MAX_HIT(vict)) * 0.12;
-          if (AFF_FLAGGED(ch, AFF_METAMORPH) &&
+          if (char_condition_has(ch, "dark_metamorphosis") &&
               GET_HIT(ch) <= GET_MAX_HIT(ch)) {
             act("@RYour dark aura saps some of @r$N's@R life energy!@n", TRUE,
                 ch, 0, vict, TO_CHAR);

@@ -49,7 +49,6 @@ int extractions_pending = 0;
 /* Extract a ch completely from the world, and leave his stuff behind */
 void extract_char_final(struct char_data *ch) {
   struct char_data *k, *temp;
-  struct obj_data *chair;
   struct descriptor_data *d;
   struct obj_data *obj;
 
@@ -106,8 +105,7 @@ void extract_char_final(struct char_data *ch) {
   if (ch->followers || ch->master)
     die_follower(ch);
 
-  if (SITS(ch)) {
-    chair = SITS(ch);
+  if (auto chair = SITS(ch)) {
     SITTING(chair) = NULL;
     SITS(ch) = NULL;
   }
@@ -164,10 +162,6 @@ void extract_char_final(struct char_data *ch) {
   }
   if (CARRIED_BY(ch)) {
     carry_drop(CARRIED_BY(ch), 3);
-  }
-
-  if (ch->poisonby) {
-    ch->poisonby = NULL;
   }
 
   if (DRAGGING(ch)) {
@@ -228,11 +222,11 @@ void extract_char_final(struct char_data *ch) {
   if (FIGHTING(ch))
     stop_fighting(ch);
 
-  for (k = combat_list; k; k = temp) {
-    temp = k->next_fighting;
+  char_iterate_subscriptions("combat", [&](auto k) {
     if (FIGHTING(k) == ch)
       stop_fighting(k);
-  }
+    return true;
+  });
 
   char_from_room(ch);
 

@@ -1377,7 +1377,7 @@ ACMD(do_trip) {
           TRUE, ch, 0, vict, TO_NOTVICT);
       improve_skill(ch, SKILL_TRIP, 0);
       decCurST(ch, cost);
-      GET_POS(vict) = POS_SITTING;
+      char_position_set(vict, POS_SITTING);
       WAIT_STATE(ch, PULSE_4SEC);
       if (FIGHTING(ch) == NULL) {
         set_fighting(ch, vict);
@@ -2413,7 +2413,7 @@ ACMD(do_future) {
     SET_BIT_AR(AFF_FLAGS(vict), AFF_FUTURE);
     char_stat_mod(vict, "speed", 5);
     char_stat_mod(vict, "intelligence", 2);
-    GET_POS(vict) = POS_SLEEPING;
+    char_position_set(vict, POS_SLEEPING);
     save_char(vict);
   } else {
     if (char_stat_get(ch, "speed") + 5 > 70 && GET_BONUS(ch, BONUS_SLOW) > 0) {
@@ -2441,7 +2441,7 @@ ACMD(do_future) {
     SET_BIT_AR(AFF_FLAGS(ch), AFF_FUTURE);
     char_stat_mod(ch, "speed", 5);
     char_stat_mod(ch, "intelligence", 2);
-    GET_POS(vict) = POS_SLEEPING;
+    char_position_set(vict, POS_SLEEPING);
     save_char(ch);
   }
 }
@@ -2952,7 +2952,9 @@ ACMD(do_pose) {
         ch,
         "@WYou feel your confidence increase! @G+8 Str @Wand@G +8 Wis!@n\r\n");
     int64_t before = (getMaxLF(ch));
+    int duration = 5 * GET_SKILL(ch, SKILL_POSE);
     char_condition_apply(ch, "special_pose", "affect", "special_pose");
+    char_condition_duration_set(ch, "special_pose", duration);
     save_char(ch);
     incCurLF(ch, (getMaxLF(ch)) - before);
     decCurST(ch, getMaxST(ch) / 40);
@@ -5621,10 +5623,12 @@ ACMD(do_focus) {
     send_to_char(ch, "You are inside a healing tank!\r\n");
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_CURSE)) {
+  if (char_condition_has(ch, "curse")) {
     send_to_char(ch, "You are cursed and can't focus!\r\n");
     return;
-  } else if (!(strcmp(arg, "tough"))) {
+  }
+  
+  if (!(strcmp(arg, "tough"))) {
     if (!know_skill(ch, SKILL_TSKIN)) {
       return;
     }
@@ -6248,7 +6252,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_BLESS)) {
+      if (char_condition_has(ch, "bless")) {
         send_to_char(ch, "You already are blessed!\r\n");
         return;
       } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -6268,7 +6272,7 @@ ACMD(do_focus) {
         int duration = roll_aff_duration(GET_INT(ch), 3);
         ;
         /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(ch, AFF_BLESS, SKILL_BLESS, duration, 0, 0, 0, 0, 0, 0);
+        char_condition_add(ch, "bless", "affect", "bless");
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
         if (IS_KABITO(ch)) {
@@ -6284,9 +6288,9 @@ ACMD(do_focus) {
         act("$n focuses ki while chanting spiritual words. $n smiles after "
             "finishing $s chant.",
             TRUE, ch, 0, 0, TO_ROOM);
-        if (AFF_FLAGGED(ch, AFF_CURSE)) {
+        if (char_condition_has(ch, "curse")) {
           send_to_char(ch, "Your cursing was nullified!\r\n");
-          null_affect(ch, AFF_CURSE);
+          char_condition_remove(ch, "curse", "focus");
         }
         return;
       }
@@ -6305,7 +6309,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_BLESS)) {
+        if (char_condition_has(vict, "bless")) {
           send_to_char(ch, "They already have been blessed!\r\n");
           return;
         } else if (IS_NPC(vict)) {
@@ -6331,8 +6335,8 @@ ACMD(do_focus) {
           int duration = roll_aff_duration(GET_INT(ch), 3);
           ;
           /* Str , Con, Int, Agl, Wis, Spd */
-          assign_affect(vict, AFF_BLESS, SKILL_BLESS, duration, 0, 0, 0, 0, 0,
-                        0);
+          char_condition_add(vict, "bless", "affect", "bless");
+          char_condition_duration_set(vict, "bless", duration * SECS_PER_MUD_HOUR);
           decCurKI(ch, getMaxKI(ch) / 20);
           reveal_hiding(ch, 0);
           if (IS_KAI(ch)) {
@@ -6361,9 +6365,9 @@ ACMD(do_focus) {
                             level_exp(ch, GET_LEVEL(ch) + 1) * 0.05);
             }
           }
-          if (AFF_FLAGGED(vict, AFF_CURSE)) {
+          if (char_condition_has(vict, "curse")) {
             send_to_char(vict, "Your cursing was nullified!\r\n");
-            null_affect(vict, AFF_CURSE);
+            char_condition_remove(vict, "curse", "focus");
           }
           return;
         }
@@ -6377,7 +6381,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_CURSE)) {
+      if (char_condition_has(ch, "curse")) {
         send_to_char(ch, "You already are cursed!\r\n");
         return;
       } else if (IS_DEMON(ch)) {
@@ -6399,8 +6403,9 @@ ACMD(do_focus) {
       } else {
         int duration = roll_aff_duration(GET_INT(ch), 3);
         ;
+        char_condition_add(ch, "curse", "affect", "curse");
+        char_condition_duration_set(ch, "curse", duration * SECS_PER_MUD_HOUR);
         /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(vict, AFF_CURSE, SKILL_CURSE, duration, 0, 0, 0, 0, 0, 0);
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
         act("You focus ki while chanting demonic words. You feel your body "
@@ -6409,9 +6414,9 @@ ACMD(do_focus) {
         act("$n focuses ki while chanting demonic words. $n grins after "
             "finishing $s chant.",
             TRUE, ch, 0, 0, TO_ROOM);
-        if (AFF_FLAGGED(ch, AFF_BLESS)) {
+        if (char_condition_has(ch, "bless")) {
           send_to_char(ch, "Your blessing was nullified!\r\n");
-          null_affect(ch, AFF_BLESS);
+          char_condition_remove(ch, "bless", "affect_removed");
         }
         return;
       }
@@ -6430,7 +6435,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_CURSE)) {
+        if (char_condition_has(vict, "curse")) {
           send_to_char(ch, "They already have been cursed!\r\n");
           return;
         } else if (IS_NPC(vict)) {
@@ -6457,9 +6462,8 @@ ACMD(do_focus) {
         } else {
           int duration = roll_aff_duration(GET_INT(ch), 3);
           ;
-          /* Str , Con, Int, Agl, Wis, Spd */
-          assign_affect(vict, AFF_CURSE, SKILL_CURSE, duration, 0, 0, 0, 0, 0,
-                        0);
+          char_condition_add(vict, "curse", "affect", "curse");
+          char_condition_duration_set(vict, "curse", duration * SECS_PER_MUD_HOUR);
           decCurKI(ch, getMaxKI(ch) / 20);
           reveal_hiding(ch, 0);
           act("You focus ki while chanting demonic words. cursing $N with "
@@ -6471,9 +6475,9 @@ ACMD(do_focus) {
           act("$n focuses ki while chanting demonic words. $n then places a "
               "hand on $N's head, cursing them!",
               TRUE, ch, 0, vict, TO_NOTVICT);
-          if (AFF_FLAGGED(vict, AFF_BLESS)) {
+          if (char_condition_has(vict, "bless")) {
             send_to_char(vict, "Your blessing was nullified!\r\n");
-            null_affect(vict, AFF_BLESS);
+            char_condition_remove(vict, "bless", "affect_removed");
           }
           return;
         }
@@ -6549,7 +6553,7 @@ ACMD(do_focus) {
         act("$n focuses ki while moving $s hands in a lulling pattern, putting "
             "$N to sleep!",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        GET_POS(vict) = POS_SLEEPING;
+        char_position_set(vict, POS_SLEEPING);
         if (AFF_FLAGGED(vict, AFF_FLYING)) {
           REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FLYING);
           GET_ALT(vict) = 0;
@@ -6659,7 +6663,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (!AFF_FLAGGED(ch, AFF_POISON)) {
+      if (!char_condition_has(ch, "poison")) {
         send_to_char(ch, "You are not poisoned!\r\n");
         return;
       } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -6684,7 +6688,7 @@ ACMD(do_focus) {
             TRUE, ch, 0, 0, TO_CHAR);
         act("$n focuses ki and aims a pulsing light at $s body. $n smiles.",
             TRUE, ch, 0, 0, TO_ROOM);
-        null_affect(ch, AFF_POISON);
+        char_condition_remove(ch, "poison", "skill_cure");
         return;
       }
     } // End of no vict cure
@@ -6702,7 +6706,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (!AFF_FLAGGED(vict, AFF_POISON)) {
+        if (!char_condition_has(vict, "poison")) {
           send_to_char(ch, "They are not poisoned!\r\n");
           return;
         } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -6732,7 +6736,7 @@ ACMD(do_focus) {
               TRUE, ch, 0, vict, TO_VICT);
           act("$n focuses ki and aims a pulsing light at $N's body. $N smiles.",
               TRUE, ch, 0, vict, TO_NOTVICT);
-          null_affect(vict, AFF_POISON);
+          char_condition_remove(vict, "poison", "skill_cure");
           return;
         }
       }
@@ -6764,7 +6768,7 @@ ACMD(do_focus) {
           return;
         }
       }
-      if (AFF_FLAGGED(vict, AFF_POISON)) {
+      if (char_condition_has(vict, "poison")) {
         send_to_char(ch, "They already have been poisoned!\r\n");
         return;
       } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -6804,7 +6808,6 @@ ACMD(do_focus) {
           act("However $N seems unaffected by the poison.", TRUE, ch, 0, vict,
               TO_NOTVICT);
         } else {
-          vict->poisonby = ch;
           if (GET_CHARGE(vict) > 0) {
             send_to_char(
                 vict,
@@ -6812,8 +6815,9 @@ ACMD(do_focus) {
             release_charge(vict);
           }
           int duration = GET_INT(ch) / 20;
-          assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0,
-                        0);
+          char_condition_add(vict, "poison", "affect", "poison");
+          char_condition_duration_set(vict, "poison", duration * SECS_PER_MUD_HOUR);
+          char_condition_number_set(vict, "poison", "poison_by", ch->id);
         }
         return;
       }
@@ -7760,7 +7764,7 @@ ACMD(do_heal) {
       }
     }
 
-    null_affect(vict, AFF_POISON);
+    char_condition_remove(vict, "poison", "skill_heal");
     null_affect(vict, AFF_BLIND);
     if (AFF_FLAGGED(vict, AFF_BURNED)) {
       send_to_char(vict, "Your burns are healed now.\r\n");
@@ -7831,7 +7835,7 @@ ACMD(do_heal) {
                      "@GYou feel some of your stamina return as well!@n\r\n");
       }
     }
-    null_affect(vict, AFF_POISON);
+    char_condition_remove(vict, "poison", "skill_heal");
     null_affect(vict, AFF_BLIND);
     GET_LIMBCOND(vict, 1) = 100;
     GET_LIMBCOND(vict, 2) = 100;
@@ -9611,7 +9615,7 @@ void base_update(void) {
       ash_burn(d->character);
     }
     int64_t forty_lf = getMaxLF(d->character) * 0.4;
-    if (AFF_FLAGGED(d->character, AFF_CURSE) &&
+    if (char_condition_has(d->character, "curse") &&
         getCurLF(d->character) > forty_lf) {
       decCurLFPercent(d->character, .01);
       demon_refill_lf(d->character, getMaxLF(d->character) * 0.01);
@@ -10669,7 +10673,7 @@ ACMD(do_scouter) {
                        "Healing Glow Prepared");
           check = TRUE;
         }
-        if (AFF_FLAGGED(vict, AFF_POISON)) {
+        if (char_condition_has(vict, "poison")) {
           send_to_char(ch, "%s@Y%21s@n@D|@n\n",
                        check == TRUE ? "@D|@1             " : "", "Poisoned");
           check = TRUE;
@@ -11103,7 +11107,7 @@ ACMD(do_steal) {
           return;
         } else { /* Failure! */
           reveal_hiding(ch, 0);
-          GET_POS(vict) = POS_SITTING;
+          char_position_set(vict, POS_SITTING);
           act("@rYou are caught trying to steal $p@r from @R$N@r!@n", TRUE, ch,
               obj, vict, TO_CHAR);
           act("@rYou feel your body being shifted while you sleep and wake up "
@@ -11114,7 +11118,7 @@ ACMD(do_steal) {
               TRUE, ch, obj, vict, TO_NOTVICT);
           WAIT_STATE(ch, PULSE_3SEC);
           if (IS_NPC(vict)) {
-            GET_POS(vict) = POS_STANDING;
+            char_position_set(vict, POS_STANDING);
             set_fighting(vict, ch);
           }
           improve_skill(ch, SKILL_SLEIGHT_OF_HAND, 2);
@@ -11175,7 +11179,7 @@ ACMD(do_steal) {
               TO_NOTVICT);
           WAIT_STATE(ch, PULSE_3SEC);
           if (IS_NPC(vict)) {
-            GET_POS(vict) = POS_STANDING;
+            char_position_set(vict, POS_STANDING);
             set_fighting(vict, ch);
           }
           improve_skill(ch, SKILL_SLEIGHT_OF_HAND, 2);
@@ -11714,14 +11718,14 @@ ACMD(do_use) {
         }
         return;
       case 383:
-        if (AFF_FLAGGED(ch, AFF_POISON)) {
+        if (char_condition_has(ch, "poison")) {
           act("@WYou place the $p@W against your neck and feel a rush of "
               "relief as the antitoxiin enters your bloodstream.@n",
               TRUE, ch, mag_item, 0, TO_CHAR);
           act("@C$n@W places an $p@W against $s neck and a loud click is "
               "heard.@n",
               TRUE, ch, mag_item, 0, TO_ROOM);
-          null_affect(ch, AFF_POISON);
+          char_condition_remove(ch, "poison", "item_antitoxin");
           extract_obj(mag_item);
         } else {
           send_to_char(ch, "You are not poisoned.\r\n");

@@ -35,6 +35,12 @@ void obj_unsubscribe(int64_t id, const char *list_name);
 void obj_clear_subscriptions(int64_t id);
 void obj_for_each(const char *list_name, void (*func)(struct obj_data *obj));
 
+int obj_subscribe_add(struct obj_data *obj, const char *tag);
+void obj_subscribe_remove(struct obj_data *obj, const char *tag);
+void obj_unsubscribe_all(struct obj_data *obj);
+int64_t *obj_subscribe_ids(const char *tag, size_t *count);
+void obj_subscribe_ids_free(int64_t *ptr);
+
 void *obj_iterator_create();
 struct obj_data *obj_next(void *iterator);
 void obj_iterator_free(void *iterator);

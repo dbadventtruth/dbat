@@ -67,8 +67,6 @@
 #include <string.h>
 
 /* Structures */
-struct char_data *combat_list = NULL; /* head of l-list of fighting chars */
-struct char_data *next_combat_list = NULL;
 
 /* local functions */
 static void perform_group_gain(struct char_data *ch, int base,
@@ -851,7 +849,7 @@ void fight_stack() {
     ch = tch;
 
     if (GET_POS(ch) == POS_FIGHTING) {
-      GET_POS(ch) = POS_STANDING;
+      char_position_set(ch, POS_STANDING);
     }
     if (PLR_FLAGGED(ch, PLR_SPIRAL)) {
       handle_spiral(ch, NULL, GET_SKILL(ch, SKILL_SPIRAL), FALSE);
@@ -995,7 +993,7 @@ void fight_stack() {
         act("@C$n@W chokes @c$N@W, and $E passes out!@n", TRUE, ch, 0,
             GRAPPLING(ch), TO_NOTVICT);
         SET_BIT_AR(AFF_FLAGS(GRAPPLING(ch)), AFF_KNOCKED);
-        GET_POS(GRAPPLING(ch)) = POS_SLEEPING;
+        char_position_set(GRAPPLING(ch), POS_SLEEPING);
         GRAPTYPE(GRAPPLING(ch)) = -1;
         GRAPPLED(GRAPPLING(ch)) = NULL;
         GRAPPLING(ch) = NULL;
@@ -1116,7 +1114,7 @@ void fight_stack() {
       cureStatusKnockedOutAnnounced(ch, true);
       if (IS_NPC(ch) && rand_number(1, 20) >= 12) {
         act("@W$n@W stands up.@n", FALSE, ch, 0, 0, TO_ROOM);
-        GET_POS(ch) = POS_STANDING;
+        char_position_set(ch, POS_STANDING);
       }
     }
 
@@ -1604,15 +1602,15 @@ void update_pos(struct char_data *victim) {
   else if (GET_POS(victim) == POS_SITTING && FIGHTING(victim))
     return;
   else if (GET_HIT(victim) > 0)
-    GET_POS(victim) = POS_STANDING;
+    char_position_set(victim, POS_STANDING);
   else if (GET_HIT(victim) <= -11)
-    GET_POS(victim) = POS_DEAD;
+    char_position_set(victim, POS_DEAD);
   else if (GET_HIT(victim) <= -6)
-    GET_POS(victim) = POS_MORTALLYW;
+    char_position_set(victim, POS_MORTALLYW);
   else if (GET_HIT(victim) <= -3)
-    GET_POS(victim) = POS_INCAP;
+    char_position_set(victim, POS_INCAP);
   else
-    GET_POS(victim) = POS_STUNNED;
+    char_position_set(victim, POS_STUNNED);
 }
 
 static void check_killer(struct char_data *ch, struct char_data *vict) {
@@ -1632,15 +1630,14 @@ void set_fighting(struct char_data *ch, struct char_data *vict) {
     return;
   }
 
-  ch->next_fighting = combat_list;
-  combat_list = ch;
+  char_subscribe_add(ch, "combat");
 
   FIGHTING(ch) = vict;
 
   if (GET_POS(ch) == POS_SITTING) {
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
   } else if (GET_POS(ch) == POS_SLEEPING) {
-    GET_POS(ch) = POS_SLEEPING;
+    char_position_set(ch, POS_SLEEPING);
   }
 
   if (!CONFIG_PK_ALLOWED)
@@ -1649,17 +1646,12 @@ void set_fighting(struct char_data *ch, struct char_data *vict) {
 
 /* remove a char from the list of fighting chars */
 void stop_fighting(struct char_data *ch) {
-  struct char_data *temp;
 
-  if (ch == next_combat_list)
-    next_combat_list = ch->next_fighting;
+  char_subscribe_remove(ch, "combat");
 
-  if (IS_NPC(ch)) {
-    COMBO(ch) = -1;
-    COMBHITS(ch) = 0;
-  }
-  REMOVE_FROM_LIST(ch, combat_list, next_fighting, temp);
-  ch->next_fighting = NULL;
+  COMBO(ch) = -1;
+  COMBHITS(ch) = 0;
+  
   FIGHTING(ch) = NULL;
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
@@ -2126,7 +2118,7 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
   /* To make ordinary commands work in scripts.  welcor*/
   if (GET_POS(ch) != POS_SITTING && GET_POS(ch) != POS_SLEEPING &&
       GET_POS(ch) != POS_RESTING)
-    GET_POS(ch) = POS_STANDING;
+    char_position_set(ch, POS_STANDING);
 
   if (killer && !IS_NPC(killer)) {
     if (!IS_NPC(killer) && !IS_NPC(ch)) {
@@ -2304,11 +2296,11 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
     if (FIGHTING(ch))
       stop_fighting(ch);
 
-    for (k = combat_list; k; k = temp) {
-      temp = k->next_fighting;
+    char_iterate_subscriptions("combat", [&](auto k) {
       if (FIGHTING(k) == ch)
         stop_fighting(k);
-    }
+      return true;
+    });
 
     bool android_lose = true;
     DeathType death_type = Afterlife;
@@ -2428,7 +2420,7 @@ void die(struct char_data *ch, struct char_data *killer) {
     decCurHealthPercentFloored(ch, 1, 1);
     decCurKIPercentFloored(ch, 1, 1);
     decCurSTPercentFloored(ch, 1, 1);
-    null_affect(ch, AFF_POISON);
+    char_condition_remove(ch, "poison", "immortal_wish");
     if (char_stat_get(ch, "hunger") >= 0) {
       char_stat_set(ch, "hunger", 48);
     }
@@ -2438,7 +2430,7 @@ void die(struct char_data *ch, struct char_data *killer) {
     if (FIGHTING(ch)) {
       stop_fighting(ch);
     }
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
     teleport_to(ch, sensei_start_room(ch->chclass));
     return;
   }

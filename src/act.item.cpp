@@ -3931,12 +3931,8 @@ ACMD(do_drink) {
     send_to_char(ch, "Oops, it tasted rather strange!\r\n");
     act("$n chokes and utters some strange sounds.", TRUE, ch, 0, 0, TO_ROOM);
 
-    af.type = SPELL_POISON;
-    af.duration = amount * 3;
-    af.modifier = 0;
-    af.location = APPLY_NONE;
-    af.bitvector = AFF_POISON;
-    affect_join(ch, &af, FALSE, FALSE, FALSE, FALSE);
+    char_condition_add(ch, "poison", "drink", "poison");
+    char_condition_duration_set(ch, "poison", amount * 3 * SECS_PER_MUD_HOUR);
   }
   /* empty the container, and no longer poison.
      Only remove if it's max capacity > 0, not eternal */
@@ -3969,7 +3965,7 @@ ACMD(do_eat) {
     send_to_char(ch, "You are inside a healing tank!\r\n");
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_POISON)) {
+  if (char_condition_has(ch, "poison")) {
     send_to_char(ch, "You feel too sick from the poison to eat!\r\n");
     return;
   }
@@ -4117,12 +4113,8 @@ ACMD(do_eat) {
     send_to_char(ch, "Oops, that tasted rather strange!\r\n");
     act("$n coughs and utters some strange sounds.", FALSE, ch, 0, 0, TO_ROOM);
 
-    af.type = SPELL_POISON;
-    af.duration = amount * 2;
-    af.modifier = 0;
-    af.location = APPLY_NONE;
-    af.bitvector = AFF_POISON;
-    affect_join(ch, &af, FALSE, FALSE, FALSE, FALSE);
+    char_condition_add(ch, "poison", "eat", "poison");
+    char_condition_duration_set(ch, "poison", amount * 2 * SECS_PER_MUD_HOUR);
   }
 
   GET_OBJ_VAL(food, VAL_FOOD_FOODVAL) -= amount;

@@ -416,186 +416,192 @@ int enter_player_game(struct descriptor_data *d) {
   struct room_data *load_room = NULL;
   struct char_data *check;
 
-  reset_char(d->character);
-  read_aliases(d->character);
+  auto ch = d->character;
 
-  racial_body_parts(d->character);
+  reset_char(ch);
+  read_aliases(ch);
 
-  if (PLR_FLAGGED(d->character, PLR_INVSTART))
-    GET_INVIS_LEV(d->character) = GET_LEVEL(d->character);
+  racial_body_parts(ch);
+
+  if (PLR_FLAGGED(ch, PLR_INVSTART))
+    GET_INVIS_LEV(ch) = GET_LEVEL(ch);
 
   /*
    * We have to place the character in a room before equipping them
    * or equip_char() will gripe about the person in NOWHERE.
    */
-  load_room = room_by_id(GET_LOADROOM(d->character));
+  load_room = room_by_id(GET_LOADROOM(ch));
 
   /* If char was saved with NOWHERE, or real_room above failed... */
   if (!load_room) {
-    if (GET_ADMLEVEL(d->character))
+    if (GET_ADMLEVEL(ch))
       load_room = room_by_id(CONFIG_IMMORTAL_START);
     else
       load_room = room_by_id(CONFIG_MORTAL_START);
   }
 
-  if (PLR_FLAGGED(d->character, PLR_FROZEN))
+  if (PLR_FLAGGED(ch, PLR_FROZEN))
     load_room = room_by_id(CONFIG_FROZEN_START);
 
-  d->character->next = character_list;
-  character_list = d->character;
+  ch->next = character_list;
+  character_list = ch;
   game_active_player_enter();
-  char_to_room(d->character, load_room);
-  load_result = Crash_load(d->character);
-  if (d->character->host) {
-    free(d->character->host);
-    d->character->host = NULL;
+  char_to_room(ch, load_room);
+  load_result = Crash_load(ch);
+  if (ch->host) {
+    free(ch->host);
+    ch->host = NULL;
   }
-  d->character->host = strdup(d->host);
-  GET_ID(d->character) = GET_IDNUM(d->character);
+  ch->host = strdup(d->host);
+  GET_ID(ch) = GET_IDNUM(ch);
   /* find_char helper */
-  (void)char_register_id(GET_ID(d->character), d->character);
-  read_saved_vars(d->character);
+  (void)char_register_id(GET_ID(ch), ch);
+  read_saved_vars(ch);
   for (check = character_list; check; check = check->next)
     if (!check->master && IS_NPC(check) &&
-        check->master_id == GET_IDNUM(d->character) &&
-        AFF_FLAGGED(check, AFF_CHARM) && !circle_follow(check, d->character))
-      add_follower(check, d->character);
-  save_char(d->character);
+        check->master_id == GET_IDNUM(ch) &&
+        AFF_FLAGGED(check, AFF_CHARM) && !circle_follow(check, ch))
+      add_follower(check, ch);
+  save_char(ch);
 
   if (d->customfile != 1) {
     customCreate(d);
     userWrite(d, 0, 0, 0, "index");
   }
 
-  if (PLR_FLAGGED(d->character, PLR_RARM)) {
-    GET_LIMBCOND(d->character, 1) = 100;
-    REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_RARM);
+  if (PLR_FLAGGED(ch, PLR_RARM)) {
+    GET_LIMBCOND(ch, 1) = 100;
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_RARM);
   }
-  if (PLR_FLAGGED(d->character, PLR_LARM)) {
-    GET_LIMBCOND(d->character, 2) = 100;
-    REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_LARM);
+  if (PLR_FLAGGED(ch, PLR_LARM)) {
+    GET_LIMBCOND(ch, 2) = 100;
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_LARM);
   }
-  if (PLR_FLAGGED(d->character, PLR_LLEG)) {
-    GET_LIMBCOND(d->character, 4) = 100;
-    REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_LLEG);
+  if (PLR_FLAGGED(ch, PLR_LLEG)) {
+    GET_LIMBCOND(ch, 4) = 100;
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_LLEG);
   }
-  if (PLR_FLAGGED(d->character, PLR_RLEG)) {
-    GET_LIMBCOND(d->character, 3) = 100;
-    REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_RLEG);
+  if (PLR_FLAGGED(ch, PLR_RLEG)) {
+    GET_LIMBCOND(ch, 3) = 100;
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_RLEG);
   }
-  GET_COMBINE(d->character) = -1;
-  GET_SLEEPT(d->character) = 8;
-  GET_FOODR(d->character) = 2;
-  if (AFF_FLAGGED(d->character, AFF_FLYING)) {
-    GET_ALT(d->character) = 1;
+  GET_COMBINE(ch) = -1;
+  GET_SLEEPT(ch) = 8;
+  GET_FOODR(ch) = 2;
+  if (AFF_FLAGGED(ch, AFF_FLYING)) {
+    GET_ALT(ch) = 1;
   } else {
-    GET_ALT(d->character) = 0;
+    GET_ALT(ch) = 0;
   }
-  if (AFF_FLAGGED(d->character, AFF_POSITION)) {
-    REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_POSITION);
+  if (AFF_FLAGGED(ch, AFF_POSITION)) {
+    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
   }
-  if (AFF_FLAGGED(d->character, AFF_SANCTUARY)) {
-    REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_SANCTUARY);
+  if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
+    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SANCTUARY);
   }
-  if (AFF_FLAGGED(d->character, AFF_ZANZOKEN)) {
-    REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_ZANZOKEN);
+  if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
+    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
   }
-  if (PLR_FLAGGED(d->character, PLR_KNOCKED)) {
-    REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_KNOCKED);
+  if (PLR_FLAGGED(ch, PLR_KNOCKED)) {
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_KNOCKED);
   }
-  if (IS_ANDROID(d->character) && !AFF_FLAGGED(d->character, AFF_INFRAVISION)) {
-    SET_BIT_AR(AFF_FLAGS(d->character), AFF_INFRAVISION);
+  if (IS_ANDROID(ch) && !AFF_FLAGGED(ch, AFF_INFRAVISION)) {
+    SET_BIT_AR(AFF_FLAGS(ch), AFF_INFRAVISION);
   }
-  ABSORBING(d->character) = NULL;
-  ABSORBBY(d->character) = NULL;
-  SITS(d->character) = NULL;
-  BLOCKED(d->character) = NULL;
-  BLOCKS(d->character) = NULL;
-  GET_OVERFLOW(d->character) = FALSE;
-  GET_SPAM(d->character) = 0;
-  GET_RMETER(d->character) = 0;
-  if (!d->character->affected) {
-    if (AFF_FLAGGED(d->character, AFF_HEALGLOW)) {
-      REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_HEALGLOW);
+  ABSORBING(ch) = NULL;
+  ABSORBBY(ch) = NULL;
+  SITS(ch) = NULL;
+  BLOCKED(ch) = NULL;
+  BLOCKS(ch) = NULL;
+  GET_OVERFLOW(ch) = FALSE;
+  GET_SPAM(ch) = 0;
+  GET_RMETER(ch) = 0;
+  if (!ch->affected) {
+    if (AFF_FLAGGED(ch, AFF_HEALGLOW)) {
+      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_HEALGLOW);
     }
   }
-  if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
-    GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
+  if (AFF_FLAGGED(ch, AFF_HAYASA)) {
+    GET_SPEEDBOOST(ch) = GET_SPEEDCALC(ch) * 0.5;
   } else {
-    GET_SPEEDBOOST(d->character) = 0;
+    GET_SPEEDBOOST(ch) = 0;
   }
-  if (GET_TRP(d->character) < GET_RP(d->character)) {
-    GET_TRP(d->character) = GET_RP(d->character);
-  }
-
-  if (IS_NAMEK(d->character) && char_stat_get(d->character, "hunger") >= 0) {
-    char_stat_set(d->character, "hunger", -1);
+  if (GET_TRP(ch) < GET_RP(ch)) {
+    GET_TRP(ch) = GET_RP(ch);
   }
 
-  if (PLR_FLAGGED(d->character, PLR_HEALT)) {
-    REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_HEALT);
+  if (IS_NAMEK(ch) && char_stat_get(ch, "hunger") >= 0) {
+    char_stat_set(ch, "hunger", -1);
   }
 
-  if (readIntro(d->character, d->character) == 2) {
-    introCreate(d->character);
+  if (PLR_FLAGGED(ch, PLR_HEALT)) {
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_HEALT);
   }
-  if (read_sense_memory(d->character, d->character) == 2) {
-    senseCreate(d->character);
+
+  if (readIntro(ch, ch) == 2) {
+    introCreate(ch);
   }
-  if (GET_ADMLEVEL(d->character) > 0) {
+  if (read_sense_memory(ch, ch) == 2) {
+    senseCreate(ch);
+  }
+  if (GET_ADMLEVEL(ch) > 0) {
     d->level = 1;
   }
 
-  if (GET_CLAN(d->character) != NULL &&
-      !strstr(GET_CLAN(d->character), "None")) {
-    if (!clanIsMember(GET_CLAN(d->character), d->character)) {
-      if (!clanIsModerator(GET_CLAN(d->character), d->character)) {
-        if (!checkCLAN(d->character)) {
+  if (GET_CLAN(ch) != NULL &&
+      !strstr(GET_CLAN(ch), "None")) {
+    if (!clanIsMember(GET_CLAN(ch), ch)) {
+      if (!clanIsModerator(GET_CLAN(ch), ch)) {
+        if (!checkCLAN(ch)) {
           write_to_output(d, "Your clan no longer exists.\r\n");
-          GET_CLAN(d->character) = strdup("None.");
+          GET_CLAN(ch) = strdup("None.");
         }
       }
     }
   }
-  d->character->rp = d->rpp;
-  if (MOON_OK(d->character)) {
-    oozaru_transform(d->character);
+  ch->rp = d->rpp;
+  if (MOON_OK(ch)) {
+    oozaru_transform(ch);
   } else {
-    oozaru_revert(d->character);
+    oozaru_revert(ch);
   }
-  if (IS_HOSHIJIN(d->character)) {
+  if (IS_HOSHIJIN(ch)) {
     if (time_info.day <= 14) {
-      star_phase(d->character, 1);
+      star_phase(ch, 1);
     } else if (time_info.day <= 21) {
-      star_phase(d->character, 2);
+      star_phase(ch, 2);
     } else {
-      star_phase(d->character, 0);
+      star_phase(ch, 0);
     }
   }
 
-  if (IS_ICER(d->character) && !GET_SKILL(d->character, SKILL_TAILWHIP)) {
+  if (IS_ICER(ch) && !GET_SKILL(ch, SKILL_TAILWHIP)) {
     int numb = rand_number(20, 30);
-    SET_SKILL(d->character, SKILL_TAILWHIP, numb);
-  } else if (!IS_ICER(d->character) &&
-             GET_SKILL(d->character, SKILL_TAILWHIP)) {
-    SET_SKILL(d->character, SKILL_TAILWHIP, 0);
+    SET_SKILL(ch, SKILL_TAILWHIP, numb);
+  } else if (!IS_ICER(ch) &&
+             GET_SKILL(ch, SKILL_TAILWHIP)) {
+    SET_SKILL(ch, SKILL_TAILWHIP, 0);
   }
 
-  if (IS_MUTANT(d->character) &&
-      (GET_GENOME(d->character, 0) == 9 || GET_GENOME(d->character, 1) == 9) &&
-      !GET_SKILL(d->character, SKILL_TELEPATHY)) {
-    SET_SKILL(d->character, SKILL_TELEPATHY, 50);
+  if (IS_MUTANT(ch) &&
+      (GET_GENOME(ch, 0) == 9 || GET_GENOME(ch, 1) == 9) &&
+      !GET_SKILL(ch, SKILL_TELEPATHY)) {
+    SET_SKILL(ch, SKILL_TELEPATHY, 50);
   }
 
-  if (IS_BIO(d->character) &&
-      (GET_GENOME(d->character, 0) == 7 || GET_GENOME(d->character, 1) == 7) &&
-      !GET_SKILL(d->character, SKILL_TELEPATHY) &&
-      !GET_SKILL(d->character, SKILL_FOCUS)) {
-    SET_SKILL(d->character, SKILL_TELEPATHY, 30);
-    SET_SKILL(d->character, SKILL_FOCUS, 30);
+  if (IS_BIO(ch) &&
+      (GET_GENOME(ch, 0) == 7 || GET_GENOME(ch, 1) == 7) &&
+      !GET_SKILL(ch, SKILL_TELEPATHY) &&
+      !GET_SKILL(ch, SKILL_FOCUS)) {
+    SET_SKILL(ch, SKILL_TELEPATHY, 30);
+    SET_SKILL(ch, SKILL_FOCUS, 30);
   }
 
-  COMBO(d->character) = -1;
+  if(GET_BONUS(ch, BONUS_DESTROYER) && !char_condition_has(ch, "destroyer")) {
+    char_condition_add(ch, "destroyer", "Bonuses", "Destroyer");
+  }
+
+  COMBO(ch) = -1;
   return load_result;
 }
 

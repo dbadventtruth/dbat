@@ -122,6 +122,47 @@ pub export fn obj_for_each(list_name: ?[*:0]const u8, callback: ?ObjCallback) vo
     }
 }
 
+pub export fn obj_subscribe_add(obj: *cdb.obj_data, tag: ?[*:0]const u8) c_int {
+    return obj_subscribe(cdb.obj_id_get(obj), tag);
+}
+
+pub export fn obj_subscribe_remove(obj: *cdb.obj_data, tag: ?[*:0]const u8) void {
+    obj_unsubscribe(cdb.obj_id_get(obj), tag);
+}
+
+pub export fn obj_unsubscribe_all(obj: *cdb.obj_data) void {
+    obj_clear_subscriptions(cdb.obj_id_get(obj));
+}
+
+pub export fn obj_subscribe_ids(tag: ?[*:0]const u8, out_count: *usize) ?[*]i64 {
+    const name = listNameSlice(tag) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const id_set = subscriptions_by_list.getPtr(name) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = id_set.count();
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    var i: usize = 0;
+    var it = id_set.keyIterator();
+    while (it.next()) |id_ptr| {
+        ids[i] = id_ptr.*;
+        i += 1;
+    }
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn obj_subscribe_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
 const ObjProtoIterator = struct {
     iter: ObjProtoMap.Iterator,
 };

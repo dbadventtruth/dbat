@@ -1801,7 +1801,7 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr) {
     return 0;
   }
 
-  GET_POS(ch) = t[0];
+  char_position_set(ch, t[0]);
   GET_DEFAULT_POS(ch) = t[1];
   GET_SEX(ch) = t[2];
 
@@ -4418,7 +4418,6 @@ void reset_char(struct char_data *ch) {
   IN_ROOM(ch) = NOWHERE;
   ch->carrying = NULL;
   ch->next = NULL;
-  ch->next_fighting = NULL;
   ch->next_in_room = NULL;
   FIGHTING(ch) = NULL;
   ch->position = POS_STANDING;
@@ -4438,7 +4437,7 @@ void clear_char(struct char_data *ch) {
   GET_PFILEPOS(ch) = -1;
   GET_MOB_VNUM(ch) = NOBODY;
   GET_WAS_IN(ch) = NOWHERE;
-  GET_POS(ch) = POS_STANDING;
+  char_position_set(ch, POS_STANDING);
   ch->mob_specials.default_pos = POS_STANDING;
 
   ch->size = SIZE_UNDEFINED;

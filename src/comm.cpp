@@ -463,7 +463,74 @@ void game_legacy_post_tick(void) {
 
 void heartbeat_legacy(int heart_pulse) {
   static int mins_since_crashsave = 0;
+  struct char_data *next_char;
+  struct obj_data *next_obj;
 
+  for(auto ch = character_list; ch; ch = ch->next) {
+    char_der_invalidate(ch);
+  }
+  
+  /*
+  
+  for(auto ch = character_list; ch; ch = next_char) {
+    next_char = ch->next;
+    char_on_heartbeat(ch, heart_pulse);
+  }
+
+  
+  for(auto obj = object_list; obj; obj = next_obj) {
+    next_obj = obj->next;
+    obj_on_heartbeat(obj, heart_pulse);
+  }
+
+
+
+  room_iterate([heart_pulse](auto room) {
+    room_on_heartbeat(room, heart_pulse);
+    return true;
+  });
+
+  */
+
+  if(!(heart_pulse % PULSE_1SEC)) {
+    for (auto ch = character_list; ch; ch = next_char) {
+      next_char = ch->next;
+      char_on_second(ch);
+    }
+
+    for (auto obj = object_list; obj; obj = next_obj) {
+      next_obj = obj->next;
+      obj_on_second(obj);
+    }
+
+    /*
+    room_iterate([](auto room) {
+      room_on_second(room);
+      return true;
+    });
+
+    */
+  }
+
+  if (!(heart_pulse % (SECS_PER_MUD_HOUR * PASSES_PER_SEC))) {
+    for (auto ch = character_list; ch; ch = next_char) {
+      next_char = ch->next;
+      char_on_mud_hour(ch);
+    }
+
+    for (auto obj = object_list; obj; obj = next_obj) {
+      next_obj = obj->next;
+      obj_on_mud_hour(obj);
+    }
+
+    /*
+    room_iterate([](auto room) {
+      room_on_mud_hour(room);
+      return true;
+    });
+    */
+  }
+  
   event_process();
 
   if (!(heart_pulse % PULSE_DG_SCRIPT))
@@ -660,9 +727,9 @@ char *make_prompt(struct descriptor_data *d) {
         if (count >= 0)
           len += count;
       }
-      if (GET_KI(ch) << 2 < GET_MAX_KI(ch) && len < sizeof(prompt)) {
+      if (getCurKI(ch) << 2 < getMaxKI(ch) && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "KI: %" I64T " ",
-                         GET_KI(ch));
+                         getCurKI(ch));
         if (count >= 0)
           len += count;
       }

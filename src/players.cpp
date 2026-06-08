@@ -298,7 +298,7 @@ int load_char(const char *name, struct char_data *ch) {
     GET_RELAXCOUNT(ch) = PFDEF_EYE;
     GET_BLESSLVL(ch) = PFDEF_HEIGHT;
     char_meter_set(ch, "lifeforce", 1000000);
-    GET_POS(ch) = POS_STANDING;
+    char_position_set(ch, POS_STANDING);
     GET_MAJINIZED(ch) = PFDEF_BASEPL;
     char_meter_set(ch, "ki", 1000000);
     char_meter_set(ch, "stamina", 1000000);
@@ -339,8 +339,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_FORGETING(ch) = PFDEF_BANK;
     GET_FORGET_COUNT(ch) = PFDEF_BANK;
     GET_TRANSCLASS(ch) = PFDEF_EXP;
-    GET_KI(ch) = PFDEF_KI;
-    GET_MAX_KI(ch) = PFDEF_MAXKI;
     SPEAKING(ch) = PFDEF_SPEAKING;
     GET_OLC_ZONE(ch) = PFDEF_OLC;
 
@@ -617,7 +615,7 @@ int load_char(const char *name, struct char_data *ch) {
         else if (!strcmp(tag, "Pole"))
           ;
         else if (!strcmp(tag, "Posi"))
-          GET_POS(ch) = atoi(line);
+          char_position_set(ch, atoi(line));
         else if (!strcmp(tag, "PwrA"))
           ;
         else if (!strcmp(tag, "Pref")) {

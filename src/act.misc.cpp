@@ -1549,6 +1549,7 @@ ACMD(do_fish) {
           TRUE, ch, 0, 0, TO_ROOM);
       GET_FISHD(ch) = rand_number(30, 80);
       SET_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+      char_subscribe_add(ch, "fishing");
       send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n", GET_FISHD(ch));
       return;
     }
@@ -1634,6 +1635,7 @@ ACMD(do_fish) {
       act("@c$n@C reels in $s fishing line and stops fishing.@n", TRUE, ch, 0,
           0, TO_ROOM);
       REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+      char_subscribe_remove(ch, "fishing");
       GET_FISHSTATE(ch) = FISH_NOFISH;
       GET_FISHD(ch) = 0;
       return;
@@ -1656,102 +1658,106 @@ static int has_pole(struct char_data *ch) {
   return (FALSE);
 }
 
-void fish_update(void) {
+static bool handle_fishing(struct char_data *ch) {
+  auto end_fishing = [&]() {
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+    GET_FISHSTATE(ch) = FISH_NOFISH;
+    GET_FISHD(ch) = 0;
+    char_subscribe_remove(ch, "fishing");
+  };
+  
+  if(!PLR_FLAGGED(ch, PLR_FISHING)) {
+    end_fishing();
+    return true;
+  }
 
-  struct char_data *i, *next_char, *ch = NULL;
+  if(!has_pole(ch)) {
+    end_fishing();
+    return true;
+  }
+
   int quality = 0;
+  auto room = char_room_get(ch);
 
-  for (i = character_list; i; i = next_char) {
-    next_char = i->next;
-    struct room_data *room = char_room_get(i);
-    if (room_flagged(room, ROOM_FISHING)) {
-      if (PLR_FLAGGED(i, PLR_FISHING) && has_pole(i) == TRUE) {
-        ch = i;
-        if (GET_FISHD(ch) <= 0 &&
-            GET_FISHSTATE(ch) == FISH_REELING) { /* We've caught it */
-          if (GET_POLE_BONUS(ch) >= rand_number(60, 100)) {
-            quality = rand_number(0, 3) + rand_number(0, 3) + rand_number(0, 3);
-          } else if (GET_POLE_BONUS(ch) >= rand_number(45, 60)) {
-            quality = rand_number(0, 3) + rand_number(0, 3);
-          } else {
-            quality = rand_number(0, 3);
-          }
-          catch_fish(ch, quality);
-        } else if (rand_number(1, 5) >= 3) { /* Reeling section */
-          if (GET_FISHSTATE(ch) == FISH_REELING && rand_number(1, 100) <= 80) {
-            if (GET_POLE_BONUS(ch) >= 80) {
-              GET_FISHD(ch) -= rand_number(6, 10);
-            } else if (GET_POLE_BONUS(ch) >= 40) {
-              GET_FISHD(ch) -= rand_number(5, 8);
-            } else {
-              GET_FISHD(ch) -= rand_number(1, 4);
-            }
-            act("@CYou reel the line on your pole some.@n", TRUE, ch, 0, 0,
-                TO_CHAR);
-            act("@c$n@C reels the line on $s pole slowly.@n", TRUE, ch, 0, 0,
-                TO_ROOM);
-            send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n",
-                         GET_FISHD(ch) > 0 ? GET_FISHD(ch) : 0);
-          } else if (GET_FISHSTATE(ch) == FISH_REELING &&
-                     rand_number(1, 58) <= 55) {
-            act("@CYou struggle as the fish fights against your attempts to "
-                "reel it in!@n",
-                TRUE, ch, 0, 0, TO_CHAR);
-            act("@c$n@C struggles with the fish on the end of $s pole!@n", TRUE,
-                ch, 0, 0, TO_ROOM);
-          } else if (GET_FISHSTATE(ch) == FISH_REELING) { /* Lose the fish */
-            act("@CYou feel the line go slack and realize you've lost the "
-                "fish! You reel your line back in...@n",
-                TRUE, ch, 0, 0, TO_CHAR);
-            act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
-                0, 0, TO_ROOM);
-            GET_FISHD(ch) = 0;
-            GET_FISHSTATE(ch) = FISH_NOFISH;
-            REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
-            if (has_pole(ch) == TRUE) {
-              struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
-              GET_OBJ_VAL(pole, 0) = 0;
-            }
-          } else if (GET_FISHSTATE(ch) == FISH_HOOKED &&
-                     rand_number(1, 20) >= 12) {
-            act("@CYou feel the line go slack and realize you've lost the "
-                "fish! You reel your line back in...@n",
-                TRUE, ch, 0, 0, TO_CHAR);
-            act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
-                0, 0, TO_ROOM);
-            GET_FISHD(ch) = 0;
-            GET_FISHSTATE(ch) = FISH_NOFISH;
-            REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
-          } else if (GET_FISHSTATE(ch) == FISH_BITE &&
-                     rand_number(1, 20) >= 12) {
-            act("@CYou feel as if the fish has stopped biting...@n", TRUE, ch,
-                0, 0, TO_CHAR);
-            GET_FISHSTATE(ch) = FISH_NOFISH;
-          } else if (GET_FISHSTATE(ch) != FISH_HOOKED &&
-                     GET_FISHSTATE(ch) != FISH_BITE &&
-                     ((room_flagged(room, ROOM_FISHFRESH) &&
-                       rand_number(1, 10) >= 8) ||
-                      (!room_flagged(room, ROOM_FISHFRESH) &&
-                       rand_number(1, 20) >= 18))) {
-            act("@CYou feel a fish biting on your line! Better @Ghook@C it!@n",
-                TRUE, ch, 0, 0, TO_CHAR);
-            GET_FISHSTATE(ch) = FISH_BITE;
-          }
-        } /* End reel section */
-      } else if (PLR_FLAGGED(i, PLR_FISHING) &&
-                 has_pole(i) == FALSE) { /* End of, Is Fishing */
-        REMOVE_BIT_AR(PLR_FLAGS(i), PLR_FISHING);
-        GET_FISHD(i) = 0;
-        GET_FISHSTATE(i) = FISH_NOFISH;
-      }
-    } else { /* Is not in a fishing room */
-      if (PLR_FLAGGED(i, PLR_FISHING)) {
-        REMOVE_BIT_AR(PLR_FLAGS(i), PLR_FISHING);
-        GET_FISHD(i) = 0;
-        GET_FISHSTATE(i) = FISH_NOFISH;
-      }
+  if (GET_FISHD(ch) <= 0 && GET_FISHSTATE(ch) == FISH_REELING) { /* We've caught it */
+    if (GET_POLE_BONUS(ch) >= rand_number(60, 100)) {
+      quality = rand_number(0, 3) + rand_number(0, 3) + rand_number(0, 3);
+    } else if (GET_POLE_BONUS(ch) >= rand_number(45, 60)) {
+      quality = rand_number(0, 3) + rand_number(0, 3);
+    } else {
+      quality = rand_number(0, 3);
     }
-  } /* End of for */
+    catch_fish(ch, quality);
+    end_fishing();
+    return true;
+  }
+
+  if(rand_number(1, 5) <= 2) {
+    // still waiting...
+    return true;
+  }
+  
+  if (GET_FISHSTATE(ch) == FISH_REELING && rand_number(1, 100) <= 80) {
+    if (GET_POLE_BONUS(ch) >= 80) {
+      GET_FISHD(ch) -= rand_number(6, 10);
+    } else if (GET_POLE_BONUS(ch) >= 40) {
+      GET_FISHD(ch) -= rand_number(5, 8);
+    } else {
+      GET_FISHD(ch) -= rand_number(1, 4);
+    }
+    act("@CYou reel the line on your pole some.@n", TRUE, ch, 0, 0,
+        TO_CHAR);
+    act("@c$n@C reels the line on $s pole slowly.@n", TRUE, ch, 0, 0,
+        TO_ROOM);
+    send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n",
+                  GET_FISHD(ch) > 0 ? GET_FISHD(ch) : 0);
+  } else if (GET_FISHSTATE(ch) == FISH_REELING &&
+              rand_number(1, 58) <= 55) {
+    act("@CYou struggle as the fish fights against your attempts to "
+        "reel it in!@n",
+        TRUE, ch, 0, 0, TO_CHAR);
+    act("@c$n@C struggles with the fish on the end of $s pole!@n", TRUE,
+        ch, 0, 0, TO_ROOM);
+  } else if (GET_FISHSTATE(ch) == FISH_REELING) { /* Lose the fish */
+    act("@CYou feel the line go slack and realize you've lost the "
+        "fish! You reel your line back in...@n",
+        TRUE, ch, 0, 0, TO_CHAR);
+    act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
+        0, 0, TO_ROOM);
+    end_fishing();
+    if (has_pole(ch) == TRUE) {
+      struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
+      GET_OBJ_VAL(pole, 0) = 0;
+    }
+  } else if (GET_FISHSTATE(ch) == FISH_HOOKED &&
+              rand_number(1, 20) >= 12) {
+    act("@CYou feel the line go slack and realize you've lost the "
+        "fish! You reel your line back in...@n",
+        TRUE, ch, 0, 0, TO_CHAR);
+    act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
+        0, 0, TO_ROOM);
+    end_fishing();
+  } else if (GET_FISHSTATE(ch) == FISH_BITE &&
+              rand_number(1, 20) >= 12) {
+    act("@CYou feel as if the fish has stopped biting...@n", TRUE, ch,
+        0, 0, TO_CHAR);
+    GET_FISHSTATE(ch) = FISH_NOFISH;
+  } else if (GET_FISHSTATE(ch) != FISH_HOOKED &&
+              GET_FISHSTATE(ch) != FISH_BITE &&
+              ((room_flagged(room, ROOM_FISHFRESH) &&
+                rand_number(1, 10) >= 8) ||
+              (!room_flagged(room, ROOM_FISHFRESH) &&
+                rand_number(1, 20) >= 18))) {
+    act("@CYou feel a fish biting on your line! Better @Ghook@C it!@n",
+        TRUE, ch, 0, 0, TO_CHAR);
+    GET_FISHSTATE(ch) = FISH_BITE;
+  }
+
+  return true;
+}
+
+void fish_update(void) {
+  char_iterate_subscriptions("fishing", handle_fishing);
 }
 
 static void catch_fish(struct char_data *ch, int quality) {
@@ -1910,9 +1916,6 @@ static void catch_fish(struct char_data *ch, int quality) {
   do_get(ch, "fish", 0, 0);
   send_to_char(ch, "@D[@cFish Weight@D: @G%" I64T "@D]@n\r\n",
                GET_OBJ_WEIGHT(fish));
-  REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
-  GET_FISHD(ch) = 0;
-  GET_FISHSTATE(ch) = FISH_NOFISH;
 }
 
 ACMD(do_extract) {
@@ -3038,7 +3041,7 @@ ACMD(do_metamorph) {
 
   int64_t cost = (GET_MAX_MANA(ch) * 0.16);
 
-  if (AFF_FLAGGED(ch, AFF_METAMORPH)) {
+  if (char_condition_has(ch, "dark_metamorphosis")) {
     send_to_char(ch, "You are already surrounded by a dark aura!\r\n");
     return;
   }
@@ -3066,8 +3069,9 @@ ACMD(do_metamorph) {
         TRUE, ch, 0, 0, TO_ROOM);
 
     return;
-  } else {
-    act("'@RDark@W...' An explosion of sanguine aura erupts over the surface "
+  }
+
+  act("'@RDark@W...' An explosion of sanguine aura erupts over the surface "
         "of your body, your eyes darkening to a bleeding crimson. The flaring "
         "glow emanating from your body pronounces the shadows cast, a "
         "darkening umbrage that threatens a malicious promise. Fists clench "
@@ -3082,14 +3086,11 @@ ACMD(do_metamorph) {
         "relaxing visibly, '...@RMetamorphosis@W'@n",
         TRUE, ch, 0, 0, TO_ROOM);
 
-    int duration = GET_INT(ch) / 12;
-    assign_affect(ch, AFF_METAMORPH, SKILL_METAMORPH, duration, 0, 0, 0, 0, 0,
-                  0);
-    char_condition_apply(ch, "dark_metamorphosis", "affect",
+    int duration = (GET_INT(ch) / 12) * SECS_PER_MUD_HOUR;
+    char_condition_add(ch, "dark_metamorphosis", "affect",
                          "dark_metamorphosis");
+    char_condition_duration_set(ch, "dark_metamorphosis", duration);
     incCurHealthPercent(ch, .6);
-    return;
-  }
 }
 
 ACMD(do_shimmer) {

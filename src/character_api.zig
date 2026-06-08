@@ -693,36 +693,40 @@ pub export fn char_der_invalidate(ch: *cdb.char_data) void {
     invalidateDeriveds(zigdata);
 }
 
+fn accumulateDerivedModifiers(cache: *modifiers_api.ModifierCache, category: []const u8, id: []const u8, flat: *i64, percent: *i64, multipliers: *std.ArrayListUnmanaged(i64), min_override: *?i64, max_override: *?i64, set_override: *?i64) void {
+    if (cache.modifiersFor(category, id)) |modifiers| {
+        for (modifiers) |modifier| {
+            switch (modifier.kind) {
+                .flat => flat.* += modifier.value,
+                .percent => percent.* += modifier.value,
+                .multiplier => multipliers.append(std.heap.page_allocator, modifier.value) catch {},
+                .override_min => min_override.* = if (min_override.*) |current| @max(current, modifier.value) else modifier.value,
+                .override_max => max_override.* = if (max_override.*) |current| @min(current, modifier.value) else modifier.value,
+                .set => set_override.* = modifier.value,
+            }
+        }
+    }
+}
+
 fn calculateDerivedTotal(ch: *cdb.char_data, zigdata: *CharacterData, name: []const u8, definition: lua_api.DerivedDefinition) i64 {
     var value = charDerGetBaseName(ch, name);
     var flat: i64 = 0;
     var percent: i64 = 0;
+    var multipliers: std.ArrayListUnmanaged(i64) = .empty;
     var min_override: ?i64 = null;
     var max_override: ?i64 = null;
     var set_override: ?i64 = null;
 
     if (!definition.no_modifiers) {
-        if (zigdata.modifiers.modifiersFor("derived", name)) |modifiers| {
-            for (modifiers) |modifier| {
-                switch (modifier.kind) {
-                    .flat => flat += modifier.value,
-                    .percent => percent += modifier.value,
-                    .multiplier => {},
-                    .override_min => min_override = if (min_override) |current| @max(current, modifier.value) else modifier.value,
-                    .override_max => max_override = if (max_override) |current| @min(current, modifier.value) else modifier.value,
-                    .set => set_override = modifier.value,
-                }
-            }
-
-            value += flat;
-            if (percent != 0) value += @divTrunc(value * percent, modifiers_api.scale);
-            for (modifiers) |modifier| {
-                if (modifier.kind == .multiplier) value = @divTrunc(value * modifier.value, modifiers_api.scale);
-            }
-        } else {
-            value += flat;
-            if (percent != 0) value += @divTrunc(value * percent, modifiers_api.scale);
+        accumulateDerivedModifiers(&zigdata.modifiers, "derived", name, &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
+        for (definition.modifier_targets[0..definition.modifier_target_count]) |target| {
+            accumulateDerivedModifiers(&zigdata.modifiers, target.category[0..target.category_len], target.id[0..target.id_len], &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
         }
+
+        value += flat;
+        if (percent != 0) value += @divTrunc(value * percent, modifiers_api.scale);
+        for (multipliers.items) |mult| value = @divTrunc(value * mult, modifiers_api.scale);
+        multipliers.deinit(std.heap.page_allocator);
     }
 
     if (definition.min_value) |min| value = @max(value, min);
@@ -1303,9 +1307,7 @@ fn putOwnedTransformString(data: *TransformData, key: []const u8, value: []const
 }
 
 fn emitConditionModifiers(ch: *cdb.char_data, zigdata: *CharacterData) void {
-    lua_api.emitRaceModifiers(ch, &zigdata.modifiers, ch.race);
-    var it = zigdata.conditions.iterator();
-    while (it.next()) |entry| lua_api.emitConditionModifiers(ch, &zigdata.modifiers, entry.key_ptr.*);
+    lua_api.emitCharacterModifiers(ch, &zigdata.modifiers);
 }
 
 pub export fn char_is_npc(ch: *cdb.char_data) bool {
@@ -1318,4 +1320,50 @@ pub export fn char_next_in_room_get(ch: *cdb.char_data) [*c]cdb.char_data {
 
 pub export fn char_carrying_get(ch: *cdb.char_data) [*c]cdb.obj_data {
     return ch.carrying;
+}
+
+pub export fn char_is_outside(ch: *cdb.char_data) bool {
+    return cdb.char_outside_roomflag(ch) and cdb.char_outside_sector_type(ch);
+}
+
+pub export fn char_sits_get(ch: *cdb.char_data) ?*cdb.obj_data {
+    return ch.sits;
+}
+
+pub export fn char_sits_set(ch: *cdb.char_data, obj: ?*cdb.obj_data) void {
+    ch.sits = obj;
+}
+
+pub export fn char_position_get(ch: *cdb.char_data) i64 {
+    const cond = "position";
+    const key = "state";
+    if (conditionGet(ch, cond)) |instance| {
+        return instance.numbers.get(key) orelse 0;
+    }
+    _ = char_condition_apply_with_number(ch, cond, cond, cond, key, 8);
+    return 8;
+}
+
+pub export fn char_position_set(ch: *cdb.char_data, value: i64) void {
+    const cond = "position";
+    const key = "state";
+    _ = char_condition_apply_with_number(ch, cond, cond, cond, key, value);
+}
+
+pub export fn char_condition_count(ch: *cdb.char_data) usize {
+    const ptr = ch.zigdata orelse return 0;
+    const data: *CharacterData = @ptrCast(@alignCast(ptr));
+    return data.conditions.count();
+}
+
+pub export fn char_condition_name_at(ch: *cdb.char_data, index: usize) ?[*:0]const u8 {
+    const ptr = ch.zigdata orelse return null;
+    const data: *CharacterData = @ptrCast(@alignCast(ptr));
+    var it = data.conditions.iterator();
+    var i: usize = 0;
+    while (it.next()) |entry| {
+        if (i == index) return @ptrCast(entry.key_ptr.*.ptr);
+        i += 1;
+    }
+    return null;
 }

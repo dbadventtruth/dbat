@@ -672,7 +672,7 @@ void setStatusKnockedOut(char_data *ch) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
     GET_ALT(ch) = 0;
   }
-  GET_POS(ch) = POS_SLEEPING;
+  char_position_set(ch, POS_SLEEPING);
 }
 
 void cureStatusKnockedOutAnnounced(char_data *ch, bool announce) {
@@ -692,7 +692,7 @@ void cureStatusKnockedOutAnnounced(char_data *ch, bool announce) {
     }
 
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
   }
 }
 
@@ -1439,12 +1439,6 @@ void null_affect(struct char_data *ch, int aff_flag) {
     if (af->location == APPLY_NONE && af->bitvector == aff_flag)
       affect_remove(ch, af);
   }
-  if (aff_flag == AFF_BLESS)
-    char_condition_remove(ch, "bless", "affect_removed");
-  if (aff_flag == AFF_SPECIAL_POSE)
-    char_condition_remove(ch, "special_pose", "affect_removed");
-  if (aff_flag == AFF_METAMORPH)
-    char_condition_remove(ch, "dark_metamorphosis", "affect_removed");
 }
 
 void remove_affect(struct char_data *ch, int aff_flag) {
@@ -1456,12 +1450,6 @@ void remove_affect(struct char_data *ch, int aff_flag) {
     if (af->bitvector == aff_flag)
       affect_remove(ch, af);
   }
-  if (aff_flag == AFF_BLESS)
-    char_condition_remove(ch, "bless", "affect_removed");
-  if (aff_flag == AFF_SPECIAL_POSE)
-    char_condition_remove(ch, "special_pose", "affect_removed");
-  if (aff_flag == AFF_METAMORPH)
-    char_condition_remove(ch, "dark_metamorphosis", "affect_removed");
 }
 
 void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur,

@@ -250,16 +250,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_BANE:
-    af[0].location = APPLY_ACCURACY;
-    af[0].duration = 1 + (level / 2);
-    af[0].modifier = -1;
-    af[0].bitvector = AFF_CURSE;
-
-    af[1].location = APPLY_WILL;
-    af[1].duration = 1 + (level / 2);
-    af[1].modifier = -1;
-    af[1].bitvector = AFF_CURSE;
-
     accum_duration = TRUE;
     accum_affect = TRUE;
     to_room = "$n briefly glows red!";
@@ -267,16 +257,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_BESTOW_CURSE:
-    af[0].location = APPLY_STR;
-    af[0].duration = -1;
-    af[0].modifier = -6;
-    af[0].bitvector = AFF_CURSE;
-
-    af[1].location = APPLY_ACCURACY;
-    af[1].duration = -1;
-    af[1].modifier = -4;
-    af[1].bitvector = AFF_CURSE;
-
     accum_duration = FALSE;
     accum_affect = FALSE;
     to_room = "$n briefly glows red!";
@@ -335,11 +315,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_POISON:
-
-    af[0].location = APPLY_STR;
-    af[0].duration = level;
-    af[0].modifier = -2;
-    af[0].bitvector = AFF_POISON;
     to_vict = "You feel very sick.";
     to_room = "$n gets violently ill!";
     break;
@@ -372,7 +347,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (GET_POS(victim) > POS_SLEEPING) {
       send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
       act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
-      GET_POS(victim) = POS_SLEEPING;
+      char_position_set(victim, POS_SLEEPING);
     }
     break;
 
@@ -388,7 +363,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (GET_POS(victim) > POS_SLEEPING) {
       send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
       act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
-      GET_POS(victim) = POS_SLEEPING;
+      char_position_set(victim, POS_SLEEPING);
     }
     break;
 

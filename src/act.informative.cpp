@@ -529,13 +529,13 @@ ACMD(do_kyodaika) {
     return;
   }
 
-  if (!is_affected(ch, AFF_KYODAIKA)) {
+  if (!char_condition_has(ch, "kyodaika")) {
     act("@GYou growl as your body grows to ten times its normal size!@n", TRUE,
         ch, 0, 0, TO_CHAR);
     act("@g$n@G growls as $s body grows to ten times its normal size!@n", TRUE,
         ch, 0, 0, TO_ROOM);
     send_to_char(ch, "@cStrength@D: @C+5\r\n@cSpeed@D: @c-2@n\r\n");
-    assign_affect(ch, AFF_KYODAIKA, 0, -1, 5, 0, 0, 0, 0, -2);
+    char_condition_add(ch, "kyodaika", "command", "kyodaika");
     save_char(ch);
     return;
   } else {
@@ -544,7 +544,7 @@ ACMD(do_kyodaika) {
     act("@g$n@G growls as $s body shrinks to its normal size!@n", TRUE, ch, 0,
         0, TO_ROOM);
     send_to_char(ch, "@cStrength@D: @C-5\r\n@cSpeed@D: @c+2@n\r\n");
-    remove_affect(ch, AFF_KYODAIKA);
+    char_condition_remove(ch, "kyodaika", "command");
     save_char(ch);
     return;
   }
@@ -3222,37 +3222,11 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
   if (IS_NPC(i)) {
     send_to_char(ch, "is %s sized, and\r\n", size_names[get_size(i)]);
   }
+  
   if (!IS_NPC(i)) {
-    if (!PLR_FLAGGED(i, PLR_OOZARU) && (!IS_ICER(i) || !IS_TRANSFORMED(i)) &&
-        GET_GENOME(i, 0) < 11) {
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
+    send_to_char(ch, "is %s sized, about %ldcm tall,\r\nabout %ldkg heavy,",
                    size_names[get_size(i)], GET_PC_HEIGHT(i), GET_PC_WEIGHT(i));
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS1)) {
-      int num1 = GET_PC_HEIGHT(i) * 3;
-      int num2 = GET_PC_WEIGHT(i) * 4;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS2)) {
-      int num1 = GET_PC_HEIGHT(i) * 3;
-      int num2 = GET_PC_WEIGHT(i) * 4;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS3)) {
-      int num1 = GET_PC_HEIGHT(i) * 1.5;
-      int num2 = GET_PC_WEIGHT(i) * 2;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS4)) {
-      int num1 = GET_PC_HEIGHT(i) * 2;
-      int num2 = GET_PC_WEIGHT(i) * 3;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (PLR_FLAGGED(i, PLR_OOZARU) || GET_GENOME(i, 0) == 11) {
-      int num1 = GET_PC_HEIGHT(i) * 10;
-      int num2 = GET_PC_WEIGHT(i) * 50;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    }
+
     if (i == ch) {
       send_to_char(ch, " and ");
     } else if (GET_AGE(ch) >= GET_AGE(i) + 30) {
@@ -3441,7 +3415,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
     if (GET_CHARGE(i))
       act("...$e has a bright %s aura around $s body!", FALSE, i, 0, ch,
           TO_VICT);
-    if (AFF_FLAGGED(i, AFF_METAMORPH))
+    if (char_condition_has(i, "dark_metamorphosis"))
       act("@w...$e has a dark, @rred@w aura and menacing presence.", FALSE, i,
           0, ch, TO_VICT);
     if (AFF_FLAGGED(i, AFF_HAYASA))
@@ -3860,7 +3834,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
   if (PLR_FLAGGED(i, PLR_OOZARU) && GET_CHARGE(i) &&
       (IS_SAIYAN(i) || IS_HALFBREED(i)))
     act("@w...$e is in the form of a @rgreat ape@w!", TRUE, i, 0, ch, TO_VICT);
-  if (is_affected(i, AFF_KYODAIKA))
+  if (char_condition_has(i, "kyodaika"))
     act("@w...$e has expanded $s body size@w!", TRUE, i, 0, ch, TO_VICT);
   if (AFF_FLAGGED(i, AFF_HAYASA))
     act("@w...$e has a soft @cblue@w glow around $s body!", FALSE, i, 0, ch,

@@ -1030,13 +1030,12 @@ ACMD(do_mtransform) {
     tmpmob.memory = ch->memory;
     tmpmob.next_in_room = ch->next_in_room;
     tmpmob.next = ch->next;
-    tmpmob.next_fighting = ch->next_fighting;
     tmpmob.followers = ch->followers;
     tmpmob.master = ch->master;
 
     GET_WAS_IN(&tmpmob) = GET_WAS_IN(ch);
     char_stat_set(&tmpmob, "money", GET_GOLD(ch));
-    GET_POS(&tmpmob) = GET_POS(ch);
+    char_position_set(&tmpmob, GET_POS(ch));
     IS_CARRYING_W(&tmpmob) = IS_CARRYING_W(ch);
     IS_CARRYING_N(&tmpmob) = IS_CARRYING_N(ch);
     FIGHTING(&tmpmob) = FIGHTING(ch);

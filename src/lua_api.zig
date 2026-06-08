@@ -98,8 +98,16 @@ pub const StatDefinition = struct {
     max_value: ?i64 = null,
 };
 
+pub const ModifierTarget = struct {
+    category: [64]u8 = undefined,
+    category_len: usize = 0,
+    id: [64]u8 = undefined,
+    id_len: usize = 0,
+};
+
 pub const DerivedDefinition = struct {
     pub const max_legacy_modifiers = 16;
+    pub const max_modifier_targets = 8;
 
     pub const LegacyModifier = struct {
         location: c_int,
@@ -110,6 +118,8 @@ pub const DerivedDefinition = struct {
     base_stat_len: usize = 0,
     legacy_modifiers: [max_legacy_modifiers]LegacyModifier = undefined,
     legacy_modifier_count: usize = 0,
+    modifier_targets: [max_modifier_targets]ModifierTarget = undefined,
+    modifier_target_count: usize = 0,
     no_modifiers: bool = false,
     min_value: ?i64 = null,
     max_value: ?i64 = null,
@@ -248,6 +258,7 @@ pub fn load_lua() !void {
     loaded_entries = 0;
     definition_cache.clear();
     inline for (categories) |category| {
+        std.log.info("loading Lua category: {s}", .{category});
         try loadCategory(category);
     }
     std.log.info("loaded {} Lua entries", .{loaded_entries});
@@ -646,70 +657,22 @@ pub fn callConditionUpdateHook(ch: *cdb.char_data, condition: []const u8, kind: 
     };
 }
 
-pub fn emitConditionModifiers(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache, condition: []const u8) void {
-    if (!initialized or condition.len == 0) return;
-    if (!(pushThing("conditions", condition) catch return)) return;
-    defer pop(1);
-
-    const lua = lua_state.?;
-    if (lua.getField(-1, "modifiers") != .function) {
-        lua.pop(1);
-        return;
-    }
-    characters_lua.pushCharacter(lua, ch.id);
-    characters_lua.pushCondition(lua, ch.id, condition);
-    lua.protectedCall(.{ .args = 2, .results = 1 }) catch |err| {
-        const message = lua.toString(-1) catch @errorName(err);
-        std.log.err("condition {s}.modifiers failed: {s}", .{ condition, message });
-        lua.pop(1);
-        return;
-    };
-    defer lua.pop(1);
-    if (!lua.isTable(-1)) return;
-
-    var pos: zlua.Integer = 1;
-    while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
-        defer lua.pop(1);
-        if (!lua.isTable(-1)) continue;
-        addModifierFromLua(cache, "condition", condition, -1);
-    }
-}
-
-pub fn emitRaceModifiers(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache, race_id: c_int) void {
+pub fn emitCharacterModifiers(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache) void {
     if (!initialized) return;
     const lua = lua_state.?;
     const top = lua.getTop();
     defer lua.setTop(top);
 
-    if (lua.getGlobal("dbat") != .table) return;
-    if (lua.getField(-1, "registry") != .table) return;
-    if (lua.getField(-1, "races") != .table) return;
-
-    lua.pushNil();
-    while (lua.next(-2)) {
-        defer lua.pop(1);
-        if (!lua.isTable(-1)) continue;
-        const legacy_id = optionalIntegerField(-1, "legacy_id") orelse continue;
-        if (legacy_id != race_id) continue;
-        const slug = optionalStringField(-1, "id") orelse continue;
-        emitModifiersFromDefinition(ch, cache, "race", slug, -1, false);
-        return;
-    }
-}
-
-fn emitModifiersFromDefinition(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache, source_category: []const u8, source_id: []const u8, definition_index: i32, with_condition: bool) void {
-    const lua = lua_state.?;
-    if (lua.getField(definition_index, "modifiers") != .function) {
-        lua.pop(1);
-        return;
-    }
-
     characters_lua.pushCharacter(lua, ch.id);
-    if (with_condition) characters_lua.pushCondition(lua, ch.id, source_id);
-    lua.protectedCall(.{ .args = if (with_condition) 2 else 1, .results = 1 }) catch |err| {
+    if (lua.getField(-1, "modifiers") != .function) {
+        lua.pop(2);
+        return;
+    }
+    lua.pushValue(-2);
+    lua.protectedCall(.{ .args = 1, .results = 1 }) catch |err| {
         const message = lua.toString(-1) catch @errorName(err);
-        std.log.err("{s} {s}.modifiers failed: {s}", .{ source_category, source_id, message });
-        lua.pop(1);
+        std.log.err("ch:modifiers() failed: {s}", .{message});
+        lua.pop(3);
         return;
     };
     defer lua.pop(1);
@@ -719,7 +682,7 @@ fn emitModifiersFromDefinition(ch: *cdb.char_data, cache: *modifiers_api.Modifie
     while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
         defer lua.pop(1);
         if (!lua.isTable(-1)) continue;
-        addModifierFromLua(cache, source_category, source_id, -1);
+        addModifierFromLua(cache, "character", "self", -1);
     }
 }
 
@@ -892,7 +855,49 @@ fn cacheDerivedDefinition(id: []const u8, index: i32) !void {
     }
     definition.no_modifiers = hasTag(definition_index, "no_modifiers");
     readLegacyModifiers(definition_index, &definition);
+    readModifierTargets(definition_index, &definition);
     try definition_cache.derived.put(internString(id), definition);
+}
+
+fn readModifierTargets(index: i32, definition: *DerivedDefinition) void {
+    const lua = lua_state.?;
+    if (lua.getField(index, "modifier_targets") != .table) {
+        lua.pop(1);
+        return;
+    }
+    defer lua.pop(1);
+
+    var pos: zlua.Integer = 1;
+    while (definition.modifier_target_count < DerivedDefinition.max_modifier_targets) : (pos += 1) {
+        if (lua.getIndex(-1, pos) == .nil) {
+            lua.pop(1);
+            return;
+        }
+        defer lua.pop(1);
+        if (!lua.isTable(-1)) continue;
+
+        const target = &definition.modifier_targets[definition.modifier_target_count];
+
+        const cat_type = lua.getIndex(-1, 1);
+        defer lua.pop(1);
+        if (cat_type == .string) {
+            const cat = lua.toString(-1) catch continue;
+            const cat_len = @min(cat.len, target.category.len);
+            @memcpy(target.category[0..cat_len], cat[0..cat_len]);
+            target.category_len = cat_len;
+        } else continue;
+
+        const id_type = lua.getIndex(-1, 2);
+        defer lua.pop(1);
+        if (id_type == .string) {
+            const val = lua.toString(-1) catch continue;
+            const val_len = @min(val.len, target.id.len);
+            @memcpy(target.id[0..val_len], val[0..val_len]);
+            target.id_len = val_len;
+        } else continue;
+
+        definition.modifier_target_count += 1;
+    }
 }
 
 fn cacheMeterDefinition(id: []const u8, index: i32) !void {
@@ -985,6 +990,9 @@ fn openDbat(lua: *Lua) i32 {
     lua.pushFunction(zlua.wrap(luaTime));
     lua.setField(-2, "time");
 
+    lua.pushFunction(zlua.wrap(luaWeather));
+    lua.setField(-2, "weather");
+
     lua.pushFunction(zlua.wrap(luaConditionHasTag));
     lua.setField(-2, "condition_has_tag");
 
@@ -1076,6 +1084,19 @@ fn luaTime(lua: *Lua) i32 {
     lua.setField(-2, "month");
     lua.pushInteger(cdb.time_info.year);
     lua.setField(-2, "year");
+    return 1;
+}
+
+fn luaWeather(lua: *Lua) i32 {
+    lua.newTable();
+    lua.pushInteger(cdb.weather_info.pressure);
+    lua.setField(-2, "pressure");
+    lua.pushInteger(cdb.weather_info.change);
+    lua.setField(-2, "change");
+    lua.pushInteger(cdb.weather_info.sky);
+    lua.setField(-2, "sky");
+    lua.pushInteger(cdb.weather_info.sunlight);
+    lua.setField(-2, "sunlight");
     return 1;
 }
 

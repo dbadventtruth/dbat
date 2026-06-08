@@ -225,7 +225,7 @@ extern "C" {
 #define GET_MOLT_LEVEL(ch) char_stat_get((ch), "molt_level")
 #define GET_SDCOOLDOWN(ch) ((ch)->con_sdcooldown)
 #define GET_INGESTLEARNED(ch) ((ch)->ingestLearned)
-#define GET_POS(ch) ((ch)->position)
+#define GET_POS(ch) char_position_get(ch)
 #define GET_IDNUM(ch) ((ch)->idnum)
 #define GET_ID(x) ((x)->id)
 #define IS_CARRYING_W(ch) ((ch)->carry_weight)

@@ -200,6 +200,12 @@ bool char_transform_string_set(struct char_data *ch, const char *transform,
                                const char *key, const char *value);
 
 bool char_is_extracted(struct char_data *ch);
+bool char_is_outside(struct char_data *ch);
+struct obj_data *char_sits_get(struct char_data *ch);
+void char_sits_set(struct char_data *ch, struct obj_data *obj);
+
+int64_t char_position_get(struct char_data *ch);
+void char_position_set(struct char_data *ch, int64_t value);
 
 #ifdef __cplusplus
 }

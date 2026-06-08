@@ -13,9 +13,12 @@ return {
     persistent = false,
     modifiers = function(ch, condition)
         local bonus = level(ch, condition) * 10 -- 100 skill/level = +10%.
-        if bonus <= 0 then return {} end
-        return {
-            { target = { "derived", "lifeforce" }, kind = "percent", value = bonus, label = "Bless" },
-        }
+        local mods = {}
+
+        mods[#mods + 1] = { target = { "derived", "lifeforce" }, kind = "percent", value = bonus, label = "Bless" }
+
+        mods[#mods + 1] = { target = { "vitals", "regen" }, kind = "percent", value = 10000, label = "Bless" }
+
+        return mods
     end,
 }

@@ -21,4 +21,7 @@ return {
         end
         return modifiers
     end,
+    on_remove = function(ch, cond) 
+        ch:send_text("You feel slightly less confident now.\r\n")
+    end,
 }

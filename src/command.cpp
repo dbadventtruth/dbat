@@ -787,7 +787,7 @@ void command_interpreter(struct char_data *ch, char *argument) {
   case POS_INCAP:
   case POS_MORTALLYW:
   case POS_STUNNED:
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
     break;
   }
 

@@ -160,7 +160,6 @@ struct char_data {
   struct char_data *next_in_room;
   /* For room->people - list		*/
   struct char_data *next; /* For either monster or ppl-list	*/
-  struct char_data *next_fighting;
   /* For fighting list			*/
   struct char_data *next_affect; /* For affect wearoff			*/
 
@@ -188,8 +187,6 @@ struct char_data {
   struct char_data *defender;
   struct char_data *defending;
 
-  struct char_data *poisonby;
-
   // grappling stuff
   int grap;
   struct char_data *grappling;
@@ -211,12 +208,6 @@ struct char_data {
   int group_kills;
 
   time_t lastint; // last interest time
-
-  // used for temporaryt storage of bonuses
-  int64_t max_mana; /* Max mana for PC/NPC			*/
-  int64_t max_hit;  /* Max hit for PC/NPC			*/
-  int64_t max_move; /* Max move for PC/NPC			*/
-  int64_t max_ki;   /* Max ki for PC/NPC			*/
 
   // charge systemm
   int64_t charge;

@@ -417,12 +417,12 @@ ASPELL(spell_enchant_weapon) {
 ASPELL(spell_detect_poison) {
   if (victim) {
     if (victim == ch) {
-      if (AFF_FLAGGED(victim, AFF_POISON))
+      if (char_condition_has(victim, "poison"))
         send_to_char(ch, "You can sense poison in your blood.\r\n");
       else
         send_to_char(ch, "You feel healthy.\r\n");
     } else {
-      if (AFF_FLAGGED(victim, AFF_POISON))
+      if (char_condition_has(victim, "poison"))
         act("You sense that $E is poisoned.", FALSE, ch, 0, victim, TO_CHAR);
       else
         act("You sense that $E is healthy.", FALSE, ch, 0, victim, TO_CHAR);
