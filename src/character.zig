@@ -122,6 +122,47 @@ pub export fn char_for_each(list_name: ?[*:0]const u8, callback: ?CharCallback) 
     }
 }
 
+pub export fn char_subscribe_add(ch: *cdb.char_data, tag: ?[*:0]const u8) c_int {
+    return char_subscribe(cdb.char_id_get(ch), tag);
+}
+
+pub export fn char_subscribe_remove(ch: *cdb.char_data, tag: ?[*:0]const u8) void {
+    char_unsubscribe(cdb.char_id_get(ch), tag);
+}
+
+pub export fn char_unsubscribe_all(ch: *cdb.char_data) void {
+    char_clear_subscriptions(cdb.char_id_get(ch));
+}
+
+pub export fn char_subscribe_ids(tag: ?[*:0]const u8, out_count: *usize) ?[*]i64 {
+    const name = listNameSlice(tag) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const id_set = subscriptions_by_list.getPtr(name) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = id_set.count();
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    var i: usize = 0;
+    var it = id_set.keyIterator();
+    while (it.next()) |id_ptr| {
+        ids[i] = id_ptr.*;
+        i += 1;
+    }
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn char_subscribe_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
 const MobProtoIterator = struct {
     iter: MobProtoMap.Iterator,
 };

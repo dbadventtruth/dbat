@@ -16,9 +16,9 @@ extern "C" {
 #define AFF_WATERWALK 7       /* Char can walk on water    */
 #define AFF_SANCTUARY 8       /* Char protected by sanct.  */
 #define AFF_GROUP 9           /* (R) Char is grouped       */
-#define AFF_CURSE 10          /* Char is cursed            */
+#define AFF_CURSE 10          /* Char is cursed  - converted to conditions          */
 #define AFF_INFRAVISION 11    /* Char can see in dark      */
-#define AFF_POISON 12         /* (R) Char is poisoned      */
+#define AFF_POISON 12         /* (R) Char is poisoned - Converted to Condition      */
 #define AFF_WEAKENED_STATE 13 /* Char protected from evil  */
 #define AFF_PROTECT_GOOD 14   /* Char protected from good  */
 #define AFF_SLEEP 15          /* (R) Char magically asleep */
@@ -67,10 +67,10 @@ extern "C" {
 #define AFF_HAYASA 57      /* They are speedy!                */
 #define AFF_PURSUIT 58     /* Being followed */
 #define AFF_WITHER 59      /* Their body is withered */
-#define AFF_HYDROZAP 60    /* Custom Skill Kanso Suru */
+#define AFF_HYDROZAP 60    /* Custom Skill Kanso Suru - removed */
 #define AFF_POSITION 61    /* Better combat position */
 #define AFF_SHOCKED 62     /* Psychic Shock          */
-#define AFF_METAMORPH 63   /* Metamorphisis, Demon's Ripoff Custom Skill */
+#define AFF_METAMORPH 63   /* Dark Metamorphosis - COnverted to Condition */
 #define AFF_HEALGLOW 64    /* Healing Glow */
 #define AFF_EARMOR 65      /* Ethereal Armor */
 #define AFF_ECHAINS 66     /* Ethereal Chains */
@@ -82,9 +82,9 @@ extern "C" {
 #define AFF_SHELL 72
 #define AFF_IMMUNITY 73
 #define AFF_SPIRITCONTROL 74
-#define AFF_KYODAIKA 75 /* Kyodaika */
-#define AFF_STARPHASE 76
-#define AFF_SPECIAL_POSE 77
+#define AFF_KYODAIKA 75 /* Kyodaika - Converted to Condition */
+#define AFF_STARPHASE 76 /* Converted to Condition */
+#define AFF_SPECIAL_POSE 77 /* Converted to Condition */
 #define AFF_SHADOW_STITCH 78
 
 #define NUM_AFF_FLAGS 79

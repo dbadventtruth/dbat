@@ -296,10 +296,8 @@ int load_char(const char *name, struct char_data *ch) {
     GET_HOME(ch) = PFDEF_HOMETOWN;
     char_meter_set(ch, "powerlevel", 1000000);
     GET_RELAXCOUNT(ch) = PFDEF_EYE;
-    GET_BLESSLVL(ch) = PFDEF_HEIGHT;
     char_meter_set(ch, "lifeforce", 1000000);
-    GET_POS(ch) = POS_STANDING;
-    GET_MAJINIZED(ch) = PFDEF_BASEPL;
+    char_position_set(ch, POS_STANDING);
     char_meter_set(ch, "ki", 1000000);
     char_meter_set(ch, "stamina", 1000000);
     GET_HAIRL(ch) = PFDEF_HAIRL;
@@ -311,7 +309,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_RADAR1(ch) = PFDEF_RADAR1;
     GET_LPLAY(ch) = PFDEF_LPLAY;
     GET_BOOSTS(ch) = PFDEF_DISTFEA;
-    MAJINIZED(ch) = PFDEF_DISTFEA;
     GET_LINTEREST(ch) = PFDEF_LPLAY;
     GET_DTIME(ch) = PFDEF_LPLAY;
     GET_PHASE(ch) = PFDEF_EYE;
@@ -339,8 +336,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_FORGETING(ch) = PFDEF_BANK;
     GET_FORGET_COUNT(ch) = PFDEF_BANK;
     GET_TRANSCLASS(ch) = PFDEF_EXP;
-    GET_KI(ch) = PFDEF_KI;
-    GET_MAX_KI(ch) = PFDEF_MAXKI;
     SPEAKING(ch) = PFDEF_SPEAKING;
     GET_OLC_ZONE(ch) = PFDEF_OLC;
 
@@ -401,8 +396,11 @@ int load_char(const char *name, struct char_data *ch) {
           char_stat_set(ch, "money_bank", atoi(line));
         else if (!strcmp(tag, "Bki "))
           load_BASE(ch, line, LOAD_MANA);
-        else if (!strcmp(tag, "Blss"))
-          GET_BLESSLVL(ch) = atoi(line);
+        else if (!strcmp(tag, "Blss")) {
+          if(!char_condition_has(ch, "bless"))
+            char_condition_add(ch, "bless", "affect", "bless");
+          char_condition_number_set(ch, "bless", "level", atoi(line));
+        }
         else if (!strcmp(tag, "Boam"))
           GET_BOARD(ch, 0) = atoi(line);
         else if (!strcmp(tag, "Boai"))
@@ -475,8 +473,7 @@ int load_char(const char *name, struct char_data *ch) {
         break;
 
       case 'F':
-        if (!strcmp(tag, "Fisd"))
-          GET_FISHD(ch) = atoi(line);
+        if (!strcmp(tag, "Fisd"));
         else if (!strcmp(tag, "Frez"))
           GET_FREEZE_LEV(ch) = atoi(line);
         else if (!strcmp(tag, "Forc"))
@@ -579,10 +576,16 @@ int load_char(const char *name, struct char_data *ch) {
         else if (!strcmp(tag, "Mcls")) {
           sscanf(line, "%d=%d", &num, &num2);
           char_stat_mod(ch, "level", num2);
-        } else if (!strcmp(tag, "Maji"))
-          MAJINIZED(ch) = atoi(line);
-        else if (!strcmp(tag, "Majm"))
-          load_majin(ch, line);
+        } else if (!strcmp(tag, "Maji")) {
+          if(!char_condition_has(ch, "majinized"))
+            char_condition_add(ch, "majinized", "skill",  "majinize");
+          char_condition_number_set(ch, "majinized", "bonus", atol(line));
+        }
+        else if (!strcmp(tag, "Majm")) {
+          if(!char_condition_has(ch, "majinized"))
+            char_condition_add(ch, "majinized", "skill",  "majinize");
+          char_condition_number_set(ch, "majinized", "lord", atol(line));
+          }
         else if (!strcmp(tag, "Mimi"))
           ch->mimic = atoi(line);
         else if (!strcmp(tag, "MxAg"))
@@ -617,7 +620,7 @@ int load_char(const char *name, struct char_data *ch) {
         else if (!strcmp(tag, "Pole"))
           ;
         else if (!strcmp(tag, "Posi"))
-          GET_POS(ch) = atoi(line);
+          char_position_set(ch, atoi(line));
         else if (!strcmp(tag, "PwrA"))
           ;
         else if (!strcmp(tag, "Pref")) {
@@ -1099,12 +1102,8 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "Tcla: %d\n", GET_TRANSCLASS(ch));
   if (GET_MOLT_EXP(ch) != PFDEF_EXP)
     fprintf(fl, "Mexp: %" I64T "\n", GET_MOLT_EXP(ch));
-  if (GET_MAJINIZED(ch) != PFDEF_EXP)
-    fprintf(fl, "Majm: %" I64T "\n", GET_MAJINIZED(ch));
   if (GET_MOLT_LEVEL(ch) != PFDEF_EXP)
     fprintf(fl, "Mlvl: %d\n", GET_MOLT_LEVEL(ch));
-  if (GET_FISHD(ch) != PFDEF_ACCURACY)
-    fprintf(fl, "Fisd: %d\n", GET_FISHD(ch));
   if (GET_POLE_BONUS(ch) != PFDEF_ACCURACY)
     fprintf(fl, "Pole: %d\n", GET_POLE_BONUS(ch));
   if (GET_PREFERENCE(ch) != PFDEF_EYE)
@@ -1161,10 +1160,7 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "Rtim: %ld\n", GET_RTIME(ch));
   if (GET_BOOSTS(ch) != PFDEF_DISTFEA)
     fprintf(fl, "Boos: %d\n", GET_BOOSTS(ch));
-  if (MAJINIZED(ch) != PFDEF_LPLAY)
-    fprintf(fl, "Maji: %d\n", MAJINIZED(ch));
-  if (GET_BLESSLVL(ch) != PFDEF_HEIGHT)
-    fprintf(fl, "Blss: %d\n", GET_BLESSLVL(ch));
+
   if (GET_BOARD(ch, 0) != PFDEF_BOARD)
     fprintf(fl, "Boam: %ld\n", GET_BOARD(ch, 0));
   if (GET_BOARD(ch, 1) != PFDEF_BOARD)
@@ -1511,7 +1507,10 @@ void load_majin(struct char_data *ch, const char *line) {
   int64_t num = 0;
 
   sscanf(line, "%" I64T "", &num);
-  GET_MAJINIZED(ch) = num;
+  if(!char_condition_has(ch, "majinized"))
+    char_condition_add(ch, "majinized", "skill",  "majinize");
+
+  char_condition_number_set(ch, "majinized", "bonus", num);
 }
 
 void load_molt(struct char_data *ch, const char *line) {

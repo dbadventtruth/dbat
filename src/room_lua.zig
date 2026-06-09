@@ -61,6 +61,16 @@ fn registerRoomMetatable(lua: *Lua) void {
     lua.setField(-2, "is_same");
     lua.pushFunction(zlua.wrap(luaRoomIsDark));
     lua.setField(-2, "is_dark");
+    lua.pushFunction(zlua.wrap(luaRoomIsSunken));
+    lua.setField(-2, "is_sunken");
+    lua.pushFunction(zlua.wrap(luaRoomFlagged));
+    lua.setField(-2, "flagged");
+    lua.pushFunction(zlua.wrap(luaRoomFlagSet));
+    lua.setField(-2, "flag_set");
+    lua.pushFunction(zlua.wrap(luaRoomFlagToggle));
+    lua.setField(-2, "flag_toggle");
+    lua.pushFunction(zlua.wrap(luaRoomCookElement));
+    lua.setField(-2, "cook_element");
     lua.pushFunction(zlua.wrap(luaRoomIdGet));
     lua.setField(-2, "id_get");
     lua.pushFunction(zlua.wrap(luaRoomVnumGet));
@@ -155,6 +165,38 @@ fn luaRoomIsSame(lua: *Lua) i32 {
 
 fn luaRoomIsDark(lua: *Lua) i32 {
     lua.pushBoolean(cdb.room_is_dark(checkRoom(lua)));
+    return 1;
+}
+
+fn luaRoomIsSunken(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.room_is_sunken(checkRoom(lua)));
+    return 1;
+}
+
+fn luaRoomFlagged(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const pos = lua.toInteger(2) catch lua.typeError(2, "integer");
+    lua.pushBoolean(cdb.room_flagged(room, @intCast(pos)) != 0);
+    return 1;
+}
+
+fn luaRoomFlagSet(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const pos = lua.toInteger(2) catch lua.typeError(2, "integer");
+    const value = lua.toBoolean(3);
+    cdb.room_flag_set(room, @intCast(pos), value);
+    return 0;
+}
+
+fn luaRoomFlagToggle(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const pos = lua.toInteger(2) catch lua.typeError(2, "integer");
+    lua.pushBoolean(cdb.room_flag_toggle(room, @intCast(pos)));
+    return 1;
+}
+
+fn luaRoomCookElement(lua: *Lua) i32 {
+    lua.pushInteger(@intFromBool(cdb.cook_element(checkRoom(lua))));
     return 1;
 }
 
@@ -276,16 +318,18 @@ fn luaRoomGeffectSet(lua: *Lua) i32 {
 
 fn luaRoomContentsGet(lua: *Lua) i32 {
     const room = checkRoom(lua);
+
+    var count: usize = 0;
+    const ids = cdb.room_objects_get(room, &count);
+    defer if (ids) |_| std.c.free(@as(?*anyopaque, @ptrCast(ids)));
+
     lua.newTable();
-
-    var current = cdb.room_contents_get(room);
-    var index: usize = 1;
-    while (current != null) : (current = current.*.next_content) {
-        objects_lua.pushObject(lua, cdb.obj_id_get(current));
-        lua.setIndex(-2, @intCast(index));
-        index += 1;
+    for (0..count) |i| {
+        if (ids) |ptr| {
+            objects_lua.pushObject(lua, ptr[i]);
+            lua.setIndex(-2, @intCast(i + 1));
+        }
     }
-
     return valueIterator(lua);
 }
 

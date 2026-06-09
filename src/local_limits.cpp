@@ -64,6 +64,8 @@
 
 #include "iterate.hpp"
 
+#include <initializer_list>
+
 #include <cstring>
 #include <unistd.h>
 
@@ -155,50 +157,30 @@ static void healthy_check(struct char_data *ch) {
 
   int chance = 70, roll = rand_number(1, 100), change = FALSE;
 
-  if (AFF_FLAGGED(ch, AFF_SHOCKED) && roll >= chance) {
+  if(roll < chance) 
+    return;
+
+  if (AFF_FLAGGED(ch, AFF_SHOCKED)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SHOCKED);
     change = TRUE;
   }
-  if (AFF_FLAGGED(ch, AFF_MBREAK) && roll >= chance) {
+
+  if (AFF_FLAGGED(ch, AFF_MBREAK)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     change = TRUE;
   }
-  if (is_affected(ch, AFF_WITHER) && roll >= chance) {
-    remove_affect(ch, AFF_WITHER);
-    save_char(ch);
+
+  if(char_condition_remove_tag(ch, "healthy_clear", "healthy")) {
     change = TRUE;
   }
-  if (AFF_FLAGGED(ch, AFF_CURSE) && roll >= chance) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_CURSE);
-    change = TRUE;
-  }
-  if (AFF_FLAGGED(ch, AFF_POISON) && roll >= chance) {
-    null_affect(ch, AFF_POISON);
-    change = TRUE;
-  }
-  if (IS_AFFECTED(ch, AFF_PARALYZE) && roll >= chance) {
-    null_affect(ch, AFF_PARALYZE);
-    change = TRUE;
-  }
-  if (IS_AFFECTED(ch, AFF_PARA) && roll >= chance) {
-    null_affect(ch, AFF_PARA);
-    change = TRUE;
-  }
-  if (AFF_FLAGGED(ch, AFF_BLIND) && roll >= chance) {
-    null_affect(ch, AFF_BLIND);
-    change = TRUE;
-  }
-  if (is_affected(ch, AFF_HYDROZAP) && roll >= chance) {
-    remove_affect(ch, AFF_HYDROZAP);
-    save_char(ch);
-    change = TRUE;
-  }
-  if (AFF_FLAGGED(ch, AFF_KNOCKED) && roll >= chance) {
+
+
+  if (AFF_FLAGGED(ch, AFF_KNOCKED)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
     change = TRUE;
   }
-  if (change == TRUE) {
+  if (change) {
     send_to_char(ch,
                  "@CYou feel your body recover from all its ailments!@n\r\n");
   }
@@ -245,151 +227,11 @@ static int wearing_stardust(struct char_data *ch) {
 
 /* manapoint gain pr. game hour */
 static int64_t mana_gain(struct char_data *ch) {
-  int64_t gain = 0;
+  int64_t gain = char_der_total_get(ch, "ki_regen");
 
-  struct room_data *room = char_room_get(ch);
+  if(auto conc = GET_SKILL(ch, SKILL_CONCENTRATION)) {
 
-  if (IS_NPC(ch)) {
-    /* Neat and fast */
-    gain = GET_MAX_MANA(ch) / 70;
-  } else {
-
-    if (room_flagged(room, ROOM_REGEN) ||
-        (GET_BONUS(ch, BONUS_DESTROYER) > 0 && room_dmg_get(room) >= 75)) {
-      if (IS_KONATSU(ch)) {
-        gain = GET_MAX_MANA(ch) / 12;
-      }
-      if (IS_MUTANT(ch)) {
-        gain = GET_MAX_MANA(ch) / 11;
-      }
-      if (IS_ARLIAN(ch)) {
-        gain = GET_MAX_MANA(ch) / 30;
-      }
-      if (!IS_KONATSU(ch) && !IS_MUTANT(ch)) {
-        gain = GET_MAX_MANA(ch) / 10;
-      }
-    } else if (!room_flagged(room, ROOM_REGEN)) {
-      if (IS_KONATSU(ch)) {
-        gain = GET_MAX_MANA(ch) / 15;
-      }
-      if (IS_MUTANT(ch)) {
-        gain = GET_MAX_MANA(ch) / 13;
-      }
-      if (!IS_KONATSU(ch) && !IS_MUTANT(ch)) {
-        gain = GET_MAX_MANA(ch) / 12;
-      }
-      if (room_flagged(room, ROOM_BEDROOM)) {
-        gain += gain * 0.25;
-      }
-      if (IS_ARLIAN(ch)) {
-        gain = GET_MAX_MANA(ch) / 40;
-      }
-    }
-    /* Position calculations    */
-    switch (GET_POS(ch)) {
-    case POS_STANDING:
-      if (!IS_HOSHIJIN(ch) || (IS_HOSHIJIN(ch) && GET_PHASE(ch) <= 0)) {
-        gain = gain / 4;
-      } else {
-        gain += (gain / 2);
-      }
-      break;
-    case POS_FIGHTING:
-      gain = gain / 4;
-      break;
-    case POS_SLEEPING:
-      if (!SITS(ch)) {
-        gain *= 2;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090) {
-        gain *= 3;
-        gain += gain * 0.1;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19092) {
-        gain *= 3;
-        gain += gain * 0.3;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain *= 3;
-      }
-      break;
-    case POS_RESTING:
-      if (!SITS(ch)) {
-        gain += (gain / 2);
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090 && !IS_ARLIAN(ch)) {
-        gain *= 2;
-        gain += gain * 0.1;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19092 && !IS_ARLIAN(ch)) {
-        gain *= 2;
-        gain += gain * 0.3;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain *= 2;
-      }
-      break;
-    case POS_SITTING:
-      if (!SITS(ch)) {
-        gain += (gain / 4);
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090) {
-        gain += gain * 0.6;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19092) {
-        gain += gain * 0.8;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain += gain * 0.5;
-      }
-      break;
-    }
-  }
-
-  if (room) {
-    if (cook_element(room) == 1) {
-      gain += (gain * 0.2);
-    }
-  }
-
-  if (IS_ARLIAN(ch) && IS_FEMALE(ch) && OUTSIDE(ch)) {
-    gain *= 4;
-  }
-
-  if (IS_KANASSAN(ch) && weather_info.sky == SKY_RAINING && OUTSIDE(ch)) {
-    gain += gain * 0.1;
-  }
-  if (IS_KANASSAN(ch) && room_is_sunken(room)) {
-    gain *= 16;
-  }
-
-  if (IS_HOSHIJIN(ch) && GET_PHASE(ch) > 0) {
-    gain *= 2;
-  }
-
-  if (PLR_FLAGGED(ch, PLR_HEALT) && SITS(ch) != NULL) {
-    gain *= 20;
-  }
-  if (char_condition_has(ch, "special_pose") &&
-      axion_dice(0) > GET_SKILL(ch, SKILL_POSE)) {
-    char_condition_remove(ch, "special_pose", "pose_faded");
-    send_to_char(ch, "You feel slightly less confident now.\r\n");
-    save_char(ch);
-  }
-  if (is_affected(ch, AFF_HYDROZAP) && rand_number(1, 4) >= 4) {
-    remove_affect(ch, AFF_HYDROZAP);
-    save_char(ch);
-  }
-
-  if (GET_SKILL(ch, SKILL_CONCENTRATION) >= 100) {
-    gain += gain / 2;
-  } else if (GET_SKILL(ch, SKILL_CONCENTRATION) >= 75) {
-    gain += gain / 4;
-  } else if (GET_SKILL(ch, SKILL_CONCENTRATION) >= 50) {
-    gain += gain / 6;
-  } else if (GET_SKILL(ch, SKILL_CONCENTRATION) >= 25) {
-    gain += gain / 8;
-  } else if (GET_SKILL(ch, SKILL_CONCENTRATION) < 25 &&
-             GET_SKILL(ch, SKILL_CONCENTRATION) > 0) {
-    gain += gain / 10;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_BLESS)) {
-    gain *= 2;
-  }
-  if (AFF_FLAGGED(ch, AFF_CURSE)) {
-    gain /= 5;
+    gain += (gain * 0.005) * conc;
   }
 
   if (GET_FOODR(ch) > 0 && rand_number(1, 2) == 2) {
@@ -400,162 +242,25 @@ static int64_t mana_gain(struct char_data *ch) {
     hint_system(ch, 0);
   }
 
-  if (AFF_FLAGGED(ch, AFF_POISON))
-    gain /= 4;
-
-  if (cook_element(room) == 1)
-    gain *= 2;
-
   return (gain);
 }
 
 /* Hitpoint gain pr. game hour */
 int64_t hit_gain(struct char_data *ch) {
-  int64_t gain = 0;
-  struct room_data *room = char_room_get(ch);
+  
+  auto gain = char_der_total_get(ch, "powerlevel_regen");
 
-  if (IS_NPC(ch)) {
-    /* Neat and fast */
-    gain = GET_MAX_HIT(ch) / 70;
-  } else {
-
-    if (room_flagged(room, ROOM_REGEN) ||
-        (GET_BONUS(ch, BONUS_DESTROYER) > 0 && room_dmg_get(room) >= 75)) {
-      if (IS_HUMAN(ch)) {
-        gain = GET_MAX_HIT(ch) / 20;
-      }
-      if (IS_ARLIAN(ch)) {
-        gain = GET_MAX_HIT(ch) / 30;
-      }
-      if (IS_NAMEK(ch)) {
-        gain = GET_MAX_HIT(ch) / 2;
-      }
-      if (IS_MUTANT(ch)) {
-        gain = GET_MAX_HIT(ch) / 11;
-      }
-      if (!IS_HUMAN(ch) && !IS_NAMEK(ch) && !IS_MUTANT(ch)) {
-        gain = GET_MAX_HIT(ch) / 10;
-      }
-    } else if (!room_flagged(room, ROOM_REGEN)) {
-      if (IS_HUMAN(ch)) {
-        gain = GET_MAX_HIT(ch) / 30;
-      }
-      if (IS_NAMEK(ch)) {
-        gain = GET_MAX_HIT(ch) / 4;
-      }
-      if (IS_MUTANT(ch)) {
-        gain = GET_MAX_HIT(ch) / 16;
-      }
-      if (IS_ARLIAN(ch)) {
-        gain = GET_MAX_HIT(ch) / 40;
-      }
-      if (!IS_HUMAN(ch) && !IS_NAMEK(ch) && !IS_MUTANT(ch)) {
-        gain = GET_MAX_HIT(ch) / 15;
-      }
-      if (room_flagged(room, ROOM_BEDROOM)) {
-        gain += gain * 0.25;
-      }
-    }
-
-    /* Position calculations    */
-    switch (GET_POS(ch)) {
-    case POS_STANDING:
-      if (!IS_HOSHIJIN(ch) || (IS_HOSHIJIN(ch) && GET_PHASE(ch) <= 0)) {
-        gain = gain / 4;
-      } else if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_ABSORB)) {
-        gain = gain / 3;
-      } else {
-        gain += (gain / 2);
-      }
-      break;
-    case POS_FIGHTING:
-      gain = gain / 4;
-      break;
-    case POS_SLEEPING:
-      if (IS_ARLIAN(ch)) {
-        gain *= 3;
-      } else if (!SITS(ch)) {
-        gain *= 2;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090) {
-        gain *= 3;
-        gain += gain * 0.1;
-      } else if (SITS(ch)) {
-        gain *= 3;
-      }
-      break;
-    case POS_RESTING:
-      if (!SITS(ch)) {
-        gain += (gain / 2);
-      } else if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_ABSORB)) {
-        gain = gain * 1.5;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090 && !IS_ARLIAN(ch)) {
-        gain += gain * 1.1;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain *= 2;
-      }
-      break;
-    case POS_SITTING:
-      if (!SITS(ch)) {
-        gain += (gain / 4);
-      } else if (IS_ANDROID(ch) && PLR_FLAGGED(ch, PLR_ABSORB)) {
-        gain = gain * 0.5;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090 && !IS_ARLIAN(ch)) {
-        gain += gain * 0.6;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain += (gain * 0.5);
-      }
-    }
-  }
   healthy_check(ch);
-
-  if (IS_ARLIAN(ch) && IS_FEMALE(ch) && OUTSIDE(ch)) {
-    gain *= 4;
-  }
-
-  if (IS_KANASSAN(ch) && weather_info.sky == SKY_RAINING && OUTSIDE(ch)) {
-    gain += gain * 0.1;
-  }
-  if (IS_KANASSAN(ch) && room_is_sunken(room)) {
-    gain *= 16;
-  }
-
-  if (IS_HOSHIJIN(ch) && GET_PHASE(ch) > 0) {
-    gain *= 2;
-  }
-  if (PLR_FLAGGED(ch, PLR_HEALT) && SITS(ch) != NULL) {
-    gain *= 20;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_BLESS)) {
-    gain *= 2;
-  }
-  if (AFF_FLAGGED(ch, AFF_CURSE)) {
-    gain /= 5;
-  }
 
   /* Fury Mode Loss for halfbreeds */
 
   if (PLR_FLAGGED(ch, PLR_FURY)) {
-    send_to_char(ch, "Your fury subsides for now. Next time try to take "
-                     "advantage of it before you calm down.\r\n");
+    send_to_char(ch, "Your fury subsides for now.\r\n");
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FURY);
   }
 
-  /* Fury Mode Loss for halfbreeds */
-
-  if (AFF_FLAGGED(ch, AFF_POISON))
-    gain /= 4;
-  if (cook_element(room) == 1)
-    gain *= 2;
-
-  if (!IS_NPC(ch)) {
-    if (PLR_FLAGGED(ch, PLR_ABSORB)) {
-      gain = gain / 8;
-    }
-  }
-
-  if (GET_REGEN(ch) > 0) {
-    gain += (gain * 0.01) * GET_REGEN(ch);
+  if (auto regen = GET_REGEN(ch)) {
+    gain += (gain * 0.01) * regen;
   }
 
   return (gain);
@@ -563,130 +268,16 @@ int64_t hit_gain(struct char_data *ch) {
 
 /* move gain pr. game hour */
 static int64_t move_gain(struct char_data *ch) {
-  int64_t gain = 0;
+  int64_t gain = char_der_total_get(ch, "stamina_regen");
   struct room_data *room = char_room_get(ch);
-  if (IS_NPC(ch)) {
-    /* Neat and fast */
-    gain = GET_MAX_MOVE(ch) / 70;
-  } else {
-
-    if (room_flagged(room, ROOM_REGEN) ||
-        (GET_BONUS(ch, BONUS_DESTROYER) > 0 && room_dmg_get(room) >= 75)) {
-      if (IS_MUTANT(ch)) {
-        gain = GET_MAX_MOVE(ch) / 7;
-      }
-      if (IS_ARLIAN(ch)) {
-        gain = GET_MAX_MOVE(ch) / 4;
-      }
-      if (!IS_MUTANT(ch)) {
-        gain = GET_MAX_MOVE(ch) / 6;
-      }
-    } else if (!room_flagged(room, ROOM_REGEN)) {
-      if (IS_MUTANT(ch)) {
-        gain = GET_MAX_MOVE(ch) / 9;
-      }
-      if (!IS_MUTANT(ch)) {
-        gain = GET_MAX_MOVE(ch) / 8;
-      }
-      if (room_flagged(room, ROOM_BEDROOM)) {
-        gain += gain * 0.25;
-      }
-    }
-
-    /* Position calculations    */
-    switch (GET_POS(ch)) {
-    case POS_STANDING:
-      if (!IS_HOSHIJIN(ch) || (IS_HOSHIJIN(ch) && GET_PHASE(ch) <= 0)) {
-        gain = gain / 4;
-      } else {
-        gain += (gain / 2);
-      }
-      break;
-    case POS_FIGHTING:
-      gain = gain / 4;
-      break;
-    case POS_SLEEPING:
-      if (!SITS(ch)) {
-        gain *= 2;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090 && !IS_ARLIAN(ch)) {
-        gain *= 3;
-        gain += gain * 0.1;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19091 && !IS_ARLIAN(ch)) {
-        gain *= 3;
-        gain += gain * 0.3;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain *= 3;
-      }
-      break;
-    case POS_RESTING:
-      if (!SITS(ch)) {
-        gain += (gain / 2);
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090 && !IS_ARLIAN(ch)) {
-        gain += gain * 1.1;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19091 && !IS_ARLIAN(ch)) {
-        gain += gain * 1.3;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain += gain;
-      }
-      break;
-    case POS_SITTING:
-      if (!SITS(ch)) {
-        gain += (gain / 4);
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19090 && !IS_ARLIAN(ch)) {
-        gain += gain * 0.6;
-      } else if (GET_OBJ_VNUM(SITS(ch)) == 19091 && !IS_ARLIAN(ch)) {
-        gain += gain * 0.8;
-      } else if (SITS(ch) || IS_ARLIAN(ch)) {
-        gain += (gain / 2);
-      }
-    }
-  }
-
-  if (IS_ARLIAN(ch) && IS_FEMALE(ch) && OUTSIDE(ch)) {
-    gain *= 2;
-  }
-
-  if (IS_NAMEK(ch)) {
-    gain = gain * 0.5;
-  }
-
-  if (IS_KANASSAN(ch) && weather_info.sky == SKY_RAINING && OUTSIDE(ch)) {
-    gain += gain * 0.1;
-  }
-  if (IS_KANASSAN(ch) && room_is_sunken(room)) {
-    gain *= 16;
-  }
-
-  if (IS_HOSHIJIN(ch) && GET_PHASE(ch) > 0) {
-    gain *= 2;
-  }
-  if (PLR_FLAGGED(ch, PLR_HEALT) && SITS(ch) != NULL) {
-    gain *= 20;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_BLESS)) {
-    gain *= 2;
-  }
-  if (AFF_FLAGGED(ch, AFF_CURSE)) {
-    gain /= 5;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_POISON))
-    gain /= 4;
 
   if (!calcGravCost(ch, 0)) {
     send_to_char(ch, "This gravity is wearing you out!\r\n");
     gain /= 4;
   }
 
-  if (room_flagged(room, ROOM_AURA)) {
-    gain = GET_MAX_MOVE(ch) - (getCurST(ch));
-  }
-  if (cook_element(room) == 1)
-    gain *= 2;
-
-  if (GET_REGEN(ch) > 0) {
-    gain += (gain * 0.01) * GET_REGEN(ch);
+  if (auto regen = GET_REGEN(ch)) {
+    gain += (gain * 0.01) * regen;
   }
 
   return (gain);
@@ -704,7 +295,7 @@ static void update_flags(struct char_data *ch) {
         (getCurKI(ch)) >= GET_MAX_MANA(ch)) {
       send_to_char(ch, "You FINALLY wake up.\r\n");
       act("$n wakes up.", TRUE, ch, 0, 0, TO_ROOM);
-      GET_POS(ch) = POS_SITTING;
+      char_position_set(ch, POS_SITTING);
     }
   }
 
@@ -719,11 +310,11 @@ static void update_flags(struct char_data *ch) {
     send_to_char(ch, "Your fireshield disappears.\r\n");
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FIRESHIELD);
   }
-  if (AFF_FLAGGED(ch, AFF_ZANZOKEN) && !FIGHTING(ch) &&
+  if (char_condition_has(ch, "zanzoken") && !FIGHTING(ch) &&
       rand_number(1, 3) == 2) {
     send_to_char(
         ch, "You lose concentration and no longer are ready to zanzoken.\r\n");
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+    char_condition_remove(ch, "zanzoken", "zanzoken_over");
   }
   if (AFF_FLAGGED(ch, AFF_ENSNARED) && rand_number(1, 3) == 2) {
     send_to_char(ch, "The silk ensnaring your arms disolves enough for you to "
@@ -818,56 +409,18 @@ static void update_flags(struct char_data *ch) {
         TO_ROOM);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FROZEN);
   }
-  if (is_affected(ch, AFF_WITHER) && rand_number(1, 6 + sick_fail) == 2) {
+  if (char_condition_has(ch, "wither") && rand_number(1, 6 + sick_fail) == 2) {
     send_to_char(ch, "@wYour body returns to normal and you beat the withering "
                      "that plagued you.\r\n");
     act("$n@W's looks more fit now.", TRUE, ch, 0, 0, TO_ROOM);
-    remove_affect(ch, AFF_WITHER);
+    char_condition_remove(ch, "wither", "wore_off");
     save_char(ch);
   }
   if (wearing_stardust(ch) == 1) {
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+    char_condition_add(ch, "zanzoken", "skill", "zanzoken");
     send_to_char(ch, "The stardust armor blesses you with a free zanzoken when "
                      "you next need it.\r\n");
   }
-}
-
-/* ki gain pr. game hour */
-static int ki_gain(struct char_data *ch) {
-  int gain = 0;
-
-  if (IS_NPC(ch)) {
-    /* Neat and fast */
-    gain = GET_LEVEL(ch);
-  } else {
-    gain = GET_MAX_KI(ch) / 12;
-
-    /* Class calculations */
-
-    /* Skill/Spell calculations */
-
-    /* Position calculations    */
-    switch (GET_POS(ch)) {
-    case POS_SLEEPING:
-      gain *= 2;
-      break;
-    case POS_RESTING:
-      gain += (gain / 2); /* Divide by 2 */
-      break;
-    case POS_SITTING:
-      gain += (gain / 4); /* Divide by 4 */
-      break;
-    }
-  }
-
-  if (AFF_FLAGGED(ch, AFF_POISON))
-    gain /= 4;
-
-  if (GET_REGEN(ch) > 0) {
-    gain += (gain * 0.01) * GET_REGEN(ch);
-  }
-
-  return (gain);
 }
 
 void set_title(struct char_data *ch, char *title) {
@@ -935,7 +488,7 @@ void gain_exp(struct char_data *ch, int64_t gain) {
     return;
   }
 
-  if (AFF_FLAGGED(ch, AFF_WUNJO)) {
+  if (char_condition_has(ch, "rune_wunjo")) {
     gain += gain * 0.15;
   }
   if (PLR_FLAGGED(ch, PLR_IMMORTAL)) {
@@ -1551,11 +1104,11 @@ static void point_update_characters(void) {
           remove_kaioken(i, 2);
       }
 
-      if (AFF_FLAGGED(i, AFF_BURNED)) {
+      if (char_condition_has(i, "burned")) {
         if (rand_number(1, 5) >= 4) {
           send_to_char(i, "Your burns are healed now.\r\n");
           act("$n@w's burns are now healed.@n", TRUE, i, 0, 0, TO_ROOM);
-          REMOVE_BIT_AR(AFF_FLAGS(i), AFF_BURNED);
+          char_condition_remove(i, "burned", "healing_burned");
         }
       }
 
@@ -1622,7 +1175,7 @@ static void point_update_characters(void) {
           }
         }
       }
-      if (!AFF_FLAGGED(i, AFF_FLYING) &&
+      if (!char_condition_has(i, "flying") &&
           room_geffect_get(char_room_get(i)) == 6 &&
           !MOB_FLAGGED(i, MOB_NOKILL) && !IS_DEMON(i)) {
         act("@rYour legs are burned by the lava!@n", TRUE, i, 0, 0, TO_CHAR);
@@ -1637,7 +1190,7 @@ static void point_update_characters(void) {
           die(i, NULL);
         }
       }
-      if (change && !AFF_FLAGGED(i, AFF_POISON)) {
+      if (change && !char_condition_has(i, "poison")) {
         if (PLR_FLAGGED(i, PLR_HEALT) && SITS(i) != NULL) {
           send_to_char(
               i, "@wThe healing tank works wonders on your injuries.@n\r\n");
@@ -1683,7 +1236,7 @@ static void point_update_characters(void) {
         else
           send_to_char(i, "You feel slightly better.\r\n");
       }
-      if (AFF_FLAGGED(i, AFF_POISON)) {
+      if (char_condition_has(i, "poison")) {
         double cost = 0.0;
         if (GET_CON(i) >= 100) {
           cost = 0.01;
@@ -1706,11 +1259,8 @@ static void point_update_characters(void) {
         } else {
           send_to_char(i, "The poison claims your life!\r\n");
           act("$n pukes up blood and falls down dead!", TRUE, i, 0, 0, TO_ROOM);
-          if (i->poisonby) {
-            die(i, i->poisonby);
-          } else {
-            die(i, NULL);
-          }
+          auto poisonby = char_by_id(char_condition_number_get(i, "poison", "poison_by"));
+          die(i, poisonby);
         }
       }
       if (GET_POS(i) <= POS_STUNNED)
@@ -1919,12 +1469,10 @@ static void point_update_objects(void) {
             GET_OBJ_WEIGHT(j) -= melt;
             send_to_char(j->carried_by, "%s @wmelts a little.\r\n",
                          j->short_description);
-            IS_CARRYING_W(j->carried_by) -= melt;
           } else {
             send_to_char(j->carried_by, "%s @wmelts completely away.\r\n",
                          j->short_description);
             int remainder = melt - GET_OBJ_WEIGHT(j);
-            IS_CARRYING_W(j->carried_by) -= (melt - remainder);
             extract_obj(j);
             continue;
           }

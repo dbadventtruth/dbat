@@ -8,7 +8,6 @@ extern "C" {
 #endif
 
 // global variables
-extern struct char_data *combat_list, *next_combat_list;
 extern struct attack_hit_type attack_hit_text[NUM_ATTACK_TYPES];
 
 // functions

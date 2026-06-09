@@ -820,8 +820,6 @@ void medit_parse(struct descriptor_data *d, char *arg) {
     else if (i <= NUM_AFF_FLAGS)
       TOGGLE_BIT_AR(AFF_FLAGS(OLC_MOB(d)), i);
     /* Remove unwanted bits right away. */
-    REMOVE_BIT_AR(AFF_FLAGS(OLC_MOB(d)),
-                  AFF_CHARM | AFF_POISON | AFF_GROUP | AFF_SLEEP);
     medit_disp_aff_flags(d);
     return;
     /*-------------------------------------------------------------------*/
@@ -886,7 +884,7 @@ void medit_parse(struct descriptor_data *d, char *arg) {
     break;
 
   case MEDIT_POS:
-    GET_POS(OLC_MOB(d)) = LIMIT(i, 0, NUM_POSITIONS - 1);
+    char_position_set(OLC_MOB(d), LIMIT(i, 0, NUM_POSITIONS - 1));
     break;
 
   case MEDIT_DEFAULT_POS:

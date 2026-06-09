@@ -33,7 +33,6 @@ ACMD(do_arena);
 ACMD(do_bury);
 ACMD(do_hayasa);
 ACMD(do_instill);
-ACMD(do_kanso);
 ACMD(do_hydromancy);
 ACMD(do_channel);
 ACMD(do_shimmer);

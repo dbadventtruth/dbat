@@ -780,7 +780,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
           else
             *str = '\0';
         } else if (!strcasecmp(field, "flying")) {
-          if (AFF_FLAGGED(c, AFF_FLYING))
+          if (char_condition_has(c, "flying"))
             strcpy(str, "1");
           else
             strcpy(str, "0");
@@ -988,7 +988,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             for (i = POS_SLEEPING; i <= POS_STANDING; i++) {
               /* allows : Sleeping, Resting, Sitting, Fighting, Standing */
               if (!strncasecmp(subfield, position_types[i], strlen(subfield))) {
-                GET_POS(c) = i;
+                char_position_set(c, i);
                 break;
               }
             }

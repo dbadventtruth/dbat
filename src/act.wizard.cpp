@@ -4390,12 +4390,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
 
   case 56:
-    vict->max_ki = RANGE(1, 5000);
+    //vict->max_ki = RANGE(1, 5000);
     affect_total(vict);
     break;
 
   case 57:
-    vict->ki = RANGE(0, vict->max_ki);
+    //vict->ki = RANGE(0, vict->max_ki);
     affect_total(vict);
     break;
 
@@ -4784,11 +4784,11 @@ ACMD(do_peace) {
     if (GET_ADMLEVEL(vict) > GET_ADMLEVEL(ch))
       return true;
     stop_fighting(vict);
-    GET_POS(vict) = POS_SITTING;
+    char_position_set(vict, POS_SITTING);
     return true;
   });
   stop_fighting(ch);
-  GET_POS(ch) = POS_STANDING;
+  char_position_set(ch, POS_STANDING);
 }
 
 ACMD(do_wizupdate) {
@@ -5132,12 +5132,6 @@ ACMD(do_zcheck) {
         len += snprintf(buf + len, sizeof(buf) - len,
                         "- Has %" I64T " experience (limit: %d)\r\n", mob_exp,
                         max_exp_allowed);
-      if (AFF_FLAGGED(mob, AFF_GROUP | AFF_CHARM | AFF_POISON) && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Has illegal affection bits set (%s %s %s)\r\n",
-                        AFF_FLAGGED(mob, AFF_GROUP) ? "GROUP" : "",
-                        AFF_FLAGGED(mob, AFF_CHARM) ? "CHARM" : "",
-                        AFF_FLAGGED(mob, AFF_POISON) ? "POISON" : "");
 
       /*if (!MOB_FLAGGED(mob, MOB_SENTINEL) && !MOB_FLAGGED(mob, MOB_STAY_ZONE)
         && (found = 1)) len += snprintf(buf + len, sizeof(buf) - len,

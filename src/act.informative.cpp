@@ -529,13 +529,13 @@ ACMD(do_kyodaika) {
     return;
   }
 
-  if (!is_affected(ch, AFF_KYODAIKA)) {
+  if (!char_condition_has(ch, "kyodaika")) {
     act("@GYou growl as your body grows to ten times its normal size!@n", TRUE,
         ch, 0, 0, TO_CHAR);
     act("@g$n@G growls as $s body grows to ten times its normal size!@n", TRUE,
         ch, 0, 0, TO_ROOM);
     send_to_char(ch, "@cStrength@D: @C+5\r\n@cSpeed@D: @c-2@n\r\n");
-    assign_affect(ch, AFF_KYODAIKA, 0, -1, 5, 0, 0, 0, 0, -2);
+    char_condition_add(ch, "kyodaika", "command", "kyodaika");
     save_char(ch);
     return;
   } else {
@@ -544,7 +544,7 @@ ACMD(do_kyodaika) {
     act("@g$n@G growls as $s body shrinks to its normal size!@n", TRUE, ch, 0,
         0, TO_ROOM);
     send_to_char(ch, "@cStrength@D: @C-5\r\n@cSpeed@D: @c+2@n\r\n");
-    remove_affect(ch, AFF_KYODAIKA);
+    char_condition_remove(ch, "kyodaika", "command");
     save_char(ch);
     return;
   }
@@ -1602,7 +1602,7 @@ static void bringdesc(struct char_data *ch, struct char_data *tch) {
       send_to_char(
           ch, "            @D[@cSkin Color  @D: @WPurple.       @D]@n\r\n");
     }
-    if (MAJINIZED(tch) != 0 && MAJINIZED(tch) != 3) {
+    if (char_condition_has(tch, "majinized") != 0 && char_condition_number_get(tch, "majinized", "lord") != 3) {
       send_to_char(
           ch, "            @D[@cForehead    @D: @mMajin Symbol  @D]@n\r\n");
     }
@@ -3222,37 +3222,11 @@ static void look_at_char(struct char_data *i, struct char_data *ch) {
   if (IS_NPC(i)) {
     send_to_char(ch, "is %s sized, and\r\n", size_names[get_size(i)]);
   }
+  
   if (!IS_NPC(i)) {
-    if (!PLR_FLAGGED(i, PLR_OOZARU) && (!IS_ICER(i) || !IS_TRANSFORMED(i)) &&
-        GET_GENOME(i, 0) < 11) {
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
+    send_to_char(ch, "is %s sized, about %ldcm tall,\r\nabout %ldkg heavy,",
                    size_names[get_size(i)], GET_PC_HEIGHT(i), GET_PC_WEIGHT(i));
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS1)) {
-      int num1 = GET_PC_HEIGHT(i) * 3;
-      int num2 = GET_PC_WEIGHT(i) * 4;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS2)) {
-      int num1 = GET_PC_HEIGHT(i) * 3;
-      int num2 = GET_PC_WEIGHT(i) * 4;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS3)) {
-      int num1 = GET_PC_HEIGHT(i) * 1.5;
-      int num2 = GET_PC_WEIGHT(i) * 2;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (IS_ICER(i) && PLR_FLAGGED(i, PLR_TRANS4)) {
-      int num1 = GET_PC_HEIGHT(i) * 2;
-      int num2 = GET_PC_WEIGHT(i) * 3;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    } else if (PLR_FLAGGED(i, PLR_OOZARU) || GET_GENOME(i, 0) == 11) {
-      int num1 = GET_PC_HEIGHT(i) * 10;
-      int num2 = GET_PC_WEIGHT(i) * 50;
-      send_to_char(ch, "is %s sized, about %dcm tall,\r\nabout %dkg heavy,",
-                   size_names[get_size(i)], num1, num2);
-    }
+
     if (i == ch) {
       send_to_char(ch, " and ");
     } else if (GET_AGE(ch) >= GET_AGE(i) + 30) {
@@ -3424,9 +3398,9 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
               dirs[GET_EAVESDIR(i)]);
       act(eaves, TRUE, i, 0, ch, TO_VICT);
     }
-    if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 1)
+    if (char_condition_has(i, "flying") && GET_ALT(i) == 1)
       act("...$e is in the air!", FALSE, i, 0, ch, TO_VICT);
-    if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 2)
+    if (char_condition_has(i, "flying") && GET_ALT(i) == 2)
       act("...$e is high in the air!", FALSE, i, 0, ch, TO_VICT);
     if (AFF_FLAGGED(i, AFF_SANCTUARY) && !GET_SKILL(i, SKILL_AQUA_BARRIER))
       act("...$e has a barrier around $s body!", FALSE, i, 0, ch, TO_VICT);
@@ -3441,7 +3415,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
     if (GET_CHARGE(i))
       act("...$e has a bright %s aura around $s body!", FALSE, i, 0, ch,
           TO_VICT);
-    if (AFF_FLAGGED(i, AFF_METAMORPH))
+    if (char_condition_has(i, "dark_metamorphosis"))
       act("@w...$e has a dark, @rred@w aura and menacing presence.", FALSE, i,
           0, ch, TO_VICT);
     if (AFF_FLAGGED(i, AFF_HAYASA))
@@ -3801,7 +3775,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
     act(eaves, TRUE, i, 0, ch, TO_VICT);
   }
   if (!IS_NPC(i)) {
-    if (PLR_FLAGGED(i, PLR_FISHING)) {
+    if (char_condition_has(i, "fishing")) {
       act("@w...$e is @Cfishing@w.@n", TRUE, i, 0, ch, TO_VICT);
     }
   }
@@ -3816,18 +3790,18 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
   if (AFF_FLAGGED(i, AFF_FIRESHIELD))
     act("@w...$e has @rf@Rl@Ya@rm@Re@Ys@w around $s body!", FALSE, i, 0, ch,
         TO_VICT);
-  if (AFF_FLAGGED(i, AFF_HEALGLOW))
+  if (char_condition_has(i, "healing_glow"))
     act("@w...$e has a serene @Cblue@Y glow@w around $s body.", TRUE, i, 0, ch,
         TO_VICT);
-  if (AFF_FLAGGED(i, AFF_EARMOR))
+  if (char_condition_has(i, "ethereal_armor"))
     act("@w...$e has ghostly @Ggreen@w ethereal armor around $s body.", TRUE, i,
         0, ch, TO_VICT);
   if (AFF_FLAGGED(i, AFF_SANCTUARY) && GET_SKILL(i, SKILL_AQUA_BARRIER))
     act("@w...$e has a @bbarrier@w of @cwater@w and @CKi@w around $s body!",
         TRUE, i, 0, ch, TO_VICT);
-  if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 1)
+  if (char_condition_has(i, "flying") && GET_ALT(i) == 1)
     act("@w...$e is in the air!", TRUE, i, 0, ch, TO_VICT);
-  if (AFF_FLAGGED(i, AFF_FLYING) && GET_ALT(i) == 2)
+  if (char_condition_has(i, "flying") && GET_ALT(i) == 2)
     act("@w...$e is high in the air!", TRUE, i, 0, ch, TO_VICT);
   if (GET_KAIOKEN(i) > 0)
     act("@w...@r$e has a red aura around $s body!", TRUE, i, 0, ch, TO_VICT);
@@ -3860,7 +3834,7 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
   if (PLR_FLAGGED(i, PLR_OOZARU) && GET_CHARGE(i) &&
       (IS_SAIYAN(i) || IS_HALFBREED(i)))
     act("@w...$e is in the form of a @rgreat ape@w!", TRUE, i, 0, ch, TO_VICT);
-  if (is_affected(i, AFF_KYODAIKA))
+  if (char_condition_has(i, "kyodaika"))
     act("@w...$e has expanded $s body size@w!", TRUE, i, 0, ch, TO_VICT);
   if (AFF_FLAGGED(i, AFF_HAYASA))
     act("@w...$e has a soft @cblue@w glow around $s body!", FALSE, i, 0, ch,
@@ -6405,7 +6379,7 @@ ACMD(do_status) {
     if (PLR_FLAGGED(ch, PLR_DISGUISED)) {
       send_to_char(ch, "You have disguised your facial features.\r\n");
     }
-    if (AFF_FLAGGED(ch, AFF_FLYING)) {
+    if (char_condition_has(ch, "flying")) {
       send_to_char(ch, "You are flying.\r\n");
     }
     if (PLR_FLAGGED(ch, PLR_PILOTING)) {
@@ -6416,10 +6390,10 @@ ACMD(do_status) {
                    song_types[GET_SONG(ch)]);
     }
 
-    if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
+    if (char_condition_has(ch, "zanzoken")) {
       send_to_char(ch, "You are prepared to zanzoken.\r\n");
     }
-    if (AFF_FLAGGED(ch, AFF_HASS)) {
+    if (char_condition_has(ch, "hasshuken")) {
       send_to_char(ch, "Your arms are moving fast.\r\n");
     }
     if (AFF_FLAGGED(ch, AFF_INFUSE)) {
@@ -6434,9 +6408,6 @@ ACMD(do_status) {
     }
     if (char_condition_has(ch, "special_pose")) {
       send_to_char(ch, "You are feeling confident from your pose earlier.\r\n");
-    }
-    if (is_affected(ch, AFF_HYDROZAP)) {
-      send_to_char(ch, "You are effected by Kanso Suru.\r\n");
     }
     if (char_stat_get(ch, "drunk") > 15)
       send_to_char(ch, "You are extremely drunk.\r\n");
@@ -6614,7 +6585,7 @@ ACMD(do_status) {
     if (AFF_FLAGGED(ch, AFF_MBREAK))
       send_to_char(ch, "Your mind has been broken!\r\n");
 
-    if (AFF_FLAGGED(ch, AFF_WITHER))
+    if (char_condition_has(ch, "wither"))
       send_to_char(ch, "You've been withered! You feel so weak...\r\n");
 
     if (AFF_FLAGGED(ch, AFF_SHOCKED))
@@ -6650,26 +6621,26 @@ ACMD(do_status) {
       send_to_char(
           ch, "You are ethereal and cannot interact with normal space!\r\n");
 
-    if (GET_REGEN(ch) > 0) {
+    if (auto regen = char_legacy_modifier(ch, APPLY_REGEN, -1)) {
       send_to_char(ch, "Something is augmenting your regen rate by %s%d%s!\r\n",
-                   GET_REGEN(ch) > 0 ? "+" : "-", GET_REGEN(ch), "%");
+                   regen > 0 ? "+" : "-", regen, "%");
     }
 
-    if (GET_ASB(ch) > 0) {
+    if (auto asb = char_legacy_modifier(ch, APPLY_TRAIN, -1)) {
       send_to_char(ch,
                    "Something is augmenting your auto-skill training rate by "
                    "%s%d%s!\r\n",
-                   GET_ASB(ch) > 0 ? "+" : "-", GET_ASB(ch), "%");
+                   asb > 0 ? "+" : "-", asb, "%");
     }
 
-    if (ch->lifebonus > 0) {
+    if (auto lb = char_legacy_modifier(ch, APPLY_LIFEMAX, -1)) {
       send_to_char(ch,
                    "Something is augmenting your Life Force Max by %s%d%s!\r\n",
-                   ch->lifebonus > 0 ? "+" : "-", ch->lifebonus, "%");
+                   lb > 0 ? "+" : "-", lb, "%");
     }
 
-    if (PLR_FLAGGED(ch, PLR_FISHING))
-      send_to_char(ch, "Current Fishing Pole Bonus @D[@C%d@D]@n\r\n",
+    if (char_condition_has(ch, "fishing"))
+      send_to_char(ch, "Current Fishing Pole Bonus @D[@C%ld@D]@n\r\n",
                    GET_POLE_BONUS(ch));
 
     if (PLR_FLAGGED(ch, PLR_AURALIGHT))
@@ -7140,7 +7111,7 @@ ACMD(do_who) {
         continue;
       if (showclass && !(showclass & (1 << GET_CLASS(tch))))
         continue;
-      if (showgroup && (!tch->master || !AFF_FLAGGED(tch, AFF_GROUP)))
+      if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
         continue;
       for (i = 0; i < num_ranks; i++)
         if (GET_ADMLEVEL(tch) >= rank[i].min_level &&
@@ -7191,9 +7162,9 @@ ACMD(do_who) {
         continue;
       if (showclass && !(showclass & (1 << GET_CLASS(tch))))
         continue;
-      if (showgroup && (!tch->master || !AFF_FLAGGED(tch, AFF_GROUP)))
+      if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
         continue;
-      if (showleader && (!tch->followers || !AFF_FLAGGED(tch, AFF_GROUP)))
+      if (showleader && (!tch->followers || !char_condition_has(tch, "group")))
         continue;
 
       if (short_list) {
@@ -7272,7 +7243,7 @@ ACMD(do_who) {
           send_to_char(ch, " (Buildwalking)");
         if (PRF_FLAGGED(tch, PRF_AFK))
           send_to_char(ch, " (AFK)");
-        if (PLR_FLAGGED(tch, PLR_FISHING) && GET_ADMLEVEL(ch) >= ADMLVL_IMMORT)
+        if (char_condition_has(tch, "fishing") && GET_ADMLEVEL(ch) >= ADMLVL_IMMORT)
           send_to_char(ch, " (@BFISHING@n)");
         if (PRF_FLAGGED(tch, PRF_NOWIZ))
           send_to_char(ch, " (NO WIZ)");

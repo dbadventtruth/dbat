@@ -23,6 +23,12 @@ void char_unsubscribe(int64_t id, const char *list_name);
 void char_clear_subscriptions(int64_t id);
 void char_for_each(const char *list_name, void (*func)(struct char_data *ch));
 
+int char_subscribe_add(struct char_data *ch, const char *tag);
+void char_subscribe_remove(struct char_data *ch, const char *tag);
+void char_unsubscribe_all(struct char_data *ch);
+int64_t *char_subscribe_ids(const char *tag, size_t *count);
+void char_subscribe_ids_free(int64_t *ptr);
+
 void *char_iterator_create();
 struct char_data *char_next(void *iterator);
 void char_iterator_free(void *iterator);

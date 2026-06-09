@@ -41,6 +41,7 @@
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
+#include "character_utils.h"
 #include "character_macros.h"
 #include "consts/affflags.h"
 #include "consts/itemdata.h"
@@ -299,7 +300,6 @@ const struct command_info cmd_info[] = {
     {"kaioken", "kaioken", POS_STANDING, do_kaioken, 0, ADMLVL_NONE, 0},
     {"kakusanha", "kakusan", POS_FIGHTING, do_kakusanha, 0, ADMLVL_NONE, 0},
     {"kamehameha", "kame", POS_FIGHTING, do_kamehameha, 0, ADMLVL_NONE, 0},
-    {"kanso", "kans", POS_FIGHTING, do_kanso, 0, ADMLVL_NONE, 0},
     {"kiball", "kibal", POS_FIGHTING, do_kiball, 0, ADMLVL_NONE, 0},
     {"kiblast", "kiblas", POS_FIGHTING, do_kiblast, 0, ADMLVL_NONE, 0},
     {"kienzan", "kienza", POS_FIGHTING, do_kienzan, 0, ADMLVL_NONE, 0},
@@ -787,7 +787,7 @@ void command_interpreter(struct char_data *ch, char *argument) {
   case POS_INCAP:
   case POS_MORTALLYW:
   case POS_STUNNED:
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
     break;
   }
 

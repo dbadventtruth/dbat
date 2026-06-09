@@ -67,8 +67,6 @@
 #include <string.h>
 
 /* Structures */
-struct char_data *combat_list = NULL; /* head of l-list of fighting chars */
-struct char_data *next_combat_list = NULL;
 
 /* local functions */
 static void perform_group_gain(struct char_data *ch, int base,
@@ -88,13 +86,13 @@ static int pick_n_throw(struct char_data *ch, char *buf);
 int group_bonus(struct char_data *ch, int type) {
   struct follow_type *k, *next;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return (FALSE);
 
   if (ch->followers) {
     for (k = ch->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP)) {
+      if (!char_condition_has(k->follower, "group")) {
         continue;
       } else {
         if (type == 0) {
@@ -140,7 +138,7 @@ int group_bonus(struct char_data *ch, int type) {
       }
     }
   } else if (ch->master) {
-    if (!AFF_FLAGGED(ch->master, AFF_GROUP))
+    if (!char_condition_has(ch->master, "group"))
       return (FALSE);
     else {
       if (type == 0) {
@@ -851,7 +849,7 @@ void fight_stack() {
     ch = tch;
 
     if (GET_POS(ch) == POS_FIGHTING) {
-      GET_POS(ch) = POS_STANDING;
+      char_position_set(ch, POS_STANDING);
     }
     if (PLR_FLAGGED(ch, PLR_SPIRAL)) {
       handle_spiral(ch, NULL, GET_SKILL(ch, SKILL_SPIRAL), FALSE);
@@ -915,7 +913,7 @@ void fight_stack() {
         (getCurLF(ch)) > 0 && !IS_ANDROID(ch)) {
       if (rand_number(1, 15) >= 14) {
         if ((getCurLF(ch)) >= (getMaxLF(ch)) * 0.05 ||
-            AFF_FLAGGED(ch, AFF_HEALGLOW) ||
+            char_condition_has(ch, "healing_glow") ||
             (IS_KANASSAN(ch) && (getCurLF(ch)) >= (getMaxLF(ch)) * 0.03)) {
           int64_t refill = 0, lfcost = (getMaxLF(ch)) * 0.05;
           if (GET_BONUS(ch, BONUS_DIEHARD) > 0 &&
@@ -935,7 +933,7 @@ void fight_stack() {
             refill = (getMaxLF(ch)) * 0.05;
           }
           incCurHealth(ch, refill);
-          if (!AFF_FLAGGED(ch, AFF_HEALGLOW)) {
+          if (!char_condition_has(ch, "healing_glow")) {
             decCurLF(ch, lfcost);
           }
         } else {
@@ -995,7 +993,7 @@ void fight_stack() {
         act("@C$n@W chokes @c$N@W, and $E passes out!@n", TRUE, ch, 0,
             GRAPPLING(ch), TO_NOTVICT);
         SET_BIT_AR(AFF_FLAGS(GRAPPLING(ch)), AFF_KNOCKED);
-        GET_POS(GRAPPLING(ch)) = POS_SLEEPING;
+        char_position_set(GRAPPLING(ch), POS_SLEEPING);
         GRAPTYPE(GRAPPLING(ch)) = -1;
         GRAPPLED(GRAPPLING(ch)) = NULL;
         GRAPPLING(ch) = NULL;
@@ -1116,7 +1114,7 @@ void fight_stack() {
       cureStatusKnockedOutAnnounced(ch, true);
       if (IS_NPC(ch) && rand_number(1, 20) >= 12) {
         act("@W$n@W stands up.@n", FALSE, ch, 0, 0, TO_ROOM);
-        GET_POS(ch) = POS_STANDING;
+        char_position_set(ch, POS_STANDING);
       }
     }
 
@@ -1133,24 +1131,24 @@ void fight_stack() {
       continue;
     }
     if (FIGHTING(ch) && IS_NPC(ch) && !MOB_FLAGGED(ch, MOB_DUMMY)) {
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) &&
-          !AFF_FLAGGED(ch, AFF_FLYING) && IS_HUMANOID(ch) &&
+      if (char_condition_has(FIGHTING(ch), "flying") &&
+          !char_condition_has(ch, "flying") && IS_HUMANOID(ch) &&
           GET_LEVEL(ch) > 10) {
         do_fly(ch, 0, 0, 0);
         continue;
       }
-      if (!AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) &&
-          AFF_FLAGGED(ch, AFF_FLYING)) {
+      if (!char_condition_has(FIGHTING(ch), "flying") &&
+          char_condition_has(ch, "flying")) {
         do_fly(ch, 0, 0, 0);
         continue;
       }
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) &&
-          AFF_FLAGGED(ch, AFF_FLYING) && GET_ALT(ch) < GET_ALT(FIGHTING(ch))) {
+      if (char_condition_has(FIGHTING(ch), "flying") &&
+          char_condition_has(ch, "flying") && GET_ALT(ch) < GET_ALT(FIGHTING(ch))) {
         do_fly(ch, "high", 0, 0);
         continue;
       }
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) && !IS_HUMANOID(ch) &&
-          !AFF_FLAGGED(ch, AFF_FLYING) && GET_POS(ch) > POS_RESTING) {
+      if (char_condition_has(FIGHTING(ch), "flying") && !IS_HUMANOID(ch) &&
+          !char_condition_has(ch, "flying") && GET_POS(ch) > POS_RESTING) {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G flees in terror and you lose sight of $m!", TRUE, ch, 0, 0,
               TO_ROOM);
@@ -1163,7 +1161,7 @@ void fight_stack() {
           continue;
         }
       }
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) && IS_HUMANOID(ch) &&
+      if (char_condition_has(FIGHTING(ch), "flying") && IS_HUMANOID(ch) &&
           GET_LEVEL(ch) <= 10) {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G turns and runs away. You lose sight of $m!", TRUE, ch, 0, 0,
@@ -1604,15 +1602,15 @@ void update_pos(struct char_data *victim) {
   else if (GET_POS(victim) == POS_SITTING && FIGHTING(victim))
     return;
   else if (GET_HIT(victim) > 0)
-    GET_POS(victim) = POS_STANDING;
+    char_position_set(victim, POS_STANDING);
   else if (GET_HIT(victim) <= -11)
-    GET_POS(victim) = POS_DEAD;
+    char_position_set(victim, POS_DEAD);
   else if (GET_HIT(victim) <= -6)
-    GET_POS(victim) = POS_MORTALLYW;
+    char_position_set(victim, POS_MORTALLYW);
   else if (GET_HIT(victim) <= -3)
-    GET_POS(victim) = POS_INCAP;
+    char_position_set(victim, POS_INCAP);
   else
-    GET_POS(victim) = POS_STUNNED;
+    char_position_set(victim, POS_STUNNED);
 }
 
 static void check_killer(struct char_data *ch, struct char_data *vict) {
@@ -1632,15 +1630,14 @@ void set_fighting(struct char_data *ch, struct char_data *vict) {
     return;
   }
 
-  ch->next_fighting = combat_list;
-  combat_list = ch;
+  char_subscribe_add(ch, "combat");
 
   FIGHTING(ch) = vict;
 
   if (GET_POS(ch) == POS_SITTING) {
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
   } else if (GET_POS(ch) == POS_SLEEPING) {
-    GET_POS(ch) = POS_SLEEPING;
+    char_position_set(ch, POS_SLEEPING);
   }
 
   if (!CONFIG_PK_ALLOWED)
@@ -1649,17 +1646,11 @@ void set_fighting(struct char_data *ch, struct char_data *vict) {
 
 /* remove a char from the list of fighting chars */
 void stop_fighting(struct char_data *ch) {
-  struct char_data *temp;
 
-  if (ch == next_combat_list)
-    next_combat_list = ch->next_fighting;
+  char_subscribe_remove(ch, "combat");
 
-  if (IS_NPC(ch)) {
-    COMBO(ch) = -1;
-    COMBHITS(ch) = 0;
-  }
-  REMOVE_FROM_LIST(ch, combat_list, next_fighting, temp);
-  ch->next_fighting = NULL;
+  char_condition_remove(ch, "combo", "end_combo");
+  
   FIGHTING(ch) = NULL;
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
@@ -2001,8 +1992,6 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
   }
   if (!MOB_FLAGGED(ch, MOB_HUSK)) {
     ch->carrying = NULL;
-    IS_CARRYING_N(ch) = 0;
-    IS_CARRYING_W(ch) = 0;
   }
   obj_to_room(corpse, char_room_get(ch));
 
@@ -2126,7 +2115,7 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
   /* To make ordinary commands work in scripts.  welcor*/
   if (GET_POS(ch) != POS_SITTING && GET_POS(ch) != POS_SLEEPING &&
       GET_POS(ch) != POS_RESTING)
-    GET_POS(ch) = POS_STANDING;
+    char_position_set(ch, POS_STANDING);
 
   if (killer && !IS_NPC(killer)) {
     if (!IS_NPC(killer) && !IS_NPC(ch)) {
@@ -2304,11 +2293,11 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
     if (FIGHTING(ch))
       stop_fighting(ch);
 
-    for (k = combat_list; k; k = temp) {
-      temp = k->next_fighting;
+    char_iterate_subscriptions("combat", [&](auto k) {
       if (FIGHTING(k) == ch)
         stop_fighting(k);
-    }
+      return true;
+    });
 
     bool android_lose = true;
     DeathType death_type = Afterlife;
@@ -2428,7 +2417,7 @@ void die(struct char_data *ch, struct char_data *killer) {
     decCurHealthPercentFloored(ch, 1, 1);
     decCurKIPercentFloored(ch, 1, 1);
     decCurSTPercentFloored(ch, 1, 1);
-    null_affect(ch, AFF_POISON);
+    char_condition_remove(ch, "poison", "immortal_wish");
     if (char_stat_get(ch, "hunger") >= 0) {
       char_stat_set(ch, "hunger", 48);
     }
@@ -2438,7 +2427,7 @@ void die(struct char_data *ch, struct char_data *killer) {
     if (FIGHTING(ch)) {
       stop_fighting(ch);
     }
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
     teleport_to(ch, sensei_start_room(ch->chclass));
     return;
   }
@@ -2545,7 +2534,7 @@ static void perform_group_gain(struct char_data *ch, int base,
     struct follow_type *f;
     int checkit = FALSE;
     for (f = ch->followers; f; f = f->next) {
-      if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+      if (char_condition_has(f->follower, "group") &&
           LASTHIT(victim) == GET_IDNUM(f->follower)) {
         checkit = TRUE;
       }
@@ -2558,7 +2547,7 @@ static void perform_group_gain(struct char_data *ch, int base,
       struct char_data *master = ch->master;
       for (f = master->followers; f; f = f->next) {
         if (f->follower != ch) {
-          if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+          if (char_condition_has(f->follower, "group") &&
               LASTHIT(victim) == GET_IDNUM(f->follower)) {
             checkit = TRUE;
           }
@@ -2594,11 +2583,13 @@ static void perform_group_gain(struct char_data *ch, int base,
   if (MOB_FLAGGED(victim, MOB_KNOWKAIO)) {
     share += share * .25;
   }
-  GET_GROUPKILLS(ch) += 1;
-  if ((GET_GROUPKILLS(ch) + 1) / 20 > share * 0.16) {
+  auto group_kills = GET_GROUPKILLS(ch);
+  group_kills += 1;
+  char_condition_number_set(ch, "group", "kills", group_kills);
+  if (group_kills / 20 > share * 0.16) {
     share += share * 0.16;
   } else {
-    share += (share * 0.02) * ((GET_GROUPKILLS(ch) + 1) / 20);
+    share += (share * 0.02) * (group_kills / 20);
   }
   if (group_bonus(ch, 2) == 2) {
     send_to_char(
@@ -2694,7 +2685,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   if (!(k = ch->master))
     k = ch;
 
-  if (AFF_FLAGGED(k, AFF_GROUP) && (char_room_get(k) == char_room_get(ch))) {
+  if (char_condition_has(k, "group") && (char_room_get(k) == char_room_get(ch))) {
     tot_levels = GET_LEVEL(k);
     tot_members = 1;
   } else {
@@ -2703,7 +2694,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   }
 
   for (f = k->followers; f; f = f->next)
-    if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+    if (char_condition_has(f->follower, "group") &&
         char_room_get(f->follower) == char_room_get(ch)) {
       if (!IS_WEIGHTED(f->follower)) {
         tot_levels += GET_LEVEL(f->follower);
@@ -2732,7 +2723,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
     base = 0;
 
   /*
-  if (AFF_FLAGGED(k, AFF_GROUP) && char_room_get(k) == char_room_get(ch)) {
+  if (char_condition_has(k, "group") && char_room_get(k) == char_room_get(ch)) {
    if (!IS_WEIGHTED(k)) {
     perform_group_gain(k, base, victim);
    } else if (k != ch && (getMaxPL(k)()) >= (getMaxPL(ch)) * 0.5) {
@@ -2752,7 +2743,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   // perform_group_gain(k, base, victim);
 
   for (f = k->followers; f; f = f->next) {
-    if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+    if (char_condition_has(f->follower, "group") &&
         char_room_get(f->follower) == char_room_get(ch)) {
       // if ((getMaxPL(f->follower)()) >= GET_MAX_HIT(ch) * 0.5)
       // perform_group_gain(f->follower, base, victim);

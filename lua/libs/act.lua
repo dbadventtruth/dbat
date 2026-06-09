@@ -147,12 +147,13 @@ end
 
 function M.to_room(message, context)
     context = context or {}
+    hide_invisible = context.hide_invisible or false
     local actor = context_value(context, "actor")
     local room = context.room or (actor and actor:room_get())
     if room == nil then return end
 
     for ch in room:people() do
-        if not excluded(ch, context.exclude) then
+        if not excluded(ch, context.exclude) and (not hide_invisible or ch:can_see(actor)) then
             M.to_char(ch, message, context)
         end
     end

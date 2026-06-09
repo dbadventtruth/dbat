@@ -55,10 +55,100 @@ local function keywords_for(ch, viewer)
   return keywords
 end
 
+local function find_in_registry(category, legacy_id)
+  local registry = dbat.registry[category]
+  if not registry then return nil end
+  for _, entry in pairs(registry) do
+    if entry.legacy_id == legacy_id then
+      return entry
+    end
+  end
+  return nil
+end
+
+local function append_mods(out, mods)
+  for _, m in ipairs(mods or {}) do
+    out[#out + 1] = m
+  end
+end
+
+local function modifiers(ch)
+  local all = {}
+
+  -- Race
+  local race_id = ch:race_get()
+  if race_id then
+    local entry = find_in_registry("races", race_id)
+    if entry and entry.modifiers then
+      append_mods(all, entry.modifiers(ch))
+    end
+  end
+
+  -- Sensei
+  local sensei_id = ch:sensei_get()
+  if sensei_id then
+    local entry = find_in_registry("senseis", sensei_id)
+    if entry and entry.modifiers then
+      append_mods(all, entry.modifiers(ch))
+    end
+  end
+
+  -- Conditions
+  for _, cond_id in ipairs(ch:conditions()) do
+    local cond = ch:condition(cond_id)
+    local cond_def = dbat.registry.conditions[cond_id]
+    if cond_def and cond_def.modifiers then
+      append_mods(all, cond_def.modifiers(ch, cond))
+    end
+  end
+
+  -- Room
+  local room = ch:room_get()
+  if room then
+    append_mods(all, room:modifiers())
+  end
+
+  -- Sitting object
+  local obj = ch:sits_get()
+  if obj then
+    append_mods(all, obj:modifiers())
+  end
+
+  return all
+end
+
+local function on_mud_hour(ch)
+end
+
+local function on_second(ch)
+end
+
+local function on_heartbeat(ch, hb)
+end
+
+local function act_self(ch, msg, ctx)
+  context = ctx or {}
+  context.actor = ch
+  local dbat = require("dbat")
+  dbat.lib.act.to_char(ch, msg, context)
+end
+
+local function act_around(ch, msg, ctx)
+  context = ctx or {}
+  local dbat = require("dbat")
+  dbat.lib.act.around(ch, msg, context)
+end
+
 return {
   can_see = can_see,
   keywords_for = keywords_for,
+  modifiers = modifiers,
   apparent_sex = apparent_sex,
   apparent_race = apparent_race,
   display_name_for = display_name_for,
+  on_mud_hour = on_mud_hour,
+  on_second = on_second,
+  on_heartbeat = on_heartbeat,
+  act_self = act_self,
+  act_around = act_around,
 }

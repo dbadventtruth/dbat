@@ -1801,7 +1801,7 @@ static int parse_simple_mob(FILE *mob_f, struct char_data *ch, int nr) {
     return 0;
   }
 
-  GET_POS(ch) = t[0];
+  char_position_set(ch, t[0]);
   GET_DEFAULT_POS(ch) = t[1];
   GET_SEX(ch) = t[2];
 
@@ -2018,7 +2018,6 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch) {
     /* Make some basic checks. */
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_CHARM);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POISON);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_GROUP);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SLEEP);
     if (MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_GOOD))
       REMOVE_BIT_AR(MOB_FLAGS(ch), MOB_AGGR_GOOD);
@@ -4418,13 +4417,9 @@ void reset_char(struct char_data *ch) {
   IN_ROOM(ch) = NOWHERE;
   ch->carrying = NULL;
   ch->next = NULL;
-  ch->next_fighting = NULL;
   ch->next_in_room = NULL;
   FIGHTING(ch) = NULL;
-  ch->position = POS_STANDING;
   ch->mob_specials.default_pos = POS_STANDING;
-  ch->carry_weight = 0;
-  ch->carry_items = 0;
   ch->time.logon = time(0);
 
   GET_LAST_TELL(ch) = NOBODY;
@@ -4438,7 +4433,7 @@ void clear_char(struct char_data *ch) {
   GET_PFILEPOS(ch) = -1;
   GET_MOB_VNUM(ch) = NOBODY;
   GET_WAS_IN(ch) = NOWHERE;
-  GET_POS(ch) = POS_STANDING;
+  char_position_set(ch, POS_STANDING);
   ch->mob_specials.default_pos = POS_STANDING;
 
   ch->size = SIZE_UNDEFINED;

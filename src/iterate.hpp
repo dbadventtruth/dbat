@@ -110,11 +110,56 @@ template <typename Func> inline void room_iterate(Func &&func) {
   room_iterator_free(iterator);
 }
 
-inline void room_iterate(bool (*func)(struct room_data *room)) {
-  if (!func) {
-    return;
+template <typename Func> inline void room_iterate_id_list(const int *ids, size_t count, Func &&func) {
+  for(size_t i = 0; i < count; i++) {
+    if(auto room = room_by_id(ids[i])) {
+      if(!func(room)) {
+        break;
+      }
+    }
   }
-  room_iterate([&](struct room_data *room) { return func(room); });
+}
+
+template <typename Func> inline void room_iterate_subscriptions(const char* subs, Func &&func) {
+  size_t count;
+  auto ids = room_subscribe_ids(subs, &count);
+  room_iterate_id_list(ids, count, func);
+  room_subscribe_ids_free(ids);
+}
+
+template <typename Func> inline void obj_iterate_id_list(const int64_t *ids, size_t count, Func &&func) {
+  for(size_t i = 0; i < count; i++) {
+    if(auto obj = obj_by_id(ids[i])) {
+      if(!func(obj)) {
+        break;
+      }
+    }
+  }
+}
+
+template <typename Func> inline void obj_iterate_subscriptions(const char* subs, Func &&func) {
+  size_t count;
+  auto ids = obj_subscribe_ids(subs, &count);
+  obj_iterate_id_list(ids, count, func);
+  obj_subscribe_ids_free(ids);
+}
+
+template <typename Func> inline void char_iterate_id_list(const int64_t *ids, size_t count, Func &&func) {
+  for(size_t i = 0; i < count; i++) {
+    
+    if(auto ch = char_by_id(ids[i])) {
+      if(!func(ch)) {
+        break;
+      }
+    }
+  }
+}
+
+template <typename Func> inline void char_iterate_subscriptions(const char* subs, Func &&func) {
+  size_t count;
+  auto ids = char_subscribe_ids(subs, &count);
+  char_iterate_id_list(ids, count, func);
+  char_subscribe_ids_free(ids);
 }
 
 template <typename Func> inline void room_exits_iterate(struct room_data *room, Func &&func) {

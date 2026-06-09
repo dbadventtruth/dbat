@@ -749,18 +749,18 @@ ACMD(do_honoo) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
           !IS_DEMON(vict) && !GET_BONUS(vict, BONUS_FIREPROOF)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       } else if (GET_BONUS(vict, BONUS_FIREPROOF) || IS_DEMON(vict)) {
         send_to_char(ch, "@RThey appear to be fireproof!@n\r\n");
       } else if (GET_BONUS(vict, BONUS_FIREPRONE)) {
         send_to_char(vict, "@RYou are extremely flammable and are burned by "
                            "the attack!@n\r\n");
         send_to_char(ch, "@RThey are easily burned!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       if (GET_SKILL_PERF(ch, SKILL_HONOO) == 3 && attperc > minimum) {
         pcost(ch, attperc - 0.05, 0);
@@ -2466,7 +2466,7 @@ ACMD(do_genki) {
     if (friend_char == ch) {
       return true;
     }
-    if (AFF_FLAGGED(friend_char, AFF_GROUP) &&
+    if (char_condition_has(friend_char, "group") &&
         (friend_char->master == ch || ch->master == friend_char ||
          friend_char->master == ch->master)) {
       GET_CHARGE(ch) += (getCurKI(ch)) / 10;
@@ -3544,18 +3544,18 @@ ACMD(do_pslash) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 4 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 4 &&
           !IS_DEMON(vict) && !GET_BONUS(vict, BONUS_FIREPROOF)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       } else if (GET_BONUS(vict, BONUS_FIREPROOF) || IS_DEMON(vict)) {
         send_to_char(ch, "@RThey appear to be fireproof!@n\r\n");
       } else if (GET_BONUS(vict, BONUS_FIREPRONE)) {
         send_to_char(vict, "@RYou are extremely flammable and are burned by "
                            "the attack!@n\r\n");
         send_to_char(ch, "@RThey are easily burned!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       pcost(ch, attperc, 0);
       REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ASHED);
@@ -4594,7 +4594,7 @@ ACMD(do_kakusanha) {
     if (GET_HIT(vict) <= 0) {
       return true;
     }
-    if (AFF_FLAGGED(vict, AFF_GROUP) && !IS_NPC(vict)) {
+    if (char_condition_has(vict, "group") && !IS_NPC(vict)) {
       if (vict->master == ch) {
         return true;
       } else if (ch->master == vict) {
@@ -4675,7 +4675,7 @@ ACMD(do_kakusanha) {
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
         return true;
       }
-      if (AFF_FLAGGED(vict, AFF_GROUP) &&
+      if (char_condition_has(vict, "group") &&
           (vict->master == ch || ch->master == vict)) {
         return true;
       }
@@ -4693,7 +4693,7 @@ ACMD(do_kakusanha) {
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-           AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+           char_condition_has(vict, "zanzoken")) &&
           (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
         hits++;
         act("@C$N@c disappears, avoiding the beam chasing $M!@n", FALSE, ch, 0,
@@ -4702,7 +4702,7 @@ ACMD(do_kakusanha) {
             vict, TO_VICT);
         act("@C$N@c disappears, avoiding the beam chasing $M!@n", FALSE, ch, 0,
             vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         return true;
@@ -5010,7 +5010,7 @@ ACMD(do_hellspear) {
       dge = handle_dodge(vict);
 
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-           AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+           char_condition_has(vict, "zanzoken")) &&
           (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
@@ -5021,7 +5021,7 @@ ACMD(do_hellspear) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         return true;
       } else if (dge + rand_number(-10, 5) > skill) {
@@ -5039,7 +5039,7 @@ ACMD(do_hellspear) {
         act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 4) == 4) {
           handle_knockdown(vict);
         }
@@ -5731,8 +5731,8 @@ ACMD(do_ddslash) {
         act("@c$n@m is struck blind by the attack!@n", TRUE, vict, 0, 0,
             TO_ROOM);
         int duration = 1;
-        assign_affect(vict, AFF_BLIND, SKILL_SOLARF, duration, 0, 0, 0, 0, 0,
-                      0);
+        char_condition_add(vict, "darkness_dragon_slash", "skill", "darkness_dragon_slash");
+        char_condition_duration_set(vict, "darkness_dragon_slash", duration * SECS_PER_MUD_HOUR); 
       }
       pcost(ch, attperc, 0);
 
@@ -7533,7 +7533,7 @@ ACMD(do_baku) {
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
       return true;
     }
-    if (AFF_FLAGGED(vict, AFF_GROUP) &&
+    if (char_condition_has(vict, "group") &&
         (vict->master == ch || ch->master == vict)) {
       return true;
     }
@@ -7609,7 +7609,7 @@ ACMD(do_baku) {
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
         return true;
       }
-      if (AFF_FLAGGED(vict, AFF_GROUP) &&
+      if (char_condition_has(vict, "group") &&
           (vict->master == ch || ch->master == vict ||
            vict->master == ch->master)) {
         return true;
@@ -7622,7 +7622,7 @@ ACMD(do_baku) {
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-           AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+           char_condition_has(vict, "zanzoken")) &&
           (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
@@ -7633,7 +7633,7 @@ ACMD(do_baku) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         return true;
@@ -7652,7 +7652,7 @@ ACMD(do_baku) {
         act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING) {
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING) {
           handle_knockdown(vict);
         }
         hurt(0, 0, ch, vict, NULL, dmg, 1);
@@ -8559,11 +8559,11 @@ ACMD(do_blessedhammer) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
           !IS_DEMON(vict)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       pcost(ch, attperc, 0);
 
@@ -8836,11 +8836,11 @@ ACMD(do_kousengan) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
           !IS_DEMON(vict)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       pcost(ch, attperc, 0);
 
@@ -10871,8 +10871,7 @@ ACMD(do_heeldrop) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "Heeldrop")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -13470,10 +13469,12 @@ ACMD(do_bite) {
           act("@R$N@r was poisoned by your bite!@n", TRUE, ch, 0, vict,
               TO_CHAR);
           act("@rYou were poisoned by the bite!@n", TRUE, ch, 0, vict, TO_VICT);
-          vict->poisonby = ch;
           int duration = (GET_INT(ch) / 50) + 1;
-          assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0,
-                        0);
+          char idbuf[20];
+          snprintf(idbuf, sizeof(idbuf), "%d", ch->id);
+          char_condition_add(ch, "poison", "character", idbuf);
+          char_condition_duration_set(ch, "poison", duration * SECS_PER_MUD_HOUR);
+          char_condition_number_set(ch, "poison", "poison_by", ch->id);
         }
       }
 
@@ -14589,8 +14590,7 @@ ACMD(do_slam) {
     prob -= avo;
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
     if (!tech_handle_zanzoken(ch, vict, "slam")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -14708,7 +14708,7 @@ ACMD(do_slam) {
         } else if ((GET_POS(vict) == POS_STANDING ||
                     GET_POS(vict) == POS_FIGHTING) &&
                    !AFF_FLAGGED(vict, AFF_KNOCKED)) {
-          GET_POS(vict) = POS_SITTING;
+          char_position_set(vict, POS_SITTING);
         }
         if (room_dmg_get(char_room_get(vict)) <= 95 &&
             !room_flagged(char_room_get(vict), ROOM_SPACE)) {
@@ -15015,8 +15015,7 @@ ACMD(do_uppercut) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "uppercut")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -15348,7 +15347,7 @@ ACMD(do_tailwhip) {
             TRUE, ch, 0, vict, TO_VICT);
         act("@C$n@W spins to swing $s tail and slams it into @c$N@W's body!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 7) {
           handle_knockdown(vict);
         }
@@ -15369,7 +15368,7 @@ ACMD(do_tailwhip) {
         act("@C$n@W flips forward and slams $s tail into the top of @c$N@W's "
             "head brutally!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 6) {
           handle_knockdown(vict);
         }
@@ -15385,7 +15384,7 @@ ACMD(do_tailwhip) {
             TRUE, ch, 0, vict, TO_VICT);
         act("@C$n@W swings $s tail and manages to slam it into @c$N@W's gut!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 7) {
           handle_knockdown(vict);
         }
@@ -15535,8 +15534,7 @@ ACMD(do_roundhouse) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "roundhouse")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -15635,7 +15633,7 @@ ACMD(do_roundhouse) {
             vict, TO_VICT);
         act("@c$n@W spins a fierce roundhouse into @C$N's@W gut!@n", TRUE, ch,
             0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 7) {
           handle_knockdown(vict);
         }
@@ -15784,8 +15782,7 @@ ACMD(do_elbow) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "elbow")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16035,8 +16032,7 @@ ACMD(do_kick) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "kick")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16280,8 +16276,7 @@ ACMD(do_knee) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "knee strike")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16519,8 +16514,7 @@ ACMD(do_punch) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "punch")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16706,7 +16700,7 @@ ACMD(do_charge) {
     send_to_char(ch, "Your mind is still strained from psychic attacks...\r\n");
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_POISON)) {
+  if (char_condition_has(ch, "poison")) {
     send_to_char(ch, "You feel too sick from the poison to concentrate.\r\n");
     return;
   }
@@ -16756,7 +16750,7 @@ ACMD(do_charge) {
     if (amt >= 101) {
       send_to_char(ch, "You have set it too high!\r\n");
       return;
-    } else if (AFF_FLAGGED(ch, AFF_SPIRITCONTROL)) {
+    } else if (char_condition_has(ch, "spirit_control")) {
       int64_t diff = 0;
       if ((getCurKI(ch)) < ((GET_MAX_MANA(ch) * 0.01) * amt) + 1) {
         diff = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - (getCurKI(ch));
@@ -16771,7 +16765,7 @@ ACMD(do_charge) {
       if (chance > rand_number(1, 100)) {
         send_to_char(ch, "The rush of ki that you try to pool temporarily "
                          "overwhelms you and you lose control!\r\n");
-        null_affect(ch, AFF_SPIRITCONTROL);
+        char_condition_remove(ch, "spirit_control", "charging");
         return;
       } else {
         int64_t spiritcost = GET_MAX_MANA(ch) * 0.05;

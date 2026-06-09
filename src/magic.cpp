@@ -250,16 +250,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_BANE:
-    af[0].location = APPLY_ACCURACY;
-    af[0].duration = 1 + (level / 2);
-    af[0].modifier = -1;
-    af[0].bitvector = AFF_CURSE;
-
-    af[1].location = APPLY_WILL;
-    af[1].duration = 1 + (level / 2);
-    af[1].modifier = -1;
-    af[1].bitvector = AFF_CURSE;
-
     accum_duration = TRUE;
     accum_affect = TRUE;
     to_room = "$n briefly glows red!";
@@ -267,16 +257,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_BESTOW_CURSE:
-    af[0].location = APPLY_STR;
-    af[0].duration = -1;
-    af[0].modifier = -6;
-    af[0].bitvector = AFF_CURSE;
-
-    af[1].location = APPLY_ACCURACY;
-    af[1].duration = -1;
-    af[1].modifier = -4;
-    af[1].bitvector = AFF_CURSE;
-
     accum_duration = FALSE;
     accum_affect = FALSE;
     to_room = "$n briefly glows red!";
@@ -335,11 +315,6 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     break;
 
   case SPELL_POISON:
-
-    af[0].location = APPLY_STR;
-    af[0].duration = level;
-    af[0].modifier = -2;
-    af[0].bitvector = AFF_POISON;
     to_vict = "You feel very sick.";
     to_room = "$n gets violently ill!";
     break;
@@ -372,7 +347,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (GET_POS(victim) > POS_SLEEPING) {
       send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
       act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
-      GET_POS(victim) = POS_SLEEPING;
+      char_position_set(victim, POS_SLEEPING);
     }
     break;
 
@@ -388,7 +363,7 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
     if (GET_POS(victim) > POS_SLEEPING) {
       send_to_char(victim, "You feel very sleepy...  Zzzz......\r\n");
       act("$n goes to sleep.", TRUE, victim, 0, 0, TO_ROOM);
-      GET_POS(victim) = POS_SLEEPING;
+      char_position_set(victim, POS_SLEEPING);
     }
     break;
 
@@ -491,7 +466,7 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
   if (ch == NULL)
     return;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return;
   if (ch->master != NULL)
     k = ch->master;
@@ -502,14 +477,14 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
     tch = f->follower;
     if (char_room_get(tch) != char_room_get(ch))
       continue;
-    if (!AFF_FLAGGED(tch, AFF_GROUP))
+    if (!char_condition_has(tch, "group"))
       continue;
     if (ch == tch)
       continue;
     perform_mag_groups(level, ch, tch, spellnum);
   }
 
-  if ((k != ch) && AFF_FLAGGED(k, AFF_GROUP))
+  if ((k != ch) && char_condition_has(k, "group"))
     perform_mag_groups(level, ch, k, spellnum);
   perform_mag_groups(level, ch, ch, spellnum);
 }
@@ -784,8 +759,6 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
       mag_affects(level, ch, mob, spellnum);
     if (affvs)
       mag_affectsv(level, ch, mob, spellnum);
-    IS_CARRYING_W(mob) = 0;
-    IS_CARRYING_N(mob) = 0;
     SET_BIT_AR(AFF_FLAGS(mob), AFF_CHARM);
     act(mag_summon_msgs[msg], FALSE, ch, 0, mob, TO_ROOM);
     load_mtrigger(mob);
@@ -836,13 +809,12 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
   case ART_WHOLENESS_OF_BODY:
     healing = GET_MAX_HIT(victim) - GET_HIT(victim);
     healing = MAX(0, healing);
-    tmp = GET_KI(ch) / 2;
+    tmp = 0;
     if (tmp > healing)
       tmp = healing;
     else {
       healing = tmp;
     }
-    GET_KI(ch) -= tmp * 2;
     break;
   }
   update_pos(victim);
@@ -1024,8 +996,6 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
     to_room = "$n is stunned.";
     break;
   case ART_EMPTY_BODY:
-    af[0].duration = GET_KI(ch) / 10;
-    af[0].bitvector = AFF_ETHEREAL;
     accum_duration = FALSE;
     to_vict = "You switch to the ethereal plane.";
     to_room = "$n disappears.";

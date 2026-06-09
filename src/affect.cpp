@@ -76,43 +76,7 @@ void affect_modify_ar(struct char_data *ch, int loc, int mod, int spec,
 /* This updates a character by subtracting everything he is affected by */
 /* restoring original abilities, and then affecting all again           */
 void affect_total(struct char_data *ch) {
-  struct affected_type *af;
-  int j;
-
-  GET_SPELLFAIL(ch) = GET_ARMORCHECK(ch) = GET_ARMORCHECKALL(ch) = 0;
-
-  char_equipment_iterate(ch, [&](auto i, auto eq) {
-    for (j = 0; j < MAX_OBJ_AFFECT; j++)
-      affect_modify_ar(ch, eq->affected[j].location,
-                       eq->affected[j].modifier,
-                       eq->affected[j].specific,
-                       GET_OBJ_PERM(eq), FALSE);
-    return true;
-  });
-
-  for (af = ch->affected; af; af = af->next)
-    affect_modify(ch, af->location, af->modifier, af->specific, af->bitvector,
-                  FALSE);
-
-  char_equipment_iterate(ch, [&](auto i, auto eq) {
-    if (GET_OBJ_TYPE(eq) == ITEM_ARMOR) {
-      GET_SPELLFAIL(ch) += GET_OBJ_VAL(eq, VAL_ARMOR_SPELLFAIL);
-      GET_ARMORCHECKALL(ch) += GET_OBJ_VAL(eq, VAL_ARMOR_CHECK);
-      if (!is_proficient_with_armor(
-              ch, GET_OBJ_VAL(eq, VAL_ARMOR_SKILL)))
-        GET_ARMORCHECK(ch) += GET_OBJ_VAL(eq, VAL_ARMOR_CHECK);
-    }
-    for (j = 0; j < MAX_OBJ_AFFECT; j++)
-      affect_modify_ar(ch, eq->affected[j].location,
-                       eq->affected[j].modifier,
-                       eq->affected[j].specific,
-                       GET_OBJ_PERM(eq), TRUE);
-    return true;
-  });
-
-  for (af = ch->affected; af; af = af->next)
-    affect_modify(ch, af->location, af->modifier, af->specific, af->bitvector,
-                  TRUE);
+  char_der_invalidate(ch);
 }
 
 /* Insert an affect_type in a char_data structure

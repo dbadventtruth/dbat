@@ -181,6 +181,25 @@ pub export fn room_contents_get(room: *cdb.room_data) [*c]cdb.obj_data {
     return room.contents;
 }
 
+pub export fn room_objects_get(room: *cdb.room_data, count: *usize) ?[*]i64 {
+    var obj_count: usize = 0;
+    var current = room.contents;
+    while (current != null) : (current = current.*.next_content) {
+        obj_count += 1;
+    }
+    count.* = obj_count;
+    if (obj_count == 0) return null;
+
+    const array = std.heap.c_allocator.alloc(i64, obj_count) catch return null;
+    current = room.contents;
+    var index: usize = 0;
+    while (current != null) : (current = current.*.next_content) {
+        array[index] = current.*.id;
+        index += 1;
+    }
+    return array.ptr;
+}
+
 fn replaceString(field: *[*c]u8, value: ?[*:0]const u8) void {
     const new_value = if (value) |new_string| strdup(new_string) orelse return else null;
     if (field.* != null) std.c.free(field.*);

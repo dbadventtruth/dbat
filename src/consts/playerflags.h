@@ -77,7 +77,7 @@ extern "C" {
 #define PLR_REPLEARN 69
 #define PLR_FORGET 70
 #define PLR_TRANSMISSION 71
-#define PLR_FISHING 72
+#define PLR_FISHING 72 /* now is a condition */
 #define PLR_GOOP 73
 #define PLR_MULTIHIT 74
 #define PLR_AURALIGHT 75

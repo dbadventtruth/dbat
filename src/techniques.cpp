@@ -27,10 +27,10 @@
 
 bool tech_handle_zanzoken(char_data *ch, char_data *vict, const char *name) {
   if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-       AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+       char_condition_has(vict, "zanzoken")) &&
       (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-    if (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
-        (AFF_FLAGGED(ch, AFF_ZANZOKEN) &&
+    if (!char_condition_has(ch, "zanzoken") ||
+        (char_condition_has(ch, "zanzoken") &&
          GET_SPEEDI(ch) + rand_number(1, 5) <
              GET_SPEEDI(vict) + rand_number(1, 5))) {
       char msg[MAX_INPUT_LENGTH];
@@ -46,10 +46,10 @@ bool tech_handle_zanzoken(char_data *ch, char_data *vict, const char *name) {
                "@C$N@c disappears, avoiding @C$n's@c %s before reappearing!@n",
                name);
       act(msg, TRUE, ch, nullptr, vict, TO_NOTVICT);
-      if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+      if (char_condition_has(ch, "zanzoken")) {
+        char_condition_remove(ch, "zanzoken", "zanzoken_over");
       }
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+      char_condition_remove(vict, "zanzoken", "zanzoken_over");
       return false;
     } else {
       act("@C$N@c disappears, trying to avoid your attack but your zanzoken is "
@@ -61,8 +61,8 @@ bool tech_handle_zanzoken(char_data *ch, char_data *vict, const char *name) {
       act("@C$N@c disappears, trying to avoid @C$n's@c attack but @C$n's@c "
           "zanzoken is faster!@n",
           FALSE, ch, 0, vict, TO_NOTVICT);
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+      char_condition_remove(vict, "zanzoken", "zanzoken_over");
+      char_condition_remove(ch, "zanzoken", "zanzoken_over");
     }
   }
   return true;
@@ -150,11 +150,11 @@ void tech_handle_fireshield(char_data *ch, char_data *vict, const char *part) {
           ch,
           "@RYou are extremely flammable and are burned by the attack!@n\r\n");
       send_to_char(vict, "@RThey are easily burned!@n\r\n");
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+      char_condition_add(ch, "burned", "attack", "fiery");
     } else if (GET_CON(ch) < axion_dice(0)) {
       send_to_char(ch, "@RYou are badly burned!@n\r\n");
       send_to_char(vict, "@RThey are burned!@n\r\n");
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+      char_condition_add(ch, "burned", "attack", "fiery");
     }
   } else if (GET_HIT(vict) > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) &&
              AFF_FLAGGED(vict, AFF_FIRESHIELD) &&
@@ -190,13 +190,12 @@ bool tech_handle_android_absorb(char_data *ch, char_data *vict) {
 }
 
 void tech_handle_crashdown(char_data *ch, char_data *vict) {
-  if (AFF_FLAGGED(vict, AFF_FLYING)) {
+  if (char_condition_has(vict, "flying")) {
     act("@w$N@w is knocked out of the air!@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@wYou are knocked out of the air!@n", TRUE, ch, 0, vict, TO_VICT);
     act("@w$N@w is knocked out of the air!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FLYING);
-    GET_ALT(vict) = 0;
-    GET_POS(vict) = POS_SITTING;
+    char_condition_remove(vict, "flying", "stop_flying");
+    char_position_set(vict, POS_SITTING);
   } else {
     handle_knockdown(vict);
   }

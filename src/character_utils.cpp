@@ -161,15 +161,8 @@ void resurrect(char_data *ch, int mode) {
             "a weakened state for a few hours (Game time)! Strength, "
             "constitution, wisdom, intelligence, speed, and agility have been "
             "reduced by a fifth for the duration.@n\r\n");
-    int str = -8, intel = -8, wis = -8, spd = -8, con = -8, agl = -8;
-    str = -1 * (char_stat_get(ch, "strength") / 5);
-    intel = -1 * (char_stat_get(ch, "intelligence") / 5);
-    wis = -1 * (char_stat_get(ch, "wisdom") / 5);
-    spd = -1 * (char_stat_get(ch, "speed") / 5);
-    con = -1 * (char_stat_get(ch, "constitution") / 5);
-    agl = -1 * (char_stat_get(ch, "agility") / 5);
-    assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, dur, str, con, intel, agl,
-                  wis, spd);
+    char_condition_add(ch, "resurrection_weakness", "resurrection", "normal");
+    char_condition_duration_set(ch, "resurrection_weakness", dur * SECS_PER_MUD_HOUR);
     if (losschance >= 100) {
       int psloss = rand_number(100, 300);
       char_stat_mod(ch, "practices", -psloss);
@@ -668,11 +661,10 @@ void restoreStatus(char_data *ch) { restoreStatusAnnounced(ch, true); }
 
 void setStatusKnockedOut(char_data *ch) {
   SET_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-    GET_ALT(ch) = 0;
+  if (char_condition_has(ch, "flying")) {
+    char_condition_remove(ch, "flying", "stop_flying");
   }
-  GET_POS(ch) = POS_SLEEPING;
+  char_position_set(ch, POS_SLEEPING);
 }
 
 void cureStatusKnockedOutAnnounced(char_data *ch, bool announce) {
@@ -692,7 +684,7 @@ void cureStatusKnockedOutAnnounced(char_data *ch, bool announce) {
     }
 
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    GET_POS(ch) = POS_SITTING;
+    char_position_set(ch, POS_SITTING);
   }
 }
 
@@ -701,12 +693,12 @@ void cureStatusKnockedOut(char_data *ch) {
 }
 
 void cureStatusBurnAnnounced(char_data *ch, bool announce) {
-  if (AFF_FLAGGED(ch, AFF_BURNED)) {
+  if (char_condition_has(ch, "burned")) {
     if (announce) {
       send_to_char(ch, "Your burns are healed now.\r\n");
       act("$n@w's burns are now healed.@n", TRUE, ch, 0, 0, TO_ROOM);
     }
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+    char_condition_remove(ch, "burned", "healing_burned");
   }
 }
 
@@ -1000,20 +992,20 @@ int has_group(struct char_data *ch) {
 
   struct follow_type *k, *next;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return (FALSE);
 
   if (ch->followers) {
     for (k = ch->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP)) {
+      if (!char_condition_has(k->follower, "group")) {
         continue;
       } else {
         return (TRUE);
       }
     }
   } else if (ch->master) {
-    if (!AFF_FLAGGED(ch->master, AFF_GROUP))
+    if (!char_condition_has(ch->master, "group"))
       return (FALSE);
     else
       return (TRUE);
@@ -1024,7 +1016,7 @@ int has_group(struct char_data *ch) {
 
 const char *report_party_health(struct char_data *ch) {
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return ("");
 
   if (!ch->followers && !ch->master)
@@ -1066,7 +1058,7 @@ const char *report_party_health(struct char_data *ch) {
   if (ch->followers) {
     for (k = ch->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP))
+      if (!char_condition_has(k->follower, "group"))
         continue;
       if (k->follower != ch) {
         count += 1;
@@ -1226,7 +1218,7 @@ const char *report_party_health(struct char_data *ch) {
             result4, result5);
     ch->temp_prompt = strdup(result_party_health);
     return (ch->temp_prompt);
-  } else if (ch->master && AFF_FLAGGED(ch->master, AFF_GROUP)) {
+  } else if (ch->master && char_condition_has(ch->master, "group")) {
     party1 = ch->master;
     plperc1 = (GET_HIT(party1) * 100) / GET_MAX_HIT(party1);
     kiperc1 = (GET_CHARGE(party1) * 100) / GET_MAX_MANA(party1);
@@ -1261,7 +1253,7 @@ const char *report_party_health(struct char_data *ch) {
 
     for (k = party1->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP))
+      if (!char_condition_has(k->follower, "group"))
         continue;
       if (k->follower != ch) {
         count += 1;
@@ -1419,119 +1411,21 @@ int know_skill(struct char_data *ch, int skill) {
 }
 
 bool is_affected(struct char_data *ch, int aff_flag) {
+  if (AFF_FLAGGED(ch, aff_flag)) return true;
 
-  struct affected_type *af;
+  if (char_condition_check_legacy_affect(ch, aff_flag)) return true;
 
-  for (af = ch->affected; af; af = af->next) {
-    if (af->location == APPLY_NONE && af->bitvector == aff_flag)
-      return (TRUE);
-  }
+  bool found = false;
 
-  return (FALSE);
-}
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if(obj_aff_flagged(eq, aff_flag)) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
 
-void null_affect(struct char_data *ch, int aff_flag) {
-
-  struct affected_type *af, *next_af;
-
-  for (af = ch->affected; af; af = next_af) {
-    next_af = af->next;
-    if (af->location == APPLY_NONE && af->bitvector == aff_flag)
-      affect_remove(ch, af);
-  }
-  if (aff_flag == AFF_BLESS)
-    char_condition_remove(ch, "bless", "affect_removed");
-  if (aff_flag == AFF_SPECIAL_POSE)
-    char_condition_remove(ch, "special_pose", "affect_removed");
-  if (aff_flag == AFF_METAMORPH)
-    char_condition_remove(ch, "dark_metamorphosis", "affect_removed");
-}
-
-void remove_affect(struct char_data *ch, int aff_flag) {
-
-  struct affected_type *af, *next_af;
-
-  for (af = ch->affected; af; af = next_af) {
-    next_af = af->next;
-    if (af->bitvector == aff_flag)
-      affect_remove(ch, af);
-  }
-  if (aff_flag == AFF_BLESS)
-    char_condition_remove(ch, "bless", "affect_removed");
-  if (aff_flag == AFF_SPECIAL_POSE)
-    char_condition_remove(ch, "special_pose", "affect_removed");
-  if (aff_flag == AFF_METAMORPH)
-    char_condition_remove(ch, "dark_metamorphosis", "affect_removed");
-}
-
-void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur,
-                   int str, int con, int intel, int agl, int wis, int spd) {
-  struct affected_type af[6];
-  int num = 0;
-
-  if (str == 0 && con == 0 && wis == 0 && intel == 0 && agl == 0 && spd == 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = 0;
-    af[num].location = APPLY_NONE;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (str != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = str;
-    af[num].location = APPLY_STR;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (con != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = con;
-    af[num].location = APPLY_CON;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (intel != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = intel;
-    af[num].location = APPLY_INT;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (agl != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = agl;
-    af[num].location = APPLY_DEX;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (spd != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = spd;
-    af[num].location = APPLY_CHA;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (wis != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = wis;
-    af[num].location = APPLY_WIS;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
+  return found;
 }
 
 int sec_roll_check(struct char_data *ch) {
@@ -2333,9 +2227,9 @@ int roll_pursue(struct char_data *ch, struct char_data *vict) {
         next = k->next;
         if ((char_room_vnum_get(k->follower) == inroom) &&
             (GET_POS(k->follower) >= POS_STANDING) &&
-            (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
-             (AFF_FLAGGED(ch, AFF_GROUP) &&
-              AFF_FLAGGED(k->follower, AFF_GROUP)))) {
+            (!char_condition_has(ch, "zanzoken") ||
+             (char_condition_has(ch, "group") &&
+              char_condition_has(k->follower, "group")))) {
           act("You follow $N.", TRUE, k->follower, 0, ch, TO_CHAR);
           act("$n follows after $N.", TRUE, k->follower, 0, ch, TO_NOTVICT);
           act("$n follows after you.", TRUE, k->follower, 0, ch, TO_VICT);
@@ -2869,16 +2763,16 @@ int block_calc(struct char_data *ch) {
             TO_VICT);
         act("You try to leave, but can't outrun $N!", TRUE, ch, 0, blocker,
             TO_CHAR);
-        if (AFF_FLAGGED(ch, AFF_FLYING) && !AFF_FLAGGED(blocker, AFF_FLYING) &&
+        if (char_condition_has(ch, "flying") && !char_condition_has(blocker, "flying") &&
             GET_ALT(ch) == 1) {
           send_to_char(blocker, "You're now floating in the air.\r\n");
-          SET_BIT_AR(AFF_FLAGS(blocker), AFF_FLYING);
-          GET_ALT(blocker) = GET_ALT(ch);
-        } else if (AFF_FLAGGED(ch, AFF_FLYING) &&
-                   !AFF_FLAGGED(blocker, AFF_FLYING) && GET_ALT(ch) == 2) {
+          char_condition_add(blocker, "flying", "skill", "fly");
+          char_condition_number_set(blocker, "flying", "altitude", GET_ALT(ch));
+        } else if (char_condition_has(ch, "flying") &&
+                   !char_condition_has(blocker, "flying") && GET_ALT(ch) == 2) {
           send_to_char(blocker, "You're now floating high in the sky.\r\n");
-          SET_BIT_AR(AFF_FLAGS(blocker), AFF_FLYING);
-          GET_ALT(blocker) = GET_ALT(ch);
+          char_condition_add(blocker, "flying", "skill", "fly");
+          char_condition_number_set(blocker, "flying", "altitude", GET_ALT(ch));
         }
         return (0);
       } else {
@@ -3828,9 +3722,6 @@ void stop_follower(struct char_data *ch) {
         (ch->master->desc && STATE(ch->master->desc) == CON_MENU)))
     act("$n stops following you.", TRUE, ch, 0, ch->master, TO_VICT);
 
-  if (has_group(ch))
-    GET_GROUPKILLS(ch) = 0;
-
   if (ch->master->followers->follower == ch) { /* Head of follower-list? */
     k = ch->master->followers;
     ch->master->followers = k->next;
@@ -4157,7 +4048,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
     } else if (MOB_FLAGGED(vict, MOB_NOKILL)) {
       send_to_char(ch, "But they are not to be killed!\r\n");
       return 0;
-    } else if (MAJINIZED(ch) == GET_ID(vict)) {
+    } else if (char_condition_number_get(ch, "majinized", "lord") == GET_IDNUM(vict)) {
       send_to_char(ch, "You can not harm your master!\r\n");
       return 0;
     } else if (GET_BONUS(ch, BONUS_COWARD) > 0 &&
@@ -4166,7 +4057,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       send_to_char(ch, "You are too cowardly to start anything with someone so "
                        "much stronger than yourself!\r\n");
       return 0;
-    } else if (MAJINIZED(vict) == GET_ID(ch)) {
+    } else if (char_condition_number_get(vict, "majinized", "lord") == GET_IDNUM(ch)) {
       send_to_char(ch, "You can not harm your servant.\r\n");
       return 0;
     } else if ((GRAPPLING(ch) && GRAPTYPE(ch) != 3) ||
@@ -4217,18 +4108,18 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       act("@g$n@G stretches $s limbs toward @g$N@G in an attempt to hit $M!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       return 1;
-    } else if (AFF_FLAGGED(ch, AFF_FLYING) && !AFF_FLAGGED(vict, AFF_FLYING) &&
+    } else if (char_condition_has(ch, "flying") && !char_condition_has(vict, "flying") &&
                num == 0) {
       send_to_char(ch, "You are too far above them.\r\n");
       return 0;
-    } else if (!AFF_FLAGGED(ch, AFF_FLYING) && AFF_FLAGGED(vict, AFF_FLYING) &&
+    } else if (!char_condition_has(ch, "flying") && char_condition_has(vict, "flying") &&
                num == 0) {
       send_to_char(ch, "They are too far above you.\r\n");
       return 0;
     } else if (!IS_NPC(ch) && GET_ALT(ch) > GET_ALT(vict) && !IS_NPC(vict) &&
                num == 0) {
       if (GET_ALT(vict) < 0) {
-        GET_ALT(vict) = GET_ALT(ch);
+        char_condition_number_set(vict, "flying", "altitude", GET_ALT(ch));
         return 1;
       } else {
         send_to_char(ch, "You are too far above them.\r\n");
@@ -4237,7 +4128,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
     } else if (!IS_NPC(ch) && GET_ALT(ch) < GET_ALT(vict) && !IS_NPC(vict) &&
                num == 0) {
       if (GET_ALT(vict) > 2) {
-        GET_ALT(vict) = GET_ALT(ch);
+        char_condition_number_set(vict, "flying", "altitude", GET_ALT(ch));
         return 1;
       } else {
         send_to_char(ch, "They are too far above you.\r\n");
@@ -4258,7 +4149,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       send_to_char(ch,
                    "You can't hit that, it is protected by the immortals!\r\n");
       return 0;
-    } else if (AFF_FLAGGED(ch, AFF_FLYING)) {
+    } else if (char_condition_has(ch, "flying")) {
       send_to_char(ch, "You are too far above it.\r\n");
       return 0;
     } else if (OBJ_FLAGGED(obj, ITEM_BROKEN)) {
@@ -4383,7 +4274,7 @@ void pcost(struct char_data *ch, double ki, int64_t st) {
     if (GET_KAIOKEN(ch) > 0) {
       st += (st / 20) * GET_KAIOKEN(ch);
     }
-    if (AFF_FLAGGED(ch, AFF_HASS)) {
+    if (char_condition_has(ch, "hasshuken")) {
       st += st * .3;
     }
     if (!IS_NPC(ch) && GET_BONUS(ch, BONUS_HARDWORKER) > 0) {

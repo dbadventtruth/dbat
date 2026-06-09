@@ -51,11 +51,9 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "eye", ch.eye);
         try jsonx.putInt(&object, allocator, "distinguishing_feature", ch.distfea);
         try jsonx.putInt(&object, allocator, "aura", ch.aura);
-        try jsonx.putInt(&object, allocator, "position", ch.position);
         try jsonx.putInt(&object, allocator, "tail_growth", ch.tail_growth);
         try jsonx.putInt(&object, allocator, "rage_meter", ch.rage_meter);
         try jsonx.putInt(&object, allocator, "mimic", ch.mimic);
-        try jsonx.putInt(&object, allocator, "altitude", ch.altitude);
         try jsonx.putInt(&object, allocator, "hometown", ch.hometown);
         try jsonx.putNonEmpty(&object, allocator, "bodyparts", try jsonx.serializeFlags(allocator, ch, cdb.NUM_AFF_FLAGS, bodypartFlagged));
         try jsonx.putNonEmpty(&object, allocator, "affected_by", try jsonx.serializeFlags(allocator, ch, cdb.NUM_AFF_FLAGS, affectedFlagged));
@@ -111,8 +109,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "droom", ch.droom);
         try jsonx.putInt(&object, allocator, "deathtime", ch.deathtime);
         try jsonx.putInt(&object, allocator, "reward_time", ch.rewtime);
-        try jsonx.putInt(&object, allocator, "majinizer", ch.majinizer);
-        try jsonx.putInt(&object, allocator, "majinize", ch.majinize);
         try jsonx.putInt(&object, allocator, "transclass", ch.transclass);
         try jsonx.putInt(&object, allocator, "preference", ch.preference);
         try jsonx.putInt(&object, allocator, "relax_count", ch.relax_count);
@@ -123,7 +119,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "boosts", ch.boosts);
         try jsonx.putInt(&object, allocator, "absorbs", ch.absorbs);
         try jsonx.putInt(&object, allocator, "ingest_learned", ch.ingestLearned);
-        try jsonx.putInt(&object, allocator, "bless_level", ch.blesslvl);
         try jsonx.putInt(&object, allocator, "radar1", ch.radar1);
         try jsonx.putInt(&object, allocator, "radar2", ch.radar2);
         try jsonx.putInt(&object, allocator, "radar3", ch.radar3);
@@ -170,7 +165,6 @@ fn mobProtoToCharacter(ch: *cdb.char_data, proto: *const cdb.mob_proto_data) voi
     ch.race = proto.race;
     ch.chclass = proto.chclass;
     ch.mob_specials = proto.mob_specials;
-    ch.position = proto.position;
     ch.speaking = proto.speaking;
     ch.act = proto.act;
     ch.affected_by = proto.affected_by;
@@ -190,7 +184,6 @@ fn characterToMobProto(proto: *cdb.mob_proto_data, ch: *const cdb.char_data) voi
     proto.race = ch.race;
     proto.chclass = ch.chclass;
     proto.mob_specials = ch.mob_specials;
-    proto.position = ch.position;
     proto.speaking = ch.speaking;
     proto.act = ch.act;
     proto.affected_by = ch.affected_by;
@@ -226,11 +219,9 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "eye", i8)) |v| ch.eye = v;
         if (try jsonx.intField(value, "distinguishing_feature", i8)) |v| ch.distfea = v;
         if (try jsonx.intField(value, "aura", c_int)) |v| ch.aura = v;
-        if (try jsonx.intField(value, "position", i8)) |v| ch.position = v;
         if (try jsonx.intField(value, "tail_growth", c_int)) |v| ch.tail_growth = v;
         if (try jsonx.intField(value, "rage_meter", c_int)) |v| ch.rage_meter = v;
         if (try jsonx.intField(value, "mimic", c_int)) |v| ch.mimic = v;
-        if (try jsonx.intField(value, "altitude", c_int)) |v| ch.altitude = v;
         if (try jsonx.intField(value, "hometown", cdb.room_vnum)) |v| ch.hometown = v;
         if (jsonx.field(value, "bodyparts")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, bodypartFlagSet);
         if (jsonx.field(value, "affected_by")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, affectedFlagSet);
@@ -288,8 +279,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "droom", cdb.room_vnum)) |v| ch.droom = v;
         if (try jsonx.intField(value, "deathtime", cdb.time_t)) |v| ch.deathtime = v;
         if (try jsonx.intField(value, "reward_time", cdb.time_t)) |v| ch.rewtime = v;
-        if (try jsonx.intField(value, "majinizer", i64)) |v| ch.majinizer = v;
-        if (try jsonx.intField(value, "majinize", c_int)) |v| ch.majinize = v;
         if (try jsonx.intField(value, "transclass", c_int)) |v| ch.transclass = v;
         if (try jsonx.intField(value, "preference", c_int)) |v| ch.preference = v;
         if (try jsonx.intField(value, "relax_count", c_int)) |v| ch.relax_count = v;
@@ -300,7 +289,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "boosts", c_int)) |v| ch.boosts = v;
         if (try jsonx.intField(value, "absorbs", c_int)) |v| ch.absorbs = v;
         if (try jsonx.intField(value, "ingest_learned", c_int)) |v| ch.ingestLearned = v;
-        if (try jsonx.intField(value, "bless_level", c_int)) |v| ch.blesslvl = v;
         if (try jsonx.intField(value, "radar1", cdb.room_vnum)) |v| ch.radar1 = v;
         if (try jsonx.intField(value, "radar2", cdb.room_vnum)) |v| ch.radar2 = v;
         if (try jsonx.intField(value, "radar3", cdb.room_vnum)) |v| ch.radar3 = v;

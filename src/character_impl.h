@@ -35,16 +35,6 @@ struct pclean_criteria_data {
   int days;  /* time limit in days			*/
 };
 
-/* Char's abilities. */
-struct abil_data {
-  int8_t str; /* New stats can go over 18 freely, no more /xx */
-  int8_t intel;
-  int8_t wis;
-  int8_t dex;
-  int8_t con;
-  int8_t cha;
-};
-
 /* memory structure for characters */
 struct memory_rec_struct {
   int32_t id;
@@ -146,8 +136,6 @@ struct char_data {
   // inventory and equipment
   struct obj_data *equipment[NUM_WEARS];
   struct obj_data *carrying;
-  int carry_weight;   // carried weight
-  int8_t carry_items; // number of carried items
 
   struct descriptor_data *desc; /* NULL for mobiles			*/
   char *loguser;                /* What user was I last saved as?      */
@@ -160,7 +148,6 @@ struct char_data {
   struct char_data *next_in_room;
   /* For room->people - list		*/
   struct char_data *next; /* For either monster or ppl-list	*/
-  struct char_data *next_fighting;
   /* For fighting list			*/
   struct char_data *next_affect; /* For affect wearoff			*/
 
@@ -169,9 +156,7 @@ struct char_data {
   int32_t master_id;
 
   struct char_data *fighting; /* Opponent				*/
-
-  int8_t position; /* Standing, fighting, sleeping, etc.	*/
-
+  
   int timer; /* Timer for update			*/
 
   struct obj_data *sits; /* What am I sitting on? */
@@ -187,8 +172,6 @@ struct char_data {
   // defend stuff
   struct char_data *defender;
   struct char_data *defending;
-
-  struct char_data *poisonby;
 
   // grappling stuff
   int grap;
@@ -208,15 +191,7 @@ struct char_data {
   // magic music
   short song;
 
-  int group_kills;
-
   time_t lastint; // last interest time
-
-  // used for temporaryt storage of bonuses
-  int64_t max_mana; /* Max mana for PC/NPC			*/
-  int64_t max_hit;  /* Max hit for PC/NPC			*/
-  int64_t max_move; /* Max move for PC/NPC			*/
-  int64_t max_ki;   /* Max ki for PC/NPC			*/
 
   // charge systemm
   int64_t charge;
@@ -226,8 +201,6 @@ struct char_data {
   int64_t barrier;
 
   int boosts;
-
-  int altitude; // used for fly/fly higher
 
   int spam; // channel spam
 
@@ -241,7 +214,6 @@ struct char_data {
   // food, drink, sleep
   int sleeptime;
   int foodr;
-  int overf;
 
   // Saiyan and halfy stuff
   int tail_growth;
@@ -273,9 +245,7 @@ struct char_data {
   int trp;
 
   // combo system data
-  int combo;
   int lastattack;
-  int combhits;
 
   // spaceship piloting
   int ping;
@@ -305,19 +275,11 @@ struct char_data {
   room_vnum droom;
   time_t deathtime;
 
-  // majinize
-  int64_t majinizer;
-  int majinize;
-
   // misc combat stuff
   int speedboost;
   // transformation data
   int transclass;
   int transcost[6];
-
-  // Fishing stuff - accuracy_mod is fish_pole_bonus
-  int fishstate;
-  int fishdistance;
 
   char *temp_prompt;
 
@@ -330,10 +292,6 @@ struct char_data {
   int mobcharge;
   int preference;
   int aggtimer;
-
-  // miscellaneous bonuses
-  int blesslvl;
-  int lifebonus;
 
   // multiform stuff
   struct char_data *original;
@@ -372,17 +330,6 @@ struct char_data {
   int racial_pref;
 
   // UNUSED STUFF BELOW HERE
-  int64_t mana;
-  int64_t hit;
-  int64_t move;
-  int64_t ki;
-  int64_t lifeforce;
-  int damage_mod;    /* Any bonus or penalty to the damage	*/
-  int16_t spellfail; /* Total spell failure %                 */
-  int16_t
-      armorcheck; /* Total armorcheck penalty with proficiency forgiveness */
-  int16_t
-      armorcheckall; /* Total armorcheck penalty regardless of proficiency */
   int crank;         // clank rank
   char *clan;
 };

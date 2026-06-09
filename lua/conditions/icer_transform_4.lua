@@ -12,6 +12,8 @@ local function modifiers(ch)
         { target = { "derived", "powerlevel" }, kind = "multiplier", value = form.mult, label = form.name },
         { target = { "derived", "ki" }, kind = "multiplier", value = form.mult, label = form.name },
         { target = { "derived", "stamina" }, kind = "multiplier", value = form.mult, label = form.name },
+        { target = { "derived", "height" }, kind = "multiplier", value = 20000, label = form.name },
+        { target = { "derived", "weight" }, kind = "multiplier", value = 30000, label = form.name },
     }
 end
 

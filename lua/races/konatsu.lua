@@ -8,6 +8,7 @@ return {
     modifiers = function()
         return {
             { target = { "derived", "lifeforce" }, kind = "multiplier", value = 8500, label = "Konatsu" },
+            { target = { "derived", "ki_regen" }, kind = "multiplier", value = -2000, label = "Konatsu" },
         }
     end,
 }

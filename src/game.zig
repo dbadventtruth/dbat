@@ -1,5 +1,10 @@
 const std = @import("std");
 const cdb = @import("cdb");
+const lua_api = @import("lua_api.zig");
+const characters_lua = @import("character_lua.zig");
+const rooms_lua = @import("room_lua.zig");
+const objects_lua = @import("object_lua.zig");
+
 
 var io: std.Io = undefined;
 var has_io = false;
@@ -81,4 +86,95 @@ pub export fn game_active_player_leave() void {
 
 pub export fn game_active_player_count() c_int {
     return @intCast(@min(active_players, @as(usize, @intCast(std.math.maxInt(c_int)))));
+}
+
+// --- Lua heartbeat hook helpers ---
+
+fn charCall(ch: *cdb.char_data, method: [:0]const u8, pulse: ?c_int) void {
+    const lua = lua_api.state();
+    const top = lua.getTop();
+    defer lua.setTop(top);
+    characters_lua.pushCharacter(lua, cdb.char_id_get(ch));
+    if (lua.getField(-1, method) != .function) return;
+    characters_lua.pushCharacter(lua, cdb.char_id_get(ch));
+    if (pulse) |p| lua.pushInteger(p);
+    const nargs: i32 = if (pulse != null) 2 else 1;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("char {s} failed: {s}", .{ method, message });
+        lua.pop(1);
+    };
+}
+
+fn roomCall(room: *cdb.room_data, method: [:0]const u8, pulse: ?c_int) void {
+    const lua = lua_api.state();
+    const top = lua.getTop();
+    defer lua.setTop(top);
+    rooms_lua.pushRoom(lua, cdb.room_vnum_get(room));
+    if (lua.getField(-1, method) != .function) return;
+    rooms_lua.pushRoom(lua, cdb.room_vnum_get(room));
+    if (pulse) |p| lua.pushInteger(p);
+    const nargs: i32 = if (pulse != null) 2 else 1;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("room {s} failed: {s}", .{ method, message });
+        lua.pop(1);
+    };
+}
+
+fn objCall(obj: *cdb.obj_data, method: [:0]const u8, pulse: ?c_int) void {
+    const lua = lua_api.state();
+    const top = lua.getTop();
+    defer lua.setTop(top);
+    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    if (lua.getField(-1, method) != .function) return;
+    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    if (pulse) |p| lua.pushInteger(p);
+    const nargs: i32 = if (pulse != null) 2 else 1;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("obj {s} failed: {s}", .{ method, message });
+        lua.pop(1);
+    };
+}
+
+// --- C-exposed entity hooks (caller iterates) ---
+
+pub export fn char_on_second(ch: *cdb.char_data) void {
+    if (cdb.char_is_extracted(ch)) return;
+    charCall(ch, "on_second", null);
+}
+
+pub export fn char_on_mud_hour(ch: *cdb.char_data) void {
+    if (cdb.char_is_extracted(ch)) return;
+    charCall(ch, "on_mud_hour", null);
+}
+
+pub export fn char_on_heartbeat(ch: *cdb.char_data, pulse: c_int) void {
+    if (cdb.char_is_extracted(ch)) return;
+    charCall(ch, "on_heartbeat", pulse);
+}
+
+pub export fn room_on_second(room: *cdb.room_data) void {
+    roomCall(room, "on_second", null);
+}
+
+pub export fn room_on_mud_hour(room: *cdb.room_data) void {
+    roomCall(room, "on_mud_hour", null);
+}
+
+pub export fn room_on_heartbeat(room: *cdb.room_data, pulse: c_int) void {
+    roomCall(room, "on_heartbeat", pulse);
+}
+
+pub export fn obj_on_second(obj: *cdb.obj_data) void {
+    objCall(obj, "on_second", null);
+}
+
+pub export fn obj_on_mud_hour(obj: *cdb.obj_data) void {
+    objCall(obj, "on_mud_hour", null);
+}
+
+pub export fn obj_on_heartbeat(obj: *cdb.obj_data, pulse: c_int) void {
+    objCall(obj, "on_heartbeat", pulse);
 }

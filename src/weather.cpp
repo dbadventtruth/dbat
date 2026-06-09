@@ -304,7 +304,7 @@ void oozaru_revert(char_data *ch) {
       "features fading back into humanoid features until $e is left normal and "
       "asleep.@n",
       TRUE, ch, 0, 0, TO_ROOM);
-  GET_POS(ch) = POS_SLEEPING;
+  char_position_set(ch, POS_SLEEPING);
 
   REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_OOZARU);
 }
@@ -377,7 +377,7 @@ static void check_hoshi_phase(struct char_data *ch, int type) {
 void star_phase(struct char_data *ch, int type) {
   struct descriptor_data *d;
 
-  if (ch != NULL) {
+  if (ch) {
     check_hoshi_phase(ch, type);
     return;
   }
@@ -395,31 +395,15 @@ static void phase_powerup(struct char_data *ch, int phase) {
     return;
   }
 
-  // clear existing bonus...
-  remove_affect(ch, AFF_STARPHASE);
-
-  int bonus = 0;
-
-  switch (phase) {
-  case 0:
-    return;
-  case 1:
-    bonus = 5;
-    break;
-  case 2:
-    bonus = 8;
-    break;
-  default:
-    send_to_imm(
-        "Error: phase_powerup called with GET_PHASE equal to zero by: %s",
-        GET_NAME(ch));
+  if(!IS_HOSHIJIN(ch)) {
     return;
   }
 
-  if (bonus > 0) {
-    assign_affect(ch, AFF_STARPHASE, 0, -1, bonus, 0, 0, 0, 0, bonus);
+  if(char_condition_has(ch, "starphase")) {
+    return;
   }
-  GET_PHASE(ch) = phase;
+
+  char_condition_apply(ch, "starphase", "weather", "star_phase");
   save_char(ch);
 }
 
