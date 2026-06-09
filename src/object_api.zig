@@ -254,6 +254,21 @@ pub export fn obj_inventory_count(obj: *cdb.obj_data, recursive: bool) usize {
     return count;
 }
 
+pub export fn obj_inventory_get(obj: *cdb.obj_data, count: *usize) ?[*]i64 {
+    const inv_count = obj_inventory_count(obj, false);
+    count.* = inv_count;
+    if (inv_count == 0) return null;
+
+    const array = std.heap.c_allocator.alloc(i64, inv_count) catch return null;
+    var current = obj.contains;
+    var index: usize = 0;
+    while (current != null) : (current = current.*.next_content) {
+        array[index] = current.*.id;
+        index += 1;
+    }
+    return array.ptr;
+}
+
 pub fn objContentsListIterate(obj: [*c]cdb.obj_data, recursive: bool, func: ObjIterFn, ctx: ?*anyopaque) bool {
     var current = obj;
     while (current != null) {

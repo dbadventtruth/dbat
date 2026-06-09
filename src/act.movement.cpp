@@ -683,27 +683,27 @@ static int has_flight(struct char_data *ch) {
   if (ADM_FLAGGED(ch, ADM_WALKANYWHERE))
     return (1);
 
-  if (AFF_FLAGGED(ch, AFF_FLYING) &&
+  if (char_condition_has(ch, "flying") &&
       (getCurKI(ch)) >=
           (GET_LEVEL(ch) + (GET_MAX_MANA(ch) / (GET_LEVEL(ch) * 30))) &&
       !IS_ANDROID(ch) && !IS_NPC(ch)) {
     return (1);
   }
-  if (AFF_FLAGGED(ch, AFF_FLYING) &&
+  if (char_condition_has(ch, "flying") &&
       (getCurKI(ch)) <
           (GET_LEVEL(ch) + (GET_MAX_MANA(ch) / (GET_LEVEL(ch) * 30))) &&
       !IS_ANDROID(ch) && !IS_NPC(ch)) {
     act("@WYou crash to the ground, too tired to fly anymore!@n", TRUE, ch, 0,
         0, TO_CHAR);
     act("@W$n@W crashes to the ground!@n", TRUE, ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+    char_condition_remove(ch, "flying", "stop_flying");
     handle_fall(ch);
     return (0);
   }
-  if (AFF_FLAGGED(ch, AFF_FLYING) && IS_ANDROID(ch)) {
+  if (char_condition_has(ch, "flying") && IS_ANDROID(ch)) {
     return (1);
   }
-  if (AFF_FLAGGED(ch, AFF_FLYING) && IS_NPC(ch)) {
+  if (char_condition_has(ch, "flying") && IS_NPC(ch)) {
     return (1);
   }
 
@@ -711,7 +711,7 @@ static int has_flight(struct char_data *ch) {
   {
     bool found = false;
     char_inventory_iterate(ch, [&](auto obj) {
-      if (OBJAFF_FLAGGED(obj, AFF_FLYING) && (find_eq_pos(ch, obj, NULL) < 0)) {
+      if (obj_aff_flagged(obj, AFF_FLYING) && (find_eq_pos(ch, obj, NULL) < 0)) {
         found = true;
         return false;
       }
@@ -729,7 +729,7 @@ int has_o2(struct char_data *ch) {
   if (ADM_FLAGGED(ch, ADM_WALKANYWHERE))
     return (1);
 
-  if (AFF_FLAGGED(ch, AFF_WATERBREATH))
+  if (char_condition_has(ch, "rune_laguz"))
     return (1);
 
   if (IS_KANASSAN(ch) || IS_ANDROID(ch) || IS_ICER(ch) || IS_MAJIN(ch))
@@ -881,7 +881,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
   int flight_cost = 0;
 
-  if (AFF_FLAGGED(ch, AFF_FLYING) && !IS_ANDROID(ch)) {
+  if (char_condition_has(ch, "flying") && !IS_ANDROID(ch)) {
     if (!GET_SKILL(ch, SKILL_CONCENTRATION) && !GET_SKILL(ch, SKILL_FOCUS)) {
       flight_cost = GET_MAX_MANA(ch) / 100;
     } else if (GET_SKILL(ch, SKILL_CONCENTRATION) &&
@@ -897,18 +897,18 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     }
   }
 
-  if (AFF_FLAGGED(ch, AFF_FLYING) && ((getCurKI(ch)) < flight_cost) &&
+  if (char_condition_has(ch, "flying") && ((getCurKI(ch)) < flight_cost) &&
       !IS_ANDROID(ch)) {
     decCurKI(ch, flight_cost);
     act("@WYou crash to the ground, too tired to fly anymore!@n", TRUE, ch, 0,
         0, TO_CHAR);
     act("@W$n@W crashes to the ground!@n", TRUE, ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-  } else if (AFF_FLAGGED(ch, AFF_FLYING) && !IS_ANDROID(ch)) {
+    char_condition_remove(ch, "flying", "stop_flying");
+  } else if (char_condition_has(ch, "flying") && !IS_ANDROID(ch)) {
     decCurKI(ch, flight_cost);
   }
 
-  if ((getCurST(ch)) < need_movement && !AFF_FLAGGED(ch, AFF_FLYING) &&
+  if ((getCurST(ch)) < need_movement && !char_condition_has(ch, "flying") &&
       !IS_NPC(ch)) {
     if (need_specials_check && ch->master) {
       send_to_char(ch, "You are too exhausted to follow.\r\n");
@@ -928,7 +928,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
                    spell_info[exit_dcskill_get(ex)].name);
       /* A failed skill check still spends the movement points! */
       if (!ADM_FLAGGED(ch, ADM_WALKANYWHERE) && !IS_NPC(ch) &&
-          !AFF_FLAGGED(ch, AFF_FLYING))
+          !char_condition_has(ch, "flying"))
         decCurST(ch, need_movement);
       return (0);
     } else {
@@ -999,7 +999,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
   /* Now we know we're allowed to go into the room. */
   if (!ADM_FLAGGED(ch, ADM_WALKANYWHERE) && !IS_NPC(ch) &&
-      !AFF_FLAGGED(ch, AFF_FLYING)) {
+      !char_condition_has(ch, "flying")) {
     decCurST(ch, need_movement);
   }
 
@@ -1022,11 +1022,11 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     }
   }
 
-  if (!AFF_FLAGGED(ch, AFF_SNEAK) && !AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (!AFF_FLAGGED(ch, AFF_SNEAK) && !char_condition_has(ch, "flying")) {
     sprintf(buf2, "$n leaves %s.", dirs[dir]);
     act(buf2, TRUE, ch, 0, 0, TO_ROOM);
   }
-  if (!AFF_FLAGGED(ch, AFF_SNEAK) && AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (!AFF_FLAGGED(ch, AFF_SNEAK) && char_condition_has(ch, "flying")) {
     sprintf(buf2, "$n flies %s.", dirs[dir]);
     act(buf2, TRUE, ch, 0, 0, TO_ROOM);
   }
@@ -1121,7 +1121,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
   if (room_geffect_get(char_room_get(ch)) == 6 ||
       room_geffect_get(was_in_room) == 6) {
-    if (!IS_DEMON(ch) && !AFF_FLAGGED(ch, AFF_FLYING) &&
+    if (!IS_DEMON(ch) && !char_condition_has(ch, "flying") &&
         group_bonus(ch, 2) != 14) {
       act("@rYour legs are burned by the lava!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@R$n@r's legs are burned by the lava!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -1396,7 +1396,7 @@ ACMD(do_move) {
 
   if (!IS_NPC(ch) && GET_LIMBCOND(ch, 1) <= 0 && GET_LIMBCOND(ch, 2) <= 0 &&
       GET_LIMBCOND(ch, 3) <= 0 && GET_LIMBCOND(ch, 4) <= 0 &&
-      !AFF_FLAGGED(ch, AFF_FLYING)) {
+      !char_condition_has(ch, "flying")) {
     send_to_char(ch, "Unless you fly, you can't get far with no limbs.\r\n");
     return;
   }
@@ -1503,7 +1503,7 @@ ACMD(do_move) {
       send_to_char(ch, "You struggle to cross the vast distance.\r\n");
       WAIT_STATE(ch, PULSE_6SEC);
     } else if ((GET_LIMBCOND(ch, 3) <= 0 && GET_LIMBCOND(ch, 4) <= 0) &&
-               GET_LIMBCOND(ch, 1) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING)) {
+               GET_LIMBCOND(ch, 1) <= 0 && !char_condition_has(ch, "flying")) {
       act("@wYou slowly pull yourself along with your arm...@n", TRUE, ch, 0, 0,
           TO_CHAR);
       act("@C$n@w slowly pulls $mself along with one arm...@n", TRUE, ch, 0, 0,
@@ -1518,7 +1518,7 @@ ACMD(do_move) {
       }
       WAIT_STATE(ch, PULSE_5SEC);
     } else if ((GET_LIMBCOND(ch, 3) <= 0 && GET_LIMBCOND(ch, 4) <= 0) &&
-               GET_LIMBCOND(ch, 2) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING)) {
+               GET_LIMBCOND(ch, 2) <= 0 && !char_condition_has(ch, "flying")) {
       act("@wYou slowly pull yourself along with your arm...@n", TRUE, ch, 0, 0,
           TO_CHAR);
       act("@C$n@w slowly pulls $mself along with one arm...@n", TRUE, ch, 0, 0,
@@ -1534,7 +1534,7 @@ ACMD(do_move) {
       }
       WAIT_STATE(ch, PULSE_5SEC);
     } else if ((GET_LIMBCOND(ch, 3) <= 0 && GET_LIMBCOND(ch, 4) <= 0) &&
-               !AFF_FLAGGED(ch, AFF_FLYING)) {
+               !char_condition_has(ch, "flying")) {
       act("@wYou slowly pull yourself along with your arms...@n", TRUE, ch, 0,
           0, TO_CHAR);
       act("@C$n@w slowly pulls $mself along with one arms...@n", TRUE, ch, 0, 0,
@@ -1557,7 +1557,7 @@ ACMD(do_move) {
         }
       }
       WAIT_STATE(ch, PULSE_3SEC);
-    } else if (GET_LIMBCOND(ch, 3) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING)) {
+    } else if (GET_LIMBCOND(ch, 3) <= 0 && !char_condition_has(ch, "flying")) {
       act("@wYou hop on one leg...@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@C$n@w hops on one leg...@n", TRUE, ch, 0, 0, TO_ROOM);
       if (GET_LIMBCOND(ch, 4) < 50) {
@@ -1569,7 +1569,7 @@ ACMD(do_move) {
         }
       }
       WAIT_STATE(ch, PULSE_2SEC);
-    } else if (GET_LIMBCOND(ch, 4) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING)) {
+    } else if (GET_LIMBCOND(ch, 4) <= 0 && !char_condition_has(ch, "flying")) {
       act("@wYou hop on one leg...@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@C$n@w hops on one leg...@n", TRUE, ch, 0, 0, TO_ROOM);
       if (GET_LIMBCOND(ch, 3) < 50) {
@@ -2154,7 +2154,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj,
   if (GET_LEVEL(ch) <= 1) {
     need_movement = 0;
   }
-  if ((getCurST(ch)) < need_movement && !AFF_FLAGGED(ch, AFF_FLYING) &&
+  if ((getCurST(ch)) < need_movement && !char_condition_has(ch, "flying") &&
       !IS_NPC(ch)) {
     if (need_specials_check && ch->master)
       send_to_char(ch, "You are too exhausted to follow.\r\n");
@@ -2186,7 +2186,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj,
   }
   /* Now we know we're allowed to go into the room. */
   if (!(IS_NPC(ch) || ADM_FLAGGED(ch, ADM_WALKANYWHERE)) &&
-      !AFF_FLAGGED(ch, AFF_FLYING))
+      !char_condition_has(ch, "flying"))
     decCurST(ch, need_movement);
 
   act("$n enters $p.", TRUE, ch, obj, 0, TO_ROOM | TO_SNEAKRESIST);
@@ -2423,7 +2423,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
   if (GET_LEVEL(ch) <= 1) {
     need_movement = 0;
   }
-  if ((getCurST(ch)) < need_movement && !AFF_FLAGGED(ch, AFF_FLYING) &&
+  if ((getCurST(ch)) < need_movement && !char_condition_has(ch, "flying") &&
       !IS_NPC(ch)) {
     if (need_specials_check && ch->master)
       send_to_char(ch, "You are too exhausted to follow.\r\n");
@@ -2449,7 +2449,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
   }
   /* Now we know we're allowed to go into the room. */
   if (!(IS_NPC(ch) || ADM_FLAGGED(ch, ADM_WALKANYWHERE)) &&
-      !AFF_FLAGGED(ch, AFF_FLYING))
+      !char_condition_has(ch, "flying"))
     decCurST(ch, need_movement);
 
   act("$n leaves $p.", TRUE, ch, vehicle, 0, TO_ROOM | TO_SNEAKRESIST);
@@ -2712,30 +2712,27 @@ ACMD(do_fly) {
   int sect = room_sector_type_get(room);
 
   if (!*arg) {
-    if (AFF_FLAGGED(ch, AFF_FLYING) && sect != SECT_FLYING &&
+    if (char_condition_has(ch, "flying") && sect != SECT_FLYING &&
         sect != SECT_SPACE) {
       act("@WYou slowly settle down to the ground.@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@W$n slowly settles down to the ground.@n", TRUE, ch, 0, 0, TO_ROOM);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-      GET_ALT(ch) = 0;
+      char_condition_remove(ch, "flying", "stop_flying");
       return;
     }
 
-    if (AFF_FLAGGED(ch, AFF_FLYING) && sect == SECT_FLYING) {
+    if (char_condition_has(ch, "flying") && sect == SECT_FLYING) {
       act("@WYou begin to plummet to the ground!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@W$n starts to pummet to the ground below!@n", TRUE, ch, 0, 0,
           TO_ROOM);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-      GET_ALT(ch) = 0;
+      char_condition_remove(ch, "flying", "stop_flying");
       handle_fall(ch);
       return;
     }
-    if (AFF_FLAGGED(ch, AFF_FLYING) && sect == SECT_SPACE) {
+    if (char_condition_has(ch, "flying") && sect == SECT_SPACE) {
       act("@WYou let yourself drift aimlessly through space.@n", TRUE, ch, 0, 0,
           TO_CHAR);
       act("@W$n starts to drift slowly.!@n", TRUE, ch, 0, 0, TO_ROOM);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-      GET_ALT(ch) = 0;
+      char_condition_remove(ch, "flying", "stop_flying");
       return;
     }
     if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 100 && !IS_ANDROID(ch)) {
@@ -2752,8 +2749,8 @@ ACMD(do_fly) {
       if (GET_POS(ch) < POS_STANDING) {
         char_position_set(ch, POS_STANDING);
       }
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-      GET_ALT(ch) = 1;
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 1);
       decCurKI(ch, getMaxKI(ch) / 100);
     }
   }
@@ -2772,8 +2769,8 @@ ACMD(do_fly) {
       if (GET_POS(ch) < POS_STANDING) {
         char_position_set(ch, POS_STANDING);
       }
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-      GET_ALT(ch) = 2;
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       decCurKI(ch, getMaxKI(ch) / 100);
     }
   }
@@ -2792,13 +2789,12 @@ ACMD(do_fly) {
     }
     if (room_flagged(room, ROOM_EARTH)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_number_set(ch, "flying", "altitude", 2);
+      char_condition_add(ch, "flying", "skill", "fly");
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -2824,8 +2820,8 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_CERRIA)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_number_set(ch, "flying", "altitude", 2);
+      char_condition_add(ch, "flying", "skill", "fly");
       if (!block_calc(ch)) {
         return;
       }
@@ -2834,10 +2830,9 @@ ACMD(do_fly) {
       }
       send_to_sense(1, "leaving the planet", ch);
       send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       act("@CYou blast off from the ground and rocket through the air. Your "
           "speed increases until you manage to reach the brink of space!@n",
           TRUE, ch, 0, 0, TO_CHAR);
@@ -2858,8 +2853,8 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_VEGETA)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
@@ -2868,8 +2863,7 @@ ACMD(do_fly) {
       }
       send_to_sense(1, "leaving the planet", ch);
       send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       act("@CYou blast off from the ground and rocket through the air. Your "
           "speed increases until you manage to reach the brink of space!@n",
           TRUE, ch, 0, 0, TO_CHAR);
@@ -2891,13 +2885,12 @@ ACMD(do_fly) {
     } else if (room_flagged(room, ROOM_KANASSA)) {
       if (char_room_vnum_get(ch) == 14904) {
         reveal_hiding(ch, 0);
-        GET_ALT(ch) = 2;
-        SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+        char_condition_add(ch, "flying", "skill", "fly");
+        char_condition_number_set(ch, "flying", "altitude", 2);
         if (!block_calc(ch)) {
           return;
         }
-        GET_ALT(ch) = 0;
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+        char_condition_remove(ch, "flying", "stop_flying");
         if (auto zone = char_zone_get(ch); zone) {
           fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
         }
@@ -2929,13 +2922,12 @@ ACMD(do_fly) {
     } else if ((char_room_get(ch) &&
                 room_flagged(char_room_get(ch), ROOM_FRIGID))) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -2961,13 +2953,13 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_KONACK)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -2993,13 +2985,13 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_NAMEK)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -3025,13 +3017,12 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_AETHER)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -3057,13 +3048,13 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_YARDRAT)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -3089,13 +3080,14 @@ ACMD(do_fly) {
       return;
     } else if (room_flagged(room, ROOM_ARLIA)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -3121,13 +3113,14 @@ ACMD(do_fly) {
       return;
     } else if (char_planet_zenith(ch)) {
       reveal_hiding(ch, 0);
-      GET_ALT(ch) = 2;
-      SET_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+      
+      char_condition_add(ch, "flying", "skill", "fly");
+      char_condition_number_set(ch, "flying", "altitude", 2);
       if (!block_calc(ch)) {
         return;
       }
-      GET_ALT(ch) = 0;
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
+
+      char_condition_remove(ch, "flying", "stop_flying");
       if (auto zone = char_zone_get(ch); zone) {
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
       }
@@ -3251,7 +3244,7 @@ ACMD(do_sit) {
     return;
   }
 
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (char_condition_has(ch, "flying")) {
     do_fly(ch, 0, 0, 0);
   }
 
@@ -3386,7 +3379,7 @@ ACMD(do_rest) {
     return;
   }
 
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (char_condition_has(ch, "flying")) {
     do_fly(ch, 0, 0, 0);
   }
 
@@ -3547,7 +3540,7 @@ ACMD(do_sleep) {
     return;
   }
 
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (char_condition_has(ch, "flying")) {
     do_fly(ch, 0, 0, 0);
   }
 

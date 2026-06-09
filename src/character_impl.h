@@ -146,8 +146,6 @@ struct char_data {
   // inventory and equipment
   struct obj_data *equipment[NUM_WEARS];
   struct obj_data *carrying;
-  int carry_weight;   // carried weight
-  int8_t carry_items; // number of carried items
 
   struct descriptor_data *desc; /* NULL for mobiles			*/
   char *loguser;                /* What user was I last saved as?      */
@@ -168,9 +166,7 @@ struct char_data {
   int32_t master_id;
 
   struct char_data *fighting; /* Opponent				*/
-
-  int8_t position; /* Standing, fighting, sleeping, etc.	*/
-
+  
   int timer; /* Timer for update			*/
 
   struct obj_data *sits; /* What am I sitting on? */
@@ -218,8 +214,6 @@ struct char_data {
 
   int boosts;
 
-  int altitude; // used for fly/fly higher
-
   int spam; // channel spam
 
   time_t lastpl;
@@ -232,7 +226,6 @@ struct char_data {
   // food, drink, sleep
   int sleeptime;
   int foodr;
-  int overf;
 
   // Saiyan and halfy stuff
   int tail_growth;
@@ -264,9 +257,7 @@ struct char_data {
   int trp;
 
   // combo system data
-  int combo;
   int lastattack;
-  int combhits;
 
   // spaceship piloting
   int ping;
@@ -296,19 +287,11 @@ struct char_data {
   room_vnum droom;
   time_t deathtime;
 
-  // majinize
-  int64_t majinizer;
-  int majinize;
-
   // misc combat stuff
   int speedboost;
   // transformation data
   int transclass;
   int transcost[6];
-
-  // Fishing stuff - accuracy_mod is fish_pole_bonus
-  int fishstate;
-  int fishdistance;
 
   char *temp_prompt;
 
@@ -321,10 +304,6 @@ struct char_data {
   int mobcharge;
   int preference;
   int aggtimer;
-
-  // miscellaneous bonuses
-  int blesslvl;
-  int lifebonus;
 
   // multiform stuff
   struct char_data *original;
@@ -363,17 +342,6 @@ struct char_data {
   int racial_pref;
 
   // UNUSED STUFF BELOW HERE
-  int64_t mana;
-  int64_t hit;
-  int64_t move;
-  int64_t ki;
-  int64_t lifeforce;
-  int damage_mod;    /* Any bonus or penalty to the damage	*/
-  int16_t spellfail; /* Total spell failure %                 */
-  int16_t
-      armorcheck; /* Total armorcheck penalty with proficiency forgiveness */
-  int16_t
-      armorcheckall; /* Total armorcheck penalty regardless of proficiency */
   int crank;         // clank rank
   char *clan;
 };

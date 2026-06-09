@@ -822,7 +822,7 @@ char *make_prompt(struct descriptor_data *d) {
         if (count >= 0)
           len += count;
       }
-      if (AFF_FLAGGED(d->character, AFF_FLYING) && len < sizeof(prompt) &&
+      if (char_condition_has(d->character, "flying") && len < sizeof(prompt) &&
           !PRF_FLAGGED(d->character, PRF_NODEC)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "FLYING - ");
         flagged = TRUE;
@@ -849,73 +849,76 @@ char *make_prompt(struct descriptor_data *d) {
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 51 && len < sizeof(prompt)) {
+
+      auto combo = char_condition_has(d->character, "combo") ? char_condition_number_get(d->character, "combo", "state") : -1;
+
+      if (combo == 51 && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "Combo (Bash) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 52 && len < sizeof(prompt)) {
+      if (combo == 52 && len < sizeof(prompt)) {
         count =
             snprintf(prompt + len, sizeof(prompt) - len, "Combo (Headbutt) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 56 && len < sizeof(prompt)) {
+      if (combo == 56 && len < sizeof(prompt)) {
         count =
             snprintf(prompt + len, sizeof(prompt) - len, "Combo (Tailwhip) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 0 && len < sizeof(prompt)) {
+      if (combo == 0 && len < sizeof(prompt)) {
         count =
             snprintf(prompt + len, sizeof(prompt) - len, "Combo (Punch) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 1 && len < sizeof(prompt)) {
+      if (combo == 1 && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "Combo (Kick) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 2 && len < sizeof(prompt)) {
+      if (combo == 2 && len < sizeof(prompt)) {
         count =
             snprintf(prompt + len, sizeof(prompt) - len, "Combo (Elbow) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 3 && len < sizeof(prompt)) {
+      if (combo == 3 && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "Combo (Knee) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 4 && len < sizeof(prompt)) {
+      if (combo == 4 && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len,
                          "Combo (Roundhouse) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 5 && len < sizeof(prompt)) {
+      if (combo == 5 && len < sizeof(prompt)) {
         count =
             snprintf(prompt + len, sizeof(prompt) - len, "Combo (Uppercut) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 6 && len < sizeof(prompt)) {
+      if (combo == 6 && len < sizeof(prompt)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "Combo (Slam) - ");
         flagged = TRUE;
         if (count >= 0)
           len += count;
       }
-      if (COMBO(d->character) == 8 && len < sizeof(prompt)) {
+      if (combo == 8 && len < sizeof(prompt)) {
         count =
             snprintf(prompt + len, sizeof(prompt) - len, "Combo (Heeldrop) - ");
         flagged = TRUE;
@@ -929,7 +932,7 @@ char *make_prompt(struct descriptor_data *d) {
         if (count >= 0)
           len += count;
       }
-      if (PLR_FLAGGED(d->character, PLR_FISHING) && len < sizeof(prompt) &&
+      if (char_condition_has(d->character, "fishing") && len < sizeof(prompt) &&
           !PRF_FLAGGED(d->character, PRF_NODEC)) {
         count = snprintf(prompt + len, sizeof(prompt) - len, "FISHING -");
         flagged = TRUE;
@@ -1823,7 +1826,6 @@ size_t vwrite_to_output(struct descriptor_data *t, const char *format,
   if (size + t->bufptr + 1 > LARGE_BUFSIZE) {
     size = LARGE_BUFSIZE - t->bufptr - 1;
     txt[size] = '\0';
-    GET_OVERFLOW(t->character) = TRUE;
     buf_overflows++;
   }
 

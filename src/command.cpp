@@ -41,6 +41,7 @@
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
+#include "character_utils.h"
 #include "character_macros.h"
 #include "consts/affflags.h"
 #include "consts/itemdata.h"

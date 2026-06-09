@@ -161,15 +161,8 @@ void resurrect(char_data *ch, int mode) {
             "a weakened state for a few hours (Game time)! Strength, "
             "constitution, wisdom, intelligence, speed, and agility have been "
             "reduced by a fifth for the duration.@n\r\n");
-    int str = -8, intel = -8, wis = -8, spd = -8, con = -8, agl = -8;
-    str = -1 * (char_stat_get(ch, "strength") / 5);
-    intel = -1 * (char_stat_get(ch, "intelligence") / 5);
-    wis = -1 * (char_stat_get(ch, "wisdom") / 5);
-    spd = -1 * (char_stat_get(ch, "speed") / 5);
-    con = -1 * (char_stat_get(ch, "constitution") / 5);
-    agl = -1 * (char_stat_get(ch, "agility") / 5);
-    assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, dur, str, con, intel, agl,
-                  wis, spd);
+    char_condition_add(ch, "resurrection_weakness", "resurrection", "normal");
+    char_condition_duration_set(ch, "resurrection_weakness", dur * SECS_PER_MUD_HOUR);
     if (losschance >= 100) {
       int psloss = rand_number(100, 300);
       char_stat_mod(ch, "practices", -psloss);
@@ -668,9 +661,8 @@ void restoreStatus(char_data *ch) { restoreStatusAnnounced(ch, true); }
 
 void setStatusKnockedOut(char_data *ch) {
   SET_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FLYING);
-    GET_ALT(ch) = 0;
+  if (char_condition_has(ch, "flying")) {
+    char_condition_remove(ch, "flying", "stop_flying");
   }
   char_position_set(ch, POS_SLEEPING);
 }
@@ -1419,15 +1411,21 @@ int know_skill(struct char_data *ch, int skill) {
 }
 
 bool is_affected(struct char_data *ch, int aff_flag) {
+  if (AFF_FLAGGED(ch, aff_flag)) return true;
 
-  struct affected_type *af;
+  if (char_condition_check_legacy_affect(ch, aff_flag)) return true;
 
-  for (af = ch->affected; af; af = af->next) {
-    if (af->location == APPLY_NONE && af->bitvector == aff_flag)
-      return (TRUE);
-  }
+  bool found = false;
 
-  return (FALSE);
+  char_equipment_iterate(ch, [&](auto i, auto eq) {
+    if(obj_aff_flagged(eq, aff_flag)) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+
+  return found;
 }
 
 void null_affect(struct char_data *ch, int aff_flag) {
@@ -2857,16 +2855,16 @@ int block_calc(struct char_data *ch) {
             TO_VICT);
         act("You try to leave, but can't outrun $N!", TRUE, ch, 0, blocker,
             TO_CHAR);
-        if (AFF_FLAGGED(ch, AFF_FLYING) && !AFF_FLAGGED(blocker, AFF_FLYING) &&
+        if (char_condition_has(ch, "flying") && !char_condition_has(blocker, "flying") &&
             GET_ALT(ch) == 1) {
           send_to_char(blocker, "You're now floating in the air.\r\n");
-          SET_BIT_AR(AFF_FLAGS(blocker), AFF_FLYING);
-          GET_ALT(blocker) = GET_ALT(ch);
-        } else if (AFF_FLAGGED(ch, AFF_FLYING) &&
-                   !AFF_FLAGGED(blocker, AFF_FLYING) && GET_ALT(ch) == 2) {
+          char_condition_add(blocker, "flying", "skill", "fly");
+          char_condition_number_set(blocker, "flying", "altitude", GET_ALT(ch));
+        } else if (char_condition_has(ch, "flying") &&
+                   !char_condition_has(blocker, "flying") && GET_ALT(ch) == 2) {
           send_to_char(blocker, "You're now floating high in the sky.\r\n");
-          SET_BIT_AR(AFF_FLAGS(blocker), AFF_FLYING);
-          GET_ALT(blocker) = GET_ALT(ch);
+          char_condition_add(blocker, "flying", "skill", "fly");
+          char_condition_number_set(blocker, "flying", "altitude", GET_ALT(ch));
         }
         return (0);
       } else {
@@ -4145,7 +4143,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
     } else if (MOB_FLAGGED(vict, MOB_NOKILL)) {
       send_to_char(ch, "But they are not to be killed!\r\n");
       return 0;
-    } else if (MAJINIZED(ch) == GET_ID(vict)) {
+    } else if (char_condition_number_get(ch, "majinized", "lord") == GET_IDNUM(vict)) {
       send_to_char(ch, "You can not harm your master!\r\n");
       return 0;
     } else if (GET_BONUS(ch, BONUS_COWARD) > 0 &&
@@ -4154,7 +4152,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       send_to_char(ch, "You are too cowardly to start anything with someone so "
                        "much stronger than yourself!\r\n");
       return 0;
-    } else if (MAJINIZED(vict) == GET_ID(ch)) {
+    } else if (char_condition_number_get(vict, "majinized", "lord") == GET_IDNUM(ch)) {
       send_to_char(ch, "You can not harm your servant.\r\n");
       return 0;
     } else if ((GRAPPLING(ch) && GRAPTYPE(ch) != 3) ||
@@ -4205,18 +4203,18 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       act("@g$n@G stretches $s limbs toward @g$N@G in an attempt to hit $M!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       return 1;
-    } else if (AFF_FLAGGED(ch, AFF_FLYING) && !AFF_FLAGGED(vict, AFF_FLYING) &&
+    } else if (char_condition_has(ch, "flying") && !char_condition_has(vict, "flying") &&
                num == 0) {
       send_to_char(ch, "You are too far above them.\r\n");
       return 0;
-    } else if (!AFF_FLAGGED(ch, AFF_FLYING) && AFF_FLAGGED(vict, AFF_FLYING) &&
+    } else if (!char_condition_has(ch, "flying") && char_condition_has(vict, "flying") &&
                num == 0) {
       send_to_char(ch, "They are too far above you.\r\n");
       return 0;
     } else if (!IS_NPC(ch) && GET_ALT(ch) > GET_ALT(vict) && !IS_NPC(vict) &&
                num == 0) {
       if (GET_ALT(vict) < 0) {
-        GET_ALT(vict) = GET_ALT(ch);
+        char_condition_number_set(vict, "flying", "altitude", GET_ALT(ch));
         return 1;
       } else {
         send_to_char(ch, "You are too far above them.\r\n");
@@ -4225,7 +4223,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
     } else if (!IS_NPC(ch) && GET_ALT(ch) < GET_ALT(vict) && !IS_NPC(vict) &&
                num == 0) {
       if (GET_ALT(vict) > 2) {
-        GET_ALT(vict) = GET_ALT(ch);
+        char_condition_number_set(vict, "flying", "altitude", GET_ALT(ch));
         return 1;
       } else {
         send_to_char(ch, "They are too far above you.\r\n");
@@ -4246,7 +4244,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       send_to_char(ch,
                    "You can't hit that, it is protected by the immortals!\r\n");
       return 0;
-    } else if (AFF_FLAGGED(ch, AFF_FLYING)) {
+    } else if (char_condition_has(ch, "flying")) {
       send_to_char(ch, "You are too far above it.\r\n");
       return 0;
     } else if (OBJ_FLAGGED(obj, ITEM_BROKEN)) {
@@ -4371,7 +4369,7 @@ void pcost(struct char_data *ch, double ki, int64_t st) {
     if (GET_KAIOKEN(ch) > 0) {
       st += (st / 20) * GET_KAIOKEN(ch);
     }
-    if (AFF_FLAGGED(ch, AFF_HASS)) {
+    if (char_condition_has(ch, "hasshuken")) {
       st += st * .3;
     }
     if (!IS_NPC(ch) && GET_BONUS(ch, BONUS_HARDWORKER) > 0) {

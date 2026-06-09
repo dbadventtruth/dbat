@@ -149,18 +149,21 @@ const ConditionMetadata = struct {
     definition: ConditionDefinition,
     tags: std.StringHashMap(void),
     exclusive_tags: std.StringHashMap(void),
+    legacy_affects: std.AutoHashMap(i32, void),
 
     fn init(alloc: std.mem.Allocator, definition: ConditionDefinition) ConditionMetadata {
         return .{
             .definition = definition,
             .tags = std.StringHashMap(void).init(alloc),
             .exclusive_tags = std.StringHashMap(void).init(alloc),
+            .legacy_affects = std.AutoHashMap(i32, void).init(alloc),
         };
     }
 
     fn deinit(self: *ConditionMetadata) void {
         self.tags.deinit();
         self.exclusive_tags.deinit();
+        self.legacy_affects.deinit();
     }
 };
 
@@ -570,6 +573,30 @@ pub fn conditionDefinition(name: []const u8) ?ConditionDefinition {
     return metadata.definition;
 }
 
+pub fn conditionHasLegacyAffect(name: []const u8, aff_flag: i32) bool {
+    if (!initialized or name.len == 0) return false;
+    const metadata = definition_cache.conditions.get(name) orelse {
+        if (!(pushThing("conditions", name) catch return false)) return false;
+        defer pop(1);
+        const lua = lua_state.?;
+        if (lua.getField(-1, "legacy_affects") != .table) {
+            lua.pop(1);
+            return false;
+        }
+        defer lua.pop(1);
+        const table_index = lua.getTop();
+        var pos: zlua.Integer = 1;
+        while (lua.getIndex(table_index, pos) != .nil) : (pos += 1) {
+            defer lua.pop(1);
+            if (lua.toInteger(-1) catch null) |val| {
+                if (val == aff_flag) return true;
+            }
+        }
+        return false;
+    };
+    return metadata.legacy_affects.contains(aff_flag);
+}
+
 pub fn conditionHasTag(name: []const u8, tag: []const u8) bool {
     if (!initialized or name.len == 0 or tag.len == 0) return false;
     const metadata = definition_cache.conditions.get(name) orelse {
@@ -609,7 +636,7 @@ pub fn conditionsConflict(new_condition: []const u8, active_condition: []const u
     return false;
 }
 
-pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hook_name: [:0]const u8) void {
+pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hook_name: [:0]const u8, reason: ?[]const u8) void {
     if (!initialized or condition.len == 0) return;
     if (!(pushThing("conditions", condition) catch return)) return;
     defer pop(1);
@@ -621,7 +648,11 @@ pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hoo
     }
     characters_lua.pushCharacter(lua, ch.id);
     characters_lua.pushCondition(lua, ch.id, condition);
-    lua.protectedCall(.{ .args = 2, .results = 0 }) catch |err| {
+    const nargs: i32 = if (reason) |r| blk: {
+        _ = lua.pushString(r);
+        break :blk 3;
+    } else 2;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
         const message = lua.toString(-1) catch @errorName(err);
         std.log.err("condition {s}.{s} failed: {s}", .{ condition, hook_name, message });
         lua.pop(1);
@@ -921,6 +952,7 @@ fn cacheConditionDefinition(id: []const u8, index: i32) !void {
     errdefer metadata.deinit();
     try cacheStringSet(definition_index, "tags", &metadata.tags);
     try cacheStringSet(definition_index, "exclusive_tags", &metadata.exclusive_tags);
+    try cacheLegacyAffectSet(definition_index, "legacy_affects", &metadata.legacy_affects);
     try definition_cache.conditions.put(internString(id), metadata);
 }
 
@@ -937,6 +969,22 @@ fn cacheStringSet(index: i32, comptime field_name: [:0]const u8, set: *std.Strin
         defer lua.pop(1);
         const value = lua.toString(-1) catch continue;
         try set.put(internString(value), {});
+    }
+}
+
+fn cacheLegacyAffectSet(index: i32, comptime field_name: [:0]const u8, set: *std.AutoHashMap(i32, void)) !void {
+    const lua = lua_state.?;
+    if (lua.getField(index, field_name) != .table) {
+        lua.pop(1);
+        return;
+    }
+    defer lua.pop(1);
+
+    var pos: zlua.Integer = 1;
+    while (lua.getIndex(-1, pos) != .nil) : (pos += 1) {
+        defer lua.pop(1);
+        const value = lua.toInteger(-1) catch continue;
+        try set.put(@intCast(value), {});
     }
 }
 

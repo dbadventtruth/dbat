@@ -854,77 +854,72 @@ ACMD(do_commune) {
 
 ACMD(do_willpower) {
 
-  int fail = FALSE;
-
   if (IS_NPC(ch))
     return;
 
-  if (MAJINIZED(ch) <= 0) {
+  if (!char_condition_has(ch, "majinized")) {
     send_to_char(ch, "You are not majinized and have no need to reclaim full "
                      "control of your own will.\r\n");
     return;
-  } else {
+  }
+
     if (GET_PRACTICES(ch, GET_CLASS(ch)) < 100 && GET_LEVEL(ch) < 100) {
       send_to_char(
           ch,
           "You do not have enough PS to focus your attempt to break free.\r\n");
-      fail = TRUE;
+      return;
     }
     if (GET_PRACTICES(ch, GET_CLASS(ch)) < 200 && GET_LEVEL(ch) >= 100) {
       send_to_char(
           ch,
           "You do not have enough PS to focus your attempt to break free.\r\n");
-      fail = TRUE;
+      return;
     }
     if (GET_EXP(ch) < level_exp(ch, GET_LEVEL(ch) + 1) && GET_LEVEL(ch) < 100) {
       send_to_char(ch, "You need a full level's worth of experience stored up "
                        "to try and break free.\r\n");
-      fail = TRUE;
-    }
-    if (fail == TRUE) {
       return;
-    } else {
-      char_stat_set(ch, "experience", 0);
-      char_stat_mod(ch, "practices", -100);
-      if (GET_LEVEL(ch) >= 100) {
-        char_stat_mod(ch, "practices", -100);
-      }
-      if (rand_number(10, 100) - GET_INT(ch) > 60) {
-        reveal_hiding(ch, 0);
-        act("@WYou focus all your knowledge and will on breaking free. Dark "
-            "purple energy swirls around your body and the M on your forehead "
-            "burns brightly. After a few moments you give up, having failed to "
-            "overcome the majinization!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@W$n focuses hard with $s eyes closed. Dark purple energy swirls "
-            "around $s body and the M on $s head burns brightly. After a few "
-            "moments $n seems to give up and the commotion dies down.@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        return;
-      } else {
-        char_stat_set(ch, "experience", 0);
-        char_stat_mod(ch, "practices", -100);
-        if (GET_LEVEL(ch) >= 100) {
-          char_stat_mod(ch, "practices", -100);
-        }
-        reveal_hiding(ch, 0);
-        act("@WYou focus all your knowledge and will on breaking free. Dark "
-            "purple energy swirls around your body and the M on your forehead "
-            "burns brightly. After a few moments the ground splits beneath you "
-            "and while letting out a piercing scream the M disappears from "
-            "your forehead! You are free while still keeping the boost you had "
-            "recieved from the majinization!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@W$n focuses hard with $s eyes closed. Dark purple energy swirls "
-            "around $s body and the M on $s head burns brightly. After a few "
-            "moments the ground beneath $n splits and $e lets out a piercing "
-            "scream. The M on $s forehead disappears!@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        MAJINIZED(ch) = 3;
-        return;
-      }
     }
-  }
+    
+    char_stat_set(ch, "experience", 0);
+    char_stat_mod(ch, "practices", -100);
+    if (GET_LEVEL(ch) >= 100) {
+      char_stat_mod(ch, "practices", -100);
+    }
+    if (rand_number(10, 100) - GET_INT(ch) > 60) {
+      reveal_hiding(ch, 0);
+      act("@WYou focus all your knowledge and will on breaking free. Dark "
+          "purple energy swirls around your body and the M on your forehead "
+          "burns brightly. After a few moments you give up, having failed to "
+          "overcome the majinization!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@W$n focuses hard with $s eyes closed. Dark purple energy swirls "
+          "around $s body and the M on $s head burns brightly. After a few "
+          "moments $n seems to give up and the commotion dies down.@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+      return;
+    }
+
+    char_stat_set(ch, "experience", 0);
+    char_stat_mod(ch, "practices", -100);
+    if (GET_LEVEL(ch) >= 100) {
+      char_stat_mod(ch, "practices", -100);
+    }
+    reveal_hiding(ch, 0);
+    act("@WYou focus all your knowledge and will on breaking free. Dark "
+        "purple energy swirls around your body and the M on your forehead "
+        "burns brightly. After a few moments the ground splits beneath you "
+        "and while letting out a piercing scream the M disappears from "
+        "your forehead! You are free while still keeping the boost you had "
+        "recieved from the majinization!@n",
+        TRUE, ch, 0, 0, TO_CHAR);
+    act("@W$n focuses hard with $s eyes closed. Dark purple energy swirls "
+        "around $s body and the M on $s head burns brightly. After a few "
+        "moments the ground beneath $n splits and $e lets out a piercing "
+        "scream. The M on $s forehead disappears!@n",
+        TRUE, ch, 0, 0, TO_ROOM);
+    char_condition_number_set(ch, "majinized", "lord", 3);
+
 }
 
 ACMD(do_grapple) {
@@ -1282,7 +1277,7 @@ ACMD(do_trip) {
   }
 
   if (vict != NULL) {
-    if (AFF_FLAGGED(vict, AFF_FLYING)) {
+    if (char_condition_has(vict, "flying")) {
       send_to_char(ch, "They are flying and are not on their feet!\r\n");
       return;
     }
@@ -2360,7 +2355,7 @@ ACMD(do_future) {
     return;
   }
 
-  if (AFF_FLAGGED(vict, AFF_FUTURE)) {
+  if (char_condition_has(vict, "future_sight")) {
     send_to_char(ch, "They already can see the future.\r\n");
     return;
   }
@@ -2410,9 +2405,7 @@ ACMD(do_future) {
         "$N's neck and bestowing the power of Future Sight upon $M! Soon after "
         "$E passes out!@n",
         TRUE, ch, 0, vict, TO_NOTVICT);
-    SET_BIT_AR(AFF_FLAGS(vict), AFF_FUTURE);
-    char_stat_mod(vict, "speed", 5);
-    char_stat_mod(vict, "intelligence", 2);
+    char_condition_add(vict, "future_sight", "skill", "future_sight");
     char_position_set(vict, POS_SLEEPING);
     save_char(vict);
   } else {
@@ -2438,9 +2431,7 @@ ACMD(do_future) {
         ch, 0, vict, TO_VICT);
     act("@C$n focuses $s energy while closing $s eyes for a moment.@n", TRUE,
         ch, 0, vict, TO_NOTVICT);
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_FUTURE);
-    char_stat_mod(ch, "speed", 5);
-    char_stat_mod(ch, "intelligence", 2);
+    char_condition_add(ch, "future_sight", "skill", "future_sight");
     char_position_set(vict, POS_SLEEPING);
     save_char(ch);
   }
@@ -2671,7 +2662,8 @@ ACMD(do_hass) {
         "speeds.@n",
         TRUE, ch, 0, 0, TO_ROOM);
     int duration = perc / 15;
-    assign_affect(ch, AFF_HASS, SKILL_HASSHUKEN, duration, 0, 0, 0, 0, 0, 0);
+    char_condition_add(ch, "hasshuken", "skill", "hasshuken");
+    char_condition_duration_set(ch, "hasshuken", duration * SECS_PER_MUD_HOUR);
     decCurST(ch, getMaxST(ch) / 30);
     improve_skill(ch, SKILL_HASSHUKEN, 0);
     return;
@@ -3419,7 +3411,7 @@ ACMD(do_potential) {
                  "They are a machine and have no potential to release.\r\n");
     return;
   }
-  if (MAJINIZED(vict) > 0) {
+  if (char_condition_has(vict, "majinized")) {
     send_to_char(
         ch, "They are already majinized and have no potential to release.\r\n");
     return;
@@ -3494,7 +3486,7 @@ ACMD(do_majinize) {
     return;
   }
   int alignmentTotal = GET_ALIGNMENT(ch) - GET_ALIGNMENT(vict);
-  if (MAJINIZED(vict) > 0 && MAJINIZED(vict) != GET_ID(ch)) {
+  if (char_condition_has(vict, "majinized") > 0 && char_condition_number_get(vict, "majinized", "lord") != GET_IDNUM(ch)) {
     send_to_char(ch, "They are already majinized before by someone else.\r\n");
     return;
   } else if ((vict->master != ch)) {
@@ -3514,7 +3506,7 @@ ACMD(do_majinize) {
     return;
   }
   /* Rillao: transloc, add new transes here */
-  else if (MAJINIZED(vict) > 0 && MAJINIZED(vict) == GET_ID(ch)) {
+  else if (char_condition_has(vict, "majinized") > 0 && char_condition_number_get(vict, "majinized", "lord") == GET_IDNUM(ch)) {
     reveal_hiding(ch, 0);
     act("You remove $N's majinization, freeing them from your influence, but "
         "also weakening them.",
@@ -3525,13 +3517,8 @@ ACMD(do_majinize) {
     act("$n waves a hand at $N, and instantly the glowing M on $S forehead "
         "disappears!",
         TRUE, ch, 0, vict, TO_NOTVICT);
-    MAJINIZED(vict) = 0;
+    char_condition_remove(vict, "majinized", "majinize_free");
     GET_BOOSTS(ch) += 1;
-
-    if (GET_MAJINIZED(vict) == 0) {
-      GET_MAJINIZED(vict) = ((getBasePL(vict)) * .4);
-    }
-    loseBasePL(vict, GET_MAJINIZED(vict));
     return;
   } else if (GET_BOOSTS(ch) == 0) {
     send_to_char(ch, "You are incapable of majinizing%s.\r\n",
@@ -3560,11 +3547,11 @@ ACMD(do_majinize) {
         "strength! After the struggle ends in $S mind a glowing purple M forms "
         "on $S forehead.",
         TRUE, ch, 0, vict, TO_NOTVICT);
-    MAJINIZED(vict) = GET_ID(ch);
+    
+    char_condition_add(vict, "majinized", "skill", "majinize");
+    char_condition_number_set(vict, "majinized", "lord", GET_IDNUM(ch));
+    char_condition_number_set(vict, "majinized", "bonus", (getBasePL(vict)) * .4);
     GET_BOOSTS(ch) -= 1;
-
-    GET_MAJINIZED(vict) = (getBasePL(vict)) * .4;
-    gainBasePLPercentTransformed(vict, .4, true);
     return;
   }
 }
@@ -5633,7 +5620,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_STONESKIN)) {
+      if (char_condition_has(ch, "stoneskin")) {
         send_to_char(ch, "You already have tough skin!\r\n");
         return;
       } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -5650,8 +5637,8 @@ ACMD(do_focus) {
         return;
       } else {
         int duration = GET_INT(ch) / 20;
-        assign_affect(ch, AFF_STONESKIN, SKILL_TSKIN, duration, 0, 0, 0, 0, 0,
-                      0);
+        char_condition_add(ch, "stoneskin", "skill", "tough skin");
+        char_condition_duration_set(ch, "stoneskin", duration * SECS_PER_MUD_HOUR);
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
         act("You focus ki into your skin, making it tough!", TRUE, ch, 0, 0,
@@ -5675,7 +5662,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_STONESKIN)) {
+        if (char_condition_has(vict, "stoneskin")) {
           send_to_char(ch, "They already have tough skin!\r\n");
           return;
         } else if (IS_NPC(vict)) {
@@ -5697,8 +5684,8 @@ ACMD(do_focus) {
           return;
         } else {
           int duration = roll_aff_duration(GET_INT(ch), 2);
-          assign_affect(vict, AFF_STONESKIN, SKILL_TSKIN, duration, 0, 0, 0, 0,
-                        0, 0);
+          char_condition_add(vict, "stoneskin", "skill", "tough skin");
+          char_condition_duration_set(vict, "stoneskin", duration * SECS_PER_MUD_HOUR);
           decCurKI(ch, getMaxKI(ch) / 20);
           reveal_hiding(ch, 0);
           act("You focus ki into $N's skin, making it tough!", TRUE, ch, 0,
@@ -5719,7 +5706,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_MIGHT)) {
+      if (char_condition_has(ch, "might")) {
         send_to_char(ch, "You already have mighty muscles!\r\n");
         return;
       } else if (GET_BONUS(ch, BONUS_WIMP) > 0 && GET_STR(ch) + 10 > 70) {
@@ -5743,11 +5730,11 @@ ACMD(do_focus) {
             TRUE, ch, 0, 0, TO_ROOM);
         return;
       } else {
-        SET_BIT_AR(AFF_FLAGS(ch), AFF_MIGHT);
         decCurKI(ch, getMaxKI(ch) / 20);
         int duration = roll_aff_duration(GET_INT(ch), 2);
+        char_condition_add(ch, "might", "skill", "might");
+        char_condition_duration_set(ch, "might", duration * SECS_PER_MUD_HOUR);
         /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(ch, AFF_MIGHT, SKILL_MIGHT, duration, 10, 2, 0, 0, 0, 0);
         reveal_hiding(ch, 0);
         act("You focus ki into your muscles, making them mighty!", TRUE, ch, 0,
             0, TO_CHAR);
@@ -5770,7 +5757,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_MIGHT)) {
+        if (char_condition_has(vict, "might")) {
           send_to_char(ch, "They already have mighty muscles!\r\n");
           return;
         } else if (GET_BONUS(vict, BONUS_WIMP) > 0 && GET_STR(vict) + 10 > 70) {
@@ -5805,8 +5792,8 @@ ACMD(do_focus) {
           decCurKI(ch, getMaxKI(ch) / 20);
           int duration = roll_aff_duration(GET_INT(ch), 2);
           /* Str , Con, Int, Agl, Wis, Spd */
-          assign_affect(vict, AFF_MIGHT, SKILL_MIGHT, duration, 10, 2, 0, 0, 0,
-                        0);
+          char_condition_add(vict, "might", "skill", "might");
+          char_condition_duration_set(vict, "might", duration * SECS_PER_MUD_HOUR);
           reveal_hiding(ch, 0);
           act("You focus ki into $N's muscles, making them mighty!", TRUE, ch,
               0, vict, TO_CHAR);
@@ -5836,7 +5823,7 @@ ACMD(do_focus) {
     if (!can_kill(ch, vict, NULL, 2)) {
       return;
     }
-    if (is_affected(vict, AFF_WITHER)) {
+    if (char_condition_has(vict, "wither")) {
       send_to_char(ch, "They already have been withered!\r\n");
       return;
     } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 20) {
@@ -5854,7 +5841,7 @@ ACMD(do_focus) {
       return;
     } else {
       decCurKI(ch, getMaxKI(ch) / 20);
-      assign_affect(vict, AFF_WITHER, SKILL_WITHER, -1, -3, 0, 0, 0, 0, -3);
+      char_condition_add(vict, "wither", "skill", "wither");
       save_char(vict);
       reveal_hiding(ch, 0);
       act("You focus ki into $N's body, and succeed in withering it!", TRUE, ch,
@@ -5872,7 +5859,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_ENLIGHTEN)) {
+      if (char_condition_has(ch, "enlighten")) {
         send_to_char(ch, "You already have superior wisdom!\r\n");
         return;
       } else if (GET_BONUS(ch, BONUS_FOOLISH) > 0 && GET_WIS(ch) + 10 > 70) {
@@ -5894,9 +5881,8 @@ ACMD(do_focus) {
         return;
       } else {
         int duration = roll_aff_duration(GET_INT(ch), 2);
-        /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(ch, AFF_ENLIGHTEN, SKILL_ENLIGHTEN, duration, 0, 0, 0, 0,
-                      10, 0);
+        char_condition_add(ch, "enlighten", "skill", "enlighten");
+        char_condition_duration_set(ch, "enlighten", duration * SECS_PER_MUD_HOUR);
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
         act("You focus ki into your mind, awakening it to cosmic wisdom!", TRUE,
@@ -5948,7 +5934,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_ENLIGHTEN)) {
+        if (char_condition_has(vict, "enlighten")) {
           send_to_char(ch, "They already have superior wisdom!\r\n");
           return;
         } else if (GET_BONUS(vict, BONUS_FOOLISH) > 0 &&
@@ -5977,9 +5963,8 @@ ACMD(do_focus) {
           return;
         } else {
           int duration = roll_aff_duration(GET_INT(ch), 2);
-          /* Str , Con, Int, Agl, Wis, Spd */
-          assign_affect(vict, AFF_ENLIGHTEN, SKILL_ENLIGHTEN, duration, 0, 0, 0,
-                        0, 10, 0);
+          char_condition_add(vict, "enlighten", "skill", "enlighten");
+          char_condition_duration_set(vict, "enlighten", duration * SECS_PER_MUD_HOUR);
           decCurKI(ch, getMaxKI(ch) / 20);
           reveal_hiding(ch, 0);
           act("You focus ki into $N's mind, awakening it to cosmic wisdom!",
@@ -6029,7 +6014,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_GENIUS)) {
+      if (char_condition_has(ch, "genius")) {
         send_to_char(ch, "You already have superior intelligence!\r\n");
         return;
       } else if (GET_BONUS(ch, BONUS_DULL) > 0 && GET_INT(ch) + 10 > 70) {
@@ -6051,9 +6036,8 @@ ACMD(do_focus) {
         return;
       } else {
         int duration = roll_aff_duration(GET_INT(ch), 2);
-        /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(ch, AFF_GENIUS, SKILL_GENIUS, duration, 0, 0, 10, 0, 0,
-                      0);
+        char_condition_add(ch, "genius", "skill", "genius");
+        char_condition_duration_set(ch, "genius", duration * SECS_PER_MUD_HOUR);
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
         act("You focus ki into your mind, making it work faster!", TRUE, ch, 0,
@@ -6077,7 +6061,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_GENIUS)) {
+        if (char_condition_has(vict, "genius")) {
           send_to_char(ch, "They already have superior intelligence!\r\n");
           return;
         } else if (GET_BONUS(vict, BONUS_DULL) > 0 && GET_INT(vict) + 10 > 70) {
@@ -6105,10 +6089,8 @@ ACMD(do_focus) {
           return;
         } else {
           int duration = roll_aff_duration(GET_INT(ch), 2);
-          ;
-          /* Str , Con, Int, Agl, Wis, Spd */
-          assign_affect(vict, AFF_GENIUS, SKILL_GENIUS, duration, 0, 0, 10, 0,
-                        0, 0);
+          char_condition_add(vict, "genius", "skill", "genius");
+          char_condition_duration_set(vict, "genius", duration * SECS_PER_MUD_HOUR);
           decCurKI(ch, getMaxKI(ch) / 20);
           reveal_hiding(ch, 0);
           act("You focus ki into $N's mind, making it work faster!", TRUE, ch,
@@ -6139,7 +6121,7 @@ ACMD(do_focus) {
       return;
     }
     if (!*name) {
-      if (AFF_FLAGGED(ch, AFF_FLEX)) {
+      if (char_condition_has(ch, "flex")) {
         send_to_char(ch, "You already have superior agility!\r\n");
         return;
       } else if (GET_BONUS(ch, BONUS_CLUMSY) > 0 && GET_DEX(ch) + 10 > 70) {
@@ -6164,8 +6146,8 @@ ACMD(do_focus) {
         decCurKI(ch, getMaxKI(ch) / 20);
         int duration = roll_aff_duration(GET_INT(ch), 2);
         ;
-        /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(ch, AFF_FLEX, SKILL_FLEX, duration, 0, 0, 0, 10, 0, 0);
+        char_condition_add(ch, "flex", "skill", "flex");
+        char_condition_duration_set(ch, "flex", duration * SECS_PER_MUD_HOUR);
         reveal_hiding(ch, 0);
         act("You focus ki into your limbs, making them more flexible!", TRUE,
             ch, 0, 0, TO_CHAR);
@@ -6188,7 +6170,7 @@ ACMD(do_focus) {
                        GET_NAME(vict));
           return;
         }
-        if (AFF_FLAGGED(vict, AFF_FLEX)) {
+        if (char_condition_has(vict, "flex")) {
           send_to_char(ch, "They already have superior agility!\r\n");
           return;
         } else if (GET_BONUS(vict, BONUS_CLUMSY) > 0 &&
@@ -6221,8 +6203,8 @@ ACMD(do_focus) {
           int duration = roll_aff_duration(GET_INT(ch), 2);
           ;
           /* Str , Con, Int, Agl, Wis, Spd */
-          assign_affect(vict, AFF_FLEX, SKILL_FLEX, duration, 0, 0, 0, 10, 0,
-                        0);
+          char_condition_add(vict, "flex", "skill", "flex");
+          char_condition_duration_set(vict, "flex", duration * SECS_PER_MUD_HOUR);
           reveal_hiding(ch, 0);
           act("You focus ki into $N's limbs, making them more flexible!", TRUE,
               ch, 0, vict, TO_CHAR);
@@ -6275,13 +6257,12 @@ ACMD(do_focus) {
         char_condition_add(ch, "bless", "affect", "bless");
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
+        int bless_level = 0;
         if (IS_KABITO(ch)) {
-          GET_BLESSLVL(ch) = GET_SKILL(ch, SKILL_BLESS);
-        } else {
-          GET_BLESSLVL(ch) = 0;
+          bless_level = GET_SKILL(ch, SKILL_BLESS);
         }
         char_condition_apply(ch, "bless", "affect", "bless");
-        char_condition_number_set(ch, "bless", "level", GET_BLESSLVL(ch));
+        char_condition_number_set(ch, "bless", "level", bless_level);
         act("You focus ki while chanting spiritual words. You feel your body "
             "recovering at above normal speed!",
             TRUE, ch, 0, 0, TO_CHAR);
@@ -6339,13 +6320,12 @@ ACMD(do_focus) {
           char_condition_duration_set(vict, "bless", duration * SECS_PER_MUD_HOUR);
           decCurKI(ch, getMaxKI(ch) / 20);
           reveal_hiding(ch, 0);
+          int bless_level = 0;
           if (IS_KAI(ch)) {
-            GET_BLESSLVL(vict) = GET_SKILL(ch, SKILL_BLESS);
-          } else {
-            GET_BLESSLVL(vict) = 0;
+            bless_level = GET_SKILL(ch, SKILL_BLESS);
           }
           char_condition_apply(vict, "bless", "affect", "bless");
-          char_condition_number_set(vict, "bless", "level", GET_BLESSLVL(vict));
+          char_condition_number_set(vict, "bless", "level", bless_level);
           act("You focus ki while chanting spiritual words. Blessing $N with "
               "faster regeneration!",
               TRUE, ch, 0, vict, TO_CHAR);
@@ -6554,9 +6534,8 @@ ACMD(do_focus) {
             "$N to sleep!",
             TRUE, ch, 0, vict, TO_NOTVICT);
         char_position_set(vict, POS_SLEEPING);
-        if (AFF_FLAGGED(vict, AFF_FLYING)) {
-          REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FLYING);
-          GET_ALT(vict) = 0;
+        if (char_condition_has(vict, "flying")) {
+          char_condition_remove(vict, "flying", "stop_flying");
         }
         return;
       }
@@ -8678,7 +8657,7 @@ ACMD(do_situp) {
     send_to_char(ch, "You are dragging someone!\r\n");
     return;
   }
-  if (PLR_FLAGGED(ch, PLR_FISHING)) {
+  if (char_condition_has(ch, "fishing")) {
     send_to_char(ch, "Stop fishing first.\r\n");
     return;
   }
@@ -8748,7 +8727,7 @@ ACMD(do_situp) {
     send_to_char(ch, "You are fighting you moron!\r\n");
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (char_condition_has(ch, "flying")) {
     send_to_char(ch, "You can't do situps in midair!\r\n");
     return;
   } else {
@@ -8934,7 +8913,7 @@ ACMD(do_meditate) {
     send_to_char(ch, "The fire makes it too hot!\r\n");
     return;
   }
-  if (PLR_FLAGGED(ch, PLR_FISHING)) {
+  if (char_condition_has(ch, "fishing")) {
     send_to_char(ch, "Stop fishing first.\r\n");
     return;
   }
@@ -9263,7 +9242,7 @@ ACMD(do_pushup) {
     return;
   }
 
-  if (PLR_FLAGGED(ch, PLR_FISHING)) {
+  if (char_condition_has(ch, "fishing")) {
     send_to_char(ch, "Stop fishing first.\r\n");
     return;
   }
@@ -9339,7 +9318,7 @@ ACMD(do_pushup) {
     send_to_char(ch, "You are fighting you moron!\r\n");
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
+  if (char_condition_has(ch, "flying")) {
     send_to_char(ch, "You can't do pushups in midair!\r\n");
     return;
   }
@@ -9819,9 +9798,8 @@ void base_update(void) {
         SET_BIT_AR(PLR_FLAGS(d->character), PLR_SELFD2);
       }
     }
-    if (!FIGHTING(d->character) && COMBO(d->character) > -1) {
-      COMBO(d->character) = -1;
-      COMBHITS(d->character) = 0;
+    if (!FIGHTING(d->character) && char_condition_has(d->character, "combo")) {
+      char_condition_remove(d->character, "combo", "base_update");
     }
     if (MOON_OK(d->character)) {
       oozaru_transform(d->character);
@@ -10103,12 +10081,6 @@ void base_update(void) {
         BLOCKED(vict) = NULL;
         BLOCKS(d->character) = NULL;
       }
-    }
-    if (GET_OVERFLOW(d->character) == TRUE) {
-      mudlog(NRM, ADMLVL_GOD, TRUE,
-             "OVERFLOW: %s has caused an overflow, check for illegal activity.",
-             GET_NAME(d->character));
-      GET_OVERFLOW(d->character) = FALSE;
     }
     if (GET_SPAM(d->character) > 0) {
       GET_SPAM(d->character) = 0;
@@ -10661,13 +10633,13 @@ ACMD(do_scouter) {
           send_to_char(ch, "@Y%21s@n@D|@n\n", "Zanzoken Prepared");
           check = TRUE;
         }
-        if (AFF_FLAGGED(vict, AFF_HASS)) {
+        if (char_condition_has(vict, "hasshuken")) {
           send_to_char(ch, "%s@Y%21s@n@D|@n\n",
                        check == TRUE ? "@D|@1             " : "",
                        "Accelerated Arms");
           check = TRUE;
         }
-        if (AFF_FLAGGED(vict, AFF_HEALGLOW)) {
+        if (char_condition_has(vict, "healing_glow")) {
           send_to_char(ch, "%s@Y%21s@n@D|@n\n",
                        check == TRUE ? "@D|@1             " : "",
                        "Healing Glow Prepared");
@@ -12177,7 +12149,7 @@ ACMD(do_gen_tog) {
     if ((GET_CHARGE(ch) > 0 && GET_PREFERENCE(ch) != PREFERENCE_KI) ||
         (GET_CHARGE(ch) > GET_MAX_MANA(ch) * 0.1 &&
          GET_PREFERENCE(ch) == PREFERENCE_KI) ||
-        PLR_FLAGGED(ch, PLR_POWERUP) || AFF_FLAGGED(ch, AFF_FLYING)) {
+        PLR_FLAGGED(ch, PLR_POWERUP) || char_condition_has(ch, "flying")) {
       send_to_char(ch, "You stand out too much to hide right now!\r\n");
       return;
     } else if (PLR_FLAGGED(ch, PLR_HEALT)) {

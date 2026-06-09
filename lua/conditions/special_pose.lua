@@ -22,6 +22,7 @@ return {
         return modifiers
     end,
     on_remove = function(ch, cond) 
-        ch:send_text("You feel slightly less confident now.\r\n")
+        ch:act_self("You feel slightly less confident now.")
+        ch:act_around("$n looks slightly less confident now.", {hide_invisible = true})
     end,
 }

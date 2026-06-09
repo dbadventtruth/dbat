@@ -126,6 +126,19 @@ end
 local function on_heartbeat(ch, hb)
 end
 
+local function act_self(ch, msg, ctx)
+  context = ctx or {}
+  context.actor = ch
+  local dbat = require("dbat")
+  dbat.lib.act.to_char(ch, msg, context)
+end
+
+local function act_around(ch, msg, ctx)
+  context = ctx or {}
+  local dbat = require("dbat")
+  dbat.lib.act.around(ch, msg, context)
+end
+
 return {
   can_see = can_see,
   keywords_for = keywords_for,
@@ -136,4 +149,6 @@ return {
   on_mud_hour = on_mud_hour,
   on_second = on_second,
   on_heartbeat = on_heartbeat,
+  act_self = act_self,
+  act_around = act_around,
 }

@@ -5039,7 +5039,7 @@ ACMD(do_hellspear) {
         act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 4) == 4) {
           handle_knockdown(vict);
         }
@@ -7652,7 +7652,7 @@ ACMD(do_baku) {
         act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING) {
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING) {
           handle_knockdown(vict);
         }
         hurt(0, 0, ch, vict, NULL, dmg, 1);
@@ -10871,8 +10871,7 @@ ACMD(do_heeldrop) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "Heeldrop")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -14591,8 +14590,7 @@ ACMD(do_slam) {
     prob -= avo;
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
     if (!tech_handle_zanzoken(ch, vict, "slam")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -15017,8 +15015,7 @@ ACMD(do_uppercut) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "uppercut")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -15350,7 +15347,7 @@ ACMD(do_tailwhip) {
             TRUE, ch, 0, vict, TO_VICT);
         act("@C$n@W spins to swing $s tail and slams it into @c$N@W's body!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 7) {
           handle_knockdown(vict);
         }
@@ -15371,7 +15368,7 @@ ACMD(do_tailwhip) {
         act("@C$n@W flips forward and slams $s tail into the top of @c$N@W's "
             "head brutally!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 6) {
           handle_knockdown(vict);
         }
@@ -15387,7 +15384,7 @@ ACMD(do_tailwhip) {
             TRUE, ch, 0, vict, TO_VICT);
         act("@C$n@W swings $s tail and manages to slam it into @c$N@W's gut!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 7) {
           handle_knockdown(vict);
         }
@@ -15537,8 +15534,7 @@ ACMD(do_roundhouse) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "roundhouse")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -15637,7 +15633,7 @@ ACMD(do_roundhouse) {
             vict, TO_VICT);
         act("@c$n@W spins a fierce roundhouse into @C$N's@W gut!@n", TRUE, ch,
             0, vict, TO_NOTVICT);
-        if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+        if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
             rand_number(1, 8) >= 7) {
           handle_knockdown(vict);
         }
@@ -15786,8 +15782,7 @@ ACMD(do_elbow) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "elbow")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16037,8 +16032,7 @@ ACMD(do_kick) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "kick")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16282,8 +16276,7 @@ ACMD(do_knee) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "knee strike")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16521,8 +16514,7 @@ ACMD(do_punch) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "punch")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -16758,7 +16750,7 @@ ACMD(do_charge) {
     if (amt >= 101) {
       send_to_char(ch, "You have set it too high!\r\n");
       return;
-    } else if (AFF_FLAGGED(ch, AFF_SPIRITCONTROL)) {
+    } else if (char_condition_has(ch, "spirit_control")) {
       int64_t diff = 0;
       if ((getCurKI(ch)) < ((GET_MAX_MANA(ch) * 0.01) * amt) + 1) {
         diff = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - (getCurKI(ch));
@@ -16773,7 +16765,7 @@ ACMD(do_charge) {
       if (chance > rand_number(1, 100)) {
         send_to_char(ch, "The rush of ki that you try to pool temporarily "
                          "overwhelms you and you lose control!\r\n");
-        null_affect(ch, AFF_SPIRITCONTROL);
+        char_condition_remove(ch, "spirit_control", "charging");
         return;
       } else {
         int64_t spiritcost = GET_MAX_MANA(ch) * 0.05;

@@ -318,16 +318,18 @@ fn luaRoomGeffectSet(lua: *Lua) i32 {
 
 fn luaRoomContentsGet(lua: *Lua) i32 {
     const room = checkRoom(lua);
+
+    var count: usize = 0;
+    const ids = cdb.room_objects_get(room, &count);
+    defer if (ids) |_| std.c.free(@as(?*anyopaque, @ptrCast(ids)));
+
     lua.newTable();
-
-    var current = cdb.room_contents_get(room);
-    var index: usize = 1;
-    while (current != null) : (current = current.*.next_content) {
-        objects_lua.pushObject(lua, cdb.obj_id_get(current));
-        lua.setIndex(-2, @intCast(index));
-        index += 1;
+    for (0..count) |i| {
+        if (ids) |ptr| {
+            objects_lua.pushObject(lua, ptr[i]);
+            lua.setIndex(-2, @intCast(i + 1));
+        }
     }
-
     return valueIterator(lua);
 }
 

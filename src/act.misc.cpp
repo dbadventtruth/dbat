@@ -98,7 +98,7 @@ ACMD(do_spiritcontrol) {
     send_to_char(ch, "You do not know how to perform that technique.\r\n");
     return;
   } else {
-    if (AFF_FLAGGED(ch, AFF_SPIRITCONTROL)) {
+    if (char_condition_has(ch, "spirit_control")) {
       send_to_char(ch, "You have already concentrated and have full control of "
                        "your spirit.\r\n");
       return;
@@ -119,8 +119,8 @@ ACMD(do_spiritcontrol) {
         act("@y$n@Y seems to concentrate hard for a moment.@n", TRUE, ch, 0, 0,
             TO_ROOM);
         int duration = rand_number(2, 4);
-        assign_affect(ch, AFF_SPIRITCONTROL, SKILL_SPIRITCONTROL, duration, 0,
-                      0, 0, 0, 0, 0);
+        char_condition_add(ch, "spirit_control", "spirit", "control");
+        char_condition_duration_set(ch, "spirit_control", duration * SECS_PER_MUD_HOUR);
       }
     }
   }
@@ -432,12 +432,8 @@ static void apply_shadow_sitch(struct char_data *ch, struct char_data *vict,
       "body, slowing $S actions!@n",
       TRUE, ch, 0, vict, TO_NOTVICT);
   decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-  if (!IS_NPC(vict)) {
-    WAIT_STATE(vict, PULSE_2SEC);
-  } else {
-    assign_affect(vict, AFF_SHADOW_STITCH, SKILL_MYSTICMUSIC, -1, 0, 0, 0, 0, 0,
-                  -2);
-  }
+  char_condition_apply(vict, "shadow_stitch", "song", "shadow_stitch");
+  char_condition_duration_set(vict, "shadow_stitch", 60);
 }
 
 static void resolve_song(struct char_data *ch) {
@@ -1515,13 +1511,13 @@ ACMD(do_fish) {
   struct room_data *room = char_room_get(ch);
 
   if (!strcasecmp(arg, "cast")) {
-    if (PLR_FLAGGED(ch, PLR_FISHING)) {
+    if (char_condition_has(ch, "fishing")) {
       send_to_char(ch, "You are already fishing! Syntax: fish stop\r\n");
       return;
     } else if (!room_flagged(room, ROOM_FISHING)) {
       send_to_char(ch, "This is not an area you can fish at.\r\n");
       return;
-    } else if (AFF_FLAGGED(ch, AFF_FLYING)) {
+    } else if (char_condition_has(ch, "flying")) {
       send_to_char(ch, "You can't fish while flying.\r\n");
       return;
     } else if (FIGHTING(ch)) {
@@ -1547,26 +1543,35 @@ ACMD(do_fish) {
       act("@c$n@C pulls $s arm back and then springs it foward, casting the "
           "line of $s fishing pole into the water.@n",
           TRUE, ch, 0, 0, TO_ROOM);
-      GET_FISHD(ch) = rand_number(30, 80);
-      SET_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
+      int distance = rand_number(30, 80);
+      char_condition_add(ch, "fishing", "command", "fish");
+      char_condition_number_set(ch, "fishing", "distance", distance);
       char_subscribe_add(ch, "fishing");
-      send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n", GET_FISHD(ch));
+      send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n", distance);
       return;
     }
   } else if (!strcasecmp(arg, "hook")) {
-    if (!PLR_FLAGGED(ch, PLR_FISHING)) {
+    if (!char_condition_has(ch, "fishing")) {
       send_to_char(ch, "You are not even fishing!\r\n");
       return;
-    } else if (GET_FISHSTATE(ch) == FISH_NOFISH) {
+    }
+    auto state = char_condition_number_get(ch, "fishing", "state");
+    if (state == FISH_NOFISH) {
       send_to_char(ch, "You do not have a fish biting on your line.\r\n");
       return;
-    } else if (GET_FISHSTATE(ch) == FISH_REELING) {
+    }
+    
+    if (state == FISH_REELING) {
       send_to_char(ch, "You are already trying to reel the fish in!\r\n");
       return;
-    } else if (GET_FISHSTATE(ch) == FISH_HOOKED) {
+    }
+    
+    if (state == FISH_HOOKED) {
       send_to_char(ch, "You already have the fish hooked! Reel it in!\r\n");
       return;
-    } else if (axion_dice(-18) > GET_POLE_BONUS(ch)) {
+    }
+    
+    if (axion_dice(-18) > GET_POLE_BONUS(ch)) {
       reveal_hiding(ch, 0);
       act("@CYou pull hard but the fish spits the hook out a second before you "
           "pull! You return to waiting for a bite...@n",
@@ -1574,7 +1579,7 @@ ACMD(do_fish) {
       act("@c$n@C pulls hard on $s fishing line, but a moment later $e frowns "
           "and returns to fishing.@n",
           TRUE, ch, 0, 0, TO_ROOM);
-      GET_FISHSTATE(ch) = FISH_NOFISH;
+      char_condition_number_set(ch, "fishing", "state", FISH_NOFISH);
       return;
     } else {
       reveal_hiding(ch, 0);
@@ -1584,7 +1589,7 @@ ACMD(do_fish) {
       act("@c$n@C pulls hard on $s fishing line and starts to struggle with "
           "the fish on the other end!@n",
           TRUE, ch, 0, 0, TO_ROOM);
-      GET_FISHSTATE(ch) = FISH_REELING;
+      char_condition_number_set(ch, "fishing", "state", FISH_REELING);
       return;
     }
   } else if (!strcasecmp(arg, "apply")) {
@@ -1625,7 +1630,7 @@ ACMD(do_fish) {
       } /* End Applying bait */
     } /* end has pole */
   } else if (!strcasecmp(arg, "stop")) {
-    if (!PLR_FLAGGED(ch, PLR_FISHING)) {
+    if (!char_condition_has(ch, "fishing")) {
       send_to_char(ch, "You are not even fishing!\r\n");
       return;
     } else {
@@ -1634,10 +1639,7 @@ ACMD(do_fish) {
           TO_CHAR);
       act("@c$n@C reels in $s fishing line and stops fishing.@n", TRUE, ch, 0,
           0, TO_ROOM);
-      REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
       char_subscribe_remove(ch, "fishing");
-      GET_FISHSTATE(ch) = FISH_NOFISH;
-      GET_FISHD(ch) = 0;
       return;
     }
   } else {
@@ -1660,13 +1662,11 @@ static int has_pole(struct char_data *ch) {
 
 static bool handle_fishing(struct char_data *ch) {
   auto end_fishing = [&]() {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FISHING);
-    GET_FISHSTATE(ch) = FISH_NOFISH;
-    GET_FISHD(ch) = 0;
+    char_condition_remove(ch, "fishing", "end_fishing");
     char_subscribe_remove(ch, "fishing");
   };
   
-  if(!PLR_FLAGGED(ch, PLR_FISHING)) {
+  if(!char_condition_has(ch, "fishing")) {
     end_fishing();
     return true;
   }
@@ -1679,10 +1679,14 @@ static bool handle_fishing(struct char_data *ch) {
   int quality = 0;
   auto room = char_room_get(ch);
 
-  if (GET_FISHD(ch) <= 0 && GET_FISHSTATE(ch) == FISH_REELING) { /* We've caught it */
-    if (GET_POLE_BONUS(ch) >= rand_number(60, 100)) {
+  auto pole_bonus = GET_POLE_BONUS(ch);
+  auto state = char_condition_number_get(ch, "fishing", "state");
+  auto distance = char_condition_number_get(ch, "fishing", "distance");
+
+  if (distance <= 0 && state == FISH_REELING) { /* We've caught it */
+    if (pole_bonus >= rand_number(60, 100)) {
       quality = rand_number(0, 3) + rand_number(0, 3) + rand_number(0, 3);
-    } else if (GET_POLE_BONUS(ch) >= rand_number(45, 60)) {
+    } else if (pole_bonus >= rand_number(45, 60)) {
       quality = rand_number(0, 3) + rand_number(0, 3);
     } else {
       quality = rand_number(0, 3);
@@ -1697,28 +1701,32 @@ static bool handle_fishing(struct char_data *ch) {
     return true;
   }
   
-  if (GET_FISHSTATE(ch) == FISH_REELING && rand_number(1, 100) <= 80) {
-    if (GET_POLE_BONUS(ch) >= 80) {
-      GET_FISHD(ch) -= rand_number(6, 10);
-    } else if (GET_POLE_BONUS(ch) >= 40) {
-      GET_FISHD(ch) -= rand_number(5, 8);
+  if (state == FISH_REELING && rand_number(1, 100) <= 80) {
+    int distance_delta = distance;
+    if (pole_bonus >= 80) {
+      distance_delta -= rand_number(6, 10);
+    } else if (pole_bonus >= 40) {
+      distance_delta -= rand_number(5, 8);
     } else {
-      GET_FISHD(ch) -= rand_number(1, 4);
+      distance_delta -= rand_number(1, 4);
+    }
+    if(distance_delta != distance) {
+      char_condition_number_set(ch, "fishing", "distance", distance_delta);
     }
     act("@CYou reel the line on your pole some.@n", TRUE, ch, 0, 0,
         TO_CHAR);
     act("@c$n@C reels the line on $s pole slowly.@n", TRUE, ch, 0, 0,
         TO_ROOM);
     send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n",
-                  GET_FISHD(ch) > 0 ? GET_FISHD(ch) : 0);
-  } else if (GET_FISHSTATE(ch) == FISH_REELING &&
+                  distance_delta > 0 ? distance_delta : 0);
+  } else if (state == FISH_REELING &&
               rand_number(1, 58) <= 55) {
     act("@CYou struggle as the fish fights against your attempts to "
         "reel it in!@n",
         TRUE, ch, 0, 0, TO_CHAR);
     act("@c$n@C struggles with the fish on the end of $s pole!@n", TRUE,
         ch, 0, 0, TO_ROOM);
-  } else if (GET_FISHSTATE(ch) == FISH_REELING) { /* Lose the fish */
+  } else if (state == FISH_REELING) { /* Lose the fish */
     act("@CYou feel the line go slack and realize you've lost the "
         "fish! You reel your line back in...@n",
         TRUE, ch, 0, 0, TO_CHAR);
@@ -1729,7 +1737,7 @@ static bool handle_fishing(struct char_data *ch) {
       struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
       GET_OBJ_VAL(pole, 0) = 0;
     }
-  } else if (GET_FISHSTATE(ch) == FISH_HOOKED &&
+  } else if (state == FISH_HOOKED &&
               rand_number(1, 20) >= 12) {
     act("@CYou feel the line go slack and realize you've lost the "
         "fish! You reel your line back in...@n",
@@ -1737,20 +1745,20 @@ static bool handle_fishing(struct char_data *ch) {
     act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
         0, 0, TO_ROOM);
     end_fishing();
-  } else if (GET_FISHSTATE(ch) == FISH_BITE &&
+  } else if (state == FISH_BITE &&
               rand_number(1, 20) >= 12) {
     act("@CYou feel as if the fish has stopped biting...@n", TRUE, ch,
         0, 0, TO_CHAR);
-    GET_FISHSTATE(ch) = FISH_NOFISH;
-  } else if (GET_FISHSTATE(ch) != FISH_HOOKED &&
-              GET_FISHSTATE(ch) != FISH_BITE &&
+    char_condition_number_set(ch, "fishing", "state", FISH_NOFISH);
+  } else if (char_condition_number_get(ch, "fishing", "state") != FISH_HOOKED &&
+              char_condition_number_get(ch, "fishing", "state") != FISH_BITE &&
               ((room_flagged(room, ROOM_FISHFRESH) &&
                 rand_number(1, 10) >= 8) ||
               (!room_flagged(room, ROOM_FISHFRESH) &&
                 rand_number(1, 20) >= 18))) {
     act("@CYou feel a fish biting on your line! Better @Ghook@C it!@n",
         TRUE, ch, 0, 0, TO_CHAR);
-    GET_FISHSTATE(ch) = FISH_BITE;
+    char_condition_number_set(ch, "fishing", "state", FISH_BITE);
   }
 
   return true;
@@ -2253,7 +2261,8 @@ ACMD(do_runic) {
       send_to_char(vict,
                    "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_EARMOR, SKILL_PUNCH, duration, 0, 0, 0, 0, 0, 0);
+      char_condition_add(vict, "ethereal_armor", "skill", "runic");
+      char_condition_duration_set(vict, "ethereal_armor", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2281,7 +2290,8 @@ ACMD(do_runic) {
       send_to_char(vict,
                    "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_EARMOR, SKILL_PUNCH, duration, 0, 0, 0, 0, 0, 0);
+      char_condition_add(vict, "ethereal_armor", "skill", "runic");
+      char_condition_duration_set(vict, "ethereal_armor", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2318,7 +2328,8 @@ ACMD(do_runic) {
                    "@GYou now are protected by Ethereal Chains! @D(@WLasts@D: "
                    "@w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_ECHAINS, SKILL_KNEE, duration, 0, 0, 0, 0, 0, 0);
+      char_condition_add(vict, "rune_oagaz", "skill", "runic");
+      char_condition_duration_set(vict, "rune_oagaz", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2351,8 +2362,8 @@ ACMD(do_runic) {
       send_to_char(
           vict, "@GYou now have water breathing! @D(@WLasts@D: @w%d@D)@n\r\n",
           duration);
-      assign_affect(vict, AFF_WATERBREATH, SKILL_SBC, duration, 0, 0, 0, 0, 0,
-                    0);
+      char_condition_add(vict, "rune_laguz", "skill", "runic");
+      char_condition_duration_set(vict, "rune_laguz", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2381,7 +2392,8 @@ ACMD(do_runic) {
                    "@GYou now are protected by Ethereal Chains! @D(@WLasts@D: "
                    "@w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_ECHAINS, SKILL_KNEE, duration, 0, 0, 0, 0, 0, 0);
+      char_condition_add(vict, "rune_oagaz", "skill", "runic");
+      char_condition_duration_set(vict, "rune_oagaz", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2418,7 +2430,8 @@ ACMD(do_runic) {
                    "@GYou are now blessed with a deeper understanding of "
                    "things you experience! @D(@WLasts@D: @w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_WUNJO, SKILL_SLAM, duration, 0, 0, 0, 0, 0, 0);
+      char_condition_add(vict, "rune_wunjo", "skill", "runic");
+      char_condition_duration_set(vict, "rune_wunjo", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2447,7 +2460,8 @@ ACMD(do_runic) {
                    "@GYou are now blessed with a deeper understanding of "
                    "things you experience! @D(@WLasts@D: @w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_WUNJO, SKILL_SLAM, duration, 0, 0, 0, 0, 0, 0);
+      char_condition_add(vict, "rune_wunjo", "skill", "runic");
+      char_condition_duration_set(vict, "rune_wunjo", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2484,8 +2498,8 @@ ACMD(do_runic) {
                    "@GYou feel as if your inner energy is more potent! "
                    "@D(@WLasts@D: @w%d@D)@n\r\n",
                    duration);
-      assign_affect(vict, AFF_POTENT, SKILL_HEELDROP, duration, 0, 0, 0, 0, 0,
-                    0);
+      char_condition_add(vict, "rune_purisaz", "skill", "runic");
+      char_condition_duration_set(vict, "rune_purisaz", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2514,8 +2528,8 @@ ACMD(do_runic) {
                    duration);
       if (duration < 1)
         duration = 1;
-      assign_affect(vict, AFF_POTENT, SKILL_HEELDROP, duration, 0, 0, 0, 0, 0,
-                    0);
+      char_condition_add(vict, "rune_purisaz", "skill", "runic");
+      char_condition_duration_set(vict, "rune_purisaz", duration * SECS_PER_MUD_HOUR);
       GET_OBJ_VAL(bottle, 6) -= inkcost;
       if (GET_OBJ_VAL(bottle, 6) <= 0) {
         extract_obj(bottle);
@@ -2961,11 +2975,11 @@ ACMD(do_healglow) {
     return;
   }
 
-  if (AFF_FLAGGED(vict, AFF_HEALGLOW) && vict == ch) {
+  if (char_condition_has(vict, "healing_glow") && vict == ch) {
     send_to_char(ch,
                  "You already have a healing glow surrounding your body.\r\n");
     return;
-  } else if (AFF_FLAGGED(vict, AFF_HEALGLOW)) {
+  } else if (char_condition_has(vict, "healing_glow")) {
     send_to_char(
         ch, "They already have a healing glow surrounding their body.\r\n");
     return;
@@ -2995,12 +3009,11 @@ ACMD(do_healglow) {
       act("@c$n@C places $s hands on $s body. Slowly a strong blue glow "
           "glistens and shines across $s skin!@n",
           TRUE, ch, 0, 0, TO_ROOM);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_HEALGLOW);
+      char_condition_add(vict, "healing_glow", "skill", "healing glow");
       int duration = (GET_SKILL(ch, SKILL_HEALGLOW) * 0.1);
       if (duration <= 0)
         duration = 1;
-      assign_affect(ch, AFF_HEALGLOW, SKILL_HEALGLOW, duration, 0, 0, 0, 0, 0,
-                    0);
+      char_condition_duration_set(vict, "healing_glow", duration * SECS_PER_MUD_HOUR);
       decCurKI(ch, cost);
     } else {
       act("@CPlacing your hands on @c$N's@C body you begin to focus your "
@@ -3017,8 +3030,8 @@ ACMD(do_healglow) {
       duration += rand_number(-2, 1);
       if (duration <= 0)
         duration = 1;
-      assign_affect(vict, AFF_HEALGLOW, SKILL_HEALGLOW, duration, 0, 0, 0, 0, 0,
-                    0);
+      char_condition_add(vict, "healing_glow", "skill", "healing glow");
+      char_condition_duration_set(vict, "healing_glow", duration * SECS_PER_MUD_HOUR);
       decCurKI(ch, cost);
     }
   }
@@ -3471,7 +3484,7 @@ ACMD(do_hydromancy) {
                 TRUE, vict, 0, 0, TO_CHAR);
             act("@C$n@C manages to keep $s balance and is not swept away!@n",
                 TRUE, vict, 0, 0, TO_ROOM);
-          } else if (AFF_FLAGGED(ch, AFF_FLYING)) {
+          } else if (char_condition_has(ch, "flying")) {
             act("@CYou fly above the rushing waters and are untouched.@n", TRUE,
                 vict, 0, 0, TO_CHAR);
             act("@C$n@C flies above the rushing waters and is untouched.@n",

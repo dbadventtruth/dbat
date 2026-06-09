@@ -4420,10 +4420,7 @@ void reset_char(struct char_data *ch) {
   ch->next = NULL;
   ch->next_in_room = NULL;
   FIGHTING(ch) = NULL;
-  ch->position = POS_STANDING;
   ch->mob_specials.default_pos = POS_STANDING;
-  ch->carry_weight = 0;
-  ch->carry_items = 0;
   ch->time.logon = time(0);
 
   GET_LAST_TELL(ch) = NOBODY;

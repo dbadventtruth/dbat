@@ -150,7 +150,6 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from) {
   to->race = from->race;
   to->chclass = from->chclass;
   to->mob_specials = from->mob_specials;
-  to->position = from->position;
   to->speaking = from->speaking;
   memcpy(to->act, from->act, sizeof(to->act));
   memcpy(to->affected_by, from->affected_by, sizeof(to->affected_by));
@@ -188,7 +187,6 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
   to->race = from->race;
   to->chclass = from->chclass;
   to->mob_specials = from->mob_specials;
-  to->position = from->position;
   to->speaking = from->speaking;
   memcpy(to->act, from->act, sizeof(to->act));
   memcpy(to->affected_by, from->affected_by, sizeof(to->affected_by));

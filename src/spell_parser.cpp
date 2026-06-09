@@ -620,11 +620,8 @@ ACMD(do_cast) {
   }
 
   if (subcmd == SCMD_ART) {
-    ki = mag_kicost(ch, spellnum);
-    if ((ki > 0) && (GET_KI(ch) < ki) && (GET_ADMLEVEL(ch) < ADMLVL_IMMORT)) {
-      send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
+    send_to_char(ch, "You haven't the energy to cast that spell!\r\n");
       return;
-    }
   }
 
   /* Find the target */
@@ -717,7 +714,7 @@ ACMD(do_cast) {
   }
 
   if (IS_SET(SINFO.comp_flags, MAGCOMP_SOMATIC) &&
-      rand_number(1, 100) <= GET_SPELLFAIL(ch)) {
+      rand_number(1, 100) <= 0) {
     if (IS_SET(SINFO.routines, MAG_ACTION_FULL | MAG_ACTION_PARTIAL))
       SET_BIT_AR(AFF_FLAGS(ch), AFF_NEXTPARTIAL);
     else if (IS_SET(SINFO.routines, MAG_ACTION_FULL | MAG_ACTION_FULL))
@@ -726,7 +723,7 @@ ACMD(do_cast) {
                  "Your armor interferes with your casting, and you fail!\r\n");
   } else {
     if (ki > 0) {
-      
+
     }
     if (cast_spell(ch, tch, tobj, spellnum, t) &&
         GET_ADMLEVEL(ch) < ADMLVL_IMMORT) {

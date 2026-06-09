@@ -780,7 +780,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
           else
             *str = '\0';
         } else if (!strcasecmp(field, "flying")) {
-          if (AFF_FLAGGED(c, AFF_FLYING))
+          if (char_condition_has(c, "flying"))
             strcpy(str, "1");
           else
             strcpy(str, "0");

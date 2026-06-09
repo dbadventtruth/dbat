@@ -565,9 +565,9 @@ int roll_skill(struct char_data *ch, int snum) {
       if (IS_SET(spell_info[snum].flags, SKFLAG_CHAMOD))
         roll += ability_mod_value(GET_CHA(ch));
       if (IS_SET(spell_info[snum].flags, SKFLAG_ARMORALL))
-        roll -= GET_ARMORCHECKALL(ch);
+        roll -= 0;
       else if (IS_SET(spell_info[snum].flags, SKFLAG_ARMORBAD))
-        roll -= GET_ARMORCHECK(ch);
+        roll -= 0;
       return roll + rand_number(1, 20);
     }
   } else {

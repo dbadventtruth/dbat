@@ -321,24 +321,24 @@ void mobile_activity(void) {
                   "shouts at @c$N@w!@n",
                   TRUE, ch, 0, vict, TO_NOTVICT);
             }
-            if (AFF_FLAGGED(vict, AFF_FLYING) && !AFF_FLAGGED(ch, AFF_FLYING) &&
+            if (char_condition_has(vict, "flying") && !char_condition_has(ch, "flying") &&
                 IS_HUMANOID(ch) && GET_LEVEL(ch) > 10) {
               do_fly(ch, 0, 0, 0);
               return true;
             }
-            if (!AFF_FLAGGED(vict, AFF_FLYING) && AFF_FLAGGED(ch, AFF_FLYING)) {
+            if (!char_condition_has(vict, "flying") && char_condition_has(ch, "flying")) {
               do_fly(ch, 0, 0, 0);
               return true;
             }
             do_punch(ch, tar, 0, 0);
           }
           if (!IS_HUMANOID(ch)) {
-            if (AFF_FLAGGED(vict, AFF_FLYING) && !AFF_FLAGGED(ch, AFF_FLYING) &&
+            if (char_condition_has(vict, "flying") && !char_condition_has(ch, "flying") &&
                 IS_HUMANOID(ch) && GET_LEVEL(ch) > 10) {
               do_fly(ch, 0, 0, 0);
               return true;
             }
-            if (!AFF_FLAGGED(vict, AFF_FLYING) && AFF_FLAGGED(ch, AFF_FLYING)) {
+            if (!char_condition_has(vict, "flying") && char_condition_has(ch, "flying")) {
               do_fly(ch, 0, 0, 0);
               return true;
             }
@@ -751,7 +751,7 @@ void mob_taunt(struct char_data *ch) {
   } else if (!MOB_FLAGGED(ch, MOB_DUMMY)) { /* They are intelligent */
     message = rand_number(1, 10);
     if (!room_is_sunken(char_room_get(ch))) {
-      if (AFF_FLAGGED(ch, AFF_FLYING)) { /* They are flying */
+      if (char_condition_has(ch, "flying")) { /* They are flying */
         switch (message) {
         case 1:
           act("@C$n@W flies around @c$N@W slowly while looking for an "

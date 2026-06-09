@@ -913,7 +913,7 @@ void fight_stack() {
         (getCurLF(ch)) > 0 && !IS_ANDROID(ch)) {
       if (rand_number(1, 15) >= 14) {
         if ((getCurLF(ch)) >= (getMaxLF(ch)) * 0.05 ||
-            AFF_FLAGGED(ch, AFF_HEALGLOW) ||
+            char_condition_has(ch, "healing_glow") ||
             (IS_KANASSAN(ch) && (getCurLF(ch)) >= (getMaxLF(ch)) * 0.03)) {
           int64_t refill = 0, lfcost = (getMaxLF(ch)) * 0.05;
           if (GET_BONUS(ch, BONUS_DIEHARD) > 0 &&
@@ -933,7 +933,7 @@ void fight_stack() {
             refill = (getMaxLF(ch)) * 0.05;
           }
           incCurHealth(ch, refill);
-          if (!AFF_FLAGGED(ch, AFF_HEALGLOW)) {
+          if (!char_condition_has(ch, "healing_glow")) {
             decCurLF(ch, lfcost);
           }
         } else {
@@ -1131,24 +1131,24 @@ void fight_stack() {
       continue;
     }
     if (FIGHTING(ch) && IS_NPC(ch) && !MOB_FLAGGED(ch, MOB_DUMMY)) {
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) &&
-          !AFF_FLAGGED(ch, AFF_FLYING) && IS_HUMANOID(ch) &&
+      if (char_condition_has(FIGHTING(ch), "flying") &&
+          !char_condition_has(ch, "flying") && IS_HUMANOID(ch) &&
           GET_LEVEL(ch) > 10) {
         do_fly(ch, 0, 0, 0);
         continue;
       }
-      if (!AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) &&
-          AFF_FLAGGED(ch, AFF_FLYING)) {
+      if (!char_condition_has(FIGHTING(ch), "flying") &&
+          char_condition_has(ch, "flying")) {
         do_fly(ch, 0, 0, 0);
         continue;
       }
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) &&
-          AFF_FLAGGED(ch, AFF_FLYING) && GET_ALT(ch) < GET_ALT(FIGHTING(ch))) {
+      if (char_condition_has(FIGHTING(ch), "flying") &&
+          char_condition_has(ch, "flying") && GET_ALT(ch) < GET_ALT(FIGHTING(ch))) {
         do_fly(ch, "high", 0, 0);
         continue;
       }
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) && !IS_HUMANOID(ch) &&
-          !AFF_FLAGGED(ch, AFF_FLYING) && GET_POS(ch) > POS_RESTING) {
+      if (char_condition_has(FIGHTING(ch), "flying") && !IS_HUMANOID(ch) &&
+          !char_condition_has(ch, "flying") && GET_POS(ch) > POS_RESTING) {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G flees in terror and you lose sight of $m!", TRUE, ch, 0, 0,
               TO_ROOM);
@@ -1161,7 +1161,7 @@ void fight_stack() {
           continue;
         }
       }
-      if (AFF_FLAGGED(FIGHTING(ch), AFF_FLYING) && IS_HUMANOID(ch) &&
+      if (char_condition_has(FIGHTING(ch), "flying") && IS_HUMANOID(ch) &&
           GET_LEVEL(ch) <= 10) {
         if (rand_number(1, 30) >= 22 && !block_calc(ch)) {
           act("$n@G turns and runs away. You lose sight of $m!", TRUE, ch, 0, 0,
@@ -1649,8 +1649,7 @@ void stop_fighting(struct char_data *ch) {
 
   char_subscribe_remove(ch, "combat");
 
-  COMBO(ch) = -1;
-  COMBHITS(ch) = 0;
+  char_condition_remove(ch, "combo", "end_combo");
   
   FIGHTING(ch) = NULL;
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
@@ -1993,8 +1992,6 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
   }
   if (!MOB_FLAGGED(ch, MOB_HUSK)) {
     ch->carrying = NULL;
-    IS_CARRYING_N(ch) = 0;
-    IS_CARRYING_W(ch) = 0;
   }
   obj_to_room(corpse, char_room_get(ch));
 

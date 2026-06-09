@@ -190,12 +190,11 @@ bool tech_handle_android_absorb(char_data *ch, char_data *vict) {
 }
 
 void tech_handle_crashdown(char_data *ch, char_data *vict) {
-  if (AFF_FLAGGED(vict, AFF_FLYING)) {
+  if (char_condition_has(vict, "flying")) {
     act("@w$N@w is knocked out of the air!@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@wYou are knocked out of the air!@n", TRUE, ch, 0, vict, TO_VICT);
     act("@w$N@w is knocked out of the air!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FLYING);
-    GET_ALT(vict) = 0;
+    char_condition_remove(vict, "flying", "stop_flying");
     char_position_set(vict, POS_SITTING);
   } else {
     handle_knockdown(vict);

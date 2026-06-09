@@ -36,7 +36,7 @@ extern "C" {
 #define PRF_FLAGGED(ch, flag) (IS_SET_AR(PRF_FLAGS(ch), (flag)))
 #define ADM_FLAGGED(ch, flag) char_admflagged(ch, flag)
 #define BODY_FLAGGED(ch, flag) (IS_SET_AR(BODY_PARTS(ch), (flag)))
-#define IS_AFFECTED(ch, skill) (AFF_FLAGGED((ch), (skill)))
+#define IS_AFFECTED(ch, skill) is_affected(ch, skill)
 
 #define PLR_TOG_CHK(ch, flag)                                                  \
   ((TOGGLE_BIT_AR(PLR_FLAGS(ch), (flag))) & Q_BIT(flag))
@@ -117,14 +117,14 @@ extern "C" {
    GET_MUTBOOST(ch))
 #define GET_SPEEDCALC(ch)                                                      \
   (IS_GRAP(ch) ? GET_CHA(ch)                                                   \
-               : (IS_INFERIOR(ch) ? (AFF_FLAGGED(ch, AFF_FLYING)               \
+               : (IS_INFERIOR(ch) ? (char_condition_has(ch, "flying")               \
                                          ? (GET_SPEEDVAR(ch) * 1.25)           \
                                          : GET_SPEEDVAR(ch))                   \
                                   : GET_SPEEDVAR(ch)))
 #define GET_SPEEDBONUS(ch)                                                     \
   (IS_ARLIAN(ch) ? AFF_FLAGGED(ch, AFF_SHELL)                                  \
                        ? GET_SPEEDVAR(ch) * -0.5                               \
-                       : (IS_MALE(ch) ? (AFF_FLAGGED(ch, AFF_FLYING)           \
+                       : (IS_MALE(ch) ? (char_condition_has(ch, "flying")           \
                                              ? (GET_SPEEDVAR(ch) * 0.5)        \
                                              : 0)                              \
                                       : 0)                                     \
@@ -152,7 +152,7 @@ extern "C" {
 #define GET_DEATH_TYPE(ch) ((ch)->death_type)
 #define GET_SLEEPT(ch) ((ch)->sleeptime)
 #define GET_FOODR(ch) ((ch)->foodr)
-#define GET_ALT(ch) ((ch)->altitude)
+#define GET_ALT(ch) char_condition_number_get(ch, "flying", "altitude")
 #define GET_CHARGE(ch) ((ch)->charge)
 #define GET_CHARGETO(ch) ((ch)->chargeto)
 #define GET_ARMOR(ch) char_der_total_get((ch), "armor")
@@ -163,7 +163,6 @@ extern "C" {
 #define GET_KI(ch) ((ch)->ki)
 #define GET_MAX_KI(ch) ((ch)->max_ki)
 #define GET_DROOM(ch) ((ch)->droom)
-#define GET_OVERFLOW(ch) ((ch)->overf)
 #define GET_SPAM(ch) ((ch)->spam)
 #define GET_LPLAY(ch) ((ch)->lastpl)
 #define GET_DTIME(ch) ((ch)->deathtime)
@@ -181,9 +180,8 @@ extern "C" {
 #define GET_NEGCOUNT(ch) ((ch)->negcount)
 #define GET_GENOME(ch, i) ((ch)->genome[i])
 #define HAS_GENOME(ch, i) ((ch)->genome[0] == (i) || (ch)->genome[1] == (i))
-#define COMBO(ch) ((ch)->combo)
 #define LASTATK(ch) ((ch)->lastattack)
-#define COMBHITS(ch) ((ch)->combhits)
+
 #define GET_AURA(ch) ((ch)->aura)
 #define GET_RADAR1(ch) ((ch)->radar1)
 #define GET_RADAR2(ch) ((ch)->radar2)
@@ -196,7 +194,6 @@ extern "C" {
 #define GET_COMBINE(ch) ((ch)->combine)
 #define GET_PREFERENCE(ch) ((ch)->preference)
 #define GET_RELAXCOUNT(ch) ((ch)->relax_count)
-#define GET_BLESSLVL(ch) ((ch)->blesslvl)
 #define GET_ASB(ch) char_der_total_get((ch), "autoskill_bonus")
 #define GET_REGEN(ch) char_der_total_get((ch), "regen_bonus")
 
@@ -216,8 +213,6 @@ extern "C" {
 #define GET_FORGET_COUNT(ch) ((ch)->forgetcount)
 #define GET_BANK_GOLD(ch) char_stat_get((ch), "money_bank")
 #define GET_POLE_BONUS(ch) char_legacy_modifier(ch, APPLY_ACCURACY, -1)
-#define GET_FISHSTATE(ch) ((ch)->fishstate)
-#define GET_FISHD(ch) ((ch)->fishdistance)
 #define GET_SPELLFAIL(ch) ((ch)->spellfail)
 #define GET_ARMORCHECK(ch) ((ch)->armorcheck)
 #define GET_ARMORCHECKALL(ch) ((ch)->armorcheckall)
@@ -228,8 +223,8 @@ extern "C" {
 #define GET_POS(ch) char_position_get(ch)
 #define GET_IDNUM(ch) ((ch)->idnum)
 #define GET_ID(x) ((x)->id)
-#define IS_CARRYING_W(ch) ((ch)->carry_weight)
-#define IS_CARRYING_N(ch) ((ch)->carry_items)
+#define IS_CARRYING_W(ch) char_der_total_get(ch, "weight_carried")
+#define IS_CARRYING_N(ch) char_inventory_count(ch, false)
 #define FIGHTING(ch) ((ch)->fighting)
 #define GET_GROUPKILLS(ch) ((ch)->group_kills)
 #define GET_ALIGNMENT(ch) char_stat_get((ch), "alignment")

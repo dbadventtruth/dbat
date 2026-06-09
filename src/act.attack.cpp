@@ -239,7 +239,7 @@ ACMD(do_lightgrenade) {
           TRUE, ch, 0, vict, TO_VICT);
       act("@R$N@r is hit by the light grenade which explodes all around $m!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
-      if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+      if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
           rand_number(1, 4) == 4) {
         handle_knockdown(vict);
       }
@@ -252,7 +252,7 @@ ACMD(do_lightgrenade) {
         vict, TO_VICT);
     act("@R$N@r is caught by the light grenade's explosion!@n", TRUE, ch, 0,
         vict, TO_NOTVICT);
-    if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING &&
+    if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING &&
         rand_number(1, 4) == 4) {
       handle_knockdown(vict);
     }
@@ -2447,7 +2447,7 @@ ACMD(do_nova) {
       act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
       act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
           TO_NOTVICT);
-      if (!AFF_FLAGGED(vict, AFF_FLYING) && GET_POS(vict) == POS_STANDING) {
+      if (!char_condition_has(vict, "flying") && GET_POS(vict) == POS_STANDING) {
         handle_knockdown(vict);
       }
       hurt(0, 0, ch, vict, NULL, dmg, 1);
@@ -2535,8 +2535,7 @@ ACMD(do_head) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "headbutt")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -2802,8 +2801,7 @@ ACMD(do_bash) {
     tech_handle_posmodifier(vict, pry, blk, dge, prob);
 
     if (!tech_handle_zanzoken(ch, vict, "bash")) {
-      COMBO(ch) = -1;
-      COMBHITS(ch) = 0;
+      char_condition_remove(ch, "combo", "end_combo");
       pcost(ch, 0, stcost / 2);
       pcost(vict, 0, GET_MAX_HIT(vict) / 200);
       return;
@@ -3464,8 +3462,7 @@ ACMD(do_throw) {
       }
 
       if (!tech_handle_zanzoken(ch, vict, "$p")) {
-        COMBO(ch) = -1;
-        COMBHITS(ch) = 0;
+        char_condition_remove(ch, "combo", "end_combo");
         int stcost = ((GET_MAX_HIT(ch) / 200) + GET_OBJ_WEIGHT(obj));
         REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
         pcost(ch, 0, stcost / 2);

@@ -759,8 +759,6 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
       mag_affects(level, ch, mob, spellnum);
     if (affvs)
       mag_affectsv(level, ch, mob, spellnum);
-    IS_CARRYING_W(mob) = 0;
-    IS_CARRYING_N(mob) = 0;
     SET_BIT_AR(AFF_FLAGS(mob), AFF_CHARM);
     act(mag_summon_msgs[msg], FALSE, ch, 0, mob, TO_ROOM);
     load_mtrigger(mob);
@@ -811,13 +809,12 @@ void mag_points(int level, struct char_data *ch, struct char_data *victim,
   case ART_WHOLENESS_OF_BODY:
     healing = GET_MAX_HIT(victim) - GET_HIT(victim);
     healing = MAX(0, healing);
-    tmp = GET_KI(ch) / 2;
+    tmp = 0;
     if (tmp > healing)
       tmp = healing;
     else {
       healing = tmp;
     }
-    GET_KI(ch) -= tmp * 2;
     break;
   }
   update_pos(victim);
@@ -999,8 +996,6 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
     to_room = "$n is stunned.";
     break;
   case ART_EMPTY_BODY:
-    af[0].duration = GET_KI(ch) / 10;
-    af[0].bitvector = AFF_ETHEREAL;
     accum_duration = FALSE;
     to_vict = "You switch to the ethereal plane.";
     to_room = "$n disappears.";

@@ -1036,8 +1036,6 @@ ACMD(do_mtransform) {
     GET_WAS_IN(&tmpmob) = GET_WAS_IN(ch);
     char_stat_set(&tmpmob, "money", GET_GOLD(ch));
     char_position_set(&tmpmob, GET_POS(ch));
-    IS_CARRYING_W(&tmpmob) = IS_CARRYING_W(ch);
-    IS_CARRYING_N(&tmpmob) = IS_CARRYING_N(ch);
     FIGHTING(&tmpmob) = FIGHTING(ch);
     memcpy(ch, &tmpmob, sizeof(*ch));
 

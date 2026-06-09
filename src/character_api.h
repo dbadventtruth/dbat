@@ -62,7 +62,7 @@ struct obj_data *char_inventory_search_type(struct char_data *ch, int type,
 
 size_t char_inventory_count(struct char_data *ch, bool recursive);
 size_t char_equipment_count(struct char_data *ch, bool recursive);
-struct obj_data *char_inventory_get(struct char_data *ch, size_t pos);
+int64_t* char_inventory_get(struct char_data *ch, size_t* count);
 struct obj_data *char_equipment_get(struct char_data *ch, size_t pos);
 
 void char_send_text(struct char_data *ch, const char *text);
@@ -126,6 +126,7 @@ struct condition_string_arg {
   const char *value;
 };
 
+bool char_condition_check_legacy_affect(struct char_data *ch, int aff_flag);
 bool char_condition_has(struct char_data *ch, const char *condition);
 bool char_condition_id_has_tag(const char *condition, const char *tag);
 bool char_condition_has_tag(struct char_data *ch, const char *tag);

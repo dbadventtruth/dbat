@@ -1,6 +1,7 @@
 #pragma once
 #include "consts/types.h"
 #include "consts/roomflags.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,6 +88,7 @@ struct room_direction_data *room_dir_option_get(struct room_data *room,
                                                 int dir);
 struct char_data *room_people_get(struct room_data *room);
 struct obj_data *room_contents_get(struct room_data *room);
+int64_t *room_objects_get(struct room_data *room, size_t *count);
 struct script_data *room_script_get(struct room_data *room);
 struct script_data *room_script_ensure(struct room_data *room);
 void room_script_set(struct room_data *room, struct script_data *script);

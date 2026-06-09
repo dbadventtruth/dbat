@@ -675,27 +675,29 @@ fn luaObjectInventoryCount(lua: *Lua) i32 {
 fn luaObjectInventoryGet(lua: *Lua) i32 {
     const obj = checkObject(lua);
     if (!lua.isNoneOrNil(2)) {
-        var current = obj.contains;
-        var pos: usize = 0;
-        const wanted = intCastOrError(lua, usize, integer(lua, 2), "inventory index");
-        while (current != null) : (current = current.*.next_content) {
-            if (pos == wanted) {
-                pushObject(lua, cdb.obj_id_get(current));
-                return 1;
-            }
-            pos += 1;
+        var count: usize = 0;
+        const ids = cdb.obj_inventory_get(obj, &count);
+        defer if (ids) |_| std.c.free(@as(?*anyopaque, @ptrCast(ids)));
+
+        const pos = intCastOrError(lua, usize, integer(lua, 2), "inventory index");
+        if (ids == null or pos >= count) {
+            lua.pushNil();
+            return 1;
         }
-        lua.pushNil();
+        pushObject(lua, ids[pos]);
         return 1;
     }
 
+    var count: usize = 0;
+    const ids = cdb.obj_inventory_get(obj, &count);
+    defer if (ids) |_| std.c.free(@as(?*anyopaque, @ptrCast(ids)));
+
     lua.newTable();
-    var current = obj.contains;
-    var index: usize = 1;
-    while (current != null) : (current = current.*.next_content) {
-        pushObject(lua, cdb.obj_id_get(current));
-        lua.setIndex(-2, @intCast(index));
-        index += 1;
+    for (0..count) |i| {
+        if (ids) |ptr| {
+            pushObject(lua, ptr[i]);
+            lua.setIndex(-2, @intCast(i + 1));
+        }
     }
     return valueIterator(lua);
 }

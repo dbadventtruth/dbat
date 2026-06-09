@@ -165,13 +165,8 @@ static void healthy_check(struct char_data *ch) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     change = TRUE;
   }
-  if (is_affected(ch, AFF_WITHER) && roll >= chance) {
-    remove_affect(ch, AFF_WITHER);
-    save_char(ch);
-    change = TRUE;
-  }
 
-  for(const char* cond : {"curse", "poison"}) {
+  for(const char* cond : {"curse", "poison", "wither"}) {
     if (char_condition_has(ch, cond) && roll >= chance) {
       char_condition_remove(ch, cond, "bonus_healthy");
       change = TRUE;
@@ -434,11 +429,11 @@ static void update_flags(struct char_data *ch) {
         TO_ROOM);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FROZEN);
   }
-  if (is_affected(ch, AFF_WITHER) && rand_number(1, 6 + sick_fail) == 2) {
+  if (char_condition_has(ch, "wither") && rand_number(1, 6 + sick_fail) == 2) {
     send_to_char(ch, "@wYour body returns to normal and you beat the withering "
                      "that plagued you.\r\n");
     act("$n@W's looks more fit now.", TRUE, ch, 0, 0, TO_ROOM);
-    remove_affect(ch, AFF_WITHER);
+    char_condition_remove(ch, "wither", "wore_off");
     save_char(ch);
   }
   if (wearing_stardust(ch) == 1) {
@@ -513,7 +508,7 @@ void gain_exp(struct char_data *ch, int64_t gain) {
     return;
   }
 
-  if (AFF_FLAGGED(ch, AFF_WUNJO)) {
+  if (char_condition_has(ch, "rune_wunjo")) {
     gain += gain * 0.15;
   }
   if (PLR_FLAGGED(ch, PLR_IMMORTAL)) {
@@ -1200,7 +1195,7 @@ static void point_update_characters(void) {
           }
         }
       }
-      if (!AFF_FLAGGED(i, AFF_FLYING) &&
+      if (!char_condition_has(i, "flying") &&
           room_geffect_get(char_room_get(i)) == 6 &&
           !MOB_FLAGGED(i, MOB_NOKILL) && !IS_DEMON(i)) {
         act("@rYour legs are burned by the lava!@n", TRUE, i, 0, 0, TO_CHAR);
@@ -1494,12 +1489,10 @@ static void point_update_objects(void) {
             GET_OBJ_WEIGHT(j) -= melt;
             send_to_char(j->carried_by, "%s @wmelts a little.\r\n",
                          j->short_description);
-            IS_CARRYING_W(j->carried_by) -= melt;
           } else {
             send_to_char(j->carried_by, "%s @wmelts completely away.\r\n",
                          j->short_description);
             int remainder = melt - GET_OBJ_WEIGHT(j);
-            IS_CARRYING_W(j->carried_by) -= (melt - remainder);
             extract_obj(j);
             continue;
           }

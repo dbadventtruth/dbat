@@ -488,11 +488,6 @@ int enter_player_game(struct descriptor_data *d) {
   GET_COMBINE(ch) = -1;
   GET_SLEEPT(ch) = 8;
   GET_FOODR(ch) = 2;
-  if (AFF_FLAGGED(ch, AFF_FLYING)) {
-    GET_ALT(ch) = 1;
-  } else {
-    GET_ALT(ch) = 0;
-  }
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
   }
@@ -513,14 +508,9 @@ int enter_player_game(struct descriptor_data *d) {
   SITS(ch) = NULL;
   BLOCKED(ch) = NULL;
   BLOCKS(ch) = NULL;
-  GET_OVERFLOW(ch) = FALSE;
   GET_SPAM(ch) = 0;
   GET_RMETER(ch) = 0;
-  if (!ch->affected) {
-    if (AFF_FLAGGED(ch, AFF_HEALGLOW)) {
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_HEALGLOW);
-    }
-  }
+
   if (AFF_FLAGGED(ch, AFF_HAYASA)) {
     GET_SPEEDBOOST(ch) = GET_SPEEDCALC(ch) * 0.5;
   } else {
@@ -601,7 +591,7 @@ int enter_player_game(struct descriptor_data *d) {
     char_condition_add(ch, "destroyer", "Bonuses", "Destroyer");
   }
 
-  COMBO(ch) = -1;
+  char_condition_remove(ch, "combo", "end_combo");
   return load_result;
 }
 

@@ -586,14 +586,19 @@ pub export fn char_equipment_count(ch: *cdb.char_data, recursive: bool) usize {
     return count;
 }
 
-pub export fn char_inventory_get(ch: *cdb.char_data, pos: usize) [*c]cdb.obj_data {
-    var index: usize = 0;
+pub export fn char_inventory_get(ch: *cdb.char_data, count: *usize) ?[*]i64 {
+    const inv_count = char_inventory_count(ch, false);
+    count.* = inv_count;
+    if (inv_count == 0) return null;
+
+    const array = std.heap.c_allocator.alloc(i64, inv_count) catch return null;
     var current = ch.carrying;
+    var index: usize = 0;
     while (current != null) : (current = current.*.next_content) {
-        if (index == pos) return current;
+        array[index] = current.*.id;
         index += 1;
     }
-    return null;
+    return array.ptr;
 }
 
 pub export fn char_equipment_get(ch: *cdb.char_data, pos: usize) [*c]cdb.obj_data {
@@ -896,6 +901,16 @@ fn clampSkillByte(value: i64) i8 {
     return std.math.cast(i8, @min(@max(value, std.math.minInt(i8)), std.math.maxInt(i8))).?;
 }
 
+pub export fn char_condition_check_legacy_affect(ch: *cdb.char_data, aff_flag: c_int) bool {
+    if (ch.zigdata == null) return false;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var it = zigdata.conditions.keyIterator();
+    while (it.next()) |key| {
+        if (lua_api.conditionHasLegacyAffect(key.*, @intCast(aff_flag))) return true;
+    }
+    return false;
+}
+
 pub export fn char_condition_has(ch: *cdb.char_data, condition: ?[*:0]const u8) bool {
     const name = statName(condition) orelse return false;
     if (ch.zigdata == null) return false;
@@ -952,7 +967,7 @@ pub export fn char_condition_add_with_variables(ch: *cdb.char_data, condition: ?
         addConditionSource(instance, source_category, source_id) catch {};
     }
     conditionChanged(zigdata);
-    lua_api.callConditionHook(ch, name, "on_apply");
+    lua_api.callConditionHook(ch, name, "on_apply", null);
     return true;
 }
 
@@ -999,13 +1014,13 @@ pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u
 }
 
 fn char_condition_remove_name(ch: *cdb.char_data, name: []const u8, reason: ?[*:0]const u8) bool {
-    _ = reason;
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var removed = zigdata.conditions.fetchRemove(name) orelse return false;
     removed.value.deinit(std.heap.page_allocator);
     conditionChanged(zigdata);
-    lua_api.callConditionHook(ch, name, "on_remove");
+    const reason_slice: ?[]const u8 = if (reason) |r| r[0..std.mem.len(r)] else null;
+    lua_api.callConditionHook(ch, name, "on_remove", reason_slice);
     return true;
 }
 

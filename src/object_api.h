@@ -71,6 +71,7 @@ int64_t obj_sitting_get(struct obj_data *obj);
 void obj_sitting_set(struct obj_data *obj, struct char_data *ch);
 
 size_t obj_inventory_count(struct obj_data *obj, bool recursive);
+int64_t *obj_inventory_get(struct obj_data *obj, size_t *count);
 
 bool obj_search_vnum_match(struct obj_data *obj, void *ctx);
 bool obj_search_type_match(struct obj_data *obj, void *ctx);

@@ -1257,14 +1257,19 @@ fn luaCharacterEquipmentCount(lua: *Lua) i32 {
 }
 
 fn luaCharacterInventoryGet(lua: *Lua) i32 {
-    if (lua.isNoneOrNil(2)) return pushInventoryIterator(lua, checkCharacter(lua));
+    const ch = checkCharacter(lua);
+    if (lua.isNoneOrNil(2)) return pushInventoryIterator(lua, ch);
 
-    const obj = cdb.char_inventory_get(checkCharacter(lua), intCastOrError(lua, usize, integer(lua, 2), "inventory index"));
-    if (obj == null) {
+    var count: usize = 0;
+    const ids = cdb.char_inventory_get(ch, &count);
+    defer if (ids) |_| std.c.free(@as(?*anyopaque, @ptrCast(ids)));
+
+    const pos = intCastOrError(lua, usize, integer(lua, 2), "inventory index");
+    if (ids == null or pos >= count) {
         lua.pushNil();
         return 1;
     }
-    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    objects_lua.pushObject(lua, ids[pos]);
     return 1;
 }
 
@@ -1281,13 +1286,16 @@ fn luaCharacterEquipmentGet(lua: *Lua) i32 {
 }
 
 fn pushInventoryIterator(lua: *Lua, ch: *cdb.char_data) i32 {
+    var count: usize = 0;
+    const ids = cdb.char_inventory_get(ch, &count);
+    defer if (ids) |_| std.c.free(@as(?*anyopaque, @ptrCast(ids)));
+
     lua.newTable();
-    var pos: usize = 0;
-    while (true) : (pos += 1) {
-        const obj = cdb.char_inventory_get(ch, pos);
-        if (obj == null) break;
-        objects_lua.pushObject(lua, cdb.obj_id_get(obj));
-        lua.setIndex(-2, @intCast(pos + 1));
+    for (0..count) |i| {
+        if (ids) |ptr| {
+            objects_lua.pushObject(lua, ptr[i]);
+            lua.setIndex(-2, @intCast(i + 1));
+        }
     }
     return valueIterator(lua);
 }
