@@ -498,12 +498,13 @@ void heartbeat_legacy(int heart_pulse) {
       char_on_second(ch);
     }
 
+    /*
+
     for (auto obj = object_list; obj; obj = next_obj) {
       next_obj = obj->next;
       obj_on_second(obj);
     }
-
-    /*
+    
     room_iterate([](auto room) {
       room_on_second(room);
       return true;

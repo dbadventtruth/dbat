@@ -107,6 +107,7 @@
 #include "spells.h"
 
 #include "iterate.hpp"
+#include "mobact.h"
 
 #include <errno.h>
 #include <linux/limits.h>
@@ -3397,6 +3398,7 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
     number_of_assassins += 1;
   }
 
+  char_game_activate(mob);
   return (mob);
 }
 
@@ -3463,6 +3465,7 @@ struct obj_data *read_object(obj_vnum nr, int type) /* and obj_rnum */
     }
     FOOB(obj) = GET_OBJ_VAL(obj, 1);
   }
+  obj_game_activate(obj);
   return (obj);
 }
 

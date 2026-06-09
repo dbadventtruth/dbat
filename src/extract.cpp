@@ -228,6 +228,7 @@ void extract_char_final(struct char_data *ch) {
     return true;
   });
 
+  char_game_deactivate(ch);
   char_from_room(ch);
 
   if (IS_NPC(ch)) {
@@ -349,6 +350,7 @@ void extract_obj(struct obj_data *obj) {
     return true;
   });
 
+  obj_game_deactivate(obj);
   REMOVE_FROM_LIST(obj, object_list, next, temp);
 
   if (GET_OBJ_VNUM(obj) != NOTHING)
