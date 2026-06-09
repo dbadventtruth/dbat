@@ -749,18 +749,18 @@ ACMD(do_honoo) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
           !IS_DEMON(vict) && !GET_BONUS(vict, BONUS_FIREPROOF)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       } else if (GET_BONUS(vict, BONUS_FIREPROOF) || IS_DEMON(vict)) {
         send_to_char(ch, "@RThey appear to be fireproof!@n\r\n");
       } else if (GET_BONUS(vict, BONUS_FIREPRONE)) {
         send_to_char(vict, "@RYou are extremely flammable and are burned by "
                            "the attack!@n\r\n");
         send_to_char(ch, "@RThey are easily burned!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       if (GET_SKILL_PERF(ch, SKILL_HONOO) == 3 && attperc > minimum) {
         pcost(ch, attperc - 0.05, 0);
@@ -2466,7 +2466,7 @@ ACMD(do_genki) {
     if (friend_char == ch) {
       return true;
     }
-    if (AFF_FLAGGED(friend_char, AFF_GROUP) &&
+    if (char_condition_has(friend_char, "group") &&
         (friend_char->master == ch || ch->master == friend_char ||
          friend_char->master == ch->master)) {
       GET_CHARGE(ch) += (getCurKI(ch)) / 10;
@@ -3544,18 +3544,18 @@ ACMD(do_pslash) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 4 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 4 &&
           !IS_DEMON(vict) && !GET_BONUS(vict, BONUS_FIREPROOF)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       } else if (GET_BONUS(vict, BONUS_FIREPROOF) || IS_DEMON(vict)) {
         send_to_char(ch, "@RThey appear to be fireproof!@n\r\n");
       } else if (GET_BONUS(vict, BONUS_FIREPRONE)) {
         send_to_char(vict, "@RYou are extremely flammable and are burned by "
                            "the attack!@n\r\n");
         send_to_char(ch, "@RThey are easily burned!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       pcost(ch, attperc, 0);
       REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ASHED);
@@ -4594,7 +4594,7 @@ ACMD(do_kakusanha) {
     if (GET_HIT(vict) <= 0) {
       return true;
     }
-    if (AFF_FLAGGED(vict, AFF_GROUP) && !IS_NPC(vict)) {
+    if (char_condition_has(vict, "group") && !IS_NPC(vict)) {
       if (vict->master == ch) {
         return true;
       } else if (ch->master == vict) {
@@ -4675,7 +4675,7 @@ ACMD(do_kakusanha) {
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
         return true;
       }
-      if (AFF_FLAGGED(vict, AFF_GROUP) &&
+      if (char_condition_has(vict, "group") &&
           (vict->master == ch || ch->master == vict)) {
         return true;
       }
@@ -4693,7 +4693,7 @@ ACMD(do_kakusanha) {
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-           AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+           char_condition_has(vict, "zanzoken")) &&
           (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
         hits++;
         act("@C$N@c disappears, avoiding the beam chasing $M!@n", FALSE, ch, 0,
@@ -4702,7 +4702,7 @@ ACMD(do_kakusanha) {
             vict, TO_VICT);
         act("@C$N@c disappears, avoiding the beam chasing $M!@n", FALSE, ch, 0,
             vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         return true;
@@ -5010,7 +5010,7 @@ ACMD(do_hellspear) {
       dge = handle_dodge(vict);
 
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-           AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+           char_condition_has(vict, "zanzoken")) &&
           (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
@@ -5021,7 +5021,7 @@ ACMD(do_hellspear) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         return true;
       } else if (dge + rand_number(-10, 5) > skill) {
@@ -5731,8 +5731,8 @@ ACMD(do_ddslash) {
         act("@c$n@m is struck blind by the attack!@n", TRUE, vict, 0, 0,
             TO_ROOM);
         int duration = 1;
-        assign_affect(vict, AFF_BLIND, SKILL_SOLARF, duration, 0, 0, 0, 0, 0,
-                      0);
+        char_condition_add(vict, "darkness_dragon_slash", "skill", "darkness_dragon_slash");
+        char_condition_duration_set(vict, "darkness_dragon_slash", duration * SECS_PER_MUD_HOUR); 
       }
       pcost(ch, attperc, 0);
 
@@ -7533,7 +7533,7 @@ ACMD(do_baku) {
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
       return true;
     }
-    if (AFF_FLAGGED(vict, AFF_GROUP) &&
+    if (char_condition_has(vict, "group") &&
         (vict->master == ch || ch->master == vict)) {
       return true;
     }
@@ -7609,7 +7609,7 @@ ACMD(do_baku) {
       if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
         return true;
       }
-      if (AFF_FLAGGED(vict, AFF_GROUP) &&
+      if (char_condition_has(vict, "group") &&
           (vict->master == ch || ch->master == vict ||
            vict->master == ch->master)) {
         return true;
@@ -7622,7 +7622,7 @@ ACMD(do_baku) {
       }
       dge = handle_dodge(vict);
       if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-           AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+           char_condition_has(vict, "zanzoken")) &&
           (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
@@ -7633,7 +7633,7 @@ ACMD(do_baku) {
         act("@C$N@c disappears, avoiding the explosion before reappearing "
             "elsewhere!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         pcost(vict, 0, GET_MAX_HIT(vict) / 200);
         hurt(0, 0, ch, vict, NULL, 0, 1);
         return true;
@@ -8559,11 +8559,11 @@ ACMD(do_blessedhammer) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
           !IS_DEMON(vict)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       pcost(ch, attperc, 0);
 
@@ -8836,11 +8836,11 @@ ACMD(do_kousengan) {
         /* dam_eq_loc: 1 Arms, 2 legs, 3 head, and 4 body. */
         break;
       }
-      if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+      if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
           !IS_DEMON(vict)) {
         send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
         send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+        char_condition_add(vict, "burned", "attack", "fiery");
       }
       pcost(ch, attperc, 0);
 

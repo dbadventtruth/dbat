@@ -88,12 +88,12 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
   if (IS_ANDROID(vict))
     return;
 
-  if (AFF_FLAGGED(vict, AFF_ZANZOKEN)) {
-    if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
+  if (char_condition_has(vict, "zanzoken")) {
+    if (char_condition_has(ch, "zanzoken")) {
       if (GET_SPEEDI(ch) < GET_SPEEDI(vict)) {
         zanzo = TRUE;
       } else {
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+        char_condition_remove(ch, "zanzoken", "zanzoken_over");
       }
     } else {
       zanzo = TRUE;
@@ -103,8 +103,8 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
           TRUE, ch, 0, vict, TO_VICT);
       act("@R$n@ctries to grab @R$N@c but $E @Czanzokens@c out of the way!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+      char_condition_remove(ch, "zanzoken", "zanzoken_over");
+      char_condition_remove(vict, "zanzoken", "zanzoken_over");
       return;
     } else {
       act("@cYou try to @Czanzoken@c out of @R$n's@c reach, but $e is too "
@@ -113,7 +113,7 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
       act("@c$N tries to @Czanzoken@c out of @R$n's@c reach, but $e is too "
           "fast!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+      char_condition_remove(vict, "zanzoken", "zanzoken_over");
     }
   }
 

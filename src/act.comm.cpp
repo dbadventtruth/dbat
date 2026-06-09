@@ -951,7 +951,7 @@ ACMD(do_gsay) {
 
   skip_spaces(&argument);
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP)) {
+  if (!char_condition_has(ch, "group")) {
     send_to_char(ch, "But you are not the member of a group!\r\n");
     return;
   }
@@ -973,7 +973,7 @@ ACMD(do_gsay) {
 
     sprintf(blah, "$n@W tells the group @W'@G%s@W'@n\r\n", buf);
 
-    if (AFF_FLAGGED(k, AFF_GROUP) && (k != ch) && AWAKE(k)) {
+    if (char_condition_has(k, "group") && (k != ch) && AWAKE(k)) {
       if (CONFIG_ENABLE_LANGUAGES) {
         send_to_char(k, "%s@W tells the group%s @W'@G%s@W'@n\r\n",
                      CAN_SEE(k, ch) ? GET_NAME(ch) : "Someone",
@@ -985,7 +985,7 @@ ACMD(do_gsay) {
       }
     }
     for (f = k->followers; f; f = f->next)
-      if (AFF_FLAGGED(f->follower, AFF_GROUP) && (f->follower != ch) &&
+      if (char_condition_has(f->follower, "group") && (f->follower != ch) &&
           AWAKE(f->follower)) {
         if (!IS_NPC(ch) && !IS_NPC(f->follower) && CONFIG_ENABLE_LANGUAGES) {
           garble_text(buf, GET_SKILL(f->follower, SPEAKING(ch)), SPEAKING(ch));

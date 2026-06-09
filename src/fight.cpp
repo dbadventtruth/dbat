@@ -86,13 +86,13 @@ static int pick_n_throw(struct char_data *ch, char *buf);
 int group_bonus(struct char_data *ch, int type) {
   struct follow_type *k, *next;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return (FALSE);
 
   if (ch->followers) {
     for (k = ch->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP)) {
+      if (!char_condition_has(k->follower, "group")) {
         continue;
       } else {
         if (type == 0) {
@@ -138,7 +138,7 @@ int group_bonus(struct char_data *ch, int type) {
       }
     }
   } else if (ch->master) {
-    if (!AFF_FLAGGED(ch->master, AFF_GROUP))
+    if (!char_condition_has(ch->master, "group"))
       return (FALSE);
     else {
       if (type == 0) {
@@ -2534,7 +2534,7 @@ static void perform_group_gain(struct char_data *ch, int base,
     struct follow_type *f;
     int checkit = FALSE;
     for (f = ch->followers; f; f = f->next) {
-      if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+      if (char_condition_has(f->follower, "group") &&
           LASTHIT(victim) == GET_IDNUM(f->follower)) {
         checkit = TRUE;
       }
@@ -2547,7 +2547,7 @@ static void perform_group_gain(struct char_data *ch, int base,
       struct char_data *master = ch->master;
       for (f = master->followers; f; f = f->next) {
         if (f->follower != ch) {
-          if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+          if (char_condition_has(f->follower, "group") &&
               LASTHIT(victim) == GET_IDNUM(f->follower)) {
             checkit = TRUE;
           }
@@ -2583,11 +2583,13 @@ static void perform_group_gain(struct char_data *ch, int base,
   if (MOB_FLAGGED(victim, MOB_KNOWKAIO)) {
     share += share * .25;
   }
-  GET_GROUPKILLS(ch) += 1;
-  if ((GET_GROUPKILLS(ch) + 1) / 20 > share * 0.16) {
+  auto group_kills = GET_GROUPKILLS(ch);
+  group_kills += 1;
+  char_condition_number_set(ch, "group", "kills", group_kills);
+  if (group_kills / 20 > share * 0.16) {
     share += share * 0.16;
   } else {
-    share += (share * 0.02) * ((GET_GROUPKILLS(ch) + 1) / 20);
+    share += (share * 0.02) * (group_kills / 20);
   }
   if (group_bonus(ch, 2) == 2) {
     send_to_char(
@@ -2683,7 +2685,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   if (!(k = ch->master))
     k = ch;
 
-  if (AFF_FLAGGED(k, AFF_GROUP) && (char_room_get(k) == char_room_get(ch))) {
+  if (char_condition_has(k, "group") && (char_room_get(k) == char_room_get(ch))) {
     tot_levels = GET_LEVEL(k);
     tot_members = 1;
   } else {
@@ -2692,7 +2694,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   }
 
   for (f = k->followers; f; f = f->next)
-    if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+    if (char_condition_has(f->follower, "group") &&
         char_room_get(f->follower) == char_room_get(ch)) {
       if (!IS_WEIGHTED(f->follower)) {
         tot_levels += GET_LEVEL(f->follower);
@@ -2721,7 +2723,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
     base = 0;
 
   /*
-  if (AFF_FLAGGED(k, AFF_GROUP) && char_room_get(k) == char_room_get(ch)) {
+  if (char_condition_has(k, "group") && char_room_get(k) == char_room_get(ch)) {
    if (!IS_WEIGHTED(k)) {
     perform_group_gain(k, base, victim);
    } else if (k != ch && (getMaxPL(k)()) >= (getMaxPL(ch)) * 0.5) {
@@ -2741,7 +2743,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   // perform_group_gain(k, base, victim);
 
   for (f = k->followers; f; f = f->next) {
-    if (AFF_FLAGGED(f->follower, AFF_GROUP) &&
+    if (char_condition_has(f->follower, "group") &&
         char_room_get(f->follower) == char_room_get(ch)) {
       // if ((getMaxPL(f->follower)()) >= GET_MAX_HIT(ch) * 0.5)
       // perform_group_gain(f->follower, base, victim);

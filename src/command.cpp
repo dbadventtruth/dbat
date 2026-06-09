@@ -300,7 +300,6 @@ const struct command_info cmd_info[] = {
     {"kaioken", "kaioken", POS_STANDING, do_kaioken, 0, ADMLVL_NONE, 0},
     {"kakusanha", "kakusan", POS_FIGHTING, do_kakusanha, 0, ADMLVL_NONE, 0},
     {"kamehameha", "kame", POS_FIGHTING, do_kamehameha, 0, ADMLVL_NONE, 0},
-    {"kanso", "kans", POS_FIGHTING, do_kanso, 0, ADMLVL_NONE, 0},
     {"kiball", "kibal", POS_FIGHTING, do_kiball, 0, ADMLVL_NONE, 0},
     {"kiblast", "kiblas", POS_FIGHTING, do_kiblast, 0, ADMLVL_NONE, 0},
     {"kienzan", "kienza", POS_FIGHTING, do_kienzan, 0, ADMLVL_NONE, 0},

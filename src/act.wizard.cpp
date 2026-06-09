@@ -5132,11 +5132,6 @@ ACMD(do_zcheck) {
         len += snprintf(buf + len, sizeof(buf) - len,
                         "- Has %" I64T " experience (limit: %d)\r\n", mob_exp,
                         max_exp_allowed);
-      if (AFF_FLAGGED(mob, AFF_GROUP | AFF_CHARM) && (found = 1))
-        len += snprintf(buf + len, sizeof(buf) - len,
-                        "- Has illegal affection bits set (%s %s)\r\n",
-                        AFF_FLAGGED(mob, AFF_GROUP) ? "GROUP" : "",
-                        AFF_FLAGGED(mob, AFF_CHARM) ? "CHARM" : "");
 
       /*if (!MOB_FLAGGED(mob, MOB_SENTINEL) && !MOB_FLAGGED(mob, MOB_STAY_ZONE)
         && (found = 1)) len += snprintf(buf + len, sizeof(buf) - len,

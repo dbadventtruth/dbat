@@ -1240,17 +1240,17 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
       next = k->next;
       if ((char_room_get(k->follower) == was_in_room) &&
           (GET_POS(k->follower) >= POS_STANDING) &&
-          (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
-           (AFF_FLAGGED(ch, AFF_GROUP) &&
-            AFF_FLAGGED(k->follower, AFF_GROUP)))) {
+          (!char_condition_has(ch, "zanzoken") ||
+           (char_condition_has(ch, "group") &&
+            char_condition_has(k->follower, "group")))) {
         act("You follow $N.\r\n", FALSE, k->follower, 0, ch, TO_CHAR);
         perform_move(k->follower, dir, 1);
       } else if ((char_room_get(k->follower) == was_in_room) &&
                  (GET_POS(k->follower) >= POS_STANDING) &&
-                 (AFF_FLAGGED(ch, AFF_ZANZOKEN) &&
-                  AFF_FLAGGED(k->follower, AFF_ZANZOKEN)) &&
-                 (!AFF_FLAGGED(ch, AFF_GROUP) ||
-                  !AFF_FLAGGED(k->follower, AFF_GROUP))) {
+                 (char_condition_has(ch, "zanzoken") &&
+                  char_condition_has(k->follower, "zanzoken")) &&
+                 (!char_condition_has(ch, "group") ||
+                  !char_condition_has(k->follower, "group"))) {
         act("$N tries to zanzoken and escape, but your zanzoken matches "
             "$S!\r\n",
             FALSE, k->follower, 0, ch, TO_CHAR);
@@ -1260,13 +1260,13 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
         act("You zanzoken to try and escape, but $n's zanzoken matches "
             "yours!\r\n",
             FALSE, k->follower, 0, ch, TO_VICT);
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
-        REMOVE_BIT_AR(AFF_FLAGS(k->follower), AFF_ZANZOKEN);
+        char_condition_remove(ch, "zanzoken", "zanzoken_over");
+        char_condition_remove(k->follower, "zanzoken", "zanzoken_over");
         perform_move(k->follower, dir, 1);
       } else if ((char_room_get(k->follower) == was_in_room) &&
                  (GET_POS(k->follower) >= POS_STANDING) &&
-                 (AFF_FLAGGED(ch, AFF_ZANZOKEN) &&
-                  !AFF_FLAGGED(k->follower, AFF_ZANZOKEN))) {
+                 (char_condition_has(ch, "zanzoken") &&
+                  !char_condition_has(k->follower, "zanzoken"))) {
         act("You try to follow $N, but $E disappears in a flash of "
             "movement!\r\n",
             FALSE, k->follower, 0, ch, TO_CHAR);
@@ -1275,7 +1275,7 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
             FALSE, k->follower, 0, ch, TO_NOTVICT);
         act("$n tries to follow you, but you manage to zanzoken away!\r\n",
             FALSE, k->follower, 0, ch, TO_VICT);
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+        char_condition_remove(ch, "zanzoken", "zanzoken_over");
       }
     }
     return (1);
@@ -3773,7 +3773,7 @@ ACMD(do_follow) {
       }
       if (ch->master)
         stop_follower(ch);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_GROUP);
+      char_condition_remove(ch, "group", "leave_group");
       reveal_hiding(ch, 0);
       add_follower(ch, leader);
     }

@@ -157,45 +157,30 @@ static void healthy_check(struct char_data *ch) {
 
   int chance = 70, roll = rand_number(1, 100), change = FALSE;
 
-  if (AFF_FLAGGED(ch, AFF_SHOCKED) && roll >= chance) {
+  if(roll < chance) 
+    return;
+
+  if (AFF_FLAGGED(ch, AFF_SHOCKED)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SHOCKED);
     change = TRUE;
   }
-  if (AFF_FLAGGED(ch, AFF_MBREAK) && roll >= chance) {
+
+  if (AFF_FLAGGED(ch, AFF_MBREAK)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
     change = TRUE;
   }
 
-  for(const char* cond : {"curse", "poison", "wither"}) {
-    if (char_condition_has(ch, cond) && roll >= chance) {
-      char_condition_remove(ch, cond, "bonus_healthy");
-      change = TRUE;
-    }
+  if(char_condition_remove_tag(ch, "healthy_clear", "healthy")) {
+    change = TRUE;
   }
 
-  if (IS_AFFECTED(ch, AFF_PARALYZE) && roll >= chance) {
-    null_affect(ch, AFF_PARALYZE);
-    change = TRUE;
-  }
-  if (IS_AFFECTED(ch, AFF_PARA) && roll >= chance) {
-    null_affect(ch, AFF_PARA);
-    change = TRUE;
-  }
-  if (AFF_FLAGGED(ch, AFF_BLIND) && roll >= chance) {
-    null_affect(ch, AFF_BLIND);
-    change = TRUE;
-  }
-  if (is_affected(ch, AFF_HYDROZAP) && roll >= chance) {
-    remove_affect(ch, AFF_HYDROZAP);
-    save_char(ch);
-    change = TRUE;
-  }
-  if (AFF_FLAGGED(ch, AFF_KNOCKED) && roll >= chance) {
+
+  if (AFF_FLAGGED(ch, AFF_KNOCKED)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
     char_position_set(ch, POS_SITTING);
     change = TRUE;
   }
-  if (change == TRUE) {
+  if (change) {
     send_to_char(ch,
                  "@CYou feel your body recover from all its ailments!@n\r\n");
   }
@@ -243,11 +228,6 @@ static int wearing_stardust(struct char_data *ch) {
 /* manapoint gain pr. game hour */
 static int64_t mana_gain(struct char_data *ch) {
   int64_t gain = char_der_total_get(ch, "ki_regen");
-
-  if (is_affected(ch, AFF_HYDROZAP) && rand_number(1, 4) >= 4) {
-    remove_affect(ch, AFF_HYDROZAP);
-    save_char(ch);
-  }
 
   if(auto conc = GET_SKILL(ch, SKILL_CONCENTRATION)) {
 
@@ -330,11 +310,11 @@ static void update_flags(struct char_data *ch) {
     send_to_char(ch, "Your fireshield disappears.\r\n");
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FIRESHIELD);
   }
-  if (AFF_FLAGGED(ch, AFF_ZANZOKEN) && !FIGHTING(ch) &&
+  if (char_condition_has(ch, "zanzoken") && !FIGHTING(ch) &&
       rand_number(1, 3) == 2) {
     send_to_char(
         ch, "You lose concentration and no longer are ready to zanzoken.\r\n");
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+    char_condition_remove(ch, "zanzoken", "zanzoken_over");
   }
   if (AFF_FLAGGED(ch, AFF_ENSNARED) && rand_number(1, 3) == 2) {
     send_to_char(ch, "The silk ensnaring your arms disolves enough for you to "
@@ -437,7 +417,7 @@ static void update_flags(struct char_data *ch) {
     save_char(ch);
   }
   if (wearing_stardust(ch) == 1) {
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+    char_condition_add(ch, "zanzoken", "skill", "zanzoken");
     send_to_char(ch, "The stardust armor blesses you with a free zanzoken when "
                      "you next need it.\r\n");
   }
@@ -1124,11 +1104,11 @@ static void point_update_characters(void) {
           remove_kaioken(i, 2);
       }
 
-      if (AFF_FLAGGED(i, AFF_BURNED)) {
+      if (char_condition_has(i, "burned")) {
         if (rand_number(1, 5) >= 4) {
           send_to_char(i, "Your burns are healed now.\r\n");
           act("$n@w's burns are now healed.@n", TRUE, i, 0, 0, TO_ROOM);
-          REMOVE_BIT_AR(AFF_FLAGS(i), AFF_BURNED);
+          char_condition_remove(i, "burned", "healing_burned");
         }
       }
 

@@ -245,17 +245,13 @@ int handle_speed(struct char_data *ch, struct char_data *vict);
 struct time_info_data *age(struct char_data *ch);
 const char *get_i_name(struct char_data *ch, struct char_data *vict);
 
-void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur,
-                   int str, int con, int intel, int agl, int wis, int spd);
 int know_skill(struct char_data *ch, int skill);
 
 size_t send_to_char(struct char_data *ch, const char *messg, ...)
     __attribute__((format(printf, 2, 3)));
 void admin_set(struct char_data *ch, int value);
 char *sense_location(struct char_data *ch);
-void null_affect(struct char_data *ch, int aff_flag);
 bool is_affected(struct char_data *ch, int aff_flag);
-void remove_affect(struct char_data *ch, int aff_flag);
 int planet_check(struct char_data *ch, struct char_data *vict);
 
 bool race_has_tail(int r_id);

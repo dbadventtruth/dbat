@@ -226,7 +226,7 @@ extern "C" {
 #define IS_CARRYING_W(ch) char_der_total_get(ch, "weight_carried")
 #define IS_CARRYING_N(ch) char_inventory_count(ch, false)
 #define FIGHTING(ch) ((ch)->fighting)
-#define GET_GROUPKILLS(ch) ((ch)->group_kills)
+#define GET_GROUPKILLS(ch) char_condition_number_get(ch, "group", "kills")
 #define GET_ALIGNMENT(ch) char_stat_get((ch), "alignment")
 #define GET_ETHIC_ALIGNMENT(ch) 0
 #define SITS(ch) ((ch)->sits)

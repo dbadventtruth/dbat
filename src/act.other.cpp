@@ -1035,10 +1035,10 @@ ACMD(do_grapple) {
     }
 
     if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-         AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+         char_condition_has(vict, "zanzoken")) &&
         (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-      if (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
-          (AFF_FLAGGED(ch, AFF_ZANZOKEN) &&
+      if (!char_condition_has(ch, "zanzoken") ||
+          (char_condition_has(ch, "zanzoken") &&
            GET_SPEEDI(ch) + rand_number(1, 5) <
                GET_SPEEDI(vict) + rand_number(1, 5))) {
         reveal_hiding(ch, 0);
@@ -1051,10 +1051,10 @@ ACMD(do_grapple) {
         act("@C$N@c disappears, avoiding @C$n's@c grapple attempt before "
             "reappearing!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
-          REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+        if (char_condition_has(ch, "zanzoken")) {
+          char_condition_remove(ch, "zanzoken", "zanzoken_over");
         }
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         decCurST(ch, cost);
         WAIT_STATE(ch, PULSE_4SEC);
         return;
@@ -1069,8 +1069,8 @@ ACMD(do_grapple) {
         act("@C$N@c disappears, trying to avoid @C$n's@c grapple attempt but "
             "@C$n's@c zanzoken is faster!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
+        char_condition_remove(ch, "zanzoken", "zanzoken_over");
       }
     }
 
@@ -1301,10 +1301,10 @@ ACMD(do_trip) {
     }
 
     if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-         AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+         char_condition_has(vict, "zanzoken")) &&
         (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-      if (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
-          (AFF_FLAGGED(ch, AFF_ZANZOKEN) &&
+      if (!char_condition_has(ch, "zanzoken") ||
+          (char_condition_has(ch, "zanzoken") &&
            GET_SPEEDI(ch) + rand_number(1, 5) <
                GET_SPEEDI(vict) + rand_number(1, 5))) {
         reveal_hiding(ch, 0);
@@ -1314,10 +1314,10 @@ ACMD(do_trip) {
             FALSE, ch, 0, vict, TO_VICT);
         act("@C$N@c disappears, avoiding @C$n's@c trip before reappearing!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
-          REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+        if (char_condition_has(ch, "zanzoken")) {
+          char_condition_remove(ch, "zanzoken", "zanzoken_over");
         }
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
         decCurST(ch, cost);
         WAIT_STATE(ch, PULSE_4SEC);
         return;
@@ -1332,8 +1332,8 @@ ACMD(do_trip) {
         act("@C$N@c disappears, trying to avoid @C$n's@c trip but @C$n's@c "
             "zanzoken is faster!@n",
             FALSE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
-        REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+        char_condition_remove(vict, "zanzoken", "zanzoken_over");
+        char_condition_remove(ch, "zanzoken", "zanzoken_over");
       }
     }
 
@@ -2105,7 +2105,8 @@ ACMD(do_paralyze) {
         "flows into @r$N@R body and partially paralyzes $M!@n",
         TRUE, ch, 0, vict, TO_NOTVICT);
     int duration = GET_INT(ch) / 15;
-    assign_affect(vict, AFF_PARA, SKILL_PARALYZE, duration, 0, 0, 0, 0, 0, 0);
+    char_condition_add(vict, "paralyze", "skill", "paralyze");
+    char_condition_duration_set(vict, "paralyze", duration * SECS_PER_MUD_HOUR);
     decCurKI(ch, GET_HIT(vict) / 6 + (GET_MAX_MANA(ch) / 20));
     improve_skill(ch, SKILL_PARALYZE, 0);
   }
@@ -3618,7 +3619,7 @@ ACMD(do_spit) {
     improve_skill(ch, SKILL_SPIT, 1);
     WAIT_STATE(ch, PULSE_2SEC);
     return;
-  } else if (AFF_FLAGGED(vict, AFF_ZANZOKEN) && (getCurST(vict)) >= 1 &&
+  } else if (char_condition_has(vict, "zanzoken") && (getCurST(vict)) >= 1 &&
              GET_POS(vict) != POS_SLEEPING) {
     decCurKI(ch, cost);
     reveal_hiding(ch, 0);
@@ -3630,7 +3631,7 @@ ACMD(do_spit) {
     act("@C$N@c disappears, avoiding @C$n's@c @rstone spit@c before "
         "reappearing!@n",
         FALSE, ch, 0, vict, TO_NOTVICT);
-    REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+    char_condition_remove(vict, "zanzoken", "zanzoken_over");
     WAIT_STATE(ch, PULSE_2SEC);
     improve_skill(ch, SKILL_SPIT, 1);
     return;
@@ -4855,7 +4856,7 @@ ACMD(do_ingest) {
       return;
     }
     reveal_hiding(ch, 0);
-    if (AFF_FLAGGED(vict, AFF_ZANZOKEN) && (getCurST(vict)) >= 1 &&
+    if (char_condition_has(vict, "zanzoken") && (getCurST(vict)) >= 1 &&
         GET_POS(vict) != POS_SLEEPING) {
       act("@C$N@c disappears, avoiding your attempted ingestion!@n", FALSE, ch,
           0, vict, TO_CHAR);
@@ -4865,7 +4866,7 @@ ACMD(do_ingest) {
       act("@C$N@c disappears, avoiding @C$n's@c attempted @ringestion@c before "
           "reappearing!@n",
           FALSE, ch, 0, vict, TO_NOTVICT);
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+      char_condition_remove(vict, "zanzoken", "zanzoken_over");
       WAIT_STATE(ch, PULSE_3SEC);
       return;
     }
@@ -5540,11 +5541,9 @@ ACMD(do_regenerate) {
         0, 0, TO_ROOM);
   }
   improve_skill(ch, SKILL_REGENERATE, 0);
-  if (AFF_FLAGGED(ch, AFF_BURNED)) {
-    send_to_char(ch, "Your burns are healed now.\r\n");
-    act("$n@w's burns are now healed.@n", TRUE, ch, 0, 0, TO_ROOM);
-    null_affect(ch, AFF_BURNED);
-  }
+
+  char_condition_remove_tag(ch, "injury", "regenerate");
+
 
   if (!IS_NPC(ch)) {
     if (GET_LIMBCOND(ch, 1) <= 0) {
@@ -6101,7 +6100,7 @@ ACMD(do_focus) {
               0, vict, TO_NOTVICT);
           if ((vict->master == ch || ch->master == vict ||
                ch->master == vict->master) &&
-              AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
+              char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
             if (IS_KAI(ch) &&
                 level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
                 rand_number(1, 3) == 3) {
@@ -6214,7 +6213,7 @@ ACMD(do_focus) {
               ch, 0, vict, TO_NOTVICT);
           if ((vict->master == ch || ch->master == vict ||
                ch->master == vict->master) &&
-              AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
+              char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
             if (IS_KAI(ch) &&
                 level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
                 rand_number(1, 3) == 3) {
@@ -6337,7 +6336,7 @@ ACMD(do_focus) {
               TRUE, ch, 0, vict, TO_NOTVICT);
           if ((vict->master == ch || ch->master == vict ||
                ch->master == vict->master) &&
-              AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP)) {
+              char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
             if (IS_KAI(ch) &&
                 level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
                 rand_number(1, 3) == 3) {
@@ -6520,8 +6519,9 @@ ACMD(do_focus) {
         return;
       } else {
         int duration = rand_number(1, 2);
+        char_condition_add(vict, "yoikominminken", "skill", "yoikominminken");
+        char_condition_duration_set(vict, "yoikominminken", duration * SECS_PER_MUD_HOUR);
         /* Str , Con, Int, Agl, Wis, Spd */
-        assign_affect(vict, AFF_SLEEP, SKILL_YOIK, duration, 0, 0, 0, 0, 0, 0);
         decCurKI(ch, getMaxKI(ch) / 20);
         reveal_hiding(ch, 0);
         act("You focus ki while moving your hands in lulling patterns, putting "
@@ -7384,8 +7384,8 @@ ACMD(do_zanzoken) {
     return;
   }
 
-  if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+  if (char_condition_has(ch, "zanzoken")) {
+    char_condition_remove(ch, "zanzoken", "zanzoken_over");
     send_to_char(ch, "You release the ki you had prepared for a zanzoken.\r\n");
     return;
   }
@@ -7430,7 +7430,7 @@ ACMD(do_zanzoken) {
   act("@wYou focus your ki, preparing to move at super speeds if necessary.@n",
       TRUE, ch, 0, 0, TO_CHAR);
   decCurKI(ch, cost);
-  SET_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+  char_condition_add(ch, "zanzoken", "skill", "zanzoken");
   improve_skill(ch, SKILL_ZANZOKEN, 2);
   WAIT_STATE(ch, PULSE_2SEC);
 }
@@ -7597,7 +7597,8 @@ ACMD(do_solar) {
     if (GET_POS(vict) == POS_SLEEPING)
       return true;
     int duration = 1;
-    assign_affect(vict, AFF_BLIND, SKILL_SOLARF, duration, 0, 0, 0, 0, 0, 0);
+    char_condition_add(vict, "solar_flare", "skill", "solar_flare");
+    char_condition_duration_set(vict, "solar_flare", duration * SECS_PER_MUD_HOUR);
     act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@RYou are @YBLINDED@R!@n", TRUE, ch, 0, vict, TO_VICT);
     act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_NOTVICT);
@@ -7744,18 +7745,11 @@ ACMD(do_heal) {
     }
 
     char_condition_remove(vict, "poison", "skill_heal");
-    null_affect(vict, AFF_BLIND);
-    if (AFF_FLAGGED(vict, AFF_BURNED)) {
-      send_to_char(vict, "Your burns are healed now.\r\n");
-      act("$n@w's burns are now healed.@n", TRUE, vict, 0, 0, TO_ROOM);
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+    char_condition_remove_tag(vict, "blind", "skill_heal");
+    if (char_condition_has(vict, "burned")) {
+      char_condition_remove(vict, "burned", "skill_heal");
     }
-    if (is_affected(vict, AFF_HYDROZAP)) {
-      send_to_char(vict, "You no longer feel a great thirst.\r\n");
-      act("$n@w no longer looks as if they could drink an ocean.@n", TRUE, vict,
-          0, 0, TO_ROOM);
-      remove_affect(vict, AFF_HYDROZAP);
-    }
+
     GET_LIMBCOND(vict, 1) = 100;
     GET_LIMBCOND(vict, 2) = 100;
     GET_LIMBCOND(vict, 3) = 100;
@@ -7815,7 +7809,7 @@ ACMD(do_heal) {
       }
     }
     char_condition_remove(vict, "poison", "skill_heal");
-    null_affect(vict, AFF_BLIND);
+    char_condition_remove_tag(vict, "blind", "skill_heal");
     GET_LIMBCOND(vict, 1) = 100;
     GET_LIMBCOND(vict, 2) = 100;
     GET_LIMBCOND(vict, 3) = 100;
@@ -10629,7 +10623,7 @@ ACMD(do_scouter) {
         send_to_char(ch, "@D|@1                                  @n@D|@n\r\n");
         int check = FALSE;
         send_to_char(ch, "@D|@1@GE@g@1x@Gt@g@1r@Ga I@g@1nf@Go @D: ");
-        if (AFF_FLAGGED(vict, AFF_ZANZOKEN)) {
+        if (char_condition_has(vict, "zanzoken")) {
           send_to_char(ch, "@Y%21s@n@D|@n\n", "Zanzoken Prepared");
           check = TRUE;
         }
@@ -11230,7 +11224,7 @@ ACMD(do_title) {
 static int perform_group(struct char_data *ch, struct char_data *vict,
                          int highlvl, int lowlvl, int64_t highpl,
                          int64_t lowpl) {
-  if (AFF_FLAGGED(vict, AFF_GROUP) || !CAN_SEE(ch, vict))
+  if (char_condition_has(vict, "group") || !CAN_SEE(ch, vict))
     return (0);
 
   if (GET_BONUS(vict, BONUS_LONER) > 0) {
@@ -11263,7 +11257,7 @@ static int perform_group(struct char_data *ch, struct char_data *vict,
   }
   */
 
-  SET_BIT_AR(AFF_FLAGS(vict), AFF_GROUP);
+  char_condition_add(vict, "group", "party", "group");
   if (ch != vict)
     act("$N is now a member of your group.", FALSE, ch, 0, vict, TO_CHAR);
   act("You are now a member of $n's group.", FALSE, ch, 0, vict, TO_VICT);
@@ -11275,7 +11269,7 @@ static void print_group(struct char_data *ch) {
   struct char_data *k;
   struct follow_type *f;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     send_to_char(ch, "But you are not the member of a group!\r\n");
   else {
     char buf[MAX_STRING_LENGTH];
@@ -11284,7 +11278,7 @@ static void print_group(struct char_data *ch) {
 
     k = (ch->master ? ch->master : ch);
 
-    if (AFF_FLAGGED(k, AFF_GROUP)) {
+    if (char_condition_has(k, "group")) {
       send_to_char(ch, "@D----------------@n\r\n");
       if (GET_HIT(k) > GET_MAX_HIT(k) / 10) {
         snprintf(buf, sizeof(buf),
@@ -11306,7 +11300,7 @@ static void print_group(struct char_data *ch) {
     }
 
     for (f = k->followers; f; f = f->next) {
-      if (!AFF_FLAGGED(f->follower, AFF_GROUP))
+      if (!char_condition_has(f->follower, "group"))
         continue;
       send_to_char(ch, "@D----------------@n\r\n");
       if (GET_HIT(f->follower) >
@@ -11368,7 +11362,7 @@ ACMD(do_group) {
   lowpl = getMaxPL(ch);
 
   for (found = 0, f = ch->followers; f; f = f->next) {
-    if (AFF_FLAGGED(f->follower, AFF_GROUP)) {
+    if (char_condition_has(f->follower, "group")) {
       if (GET_LEVEL(f->follower) > highlvl) {
         highlvl = GET_LEVEL(f->follower);
       }
@@ -11402,10 +11396,10 @@ ACMD(do_group) {
   else if ((vict->master != ch) && (vict != ch))
     act("$N must follow you to enter your group.", FALSE, ch, 0, vict, TO_CHAR);
   else {
-    if (!AFF_FLAGGED(vict, AFF_GROUP)) {
-      if (!AFF_FLAGGED(ch, AFF_GROUP)) {
+    if (!char_condition_has(vict, "group")) {
+      if (!char_condition_has(ch, "group")) {
         send_to_char(ch, "You form a group, with you as leader.\r\n");
-        SET_BIT_AR(AFF_FLAGS(ch), AFF_GROUP);
+        char_condition_add(ch, "group", "party", "group");
       }
       perform_group(ch, vict, highlvl, lowlvl, highpl, lowpl);
     } else {
@@ -11416,7 +11410,7 @@ ACMD(do_group) {
           TO_VICT);
       act("$N has been kicked out of $n's group!", FALSE, ch, 0, vict,
           TO_NOTVICT);
-      REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_GROUP);
+      char_condition_remove(vict, "group", "leave_group");
     }
   }
 }
@@ -11429,25 +11423,23 @@ ACMD(do_ungroup) {
   one_argument(argument, buf);
 
   if (!*buf) {
-    if (ch->master || !(AFF_FLAGGED(ch, AFF_GROUP))) {
+    if (ch->master || !(char_condition_has(ch, "group"))) {
       send_to_char(ch, "But you lead no group!\r\n");
       return;
     }
 
     for (f = ch->followers; f; f = next_fol) {
       next_fol = f->next;
-      if (AFF_FLAGGED(f->follower, AFF_GROUP)) {
-        REMOVE_BIT_AR(AFF_FLAGS(f->follower), AFF_GROUP);
+      if (char_condition_has(f->follower, "group")) {
+        char_condition_remove(f->follower, "group", "leave_group");
         act("$N has disbanded the group.", TRUE, f->follower, NULL, ch,
             TO_CHAR);
-        GET_GROUPKILLS(f->follower) = 0;
         if (!AFF_FLAGGED(f->follower, AFF_CHARM))
           stop_follower(f->follower);
       }
     }
 
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_GROUP);
-    GET_GROUPKILLS(ch) = 0;
+    char_condition_remove(ch, "group", "leave_group");
     send_to_char(ch, "You disband the group.\r\n");
     return;
   }
@@ -11460,13 +11452,12 @@ ACMD(do_ungroup) {
     return;
   }
 
-  if (!AFF_FLAGGED(tch, AFF_GROUP)) {
+  if (!char_condition_has(tch, "group")) {
     send_to_char(ch, "That person isn't in your group.\r\n");
     return;
   }
 
-  REMOVE_BIT_AR(AFF_FLAGS(tch), AFF_GROUP);
-  GET_GROUPKILLS(tch) = 0;
+  char_condition_remove(tch, "group", "leave_group");
 
   act("$N is no longer a member of your group.", FALSE, ch, 0, tch, TO_CHAR);
   act("You have been kicked out of $n's group!", FALSE, ch, 0, tch, TO_VICT);
@@ -11481,7 +11472,7 @@ ACMD(do_report) {
   struct char_data *k;
   struct follow_type *f;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP)) {
+  if (!char_condition_has(ch, "group")) {
     send_to_char(ch, "But you are not a member of any group!\r\n");
     return;
   }
@@ -11495,7 +11486,7 @@ ACMD(do_report) {
   k = (ch->master ? ch->master : ch);
 
   for (f = k->followers; f; f = f->next)
-    if (AFF_FLAGGED(f->follower, AFF_GROUP) && f->follower != ch)
+    if (char_condition_has(f->follower, "group") && f->follower != ch)
       act(buf, TRUE, ch, NULL, f->follower, TO_VICT);
 
   if (k != ch)
@@ -11529,18 +11520,18 @@ ACMD(do_split) {
     char_stat_mod(ch, "money", -amount);
     k = (ch->master ? ch->master : ch);
 
-    if (AFF_FLAGGED(k, AFF_GROUP) && (char_room_get(k) == char_room_get(ch)))
+    if (char_condition_has(k, "group") && (char_room_get(k) == char_room_get(ch)))
       num = 1;
     else
       num = 0;
 
     for (f = k->followers; f; f = f->next)
-      if (AFF_FLAGGED(f->follower, AFF_GROUP) && (!IS_NPC(f->follower)) &&
+      if (char_condition_has(f->follower, "group") && (!IS_NPC(f->follower)) &&
           f->follower != ch &&
           (char_room_get(f->follower) == char_room_get(ch)))
         num++;
 
-    if (num > 0 && AFF_FLAGGED(ch, AFF_GROUP)) {
+    if (num > 0 && char_condition_has(ch, "group")) {
       share = amount / num;
       rest = amount % num;
     } else {
@@ -11558,14 +11549,14 @@ ACMD(do_split) {
                "%d zenni %s not splitable, so %s keeps the money.\r\n", rest,
                (rest == 1) ? "was" : "were", GET_NAME(ch));
     }
-    if (AFF_FLAGGED(k, AFF_GROUP) && char_room_get(k) == char_room_get(ch) &&
+    if (char_condition_has(k, "group") && char_room_get(k) == char_room_get(ch) &&
         !IS_NPC(k) && k != ch) {
       char_stat_mod(k, "money", share);
       send_to_char(k, "%s", buf);
     }
 
     for (f = k->followers; f; f = f->next) {
-      if (AFF_FLAGGED(f->follower, AFF_GROUP) && (!IS_NPC(f->follower)) &&
+      if (char_condition_has(f->follower, "group") && (!IS_NPC(f->follower)) &&
           (char_room_get(f->follower) == char_room_get(ch)) &&
           f->follower != ch) {
 
@@ -11678,12 +11669,12 @@ ACMD(do_use) {
         extract_obj(mag_item);
         return;
       case 382:
-        if (AFF_FLAGGED(ch, AFF_BURNED)) {
+        if (char_condition_has(ch, "burned")) {
           act("@WYou gently apply the salve to your burns.@n", TRUE, ch,
               mag_item, 0, TO_CHAR);
           act("@C$n@W gently applies a burn salve to $s burns.@n", TRUE, ch,
               mag_item, 0, TO_ROOM);
-          REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+          char_condition_remove(ch, "burned", "healing_burned");
           extract_obj(mag_item);
         } else {
           send_to_char(ch, "You are not burned.\r\n");
@@ -11713,7 +11704,7 @@ ACMD(do_use) {
               TO_CHAR);
           act("@C$n@W eyesight seems to have returned.@n", TRUE, ch, mag_item,
               0, TO_ROOM);
-          null_affect(ch, AFF_BLIND);
+          char_condition_remove(ch, "blind", "item_vial");
         }
         refreshed = FALSE;
 

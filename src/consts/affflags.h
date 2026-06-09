@@ -67,7 +67,7 @@ extern "C" {
 #define AFF_HAYASA 57      /* They are speedy!                */
 #define AFF_PURSUIT 58     /* Being followed */
 #define AFF_WITHER 59      /* Their body is withered */
-#define AFF_HYDROZAP 60    /* Custom Skill Kanso Suru */
+#define AFF_HYDROZAP 60    /* Custom Skill Kanso Suru - removed */
 #define AFF_POSITION 61    /* Better combat position */
 #define AFF_SHOCKED 62     /* Psychic Shock          */
 #define AFF_METAMORPH 63   /* Dark Metamorphosis - COnverted to Condition */

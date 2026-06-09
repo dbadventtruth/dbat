@@ -693,12 +693,12 @@ void cureStatusKnockedOut(char_data *ch) {
 }
 
 void cureStatusBurnAnnounced(char_data *ch, bool announce) {
-  if (AFF_FLAGGED(ch, AFF_BURNED)) {
+  if (char_condition_has(ch, "burned")) {
     if (announce) {
       send_to_char(ch, "Your burns are healed now.\r\n");
       act("$n@w's burns are now healed.@n", TRUE, ch, 0, 0, TO_ROOM);
     }
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+    char_condition_remove(ch, "burned", "healing_burned");
   }
 }
 
@@ -992,20 +992,20 @@ int has_group(struct char_data *ch) {
 
   struct follow_type *k, *next;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return (FALSE);
 
   if (ch->followers) {
     for (k = ch->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP)) {
+      if (!char_condition_has(k->follower, "group")) {
         continue;
       } else {
         return (TRUE);
       }
     }
   } else if (ch->master) {
-    if (!AFF_FLAGGED(ch->master, AFF_GROUP))
+    if (!char_condition_has(ch->master, "group"))
       return (FALSE);
     else
       return (TRUE);
@@ -1016,7 +1016,7 @@ int has_group(struct char_data *ch) {
 
 const char *report_party_health(struct char_data *ch) {
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return ("");
 
   if (!ch->followers && !ch->master)
@@ -1058,7 +1058,7 @@ const char *report_party_health(struct char_data *ch) {
   if (ch->followers) {
     for (k = ch->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP))
+      if (!char_condition_has(k->follower, "group"))
         continue;
       if (k->follower != ch) {
         count += 1;
@@ -1218,7 +1218,7 @@ const char *report_party_health(struct char_data *ch) {
             result4, result5);
     ch->temp_prompt = strdup(result_party_health);
     return (ch->temp_prompt);
-  } else if (ch->master && AFF_FLAGGED(ch->master, AFF_GROUP)) {
+  } else if (ch->master && char_condition_has(ch->master, "group")) {
     party1 = ch->master;
     plperc1 = (GET_HIT(party1) * 100) / GET_MAX_HIT(party1);
     kiperc1 = (GET_CHARGE(party1) * 100) / GET_MAX_MANA(party1);
@@ -1253,7 +1253,7 @@ const char *report_party_health(struct char_data *ch) {
 
     for (k = party1->followers; k; k = next) {
       next = k->next;
-      if (!AFF_FLAGGED(k->follower, AFF_GROUP))
+      if (!char_condition_has(k->follower, "group"))
         continue;
       if (k->follower != ch) {
         count += 1;
@@ -1426,98 +1426,6 @@ bool is_affected(struct char_data *ch, int aff_flag) {
   });
 
   return found;
-}
-
-void null_affect(struct char_data *ch, int aff_flag) {
-
-  struct affected_type *af, *next_af;
-
-  for (af = ch->affected; af; af = next_af) {
-    next_af = af->next;
-    if (af->location == APPLY_NONE && af->bitvector == aff_flag)
-      affect_remove(ch, af);
-  }
-}
-
-void remove_affect(struct char_data *ch, int aff_flag) {
-
-  struct affected_type *af, *next_af;
-
-  for (af = ch->affected; af; af = next_af) {
-    next_af = af->next;
-    if (af->bitvector == aff_flag)
-      affect_remove(ch, af);
-  }
-}
-
-void assign_affect(struct char_data *ch, int aff_flag, int skill, int dur,
-                   int str, int con, int intel, int agl, int wis, int spd) {
-  struct affected_type af[6];
-  int num = 0;
-
-  if (str == 0 && con == 0 && wis == 0 && intel == 0 && agl == 0 && spd == 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = 0;
-    af[num].location = APPLY_NONE;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (str != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = str;
-    af[num].location = APPLY_STR;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (con != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = con;
-    af[num].location = APPLY_CON;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (intel != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = intel;
-    af[num].location = APPLY_INT;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (agl != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = agl;
-    af[num].location = APPLY_DEX;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (spd != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = spd;
-    af[num].location = APPLY_CHA;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
-  if (wis != 0) {
-    af[num].type = skill;
-    af[num].duration = dur;
-    af[num].modifier = wis;
-    af[num].location = APPLY_WIS;
-    af[num].bitvector = aff_flag;
-    affect_join(ch, &af[num], FALSE, FALSE, FALSE, FALSE);
-    num += 1;
-  }
 }
 
 int sec_roll_check(struct char_data *ch) {
@@ -2319,9 +2227,9 @@ int roll_pursue(struct char_data *ch, struct char_data *vict) {
         next = k->next;
         if ((char_room_vnum_get(k->follower) == inroom) &&
             (GET_POS(k->follower) >= POS_STANDING) &&
-            (!AFF_FLAGGED(ch, AFF_ZANZOKEN) ||
-             (AFF_FLAGGED(ch, AFF_GROUP) &&
-              AFF_FLAGGED(k->follower, AFF_GROUP)))) {
+            (!char_condition_has(ch, "zanzoken") ||
+             (char_condition_has(ch, "group") &&
+              char_condition_has(k->follower, "group")))) {
           act("You follow $N.", TRUE, k->follower, 0, ch, TO_CHAR);
           act("$n follows after $N.", TRUE, k->follower, 0, ch, TO_NOTVICT);
           act("$n follows after you.", TRUE, k->follower, 0, ch, TO_VICT);
@@ -3813,9 +3721,6 @@ void stop_follower(struct char_data *ch) {
   if (!(DEAD(ch->master) ||
         (ch->master->desc && STATE(ch->master->desc) == CON_MENU)))
     act("$n stops following you.", TRUE, ch, 0, ch->master, TO_VICT);
-
-  if (has_group(ch))
-    GET_GROUPKILLS(ch) = 0;
 
   if (ch->master->followers->follower == ch) { /* Head of follower-list? */
     k = ch->master->followers;

@@ -304,7 +304,6 @@ int perform_dupe_check(struct descriptor_data *d) {
   d->character->timer = 0;
   REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
   REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
-  REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_GROUP);
   STATE(d) = CON_PLAYING;
 
   switch (mode) {
@@ -494,8 +493,8 @@ int enter_player_game(struct descriptor_data *d) {
   if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SANCTUARY);
   }
-  if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ZANZOKEN);
+  if (char_condition_has(ch, "zanzoken")) {
+    char_condition_remove(ch, "zanzoken", "zanzoken_over");
   }
   if (PLR_FLAGGED(ch, PLR_KNOCKED)) {
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_KNOCKED);
@@ -2152,7 +2151,6 @@ void nanny(struct descriptor_data *d, char *arg) {
           REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_WRITING);
           REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_MAILING);
           REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_CRYO);
-          REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_GROUP);
           if (isbanned(d->host) == BAN_SELECT &&
               !PLR_FLAGGED(d->character, PLR_SITEOK)) {
             write_to_output(d, "Sorry, this char has not been cleared for "

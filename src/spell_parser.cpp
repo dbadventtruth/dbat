@@ -532,7 +532,7 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
     send_to_char(ch, "You cannot cast this spell upon yourself!\r\n");
     return (0);
   }
-  if (IS_SET(SINFO.routines, MAG_GROUPS) && !AFF_FLAGGED(ch, AFF_GROUP)) {
+  if (IS_SET(SINFO.routines, MAG_GROUPS) && !char_condition_has(ch, "group")) {
     send_to_char(ch, "You can't cast this spell if you're not in a group!\r\n");
     return (0);
   }

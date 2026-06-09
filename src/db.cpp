@@ -2018,7 +2018,6 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch) {
     /* Make some basic checks. */
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_CHARM);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POISON);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_GROUP);
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SLEEP);
     if (MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_GOOD))
       REMOVE_BIT_AR(MOB_FLAGS(ch), MOB_AGGR_GOOD);

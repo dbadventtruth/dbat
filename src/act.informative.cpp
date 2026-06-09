@@ -6390,7 +6390,7 @@ ACMD(do_status) {
                    song_types[GET_SONG(ch)]);
     }
 
-    if (AFF_FLAGGED(ch, AFF_ZANZOKEN)) {
+    if (char_condition_has(ch, "zanzoken")) {
       send_to_char(ch, "You are prepared to zanzoken.\r\n");
     }
     if (char_condition_has(ch, "hasshuken")) {
@@ -6408,9 +6408,6 @@ ACMD(do_status) {
     }
     if (char_condition_has(ch, "special_pose")) {
       send_to_char(ch, "You are feeling confident from your pose earlier.\r\n");
-    }
-    if (is_affected(ch, AFF_HYDROZAP)) {
-      send_to_char(ch, "You are effected by Kanso Suru.\r\n");
     }
     if (char_stat_get(ch, "drunk") > 15)
       send_to_char(ch, "You are extremely drunk.\r\n");
@@ -7114,7 +7111,7 @@ ACMD(do_who) {
         continue;
       if (showclass && !(showclass & (1 << GET_CLASS(tch))))
         continue;
-      if (showgroup && (!tch->master || !AFF_FLAGGED(tch, AFF_GROUP)))
+      if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
         continue;
       for (i = 0; i < num_ranks; i++)
         if (GET_ADMLEVEL(tch) >= rank[i].min_level &&
@@ -7165,9 +7162,9 @@ ACMD(do_who) {
         continue;
       if (showclass && !(showclass & (1 << GET_CLASS(tch))))
         continue;
-      if (showgroup && (!tch->master || !AFF_FLAGGED(tch, AFF_GROUP)))
+      if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
         continue;
-      if (showleader && (!tch->followers || !AFF_FLAGGED(tch, AFF_GROUP)))
+      if (showleader && (!tch->followers || !char_condition_has(tch, "group")))
         continue;
 
       if (short_list) {

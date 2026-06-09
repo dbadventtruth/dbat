@@ -466,7 +466,7 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
   if (ch == NULL)
     return;
 
-  if (!AFF_FLAGGED(ch, AFF_GROUP))
+  if (!char_condition_has(ch, "group"))
     return;
   if (ch->master != NULL)
     k = ch->master;
@@ -477,14 +477,14 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
     tch = f->follower;
     if (char_room_get(tch) != char_room_get(ch))
       continue;
-    if (!AFF_FLAGGED(tch, AFF_GROUP))
+    if (!char_condition_has(tch, "group"))
       continue;
     if (ch == tch)
       continue;
     perform_mag_groups(level, ch, tch, spellnum);
   }
 
-  if ((k != ch) && AFF_FLAGGED(k, AFF_GROUP))
+  if ((k != ch) && char_condition_has(k, "group"))
     perform_mag_groups(level, ch, k, spellnum);
   perform_mag_groups(level, ch, ch, spellnum);
 }

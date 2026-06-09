@@ -1,7 +1,7 @@
 return {
     id = "poison",
     name = "Poison",
-    tags = { "poison", "affliction" },
+    tags = { "poison", "affliction", "healthy_clear" },
     persistent = false,
     modifiers = function()
         return {

@@ -35,16 +35,6 @@ struct pclean_criteria_data {
   int days;  /* time limit in days			*/
 };
 
-/* Char's abilities. */
-struct abil_data {
-  int8_t str; /* New stats can go over 18 freely, no more /xx */
-  int8_t intel;
-  int8_t wis;
-  int8_t dex;
-  int8_t con;
-  int8_t cha;
-};
-
 /* memory structure for characters */
 struct memory_rec_struct {
   int32_t id;
@@ -200,8 +190,6 @@ struct char_data {
 
   // magic music
   short song;
-
-  int group_kills;
 
   time_t lastint; // last interest time
 

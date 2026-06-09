@@ -10,7 +10,7 @@ end
 return {
     id = "wither",
     name = "Wither",
-    tags = { "wither" },
+    tags = { "wither", "healthy_clear" },
     persistent = true,
     modifiers = modifiers,
 }

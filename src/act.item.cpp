@@ -2730,7 +2730,7 @@ static void get_check_money(struct char_data *ch, struct obj_data *obj) {
     send_to_char(ch, "There was 1 zenni.\r\n");
   } else {
     send_to_char(ch, "There were %d zenni.\r\n", value);
-    if (IS_AFFECTED(ch, AFF_GROUP) && PRF_FLAGGED(ch, PRF_AUTOSPLIT)) {
+    if (char_condition_has(ch, "group") && PRF_FLAGGED(ch, PRF_AUTOSPLIT)) {
       char split[MAX_INPUT_LENGTH];
       sprintf(split, "%d", value);
       do_split(ch, split, 0, 0);
@@ -2768,7 +2768,7 @@ static void perform_get_from_container(struct char_data *ch,
           if (GET_BONUS(ch, BONUS_FIREPRONE) > 0)
             decCurHealthPercentFloored(ch, 1, 1);
 
-          SET_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+          char_condition_add(ch, "burned", "attack", "fiery");
           act("@RYou are burned by it!@n", TRUE, ch, 0, 0, TO_CHAR);
           act("@R$n@R is burned by it!@n", TRUE, ch, 0, 0, TO_ROOM);
         }
@@ -2867,7 +2867,7 @@ int perform_get_from_room(struct char_data *ch, struct obj_data *obj) {
         if (GET_BONUS(ch, BONUS_FIREPRONE) > 0)
           decCurHealthPercentFloored(ch, 1, 1);
 
-        SET_BIT_AR(AFF_FLAGS(ch), AFF_BURNED);
+        char_condition_add(ch, "burned", "attack", "fiery");
         act("@RYou are burned by it!@n", TRUE, ch, 0, 0, TO_CHAR);
         act("@R$n@R is burned by it!@n", TRUE, ch, 0, 0, TO_ROOM);
       }
@@ -3467,7 +3467,7 @@ static void perform_give(struct char_data *ch, struct char_data *vict,
       if (GET_BONUS(vict, BONUS_FIREPRONE) > 0)
         decCurHealthPercentFloored(ch, 1, 1);
 
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+      char_condition_add(vict, "burned", "attack", "fiery");
       act("@RYou are burned by it!@n", TRUE, vict, 0, 0, TO_CHAR);
       act("@R$n@R is burned by it!@n", TRUE, vict, 0, 0, TO_ROOM);
     }

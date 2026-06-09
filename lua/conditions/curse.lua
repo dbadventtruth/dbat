@@ -1,7 +1,7 @@
 return {
     id = "curse",
     name = "Curse",
-    tags = { "curse", "affliction" },
+    tags = { "curse", "affliction", "healthy_clear" },
     persistent = false,
     modifiers = function()
         return {

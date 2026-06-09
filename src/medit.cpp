@@ -820,8 +820,6 @@ void medit_parse(struct descriptor_data *d, char *arg) {
     else if (i <= NUM_AFF_FLAGS)
       TOGGLE_BIT_AR(AFF_FLAGS(OLC_MOB(d)), i);
     /* Remove unwanted bits right away. */
-    REMOVE_BIT_AR(AFF_FLAGS(OLC_MOB(d)),
-                  AFF_CHARM | AFF_GROUP | AFF_SLEEP);
     medit_disp_aff_flags(d);
     return;
     /*-------------------------------------------------------------------*/

@@ -792,7 +792,7 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
   }
 
   for (f = ch->followers; f; f = f->next) {
-    if (!AFF_FLAGGED(f->follower, AFF_GROUP)) {
+    if (!char_condition_has(f->follower, "group")) {
       continue;
     } else {
       if (GET_COMBINE(f->follower) != GET_COMBINE(ch)) {
@@ -846,11 +846,11 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
     }
   }
   if (burn == TRUE) {
-    if (!AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 &&
+    if (!char_condition_has(vict, "burned") && rand_number(1, 4) == 3 &&
         !IS_DEMON(vict) && !GET_BONUS(vict, BONUS_FIREPROOF)) {
       send_to_char(vict, "@RYou are burned by the attack!@n\r\n");
       send_to_char(ch, "@RThey are burned by the attack!@n\r\n");
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+      char_condition_add(vict, "burned", "attack", "fiery");
     } else if (GET_BONUS(vict, BONUS_FIREPROOF) || IS_DEMON(vict)) {
       send_to_char(ch, "@RThey appear to be fireproof!@n\r\n");
     } else if (GET_BONUS(vict, BONUS_FIREPRONE)) {
@@ -858,7 +858,7 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
           vict,
           "@RYou are extremely flammable and are burned by the attack!@n\r\n");
       send_to_char(ch, "@RThey are easily burned!@n\r\n");
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_BURNED);
+      char_condition_add(vict, "burned", "attack", "fiery");
     }
   }
   if (shocked == TRUE) {
@@ -2110,7 +2110,7 @@ void huge_update() {
               if (vict == TARGET(k)) {
                 return true;
               }
-              if (AFF_FLAGGED(vict, AFF_GROUP)) {
+              if (char_condition_has(vict, "group")) {
                 if (vict->master == ch) {
                   return true;
                 } else if (ch->master == vict) {
@@ -2128,7 +2128,7 @@ void huge_update() {
               dge = handle_dodge(vict);
               if (((!IS_NPC(vict) && IS_ICER(vict) &&
                     rand_number(1, 30) >= 28) ||
-                   AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+                   char_condition_has(vict, "zanzoken")) &&
                   (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
                 act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
                     0, vict, TO_CHAR);
@@ -2136,7 +2136,7 @@ void huge_update() {
                     vict, TO_VICT);
                 act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
                     0, vict, TO_NOTVICT);
-                REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+                char_condition_remove(vict, "zanzoken", "zanzoken_over");
                 pcost(vict, 0, GET_MAX_HIT(vict) / 200);
                 hurt(0, 0, ch, vict, NULL, 0, 1);
                 return true;
@@ -2219,7 +2219,7 @@ void huge_update() {
             if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
               return true;
             }
-            if (AFF_FLAGGED(vict, AFF_GROUP) &&
+            if (char_condition_has(vict, "group") &&
                 (vict->master == ch || ch->master == vict)) {
               return true;
             }
@@ -2231,7 +2231,7 @@ void huge_update() {
             }
             dge = handle_dodge(vict);
             if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-                 AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+                 char_condition_has(vict, "zanzoken")) &&
                 (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
               act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
                   vict, TO_CHAR);
@@ -2239,7 +2239,7 @@ void huge_update() {
                   vict, TO_VICT);
               act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
                   vict, TO_NOTVICT);
-              REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+              char_condition_remove(vict, "zanzoken", "zanzoken_over");
               pcost(vict, 0, GET_MAX_HIT(vict) / 200);
               hurt(0, 0, ch, vict, NULL, 0, 1);
               return true;
@@ -2318,7 +2318,7 @@ void huge_update() {
               if (vict == TARGET(k)) {
                 return true;
               }
-              if (AFF_FLAGGED(vict, AFF_GROUP)) {
+              if (char_condition_has(vict, "group")) {
                 if (vict->master == ch) {
                   return true;
                 } else if (ch->master == vict) {
@@ -2336,7 +2336,7 @@ void huge_update() {
               dge = handle_dodge(vict);
               if (((!IS_NPC(vict) && IS_ICER(vict) &&
                     rand_number(1, 30) >= 28) ||
-                   AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+                   char_condition_has(vict, "zanzoken")) &&
                   (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
                 act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
                     0, vict, TO_CHAR);
@@ -2344,7 +2344,7 @@ void huge_update() {
                     vict, TO_VICT);
                 act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
                     0, vict, TO_NOTVICT);
-                REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+                char_condition_remove(vict, "zanzoken", "zanzoken_over");
                 pcost(vict, 0, GET_MAX_HIT(vict) / 200);
                 return true;
               } else if (dge + rand_number(-10, 5) > skill) {
@@ -2426,7 +2426,7 @@ void huge_update() {
             if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
               return true;
             }
-            if (AFF_FLAGGED(vict, AFF_GROUP) &&
+            if (char_condition_has(vict, "group") &&
                 (vict->master == ch || ch->master == vict)) {
               return true;
             }
@@ -2438,7 +2438,7 @@ void huge_update() {
             }
             dge = handle_dodge(vict);
             if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-                 AFF_FLAGGED(vict, AFF_ZANZOKEN)) &&
+                 char_condition_has(vict, "zanzoken")) &&
                 (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
               act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
                   vict, TO_CHAR);
@@ -2446,7 +2446,7 @@ void huge_update() {
                   vict, TO_VICT);
               act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
                   vict, TO_NOTVICT);
-              REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_ZANZOKEN);
+              char_condition_remove(vict, "zanzoken", "zanzoken_over");
               pcost(vict, 0, GET_MAX_HIT(vict) / 200);
               return true;
             } else if (dge + rand_number(-10, 5) > skill) {
