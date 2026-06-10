@@ -29,6 +29,7 @@
 #include "room_macros.h"
 #include "util_macros.h"
 #include "vehicles.h"
+#include "zone_api.h"
 
 #include "iterate.hpp"
 
@@ -276,6 +277,8 @@ void char_from_room(struct char_data *ch) {
 
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     room_light_mod(char_room_get(ch), -1);
+  if (!IS_NPC(ch))
+    zone_player_count_dec(char_zone_vnum_get(ch));
   auto room = char_room_get(ch);
   REMOVE_FROM_LIST(ch, room->people, next_in_room, temp);
   IN_ROOM(ch) = NOWHERE;
@@ -305,6 +308,8 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   ch->next_in_room = rm->people;
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
+  if (!IS_NPC(ch))
+    zone_player_count_inc(char_zone_vnum_get(ch));
 
   char_equipment_iterate(ch, [&](auto i, auto eq) {
     if (GET_OBJ_TYPE(eq) == ITEM_LIGHT)

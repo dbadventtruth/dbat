@@ -45,6 +45,10 @@ void zone_command_sarg1_set(struct reset_com *cmd, const char *value);
 const char *zone_command_sarg2_get(struct reset_com *cmd);
 void zone_command_sarg2_set(struct reset_com *cmd, const char *value);
 
+void zone_player_count_inc(zone_vnum vnum);
+void zone_player_count_dec(zone_vnum vnum);
+int zone_player_count_get(zone_vnum vnum);
+
 #ifdef __cplusplus
 }
 #endif

@@ -62,6 +62,7 @@
 #include "stringutils.h"
 #include "util_macros.h"
 #include "weather_db.h"
+#include "zone_api.h"
 
 #include "iterate.hpp"
 
@@ -1320,6 +1321,7 @@ static void tick_charge(struct char_data *ch) {
 
 void fight_stack() {
   for (auto tch = character_list; tch; tch = tch->next) {
+    if (!zone_player_count_get(char_zone_vnum_get(tch))) continue;
     auto ch = tch;
 
     reset_fighting_position(ch);

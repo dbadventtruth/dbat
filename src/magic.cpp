@@ -57,6 +57,7 @@
 #include "skills.h"
 #include "spells.h"
 #include "util_macros.h"
+#include "zone_api.h"
 
 /* local functions */
 int mag_materials(struct char_data *ch, int item0, int item1, int item2,
@@ -70,6 +71,7 @@ void affect_update(void) {
   struct char_data *i;
 
   for (i = affect_list; i; i = i->next_affect) {
+    if (!zone_player_count_get(char_zone_vnum_get(i))) continue;
     for (af = i->affected; af; af = next) {
       next = af->next;
       if (af->duration >= 1)

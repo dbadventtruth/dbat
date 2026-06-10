@@ -47,6 +47,7 @@
 #include "spells.h"
 
 #include "object_db.h"
+#include "zone_api.h"
 
 #include <cstring>
 #include <vector>
@@ -218,6 +219,7 @@ static void mob_spec_update() {
 
 static void mob_scavenger_update() {
   char_for_each("mob_scavenger", [](struct char_data *ch) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) return;
     if (!AWAKE(ch) || FIGHTING(ch))
       return;
     if (!IS_HUMANOID(ch) || MOB_FLAGGED(ch, MOB_NOSCAVENGER) || MOB_FLAGGED(ch, MOB_NOKILL))
@@ -265,33 +267,39 @@ static void mob_scavenger_update() {
 }
 
 static void mob_wander_update() {
-  char_for_each("mob_wander", [](struct char_data *ch) {
+  std::vector<int> available_dirs(12, 0);
+  size_t available = 0;
+  char_iterate_subscriptions("mob_wander", [&](struct char_data *ch) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) return true;
     if (!AWAKE(ch) || FIGHTING(ch))
-      return;
+      return true;
     if (MOB_FLAGGED(ch, MOB_SENTINEL) || GET_POS(ch) != POS_STANDING)
-      return;
-    if (AFF_FLAGGED(ch, AFF_TAMED) || ABSORBBY(ch))
-      return;
+      return true;
+    if (AFF_FLAGGED(ch, AFF_TAMED) || ABSORBBY(ch) || IS_AFFECTED(ch, AFF_PARALYZE))
+      return true;
     if (rand_number(1, 3) != 3)
-      return;
+      return true;
+
+    available = 0;
 
     auto zone = char_zone_get(ch);
-    std::vector<int> available_dirs;
     room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
       if (auto dest = char_can_go_exit(ch, exit); dest &&
           !room_flagged(dest, ROOM_NOMOB) && !room_flagged(dest, ROOM_DEATH) &&
           (!MOB_FLAGGED(ch, MOB_STAY_ZONE) || (room_zone_get(dest) == zone))) {
-        available_dirs.push_back(dir);
+        available_dirs[available++] = dir;
       }
       return true;
     });
-    if (!available_dirs.empty() && !IS_AFFECTED(ch, AFF_PARALYZE) && block_calc(ch))
-      perform_move(ch, available_dirs[rand_number(0, available_dirs.size() - 1)], 1);
+    if (available > 0 && block_calc(ch))
+      perform_move(ch, available_dirs[rand_number(0, available - 1)], 1);
+    return true;
   });
 }
 
 static void mob_aggressive_update() {
   char_for_each("mob_aggressive", [](struct char_data *ch) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) return;
     if (!AWAKE(ch) || !MOB_FLAGGED(ch, MOB_AGGRESSIVE) || IS_AFFECTED(ch, AFF_PARALYZE))
       return;
     int spot_roll = rand_number(1, GET_LEVEL(ch) + 10);
@@ -390,6 +398,7 @@ static void mob_multiform_update() {
 
 static void mob_runtime_update() {
   char_for_each("mob_active", [](struct char_data *ch) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) return;
     if (ABSORBBY(ch) && rand_number(1, 3) == 3)
       do_escape(ch, 0, 0, 0);
     if (GET_POS(ch) == POS_SLEEPING && rand_number(1, 3) == 3)
@@ -425,6 +434,7 @@ static void mob_shopkeeper_update() {
 
 static void mob_memory_update() {
   char_for_each("mob_memory", [](struct char_data *ch) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) return;
     if (!AWAKE(ch) || !IS_HUMANOID(ch) || !MEMORY(ch))
       return;
     if (MOB_FLAGGED(ch, MOB_DUMMY) || IS_AFFECTED(ch, AFF_PARALYZE) || FIGHTING(ch))
@@ -464,6 +474,7 @@ static void mob_combat_taunt() {
 
 static void mob_helper_update() {
   char_for_each("mob_helper", [](struct char_data *ch) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) return;
     if (!AWAKE(ch) || !MOB_FLAGGED(ch, MOB_HELPER))
       return;
     if (AFF_FLAGGED(ch, AFF_BLIND) || AFF_FLAGGED(ch, AFF_CHARM))
@@ -514,17 +525,51 @@ static void huge_attack_update() {
 }
 
 void mobile_activity(void) {
-  mob_spec_update();
-  mob_scavenger_update();
-  mob_wander_update();
-  mob_aggressive_update();
-  mob_multiform_update();
-  mob_runtime_update();
-  mob_shopkeeper_update();
-  mob_memory_update();
-  mob_combat_taunt();
-  mob_helper_update();
-  huge_attack_update();
+  struct PhaseTime { const char *name; double ms; };
+  constexpr double SLOW_PHASE_MS = 10.0;
+  PhaseTime phases[12];
+  size_t np = 0;
+
+  auto mono_now = []() -> struct timespec {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts;
+  };
+  auto elapsed_ms = [](const struct timespec &t0, const struct timespec &t1) -> double {
+    return (t1.tv_sec - t0.tv_sec) * 1000.0 + (t1.tv_nsec - t0.tv_nsec) / 1.0e6;
+  };
+  const struct timespec t_start = mono_now();
+
+  auto time_phase = [&](const char *label, auto fn) {
+    const struct timespec t = mono_now();
+    fn();
+    phases[np++] = {label, elapsed_ms(t, mono_now())};
+  };
+
+  time_phase("mob_spec_update",      [&]{ mob_spec_update(); });
+  time_phase("mob_scavenger_update", [&]{ mob_scavenger_update(); });
+  time_phase("mob_wander_update",    [&]{ mob_wander_update(); });
+  time_phase("mob_aggressive_update",[&]{ mob_aggressive_update(); });
+  time_phase("mob_multiform_update", [&]{ mob_multiform_update(); });
+  time_phase("mob_runtime_update",   [&]{ mob_runtime_update(); });
+  time_phase("mob_shopkeeper_update",[&]{ mob_shopkeeper_update(); });
+  time_phase("mob_memory_update",    [&]{ mob_memory_update(); });
+  time_phase("mob_combat_taunt",     [&]{ mob_combat_taunt(); });
+  time_phase("mob_helper_update",    [&]{ mob_helper_update(); });
+  time_phase("huge_attack_update",   [&]{ huge_attack_update(); });
+
+  const double total_ms = elapsed_ms(t_start, mono_now());
+  bool any_slow = false;
+  for (size_t i = 0; i < np; ++i)
+    if (phases[i].ms >= SLOW_PHASE_MS) { any_slow = true; break; }
+  if (any_slow) {
+    char buf[512];
+    int pos = snprintf(buf, sizeof(buf), "SLOW mobile_activity %.0fms:", total_ms);
+    for (size_t i = 0; i < np && pos < static_cast<int>(sizeof(buf)) - 32; ++i)
+      if (phases[i].ms >= 1.0)
+        pos += snprintf(buf + pos, sizeof(buf) - pos, " %s=%.0fms", phases[i].name, phases[i].ms);
+    mud_log("%s", buf);
+  }
 }
 
 /* This handles NPCs taunting opponents or reacting to combat. */

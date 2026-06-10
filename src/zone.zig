@@ -2,17 +2,36 @@ const cdb = @import("cdb");
 const std = @import("std");
 
 const ZoneMap = std.AutoHashMap(cdb.zone_vnum, *cdb.zone_data);
+const PlayerCountMap = std.AutoHashMap(cdb.zone_vnum, i32);
 
 var allocator: std.mem.Allocator = undefined;
 var zone_map: ZoneMap = undefined;
+var zone_players: PlayerCountMap = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     zone_map = ZoneMap.init(allocator);
+    zone_players = PlayerCountMap.init(allocator);
 }
 
 pub fn deinit() void {
     zone_map.deinit();
+    zone_players.deinit();
+}
+
+pub export fn zone_player_count_inc(vnum: cdb.zone_vnum) void {
+    const entry = zone_players.getOrPutValue(vnum, 0) catch return;
+    entry.value_ptr.* += 1;
+}
+
+pub export fn zone_player_count_dec(vnum: cdb.zone_vnum) void {
+    if (zone_players.getPtr(vnum)) |ptr| {
+        if (ptr.* > 0) ptr.* -= 1;
+    }
+}
+
+pub export fn zone_player_count_get(vnum: cdb.zone_vnum) c_int {
+    return zone_players.get(vnum) orelse 0;
 }
 
 const ZoneIterator = struct {

@@ -5,6 +5,7 @@ const bitflags = @import("flags.zig");
 const obj_api = @import("object_api.zig");
 const lua_api = @import("lua_api.zig");
 const modifiers_api = @import("modifiers_api.zig");
+const zone_mod = @import("zone.zig");
 
 pub const TransformData = struct {
     id: []const u8,
@@ -1070,6 +1071,7 @@ pub export fn char_condition_update_all(kind: ?[*:0]const u8, pulses: i64, secon
     for (condition_update_ids.items) |id| {
         const ch = characters.char_by_id(id) orelse continue;
         if (cdb.char_is_extracted(ch)) continue;
+        if (zone_mod.zone_player_count_get(char_zone_vnum_get(ch)) == 0) continue;
         char_condition_update_context(ch, update_kind, pulses, seconds);
     }
 }
