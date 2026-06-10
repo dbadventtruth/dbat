@@ -273,25 +273,18 @@ static int pick_n_throw(struct char_data *ch, char *buf) {
 }
 
 static void mob_attack(struct char_data *ch, char *buf) {
-
   int power = rand_number(1, 5);
   int bonus = GET_LEVEL(ch) * 0.1;
   int special = 0;
   char buf2[MAX_INPUT_LENGTH];
 
   power += bonus;
-
   if (rand_number(1, 4) == 4)
     power += 10;
-
   if (power > 20)
     power = 20;
 
-  if (GET_CLASS(ch) == CLASS_NPC_COMMONER)
-    special = 0;
-
   int dragonpass = TRUE;
-
   if (IS_DRAGON(ch)) {
     if (GET_MOB_VNUM(ch) == 81 || GET_MOB_VNUM(ch) == 82 ||
         GET_MOB_VNUM(ch) == 83 || GET_MOB_VNUM(ch) == 84 ||
@@ -313,19 +306,17 @@ static void mob_attack(struct char_data *ch, char *buf) {
 
   if ((getCurKI(ch)) >= GET_MAX_MANA(ch) * 0.05 && IS_HUMANOID(ch) &&
       (!IS_DRAGON(ch) || dragonpass == TRUE)) {
+    auto mob_charge_tick = [&]() {
+      ch->mobcharge += 1;
+      if (GET_LEVEL(ch) > 80)
+        ch->mobcharge += 1;
+    };
     if (ch->mobcharge <= 0 && rand_number(1, 10) >= 8) {
       act("@wAn aura flares up around @R$n@w!@n", TRUE, ch, 0, 0, TO_ROOM);
-      ch->mobcharge += 1;
-      if (GET_LEVEL(ch) > 80) {
-        ch->mobcharge += 1;
-      }
+      mob_charge_tick();
     } else if (ch->mobcharge <= 5) {
-      act("@wThe aura burns brighter around @R$n@w!@n", TRUE, ch, 0, 0,
-          TO_ROOM);
-      ch->mobcharge += 1;
-      if (GET_LEVEL(ch) > 80) {
-        ch->mobcharge += 1;
-      }
+      act("@wThe aura burns brighter around @R$n@w!@n", TRUE, ch, 0, 0, TO_ROOM);
+      mob_charge_tick();
     } else if (ch->mobcharge == 6) {
       act("@wThe aura around @R$n@w flashes!@n", TRUE, ch, 0, 0, TO_ROOM);
       ch->mobcharge += 1;
@@ -333,12 +324,11 @@ static void mob_attack(struct char_data *ch, char *buf) {
     }
   }
 
-  if (IS_HUMANOID(ch) && dragonpass == TRUE) { /* Is a humanoid mob */
-    if (AFF_FLAGGED(ch, AFF_PARALYZE)) {
+  if (IS_HUMANOID(ch) && dragonpass == TRUE) {
+    if (AFF_FLAGGED(ch, AFF_PARALYZE) || AFF_FLAGGED(ch, AFF_ENSNARED))
       return;
-    } else if (AFF_FLAGGED(ch, AFF_ENSNARED)) {
-      return;
-    } else if (special < 100) { /* Normal physical attack */
+
+    if (special < 100) {
       if (GET_CLASS(ch) == CLASS_SHADOWDANCER && rand_number(1, 3) == 3) {
         sprintf(buf2, "ass %s", buf);
         do_throw(ch, buf2, 0, 0);
@@ -357,22 +347,17 @@ static void mob_attack(struct char_data *ch, char *buf) {
                  rand_number(1, 20) == 20) {
         do_regenerate(ch, "25", 0, 0);
       } else if (pick_n_throw(ch, buf)) {
-        /* This determines if they throw and also handles it */
+        /* handled */
       } else if (MOB_FLAGGED(ch, MOB_KNOWKAIO) && rand_number(1, 50) >= 46) {
-        if (rand_number(1, 10) == 10) {
+        if (rand_number(1, 10) == 10)
           do_kaioken(ch, "20", 0, 0);
-        } else if (rand_number(1, 10) >= 8) {
+        else if (rand_number(1, 10) >= 8)
           do_kaioken(ch, "10", 0, 0);
-        } else {
+        else
           do_kaioken(ch, "5", 0, 0);
-        }
       } else {
         switch (power) {
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 5:
+        case 1: case 2: case 3: case 4: case 5:
           if (GET_EQ(ch, WEAR_WIELD1))
             do_attack(ch, buf, 0, 0);
           else if (rand_number(1, 5) == 5)
@@ -382,9 +367,7 @@ static void mob_attack(struct char_data *ch, char *buf) {
           else
             do_punch(ch, buf, 0, 0);
           break;
-        case 6:
-        case 7:
-        case 8:
+        case 6: case 7: case 8:
           if (GET_EQ(ch, WEAR_WIELD1))
             do_attack(ch, buf, 0, 0);
           else if (rand_number(1, 5) == 5)
@@ -394,8 +377,7 @@ static void mob_attack(struct char_data *ch, char *buf) {
           else
             do_kick(ch, buf, 0, 0);
           break;
-        case 9:
-        case 10:
+        case 9: case 10:
           if (rand_number(1, 5) == 5)
             do_knee(ch, buf, 0, 0);
           else if (rand_number(1, 10) == 10)
@@ -403,8 +385,7 @@ static void mob_attack(struct char_data *ch, char *buf) {
           else
             do_elbow(ch, buf, 0, 0);
           break;
-        case 11:
-        case 12:
+        case 11: case 12:
           if (rand_number(1, 5) == 5)
             do_elbow(ch, buf, 0, 0);
           else if (rand_number(1, 10) == 10)
@@ -414,8 +395,7 @@ static void mob_attack(struct char_data *ch, char *buf) {
           else
             do_knee(ch, buf, 0, 0);
           break;
-        case 13:
-        case 14:
+        case 13: case 14:
           if ((IS_BARDOCK(ch) || IS_KURZAK(ch)) && rand_number(1, 2) == 2)
             do_head(ch, buf, 0, 0);
           else if ((IS_ICER(ch) || IS_BIO(ch)) && rand_number(1, 2) == 2)
@@ -425,8 +405,7 @@ static void mob_attack(struct char_data *ch, char *buf) {
           else
             do_uppercut(ch, buf, 0, 0);
           break;
-        case 15:
-        case 16:
+        case 15: case 16:
           if ((IS_BARDOCK(ch) || IS_KURZAK(ch)) && rand_number(1, 2) == 2)
             do_head(ch, buf, 0, 0);
           else if ((IS_ICER(ch) || IS_BIO(ch)) && rand_number(1, 2) == 2)
@@ -436,279 +415,168 @@ static void mob_attack(struct char_data *ch, char *buf) {
           else
             do_roundhouse(ch, buf, 0, 0);
           break;
-        case 17:
-        case 18:
+        case 17: case 18:
           do_slam(ch, buf, 0, 0);
           break;
-        case 19:
-        case 20:
+        case 19: case 20:
           do_heeldrop(ch, buf, 0, 0);
           break;
         }
       }
     } else {
       mob_specials_used += 1;
+
+      auto fire_charged = [&](auto fn) {
+        if (ch->mobcharge == 7) {
+          ch->mobcharge = 0;
+          fn();
+        }
+      };
+      auto dragon_or_charged = [&](auto fn) {
+        if (IS_DRAGON(ch) && rand_number(1, 4) == 4)
+          do_breath(ch, buf, 0, 0);
+        else
+          fire_charged(fn);
+      };
+
       switch (power) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        if (special > 80)
-          do_zanzoken(ch, buf, 0, 0);
-        if (ch->mobcharge == 7) {
-          ch->mobcharge = 0;
-          do_kiball(ch, buf, 0, 0);
-        }
+      case 1: case 2: case 3: case 4:
+        if (special > 80) do_zanzoken(ch, buf, 0, 0);
+        fire_charged([&]{ do_kiball(ch, buf, 0, 0); });
         break;
-      case 5:
-      case 6:
-      case 7:
-      case 8:
-        if (special > 80)
-          do_zanzoken(ch, buf, 0, 0);
-        if (ch->mobcharge == 7) {
-          ch->mobcharge = 0;
-          do_kiblast(ch, buf, 0, 0);
-        }
+      case 5: case 6: case 7: case 8:
+        if (special > 80) do_zanzoken(ch, buf, 0, 0);
+        fire_charged([&]{ do_kiblast(ch, buf, 0, 0); });
         break;
-      case 9:
-      case 10:
-      case 11:
-        if (special > 80)
-          do_zanzoken(ch, buf, 0, 0);
-        if (IS_DRAGON(ch) && rand_number(1, 4) == 4) {
+      case 9: case 10: case 11:
+        if (special > 80) do_zanzoken(ch, buf, 0, 0);
+        dragon_or_charged([&]{ do_beam(ch, buf, 0, 0); });
+        break;
+      case 12: case 13: case 14:
+        if (special > 80) do_zanzoken(ch, buf, 0, 0);
+        dragon_or_charged([&]{ do_renzo(ch, buf, 0, 0); });
+        break;
+      case 15: case 16:
+        dragon_or_charged([&]{ do_tsuihidan(ch, buf, 0, 0); });
+        break;
+      case 17: case 18:
+        dragon_or_charged([&]{ do_shogekiha(ch, buf, 0, 0); });
+        break;
+      case 19: case 20:
+        if (IS_DRAGON(ch))
           do_breath(ch, buf, 0, 0);
-        } else {
-          if (ch->mobcharge == 7) {
-            ch->mobcharge = 0;
-            do_beam(ch, buf, 0, 0);
-          }
-        }
-        break;
-      case 12:
-      case 13:
-      case 14:
-        if (special > 80)
-          do_zanzoken(ch, buf, 0, 0);
-        if (IS_DRAGON(ch) && rand_number(1, 4) == 4) {
-          do_breath(ch, buf, 0, 0);
-        } else {
-          if (ch->mobcharge == 7) {
-            ch->mobcharge = 0;
-            do_renzo(ch, buf, 0, 0);
-          }
-        }
-        break;
-      case 15:
-      case 16:
-        if (IS_DRAGON(ch) && rand_number(1, 4) == 4) {
-          do_breath(ch, buf, 0, 0);
-        } else {
-          if (ch->mobcharge == 7) {
-            ch->mobcharge = 0;
-            do_tsuihidan(ch, buf, 0, 0);
-          }
-        }
-        break;
-      case 17:
-      case 18:
-        if (IS_DRAGON(ch) && rand_number(1, 4) == 4) {
-          do_breath(ch, buf, 0, 0);
-        } else {
-          if (ch->mobcharge == 7) {
-            ch->mobcharge = 0;
-            do_shogekiha(ch, buf, 0, 0);
-          }
-        }
-        break;
-      case 19:
-      case 20:
-        if (IS_DRAGON(ch)) {
-          do_breath(ch, buf, 0, 0);
-        }
-        if (ch->mobcharge == 7) {
-          ch->mobcharge = 0;
+        fire_charged([&]{
           switch (GET_CLASS(ch)) {
           case CLASS_ROSHI:
-            if (special >= 100)
-              do_kakusanha(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_kienzan(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_kamehameha(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_kakusanha(ch, buf, 0, 0);
+            else if (special >= 80) do_kienzan(ch, buf, 0, 0);
+            else if (special >= 70) do_kamehameha(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_FRIEZA:
-            if (special >= 100)
-              do_deathball(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_kienzan(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_deathbeam(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_deathball(ch, buf, 0, 0);
+            else if (special >= 80) do_kienzan(ch, buf, 0, 0);
+            else if (special >= 70) do_deathbeam(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_KRANE:
-            if (special >= 100)
-              do_tribeam(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_hass(ch, NULL, 0, 0);
-            else if (special >= 70)
-              do_dodonpa(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_tribeam(ch, buf, 0, 0);
+            else if (special >= 80) do_hass(ch, NULL, 0, 0);
+            else if (special >= 70) do_dodonpa(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_PICCOLO:
-            if (special >= 100)
-              do_scatter(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_sbc(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_masenko(ch, buf, 0, 0);
-            else if (special >= 100)
-              do_balefire(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_scatter(ch, buf, 0, 0);
+            else if (special >= 80) do_sbc(ch, buf, 0, 0);
+            else if (special >= 70) do_masenko(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_BARDOCK:
-            if (special >= 100)
-              do_final(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_bigbang(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_galikgun(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_final(ch, buf, 0, 0);
+            else if (special >= 80) do_bigbang(ch, buf, 0, 0);
+            else if (special >= 70) do_galikgun(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_ANDSIX:
-            if (special >= 100)
-              do_hellflash(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_kousengan(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_dualbeam(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_hellflash(ch, buf, 0, 0);
+            else if (special >= 80) do_kousengan(ch, buf, 0, 0);
+            else if (special >= 70) do_dualbeam(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_NAIL:
-            if (special >= 100)
-              do_regenerate(ch, "50", 0, 0);
-            else if (special >= 80)
-              do_heal(ch, "self", 0, 0);
-            else if (special >= 70)
-              do_masenko(ch, buf, 0, 0);
-            else
-              do_zanzoken(ch, NULL, 0, 0);
+            if (special >= 100) do_regenerate(ch, "50", 0, 0);
+            else if (special >= 80) do_heal(ch, "self", 0, 0);
+            else if (special >= 70) do_masenko(ch, buf, 0, 0);
+            else do_zanzoken(ch, NULL, 0, 0);
             break;
           case CLASS_KURZAK:
-            if (special >= 100)
-              do_ensnare(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_seishou(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_renzo(ch, buf, 0, 0);
-            else if (special >= 50)
-              do_barrier(ch, "40", 0, 0);
-            else
-              do_barrier(ch, "25", 0, 0);
+            if (special >= 100) do_ensnare(ch, buf, 0, 0);
+            else if (special >= 80) do_seishou(ch, buf, 0, 0);
+            else if (special >= 70) do_renzo(ch, buf, 0, 0);
+            else if (special >= 50) do_barrier(ch, "40", 0, 0);
+            else do_barrier(ch, "25", 0, 0);
             break;
           case CLASS_JINTO:
-            if (special >= 100)
-              do_nova(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_breaker(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_trip(ch, buf, 0, 0);
-            else
-              do_zanzoken(ch, "40", 0, 0);
+            if (special >= 100) do_nova(ch, buf, 0, 0);
+            else if (special >= 80) do_breaker(ch, buf, 0, 0);
+            else if (special >= 70) do_trip(ch, buf, 0, 0);
+            else do_zanzoken(ch, "40", 0, 0);
             break;
           case CLASS_TSUNA:
-            if (special >= 100)
-              do_koteiru(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_razor(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_spike(ch, buf, 0, 0);
-            else
-              do_barrier(ch, "20", 0, 0);
+            if (special >= 100) do_koteiru(ch, buf, 0, 0);
+            else if (special >= 80) do_razor(ch, buf, 0, 0);
+            else if (special >= 70) do_spike(ch, buf, 0, 0);
+            else do_barrier(ch, "20", 0, 0);
             break;
           case CLASS_TAPION:
-            if (special >= 100)
-              do_pslash(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_ddslash(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_tslash(ch, buf, 0, 0);
-            else
-              do_zanzoken(ch, "40", 0, 0);
+            if (special >= 100) do_pslash(ch, buf, 0, 0);
+            else if (special >= 80) do_ddslash(ch, buf, 0, 0);
+            else if (special >= 70) do_tslash(ch, buf, 0, 0);
+            else do_zanzoken(ch, "40", 0, 0);
             break;
           case CLASS_KABITO:
-            if (special >= 100)
-              do_pbarrage(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_psyblast(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_heal(ch, buf, 0, 0);
-            else
-              do_zanzoken(ch, "40", 0, 0);
+            if (special >= 100) do_pbarrage(ch, buf, 0, 0);
+            else if (special >= 80) do_psyblast(ch, buf, 0, 0);
+            else if (special >= 70) do_heal(ch, buf, 0, 0);
+            else do_zanzoken(ch, "40", 0, 0);
             break;
           case CLASS_DABURA:
-            if (special >= 100)
-              do_hellspear(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_honoo(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_fireshield(ch, buf, 0, 0);
-            else
-              do_zanzoken(ch, "40", 0, 0);
+            if (special >= 100) do_hellspear(ch, buf, 0, 0);
+            else if (special >= 80) do_honoo(ch, buf, 0, 0);
+            else if (special >= 70) do_fireshield(ch, buf, 0, 0);
+            else do_zanzoken(ch, "40", 0, 0);
             break;
           case CLASS_GINYU:
-            if (special >= 100)
-              do_spiral(ch, buf, 0, 0);
-            else if (special >= 80)
-              do_crusher(ch, buf, 0, 0);
-            else if (special >= 70)
-              do_eraser(ch, buf, 0, 0);
-            else
-              do_zanzoken(ch, "40", 0, 0);
+            if (special >= 100) do_spiral(ch, buf, 0, 0);
+            else if (special >= 80) do_crusher(ch, buf, 0, 0);
+            else if (special >= 70) do_eraser(ch, buf, 0, 0);
+            else do_zanzoken(ch, "40", 0, 0);
             break;
           }
-        }
+        });
         break;
-      } /* End power switch */
-    } /* End special attacks */
-  } else if (!IS_HUMANOID(ch) ||
-             dragonpass == FALSE) { /* Is not a humanoid mob */
-    if (IS_SERPENT(ch) && rand_number(1, 5) == 5) {
-      do_strike(ch, buf, 0, 0);
-    } else if (IS_DRAGON(ch) && rand_number(1, 12) >= 10 &&
-               GET_MOB_VNUM(ch) != 17917) {
-      do_breath(ch, buf, 0, 0);
-    } else {
-      if (rand_number(1, 10) >= 7 && GET_LEVEL(ch) >= 10) {
-        do_ram(ch, buf, 0, 0);
-      } else {
-        do_bite(ch, buf, 0, 0);
       }
     }
+  } else if (!IS_HUMANOID(ch) || dragonpass == FALSE) {
+    if (IS_SERPENT(ch) && rand_number(1, 5) == 5)
+      do_strike(ch, buf, 0, 0);
+    else if (IS_DRAGON(ch) && rand_number(1, 12) >= 10 &&
+             GET_MOB_VNUM(ch) != 17917)
+      do_breath(ch, buf, 0, 0);
+    else if (rand_number(1, 10) >= 7 && GET_LEVEL(ch) >= 10)
+      do_ram(ch, buf, 0, 0);
+    else
+      do_bite(ch, buf, 0, 0);
   }
 
   fight_mtrigger(ch);
-
-} /* End mob_attack */
+}
 
 static void cleanup_arena_watch(struct char_data *ch) {
   struct descriptor_data *d;
