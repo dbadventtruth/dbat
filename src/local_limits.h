@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 // functions
-void timed_dt(struct char_data *ch);
 void run_autowiz(void);
 void reboot_wizlists(void);
 void mutant_limb_regen(struct char_data *ch);

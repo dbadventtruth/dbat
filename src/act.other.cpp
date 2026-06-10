@@ -9529,567 +9529,375 @@ static void check_eq(struct char_data *ch) {
   });
 }
 
-/* This handles many player specific routines. It may be a bit too bloated
- * though. */
+static void tick_player_ash_curse(struct char_data *ch) {
+  if (rand_number(1, 15) >= 14)
+    ash_burn(ch);
+  int64_t forty_lf = getMaxLF(ch) * 0.4;
+  if (char_condition_has(ch, "curse") && getCurLF(ch) > forty_lf) {
+    decCurLFPercent(ch, .01);
+    demon_refill_lf(ch, getMaxLF(ch) * 0.01);
+    if (getCurLF(ch) < forty_lf)
+      incCurLF(ch, forty_lf - getCurLF(ch));
+  }
+}
+
+static void tick_player_goop(struct char_data *ch) {
+  if (!PLR_FLAGGED(ch, PLR_GOOP)) return;
+  if (ch->gooptime == 60) {
+    if (IS_BIO(ch)) {
+      act("@GConciousness slowly returns to you. You realize quickly that "
+          "some of your cells have survived. You take control of your "
+          "regenerative processes and focus on growing a new body!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+    } else {
+      act("@MSlowly you regain conciousness. The various split off chunks of "
+          "your body begin to likewise stir.@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@MYou think you notice the chunks of @m$n@M's moving slightly.@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+    }
+  } else if (ch->gooptime == 30) {
+    if (IS_BIO(ch)) {
+      act("@GFrom the collection of cells growing a crude form of your body "
+          "starts to take shape!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@GYou start to notice a large mass of pulsing flesh growing "
+          "before you!@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+    } else {
+      act("@MYou will the various chunks of your body to return and slowly "
+          "more and more of them begin to fly into you. Your body begins to "
+          "grow larger and larger as this process unfolds!@n ",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@MThe various chunks of @m$n@M's body start to fly into the "
+          "largest chunk! As the chunks collide they begin to form a larger "
+          "and still growing blob of goo!@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+    }
+  } else if (ch->gooptime == 15) {
+    if (IS_BIO(ch)) {
+      act("@GYour body has almost reached its previous form! Only a little "
+          "more regenerating is needed!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@GThe lump of flesh has now grown to the size where the likeness "
+          "of @g$n@G can be seen of it! It appears that $e is regenerating "
+          "$s body from what was only a few cells!@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+    } else {
+      act("@MYour body has reached half its previous size as your limbs ooze "
+          "slowly out into their proper shape!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@m$n@M's body has regenerated to half its previous size! Slowly "
+          "$s limbs ooze out into their proper shape! It won't be long now "
+          "till $e has fully regenerated!@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+    }
+  } else if (ch->gooptime == 0) {
+    if (IS_BIO(ch)) {
+      restoreHealth(ch);
+      act("@GYour body has fully regenerated! You flex your arms and legs "
+          "outward with a rush of renewed strength!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@g$n@G's body has fully regenerated! Suddenly $e flexes $s arms "
+          "and legs and a rush of power erupts from off of $s body!@n",
+          TRUE, ch, 0, 0, TO_ROOM);
+    } else if (IS_SAIYAN(ch)) {
+      /* Zenkai Boost */
+      setCurHealthPercent(ch, 0.5);
+      if (getCurKIPercent(ch) < 0.25) setCurKIPercent(ch, 0.25);
+      if (getCurSTPercent(ch) < 0.25) setCurSTPercent(ch, 0.25);
+      if (!IN_ARENA(ch)) {
+        int64_t zenkaiPL = getBasePL(ch) * 0.03;
+        int64_t zenkaiKi = getBaseKI(ch) * 0.015;
+        int64_t zenkaiSt = getBaseST(ch) * 0.015;
+        gainBasePL(ch, zenkaiPL);
+        gainBaseKI(ch, zenkaiKi);
+        gainBaseST(ch, zenkaiSt);
+        send_to_char(ch, "@D[@YZ@ye@wn@Wk@Ya@yi @YB@yo@wo@Ws@Yt@D] "
+                         "@WYou feel much stronger!\r\n");
+        send_to_char(ch,
+                     "@D[@RPL@Y:@n+%s@D] @D[@CKI@Y:@n+%s@D] @D[@GSTA@Y:@n+%s@D]@n\r\n",
+                     add_commas(zenkaiPL), add_commas(zenkaiKi),
+                     add_commas(zenkaiSt));
+      }
+      act("@RYou collapse to the ground, body pushed beyond the typical "
+          "limits of exhaustion. The passage of time distorts and an "
+          "indescribable amount of time passes as raw emotions pass through "
+          "your very being. Your eyes open and focus with a newfound clarity "
+          "as your unadulterated emotions and feelings revive you for a "
+          "second wind!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@r$n@R collapses to the ground, seemingly dead. After a brief "
+          "moment, their eyes flash open with a determined look on their "
+          "face!",
+          TRUE, ch, 0, 0, TO_ROOM);
+    } else {
+      restoreHealth(ch);
+      act("@MYour body has fully regenerated! You scream out in triumph and "
+          "a short gust of steam erupts from your pores!@n",
+          TRUE, ch, 0, 0, TO_CHAR);
+      act("@m$n@M's body has fully regenerated! Suddenly $e screams out in "
+          "gleeful triumph and short gust of steam erupts from $s skin "
+          "pores!",
+          TRUE, ch, 0, 0, TO_ROOM);
+    }
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_GOOP);
+    return;
+  }
+  ch->gooptime -= 1;
+}
+
+static void tick_player_cooldowns(struct char_data *ch) {
+  if (GET_BACKSTAB_COOL(ch) > 0)
+    GET_BACKSTAB_COOL(ch) -= 1;
+  if (GET_COOLDOWN(ch) > 0) {
+    GET_COOLDOWN(ch) -= 2;
+    if (GET_COOLDOWN(ch) <= 0) {
+      GET_COOLDOWN(ch) = 0;
+      send_to_char(ch, "You can concentrate again.\r\n");
+    }
+  }
+  if (GET_SDCOOLDOWN(ch) > 0) {
+    GET_SDCOOLDOWN(ch) -= 10;
+    if (GET_SDCOOLDOWN(ch) <= 0) {
+      GET_SDCOOLDOWN(ch) = 0;
+      send_to_char(ch, "Your body has recovered from your last selfdestruct.\r\n");
+    }
+  }
+}
+
+static void tick_player_ping(struct char_data *ch) {
+  if (GET_PING(ch) < 1) return;
+  GET_PING(ch) -= 1;
+  if (PLR_FLAGGED(ch, PLR_PILOTING) && GET_PING(ch) == 0)
+    send_to_char(ch, "Your radar is ready to calculate the "
+                     "direction of another destination.\r\n");
+}
+
+static void tick_player_stale_links(struct char_data *ch) {
+  if (CARRYING(ch) && char_room_get(CARRYING(ch)) != char_room_get(ch))
+    carry_drop(ch, 3);
+  if (GET_DEFENDER(ch) &&
+      char_room_get(ch) != char_room_get(GET_DEFENDER(ch))) {
+    GET_DEFENDING(GET_DEFENDER(ch)) = NULL;
+    GET_DEFENDER(ch) = NULL;
+  }
+  if (GET_DEFENDING(ch) &&
+      char_room_get(ch) != char_room_get(GET_DEFENDING(ch))) {
+    GET_DEFENDER(GET_DEFENDING(ch)) = NULL;
+    GET_DEFENDING(ch) = NULL;
+  }
+  if (SITS(ch) && char_room_get(ch) != obj_room_get(SITS(ch))) {
+    SITTING(SITS(ch)) = NULL;
+    SITS(ch) = NULL;
+  }
+  if (BLOCKS(ch)) {
+    struct char_data *vict = BLOCKS(ch);
+    if (char_room_get(vict) != char_room_get(ch)) {
+      BLOCKED(vict) = NULL;
+      BLOCKS(ch) = NULL;
+    }
+  }
+}
+
+static void tick_player_flag_cleanup(struct char_data *ch) {
+  if (PLR_FLAGGED(ch, PLR_TRANSMISSION))
+    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TRANSMISSION);
+  if (!FIGHTING(ch) && AFF_FLAGGED(ch, AFF_POSITION))
+    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
+  if (PLR_FLAGGED(ch, PLR_SELFD) && !PLR_FLAGGED(ch, PLR_SELFD2)) {
+    if (rand_number(4, 100) < GET_SKILL(ch, SKILL_SELFD)) {
+      send_to_char(ch, "You feel you are ready to self destruct!\r\n");
+      SET_BIT_AR(PLR_FLAGS(ch), PLR_SELFD2);
+    }
+  }
+  if (!FIGHTING(ch) && char_condition_has(ch, "combo"))
+    char_condition_remove(ch, "combo", "base_update");
+}
+
+static void tick_player_bank_interest(struct char_data *ch) {
+  if (GET_BANK_GOLD(ch) <= 0) return;
+  int inc = GET_BANK_INTEREST(ch);
+  GET_LINTEREST(ch) = LASTINTEREST;
+  char_stat_mod(ch, "money_bank", inc);
+  send_to_char(ch, "@cBank Interest@D: @Y%s@n\r\n", add_commas(inc));
+}
+
+static void tick_player_geoeffect(struct char_data *ch) {
+  auto *room = char_room_get(ch);
+  if (room_geffect_get(room) < 1 || rand_number(1, 100) < 96) return;
+  int geffect = room_geffect_get(room);
+  if (geffect <= 4) {
+    static const char *msgs[4] = {
+      "@RLava spews up violently from the cracks in the ground!@n",
+      "@RThe lava bubbles and gives off tremendous heat!@n",
+      "@RNoxious fumes rise from the bubbling lava!@n",
+      "@RSome of the lava cools as it spreads further from the source!@n",
+    };
+    const char *m = msgs[rand_number(1, 4) - 1];
+    act(m, FALSE, ch, 0, 0, TO_ROOM);
+    act(m, FALSE, ch, 0, 0, TO_CHAR);
+    room_geffect_mod(room, 1);
+  } else if (geffect == 5) {
+    act("@RLava covers the entire area now!@n", FALSE, ch, 0, 0, TO_ROOM);
+    act("@RLava covers the entire area now!@n", FALSE, ch, 0, 0, TO_CHAR);
+    room_geffect_mod(room, 1);
+  }
+}
+
+static void tick_player_android_absorb(struct char_data *ch) {
+  if (ABSORBING(ch) && char_room_get(ch) != char_room_get(ABSORBING(ch))) {
+    send_to_char(ch, "You stop absorbing %s!\r\n", GET_NAME(ABSORBING(ch)));
+    ABSORBBY(ABSORBING(ch)) = NULL;
+    ABSORBING(ch) = NULL;
+  }
+  if (!IS_ANDROID(ch) || !ABSORBING(ch)) return;
+
+  auto *target = ABSORBING(ch);
+  auto stop_absorbing = [&]() {
+    act("@WYou stop absorbing stamina and ki from @c$N as they don't have "
+        "enough for you to take@W!@n",
+        TRUE, ch, 0, target, TO_CHAR);
+    act("@C$n@W stops absorbing stamina and ki from you!@n", TRUE, ch, 0, target, TO_VICT);
+    act("@C$n@W stops absorbing stamina and ki from @c$N@w!@n", TRUE, ch, 0, target, TO_NOTVICT);
+    if (!FIGHTING(ch) || FIGHTING(ch) != target)
+      set_fighting(ch, ABSORBBY(target));
+    if (!FIGHTING(ABSORBBY(target)) || FIGHTING(ABSORBBY(target)) != ch)
+      set_fighting(ABSORBBY(target), ch);
+    ABSORBBY(target) = NULL;
+    ABSORBING(ch) = NULL;
+  };
+
+  if (getCurST(target) < (GET_MAX_MOVE(ch) / 15) &&
+      getCurKI(target) < (GET_MAX_MANA(ch) / 15)) {
+    stop_absorbing();
+    return;
+  }
+
+  if (rand_number(1, 9) < 6) return;
+  if (getCurST(target) <= (GET_MAX_MOVE(ch) / 15) &&
+      getCurKI(target) <= (GET_MAX_MANA(ch) / 15))
+    return;
+
+  incCurKI(ch, getMaxKI(ch) * .08);
+  incCurST(ch, getMaxST(ch) * .08);
+  decCurKIFloored(target, getMaxKI(ch) / 20, 1);
+  decCurSTFloored(target, getMaxST(ch) / 20, 1);
+  act("@WYou absorb stamina and ki from @c$N@W!@n", TRUE, ch, 0, target, TO_CHAR);
+  act("@C$n@W absorbs stamina and ki from you!@n", TRUE, ch, 0, target, TO_VICT);
+  send_to_char(target, "@wTry 'escape'!@n\r\n");
+  act("@C$n@W absorbs stamina and ki from @c$N@w!@n", TRUE, ch, 0, target, TO_NOTVICT);
+  if (GET_HIT(ch) < getMaxPL(ch)) {
+    incCurHealth(ch, getMaxKI(ch) * .04);
+    send_to_char(ch, "@CYou convert a portion of the absorbed energy into "
+                     "refilling your powerlevel.@n\r\n");
+  }
+
+  if (isFullST(ch) && isFullKI(ch)) {
+    act("@WYou stop absorbing stamina and ki from @c$N as you are full@W!@n",
+        TRUE, ch, 0, target, TO_CHAR);
+    act("@C$n@W stops absorbing stamina and ki from you!@n", TRUE, ch, 0, target, TO_VICT);
+    act("@C$n@W stops absorbing stamina and ki from @c$N@w!@n", TRUE, ch, 0, target, TO_NOTVICT);
+    if (!FIGHTING(ch) || FIGHTING(ch) != target)
+      set_fighting(ch, ABSORBBY(target));
+    if (!FIGHTING(ABSORBBY(target)) || FIGHTING(ABSORBBY(target)) != ch)
+      set_fighting(ABSORBBY(target), ch);
+    ABSORBBY(target) = NULL;
+    ABSORBING(ch) = NULL;
+    return;
+  }
+
+  /* Passive stat gains while absorbing */
+  bool sum    = !is_soft_cap(ch, 0);
+  bool mum    = !is_soft_cap(ch, 2);
+  bool ium    = !is_soft_cap(ch, 1);
+  auto *leader = ch->master ? ch->master : ch;
+
+  auto absorb_gain = [&](bool under_cap, bool is_ki_check, const char *msg,
+                          int64_t (*gain_fn)(struct char_data *, int64_t)) {
+    if (rand_number(1, 8) < 6) return;
+    int gain = 1;
+    if (under_cap) {
+      gain = rand_number(GET_LEVEL(ch) / 2, GET_LEVEL(ch) * 3) +
+             GET_LEVEL(ch) * 18;
+      if (GET_LEVEL(ch) > 30)
+        gain += rand_number(GET_LEVEL(ch) * 2, GET_LEVEL(ch) * 4) +
+                GET_LEVEL(ch) * 50;
+      if (GET_LEVEL(ch) > 60) gain *= 2;
+      if (GET_LEVEL(ch) > 80) gain *= 3;
+      if (GET_LEVEL(ch) > 90) gain *= 4;
+      send_to_char(ch, msg, gain);
+      if (group_bonus(ch, 2) == 7 &&
+          (!is_ki_check || ch->master) &&
+          PLR_FLAGGED(leader, PLR_SENSEM)) {
+        int gbonus = gain * 0.15;
+        gain += gbonus;
+        send_to_char(ch, "The leader of your group conveys an extra bonus! "
+                         "@D[@G+%s@D]@n \r\n",
+                     add_commas(gbonus));
+      }
+    } else {
+      send_to_char(ch, msg, gain);
+    }
+    gain_fn(ch, gain);
+  };
+
+  absorb_gain(sum, false,
+              sum ? "@gYou gain +@G%d@g permanent powerlevel!@n\r\n"
+                  : "@gYou gain +@G%d@g permanent powerlevel. You may need to level.@n\r\n",
+              gainBasePL);
+  absorb_gain(mum, false,
+              mum ? "@gYou gain +@G%d@g permanent stamina!@n\r\n"
+                  : "@gYou gain +@G%d@g permanent stamina. You may need to level.@n\r\n",
+              gainBaseST);
+  absorb_gain(ium, true,
+              ium ? "@gYou gain +@G%d@g permanent ki!@n\r\n"
+                  : "@gYou gain +@G%d@g permanent ki. You may need to level.@n\r\n",
+              gainBaseKI);
+}
+
+/* This handles many player specific routines. */
 void base_update(void) {
-  struct descriptor_data *d;
-  int cash = FALSE, inc = 0;
-  int countch = FALSE, pcoun = 0;
+  bool cash = false, countch = false;
+  int pcoun = 0;
 
   if (INTERESTTIME != 0 && INTERESTTIME <= time(0) && time(0) != 0) {
     INTERESTTIME = time(0) + 86400;
     LASTINTEREST = time(0);
     save_mud_time(&time_info);
-    cash = TRUE;
-    countch = TRUE;
+    cash = countch = true;
   }
 
-  if (TOPCOUNTDOWN > 0) {
+  if (TOPCOUNTDOWN > 0)
     TOPCOUNTDOWN -= 4;
-  }
 
-  for (d = descriptor_list; d; d = d->next) {
-    if (!IS_PLAYING(d))
-      continue;
-    if (IS_NPC(d->character)) {
-      if (ABSORBING(d->character) &&
-          char_room_get(d->character) !=
-              char_room_get(ABSORBING(d->character))) {
-        send_to_char(d->character, "You stop absorbing %s!\r\n",
-                     GET_NAME(ABSORBING(d->character)));
-        ABSORBBY(ABSORBING(d->character)) = NULL;
-        ABSORBING(d->character) = NULL;
-      }
-      if (IS_ANDROID(d->character) && ABSORBING(d->character) &&
-          rand_number(1, 10) >= 7) {
-        int64_t drain1 = GET_MAX_MANA(d->character) * 0.01,
-                drain2 = GET_MAX_MOVE(d->character) * 0.01;
-        struct char_data *drained = ABSORBING(d->character);
-        if ((getCurST(drained)) - drain2 < 0) {
-          drain2 = (getCurST(drained));
-        }
-        if ((getCurKI(drained)) - drain1 < 0) {
-          drain1 = (getCurKI(drained));
-        }
-        incCurST(d->character, drain2);
-        incCurKI(d->character, drain1);
-        incCurHealth(d->character, drain1 * .5);
+  char_iterate_subscriptions("player", [&](auto ch) {
+    if (!ch->desc || !IS_PLAYING(ch->desc)) return true;
+    if (countch) pcoun++;
 
-        if (isFullKI(d->character) && isFullST(d->character)) {
-          do_absorb(d->character, NULL, 0, 0);
-        }
-      }
-      continue;
-    }
-    if (countch == TRUE) {
-      pcoun += 1;
-    }
-    if (!IS_NPC(d->character) && rand_number(1, 15) >= 14) {
-      ash_burn(d->character);
-    }
-    int64_t forty_lf = getMaxLF(d->character) * 0.4;
-    if (char_condition_has(d->character, "curse") &&
-        getCurLF(d->character) > forty_lf) {
-      decCurLFPercent(d->character, .01);
-      demon_refill_lf(d->character, getMaxLF(d->character) * 0.01);
+    tick_player_ash_curse(ch);
+    tick_player_goop(ch);
+    tick_player_cooldowns(ch);
+    tick_player_ping(ch);
+    tick_player_stale_links(ch);
+    tick_player_flag_cleanup(ch);
+    if (GET_ADMLEVEL(ch) < 1 && TOPCOUNTDOWN <= 0 && GET_LEVEL(ch) > 0)
+      topWrite(ch);
+    if (MOON_OK(ch)) oozaru_transform(ch);
+    if (cash) tick_player_bank_interest(ch);
+    check_eq(ch);
+    tick_player_geoeffect(ch);
+    tick_player_android_absorb(ch);
+    GET_SPAM(ch) = 0;
+    return true;
+  });
 
-      if (getCurLF(d->character) < forty_lf) {
-        incCurLF(d->character, forty_lf - getCurLF(d->character));
-      }
-    }
-    if (GET_BACKSTAB_COOL(d->character) > 0) {
-      GET_BACKSTAB_COOL(d->character) -= 1;
-    }
-    if (PLR_FLAGGED(d->character, PLR_GOOP) && d->character->gooptime == 60) {
-      if (IS_BIO(d->character)) {
-        act("@GConciousness slowly returns to you. You realize quickly that "
-            "some of your cells have survived. You take control of your "
-            "regenerative processes and focus on growing a new body!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-      } else {
-        act("@MSlowly you regain conciousness. The various split off chunks of "
-            "your body begin to likewise stir.@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@MYou think you notice the chunks of @m$n@M's moving slightly.@n",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      }
-      d->character->gooptime -= 1;
-    } else if (PLR_FLAGGED(d->character, PLR_GOOP) &&
-               d->character->gooptime == 30) {
-      if (IS_BIO(d->character)) {
-        act("@GFrom the collection of cells growing a crude form of your body "
-            "starts to take shape!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@GYou start to notice a large mass of pulsing flesh growing "
-            "before you!@n",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      } else {
-        act("@MYou will the various chunks of your body to return and slowly "
-            "more and more of them begin to fly into you. Your body begins to "
-            "grow larger and larger as this process unfolds!@n ",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@MThe various chunks of @m$n@M's body start to fly into the "
-            "largest chunk! As the chunks collide they begin to form a larger "
-            "and still growing blob of goo!@n",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      }
-      d->character->gooptime -= 1;
-    } else if (PLR_FLAGGED(d->character, PLR_GOOP) &&
-               d->character->gooptime == 15) {
-      if (IS_BIO(d->character)) {
-        act("@GYour body has almost reached its previous form! Only a little "
-            "more regenerating is needed!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@GThe lump of flesh has now grown to the size where the likeness "
-            "of @g$n@G can be seen of it! It appears that $e is regenerating "
-            "$s body from what was only a few cells!@n",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      } else {
-        act("@MYour body has reached half its previous size as your limbs ooze "
-            "slowly out into their proper shape!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@m$n@M's body has regenerated to half its previous size! Slowly "
-            "$s limbs ooze out into their proper shape! It won't be long now "
-            "till $e has fully regenerated!@n",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      }
-      d->character->gooptime -= 1;
-    } else if (PLR_FLAGGED(d->character, PLR_GOOP) &&
-               d->character->gooptime == 0) {
-      if (IS_BIO(d->character)) {
-        restoreHealth(d->character);
-        act("@GYour body has fully regenerated! You flex your arms and legs "
-            "outward with a rush of renewed strength!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@g$n@G's body has fully regenerated! Suddenly $e flexes $s arms "
-            "and legs and a rush of power erupts from off of $s body!@n",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      }
-      // Zenkai Boost
-      else if (IS_SAIYAN(d->character)) {
-
-        setCurHealthPercent(d->character, 0.5);
-        double curKiPerc = getCurKIPercent(d->character);
-        // if less than 25%, restore up to 25%
-        if (curKiPerc < 0.25) {
-          setCurKIPercent(d->character, 0.25);
-        }
-        double curSTPerc = getCurSTPercent(d->character);
-        // if less than 25%, restore up to 25%
-        if (curSTPerc < 0.25) {
-          setCurSTPercent(d->character, 0.25);
-        }
-
-        if (!IN_ARENA(d->character)) {
-          int64_t zenkaiPL, zenkaiKi, zenkaiSt;
-          zenkaiPL = getBasePL(d->character) * 0.03;
-          zenkaiKi = getBaseKI(d->character) * 0.015;
-          zenkaiSt = getBaseST(d->character) * 0.015;
-
-          gainBasePL(d->character, zenkaiPL);
-          gainBaseKI(d->character, zenkaiKi);
-          gainBaseST(d->character, zenkaiSt);
-
-          send_to_char(d->character, "@D[@YZ@ye@wn@Wk@Ya@yi @YB@yo@wo@Ws@Yt@D] "
-                                     "@WYou feel much stronger!\r\n");
-          send_to_char(
-              d->character,
-              "@D[@RPL@Y:@n+%s@D] @D[@CKI@Y:@n+%s@D] @D[@GSTA@Y:@n+%s@D]@n\r\n",
-              add_commas(zenkaiPL), add_commas(zenkaiKi), add_commas(zenkaiSt));
-        }
-        act("@RYou collapse to the ground, body pushed beyond the typical "
-            "limits of exhaustion. The passage of time distorts and an "
-            "indescribable amount of time passes as raw emotions pass through "
-            "your very being. Your eyes open and focus with a newfound clarity "
-            "as your unadulterated emotions and feelings revive you for a "
-            "second wind!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@r$n@R collapses to the ground, seemingly dead. After a brief "
-            "moment, their eyes flash open with a determined look on their "
-            "face!",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      } else {
-        restoreHealth(d->character);
-        act("@MYour body has fully regenerated! You scream out in triumph and "
-            "a short gust of steam erupts from your pores!@n",
-            TRUE, d->character, 0, 0, TO_CHAR);
-        act("@m$n@M's body has fully regenerated! Suddenly $e screams out in "
-            "gleeful triumph and short gust of steam erupts from $s skin "
-            "pores!",
-            TRUE, d->character, 0, 0, TO_ROOM);
-      }
-      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_GOOP);
-    } else {
-      d->character->gooptime -= 1;
-    }
-    if (GET_COOLDOWN(d->character) > 0) {
-      GET_COOLDOWN(d->character) -= 2;
-      if (GET_COOLDOWN(d->character) <= 0) {
-        GET_COOLDOWN(d->character) = 0;
-        send_to_char(d->character, "You can concentrate again.\r\n");
-      }
-    }
-    /* Andros Start */
-    if (GET_SDCOOLDOWN(d->character) > 0) {
-      GET_SDCOOLDOWN(d->character) -= 10;
-      if (GET_SDCOOLDOWN(d->character) <= 0) {
-        GET_SDCOOLDOWN(d->character) = 0;
-        send_to_char(
-            d->character,
-            "Your body has recovered from your last selfdestruct.\r\n");
-      }
-    } /* Andros End */
-    if (CARRYING(d->character)) {
-      if (char_room_get(CARRYING(d->character)) !=
-          char_room_get(d->character)) {
-        carry_drop(d->character, 3);
-      }
-    }
-    if (GET_DEFENDER(d->character)) {
-      if (char_room_get(d->character) !=
-          char_room_get(GET_DEFENDER(d->character))) {
-        GET_DEFENDING(GET_DEFENDER(d->character)) = NULL;
-        GET_DEFENDER(d->character) = NULL;
-      }
-    }
-    if (GET_DEFENDING(d->character)) {
-      if (char_room_get(d->character) !=
-          char_room_get(GET_DEFENDING(d->character))) {
-        GET_DEFENDER(GET_DEFENDING(d->character)) = NULL;
-        GET_DEFENDING(d->character) = NULL;
-      }
-    }
-    if (PLR_FLAGGED(d->character, PLR_TRANSMISSION)) {
-      REMOVE_BIT_AR(PLR_FLAGS(d->character), PLR_TRANSMISSION);
-    }
-    if (!FIGHTING(d->character) && AFF_FLAGGED(d->character, AFF_POSITION)) {
-      REMOVE_BIT_AR(AFF_FLAGS(d->character), AFF_POSITION);
-    }
-    if (SITS(d->character)) {
-      if (char_room_get(d->character) != obj_room_get(SITS(d->character))) {
-        struct obj_data *chair = SITS(d->character);
-        SITTING(chair) = NULL;
-        SITS(d->character) = NULL;
-      }
-    }
-    if (GET_PING(d->character) >= 1) {
-      GET_PING(d->character) -= 1;
-      if (PLR_FLAGGED(d->character, PLR_PILOTING) &&
-          GET_PING(d->character) == 0) {
-        send_to_char(d->character, "Your radar is ready to calculate the "
-                                   "direction of another destination.\r\n");
-      }
-    }
-    if (GET_ADMLEVEL(d->character) < 1 && TOPCOUNTDOWN <= 0 &&
-        GET_LEVEL(d->character) > 0) {
-      topWrite(d->character);
-    }
-    if (PLR_FLAGGED(d->character, PLR_SELFD) &&
-        !PLR_FLAGGED(d->character, PLR_SELFD2)) {
-      if (rand_number(4, 100) < GET_SKILL(d->character, SKILL_SELFD)) {
-        send_to_char(d->character,
-                     "You feel you are ready to self destruct!\r\n");
-        SET_BIT_AR(PLR_FLAGS(d->character), PLR_SELFD2);
-      }
-    }
-    if (!FIGHTING(d->character) && char_condition_has(d->character, "combo")) {
-      char_condition_remove(d->character, "combo", "base_update");
-    }
-    if (MOON_OK(d->character)) {
-      oozaru_transform(d->character);
-    }
-    if (cash == TRUE && GET_BANK_GOLD(d->character) > 0) {
-      inc = GET_BANK_INTEREST(d->character);
-      GET_LINTEREST(d->character) = LASTINTEREST;
-      char_stat_mod(d->character, "money_bank", inc);
-      send_to_char(d->character, "@cBank Interest@D: @Y%s@n\r\n",
-                   add_commas(inc));
-    }
-    if (!IS_NPC(d->character)) {
-      check_eq(d->character);
-    }
-    if (!IS_NPC(d->character) &&
-        room_geffect_get(char_room_get(d->character)) >= 1 &&
-        rand_number(1, 100) >= 96) {
-      if (room_geffect_get(char_room_get(d->character)) <= 4) {
-        switch (rand_number(1, 4)) {
-        case 1:
-          act("@RLava spews up violently from the cracks in the ground!@n",
-              FALSE, d->character, 0, 0, TO_ROOM);
-          act("@RLava spews up violently from the cracks in the ground!@n",
-              FALSE, d->character, 0, 0, TO_CHAR);
-          break;
-        case 2:
-          act("@RThe lava bubbles and gives off tremendous heat!@n", FALSE,
-              d->character, 0, 0, TO_ROOM);
-          act("@RThe lava bubbles and gives off tremendous heat!@n", FALSE,
-              d->character, 0, 0, TO_CHAR);
-          break;
-        case 3:
-          act("@RNoxious fumes rise from the bubbling lava!@n", FALSE,
-              d->character, 0, 0, TO_ROOM);
-          act("@RNoxious fumes rise from the bubbling lava!@n", FALSE,
-              d->character, 0, 0, TO_CHAR);
-          break;
-        case 4:
-          act("@RSome of the lava cools as it spreads further from the "
-              "source!@n",
-              FALSE, d->character, 0, 0, TO_ROOM);
-          act("@RSome of the lava cools as it spreads further from the "
-              "source!@n",
-              FALSE, d->character, 0, 0, TO_CHAR);
-          break;
-        }
-        room_geffect_mod(char_room_get(d->character), 1);
-      } else if (room_geffect_get(char_room_get(d->character)) == 5) {
-        act("@RLava covers the entire area now!@n", FALSE, d->character, 0, 0,
-            TO_ROOM);
-        act("@RLava covers the entire area now!@n", FALSE, d->character, 0, 0,
-            TO_CHAR);
-        room_geffect_mod(char_room_get(d->character), 1);
-      }
-    }
-    if (ABSORBING(d->character) &&
-        char_room_get(d->character) != char_room_get(ABSORBING(d->character))) {
-      send_to_char(d->character, "You stop absorbing %s!\r\n",
-                   GET_NAME(ABSORBING(d->character)));
-      ABSORBBY(ABSORBING(d->character)) = NULL;
-      ABSORBING(d->character) = NULL;
-    }
-    if (IS_ANDROID(d->character) && ABSORBING(d->character)) {
-      if (getCurST(ABSORBING(d->character)) <
-              (GET_MAX_MOVE(d->character) / 15) &&
-          getCurKI(ABSORBING(d->character)) <
-              (GET_MAX_MANA(d->character) / 15)) {
-        act("@WYou stop absorbing stamina and ki from @c$N as they don't have "
-            "enough for you to take@W!@n",
-            TRUE, d->character, 0, ABSORBING(d->character), TO_CHAR);
-        act("@C$n@W stops absorbing stamina and ki from you!@n", TRUE,
-            d->character, 0, ABSORBING(d->character), TO_VICT);
-        act("@C$n@W stops absorbing stamina and ki from @c$N@w!@n", TRUE,
-            d->character, 0, ABSORBING(d->character), TO_NOTVICT);
-        if (!FIGHTING(d->character) ||
-            FIGHTING(d->character) != ABSORBING(d->character)) {
-          set_fighting(d->character, ABSORBBY(ABSORBING(d->character)));
-        }
-        if (!FIGHTING(ABSORBBY(ABSORBING(d->character))) ||
-            FIGHTING(ABSORBBY(ABSORBING(d->character))) != d->character) {
-          set_fighting(ABSORBBY(ABSORBING(d->character)), d->character);
-        }
-        ABSORBBY(ABSORBING(d->character)) = NULL;
-        ABSORBING(d->character) = NULL;
-      }
-    }
-    if (IS_ANDROID(d->character) && ABSORBING(d->character) &&
-        rand_number(1, 9) >= 6) {
-      if (getCurST(ABSORBING(d->character)) >
-              (GET_MAX_MOVE(d->character) / 15) ||
-          getCurKI(ABSORBING(d->character)) >
-              (GET_MAX_MANA(d->character) / 15)) {
-
-        incCurKI(d->character, getMaxKI(d->character) * .08);
-        incCurST(d->character, getMaxST(d->character) * .08);
-
-        decCurKIFloored(ABSORBING(d->character), getMaxKI(d->character) / 20,
-                        1);
-        decCurSTFloored(ABSORBING(d->character), getMaxST(d->character) / 20,
-                        1);
-
-        act("@WYou absorb stamina and ki from @c$N@W!@n", TRUE, d->character, 0,
-            ABSORBING(d->character), TO_CHAR);
-        act("@C$n@W absorbs stamina and ki from you!@n", TRUE, d->character, 0,
-            ABSORBING(d->character), TO_VICT);
-        send_to_char(ABSORBING(d->character), "@wTry 'escape'!@n\r\n");
-        act("@C$n@W absorbs stamina and ki from @c$N@w!@n", TRUE, d->character,
-            0, ABSORBING(d->character), TO_NOTVICT);
-        if (GET_HIT(d->character) < getMaxPL(d->character)) {
-          incCurHealth(d->character, getMaxKI(d->character) * .04);
-          send_to_char(d->character,
-                       "@CYou convert a portion of the absorbed energy into "
-                       "refilling your powerlevel.@n\r\n");
-        }
-
-        if (isFullST(d->character) && isFullKI(d->character)) {
-
-          act("@WYou stop absorbing stamina and ki from @c$N as you are "
-              "full@W!@n",
-              TRUE, d->character, 0, ABSORBING(d->character), TO_CHAR);
-          act("@C$n@W stops absorbing stamina and ki from you!@n", TRUE,
-              d->character, 0, ABSORBING(d->character), TO_VICT);
-          act("@C$n@W stops absorbing stamina and ki from @c$N@w!@n", TRUE,
-              d->character, 0, ABSORBING(d->character), TO_NOTVICT);
-          if (!FIGHTING(d->character) ||
-              FIGHTING(d->character) != ABSORBING(d->character)) {
-            set_fighting(d->character, ABSORBBY(ABSORBING(d->character)));
-          }
-          if (!FIGHTING(ABSORBBY(ABSORBING(d->character))) ||
-              FIGHTING(ABSORBBY(ABSORBING(d->character))) != d->character) {
-            set_fighting(ABSORBBY(ABSORBING(d->character)), d->character);
-          }
-          ABSORBBY(ABSORBING(d->character)) = NULL;
-          ABSORBING(d->character) = NULL;
-        }
-        bool sum = !is_soft_cap(d->character, 0);
-        bool mum = !is_soft_cap(d->character, 2);
-        bool ium = !is_soft_cap(d->character, 1);
-        struct char_data *leader =
-            d->character->master ? d->character->master : d->character;
-        if (sum) {
-          if (rand_number(1, 8) >= 6) {
-            int gain = rand_number(GET_LEVEL(d->character) / 2,
-                                   GET_LEVEL(d->character) * 3) +
-                       (GET_LEVEL(d->character) * 18);
-            if (GET_LEVEL(d->character) > 30) {
-              gain += rand_number(GET_LEVEL(d->character) * 2,
-                                  GET_LEVEL(d->character) * 4) +
-                      (GET_LEVEL(d->character) * 50);
-            }
-            if (GET_LEVEL(d->character) > 60) {
-              gain *= 2;
-            }
-            if (GET_LEVEL(d->character) > 80) {
-              gain *= 3;
-            }
-            if (GET_LEVEL(d->character) > 90) {
-              gain *= 4;
-            }
-            send_to_char(d->character,
-                         "@gYou gain +@G%d@g permanent powerlevel!@n\r\n",
-                         gain);
-            if (group_bonus(d->character, 2) == 7) {
-              if (PLR_FLAGGED(leader, PLR_SENSEM)) {
-                int gbonus = gain * 0.15;
-                gain += gbonus;
-                send_to_char(d->character,
-                             "The leader of your group conveys an extra bonus! "
-                             "@D[@G+%s@D]@n \r\n",
-                             add_commas(gbonus));
-              }
-            }
-            gainBasePL(d->character, gain);
-          }
-        }
-        if (mum) {
-          if (rand_number(1, 8) >= 6) {
-            int gain = rand_number(GET_LEVEL(d->character) / 2,
-                                   GET_LEVEL(d->character) * 3) +
-                       (GET_LEVEL(d->character) * 18);
-            if (GET_LEVEL(d->character) > 30) {
-              gain += rand_number(GET_LEVEL(d->character) * 2,
-                                  GET_LEVEL(d->character) * 4) +
-                      (GET_LEVEL(d->character) * 50);
-            }
-            if (GET_LEVEL(d->character) > 60) {
-              gain *= 2;
-            }
-            if (GET_LEVEL(d->character) > 80) {
-              gain *= 3;
-            }
-            if (GET_LEVEL(d->character) > 90) {
-              gain *= 4;
-            }
-            send_to_char(d->character,
-                         "@gYou gain +@G%d@g permanent stamina!@n\r\n", gain);
-            if (group_bonus(d->character, 2) == 7) {
-              if (PLR_FLAGGED(leader, PLR_SENSEM)) {
-                int gbonus = gain * 0.15;
-                gain += gbonus;
-                send_to_char(d->character,
-                             "The leader of your group conveys an extra bonus! "
-                             "@D[@G+%s@D]@n \r\n",
-                             add_commas(gbonus));
-              }
-            }
-            gainBaseST(d->character, gain);
-          }
-        }
-        if (ium) {
-          if (rand_number(1, 8) >= 6) {
-            int gain = rand_number(GET_LEVEL(d->character) / 2,
-                                   GET_LEVEL(d->character) * 3) +
-                       (GET_LEVEL(d->character) * 18);
-            if (GET_LEVEL(d->character) > 30) {
-              gain += rand_number(GET_LEVEL(d->character) * 2,
-                                  GET_LEVEL(d->character) * 4) +
-                      (GET_LEVEL(d->character) * 50);
-            }
-            if (GET_LEVEL(d->character) > 60) {
-              gain *= 2;
-            }
-            if (GET_LEVEL(d->character) > 80) {
-              gain *= 3;
-            }
-            if (GET_LEVEL(d->character) > 90) {
-              gain *= 4;
-            }
-            send_to_char(d->character, "@gYou gain +@G%d@g permanent ki!@n\r\n",
-                         gain);
-            if (d->character->master && group_bonus(d->character, 2) == 7) {
-              if (PLR_FLAGGED(leader, PLR_SENSEM)) {
-                int gbonus = gain * 0.15;
-                gain += gbonus;
-                send_to_char(d->character,
-                             "The leader of your group conveys an extra bonus! "
-                             "@D[@G+%s@D]@n \r\n",
-                             add_commas(gbonus));
-              }
-            }
-            gainBaseKI(d->character, gain);
-          }
-        }
-        if (!sum) {
-          if (rand_number(1, 8) >= 6) {
-            int gain = 1;
-            send_to_char(d->character,
-                         "@gYou gain +@G%d@g permanent powerlevel. You may "
-                         "need to level.@n\r\n",
-                         gain);
-            gainBasePL(d->character, gain);
-          }
-        }
-        if (!mum) {
-          if (rand_number(1, 8) >= 6) {
-            int gain = 1;
-            send_to_char(d->character,
-                         "@gYou gain +@G%d@g permanent stamina. You may need "
-                         "to level.@n\r\n",
-                         gain);
-            gainBaseST(d->character, gain);
-          }
-        }
-        if (!ium) {
-          if (rand_number(1, 8) >= 6) {
-            int gain = 1;
-            send_to_char(
-                d->character,
-                "@gYou gain +@G%d@g permanent ki. You may need to level.@n\r\n",
-                gain);
-            gainBaseKI(d->character, gain);
-          }
-        }
-      }
-    }
-    if (BLOCKS(d->character)) {
-      struct char_data *vict = BLOCKS(d->character);
-      if (char_room_get(vict) != char_room_get(d->character)) {
-        BLOCKED(vict) = NULL;
-        BLOCKS(d->character) = NULL;
-      }
-    }
-    if (GET_SPAM(d->character) > 0) {
-      GET_SPAM(d->character) = 0;
-    } else
-      continue;
-  }
-
-  if (countch == TRUE) {
+  if (countch) {
     PCOUNT = pcoun;
     PCOUNTDAY = time(0);
   }
-
-  if (TOPCOUNTDOWN <= 0) {
+  if (TOPCOUNTDOWN <= 0)
     TOPCOUNTDOWN = 60;
-  }
 }
 
 static int has_scanner(struct char_data *ch) {

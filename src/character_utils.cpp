@@ -1015,375 +1015,105 @@ int has_group(struct char_data *ch) {
 }
 
 const char *report_party_health(struct char_data *ch) {
-
   if (!char_condition_has(ch, "group"))
-    return ("");
-
+    return "";
   if (!ch->followers && !ch->master)
-    return ("");
+    return "";
 
-  struct follow_type *k, *next;
-  int count = 0, stam1 = 8, stam2 = 8, stam3 = 8, stam4 = 8, plc1 = 4, plc2 = 4,
-      plc3 = 4, plc4 = 4;
-  struct char_data *party1 = NULL, *party2 = NULL, *party3 = NULL,
-                   *party4 = NULL;
-  int64_t plperc1 = 0, plperc2 = 0, plperc3 = 0, plperc4 = 0;
-  int64_t kiperc1 = 0, kiperc2 = 0, kiperc3 = 0, kiperc4 = 0;
-  char result_party_health[MAX_STRING_LENGTH], result1[MAX_STRING_LENGTH],
-      result2[MAX_STRING_LENGTH], result3[MAX_STRING_LENGTH],
-      result4[MAX_STRING_LENGTH], result5[MAX_STRING_LENGTH];
+  static const char *plcol[] = {"@r", "@y", "@Y", "@G", ""};
+  static const char *exhaust[] = {
+    "Exhausted", "Strained", "Very Tired", "Tired",
+    "Kinda Tired", "Very Winded", "Winded", "Energetic", "?????????"
+  };
+  static const char *excol[] = {"@r", "@R", "@R", "@M", "@M", "@M", "@G", "@g", "@w"};
 
-  const char *plcol[5] = {"@r", "@y", "@Y", "@G", ""};
+  auto member_stam = [](char_data *p) -> int {
+    int64_t cur = getCurST(p), max = GET_MAX_MOVE(p);
+    if (cur >= max)       return 7;
+    if (cur >= max * 0.9) return 6;
+    if (cur >= max * 0.8) return 5;
+    if (cur >= max * 0.7) return 4;
+    if (cur >= max * 0.5) return 3;
+    if (cur >= max * 0.4) return 2;
+    if (cur >= max * 0.2) return 1;
+    return 0;
+  };
 
-  const char *exhaust[9] = {"Exhausted",   /* 0/7 */
-                            "Strained",    /* 1/7 */
-                            "Very Tired",  /* 2/7 */
-                            "Tired",       /* 3/7 */
-                            "Kinda Tired", /* 4/7 */
-                            "Very Winded", /* 5/7 */
-                            "Winded",      /* 6/7 */
-                            "Energetic",   /* 7/7 */
-                            "?????????"};
+  /* collect up to 4 grouped party members (excluding ch) */
+  char_data *party[4] = {};
+  int n = 0;
+  bool is_leader = ch->followers != nullptr;
 
-  const char *excol[9] = {"@r", /* 0/7 */
-                          "@R", /* 1/7 */
-                          "@R", /* 2/7 */
-                          "@M", /* 3/7 */
-                          "@M", /* 4/7 */
-                          "@M", /* 5/7 */
-                          "@G", /* 6/7 */
-                          "@g", /* 7/7 */
-                          "@w"};
-
-  if (ch->followers) {
-    for (k = ch->followers; k; k = next) {
-      next = k->next;
-      if (!char_condition_has(k->follower, "group"))
-        continue;
-      if (k->follower != ch) {
-        count += 1;
-        if (count == 1) {
-          party1 = k->follower;
-          plperc1 = (GET_HIT(party1) * 100) / GET_MAX_HIT(party1);
-          kiperc1 = (GET_CHARGE(party1) * 100) / GET_MAX_MANA(party1);
-
-          if (plperc1 >= 80)
-            plc1 = 3;
-          else if (plperc1 >= 50)
-            plc1 = 2;
-          else if (plperc1 >= 30)
-            plc1 = 1;
-          else
-            plc1 = 0;
-
-          if ((getCurST(party1)) >= GET_MAX_MOVE(party1)) {
-            stam1 = 7;
-          } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .9) {
-            stam1 = 6;
-          } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .8) {
-            stam1 = 5;
-          } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .7) {
-            stam1 = 4;
-          } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .5) {
-            stam1 = 3;
-          } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .4) {
-            stam1 = 2;
-          } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .2) {
-            stam1 = 1;
-          } else {
-            stam1 = 0;
-          }
-        } else if (count == 2) {
-          party2 = k->follower;
-          plperc2 = (GET_HIT(party2) * 100) / GET_MAX_HIT(party2);
-          kiperc2 = (GET_CHARGE(party2) * 100) / GET_MAX_MANA(party2);
-
-          if (plperc2 >= 80)
-            plc2 = 3;
-          else if (plperc2 >= 50)
-            plc2 = 2;
-          else if (plperc2 >= 30)
-            plc2 = 1;
-          else
-            plc2 = 0;
-
-          if ((getCurST(party2)) >= GET_MAX_MOVE(party2)) {
-            stam2 = 7;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .9) {
-            stam2 = 6;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .8) {
-            stam2 = 5;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .7) {
-            stam2 = 4;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .5) {
-            stam2 = 3;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .4) {
-            stam2 = 2;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .2) {
-            stam2 = 1;
-          } else {
-            stam2 = 0;
-          }
-        } else if (count == 3) {
-          party3 = k->follower;
-          plperc3 = (GET_HIT(party3) * 100) / GET_MAX_HIT(party3);
-          kiperc3 = (GET_CHARGE(party3) * 100) / GET_MAX_MANA(party3);
-
-          if (plperc3 >= 80)
-            plc3 = 3;
-          else if (plperc3 >= 50)
-            plc3 = 2;
-          else if (plperc3 >= 30)
-            plc3 = 1;
-          else
-            plc3 = 0;
-
-          if ((getCurST(party3)) >= GET_MAX_MOVE(party3)) {
-            stam3 = 7;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .9) {
-            stam3 = 6;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .8) {
-            stam3 = 5;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .7) {
-            stam3 = 4;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .5) {
-            stam3 = 3;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .4) {
-            stam3 = 2;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .2) {
-            stam3 = 1;
-          } else {
-            stam3 = 0;
-          }
-        } else if (count == 4) {
-          party4 = k->follower;
-          plperc4 = (GET_HIT(party4) * 100) / GET_MAX_HIT(party4);
-          kiperc4 = (GET_CHARGE(party4) * 100) / GET_MAX_MANA(party4);
-
-          if (plperc4 >= 80)
-            plc4 = 3;
-          else if (plperc4 >= 50)
-            plc4 = 2;
-          else if (plperc4 >= 30)
-            plc4 = 1;
-          else
-            plc4 = 0;
-
-          if ((getCurST(party4)) >= GET_MAX_MOVE(party4)) {
-            stam4 = 7;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .9) {
-            stam4 = 6;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .8) {
-            stam4 = 5;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .7) {
-            stam4 = 4;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .5) {
-            stam4 = 3;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .4) {
-            stam4 = 2;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .2) {
-            stam4 = 1;
-          } else {
-            stam4 = 0;
-          }
-        }
-      }
-    }
-    sprintf(result1,
-            "@D[@BG@D]-------@mF@D------- -------@mF@D------- "
-            "-------@mF@D------- -------@mF@D-------[@BG@D] <@RV@Y%s@R>@n\n",
-            add_commas(GET_GROUPKILLS(ch)));
-    sprintf(result2, "@D[@BR@D]@C%-15s %-15s %-15s %-15s@D[@BR@D]@n\n",
-            party1 ? get_i_name(ch, party1) : "Empty",
-            party2 ? get_i_name(ch, party2) : "Empty",
-            party3 ? get_i_name(ch, party3) : "Empty",
-            party4 ? get_i_name(ch, party4) : "Empty");
-    sprintf(result3,
-            "@D[@BO@D]@RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T
-            "@w%s @RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T
-            "@w%s@D[@BO@D]@n\n",
-            plcol[plc1], plperc1, "%", plcol[plc2], plperc2, "%", plcol[plc3],
-            plperc3, "%", plcol[plc4], plperc4, "%");
-    sprintf(result4,
-            "@D[@BU@D]@cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T
-            "@w%s @cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T
-            "@w%s@D[@BU@D]@n\n",
-            kiperc1, "%", kiperc2, "%", kiperc3, "%", kiperc4, "%");
-    sprintf(result5,
-            "@D[@BP@D]@gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s "
-            "@gSt@D:%s%12s@D[@BP@D]@n",
-            excol[stam1], exhaust[stam1], excol[stam2], exhaust[stam2],
-            excol[stam3], exhaust[stam3], excol[stam4], exhaust[stam4]);
-    sprintf(result_party_health, "%s%s%s%s%s\n", result1, result2, result3,
-            result4, result5);
-    ch->temp_prompt = strdup(result_party_health);
-    return (ch->temp_prompt);
+  if (is_leader) {
+    for (auto *k = ch->followers; k && n < 4; k = k->next)
+      if (k->follower != ch && char_condition_has(k->follower, "group"))
+        party[n++] = k->follower;
   } else if (ch->master && char_condition_has(ch->master, "group")) {
-    party1 = ch->master;
-    plperc1 = (GET_HIT(party1) * 100) / GET_MAX_HIT(party1);
-    kiperc1 = (GET_CHARGE(party1) * 100) / GET_MAX_MANA(party1);
-
-    if (plperc1 >= 80)
-      plc1 = 3;
-    else if (plperc1 >= 50)
-      plc1 = 2;
-    else if (plperc1 >= 30)
-      plc1 = 1;
-    else
-      plc1 = 0;
-
-    if ((getCurST(party1)) >= GET_MAX_MOVE(party1)) {
-      stam1 = 7;
-    } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .9) {
-      stam1 = 6;
-    } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .8) {
-      stam1 = 5;
-    } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .7) {
-      stam1 = 4;
-    } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .5) {
-      stam1 = 3;
-    } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .4) {
-      stam1 = 2;
-    } else if ((getCurST(party1)) >= GET_MAX_MOVE(party1) * .2) {
-      stam1 = 1;
-    } else {
-      stam1 = 0;
-    }
-    count = 1;
-
-    for (k = party1->followers; k; k = next) {
-      next = k->next;
-      if (!char_condition_has(k->follower, "group"))
-        continue;
-      if (k->follower != ch) {
-        count += 1;
-        if (count == 2) {
-          party2 = k->follower;
-          plperc2 = (GET_HIT(party2) * 100) / GET_MAX_HIT(party2);
-          kiperc2 = (GET_CHARGE(party2) * 100) / GET_MAX_MANA(party2);
-
-          if (plperc2 >= 80)
-            plc2 = 3;
-          else if (plperc2 >= 50)
-            plc2 = 2;
-          else if (plperc2 >= 30)
-            plc2 = 1;
-          else
-            plc2 = 0;
-
-          if ((getCurST(party2)) >= GET_MAX_MOVE(party2)) {
-            stam2 = 7;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .9) {
-            stam2 = 6;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .8) {
-            stam2 = 5;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .7) {
-            stam2 = 4;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .5) {
-            stam2 = 3;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .4) {
-            stam2 = 2;
-          } else if ((getCurST(party2)) >= GET_MAX_MOVE(party2) * .2) {
-            stam2 = 1;
-          } else {
-            stam2 = 0;
-          }
-        } else if (count == 3) {
-          party3 = k->follower;
-          plperc3 = (GET_HIT(party3) * 100) / GET_MAX_HIT(party3);
-          kiperc3 = (GET_CHARGE(party3) * 100) / GET_MAX_MANA(party3);
-
-          if (plperc3 >= 80)
-            plc3 = 3;
-          else if (plperc3 >= 50)
-            plc3 = 2;
-          else if (plperc3 >= 30)
-            plc3 = 1;
-          else
-            plc3 = 0;
-
-          if ((getCurST(party3)) >= GET_MAX_MOVE(party3)) {
-            stam3 = 7;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .9) {
-            stam3 = 6;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .8) {
-            stam3 = 5;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .7) {
-            stam3 = 4;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .5) {
-            stam3 = 3;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .4) {
-            stam3 = 2;
-          } else if ((getCurST(party3)) >= GET_MAX_MOVE(party3) * .2) {
-            stam3 = 1;
-          } else {
-            stam3 = 0;
-          }
-        } else if (count == 4) {
-          party4 = k->follower;
-          plperc4 = (GET_HIT(party4) * 100) / GET_MAX_HIT(party4);
-          kiperc4 = (GET_CHARGE(party4) * 100) / GET_MAX_MANA(party4);
-
-          if (plperc4 >= 80)
-            plc4 = 3;
-          else if (plperc4 >= 50)
-            plc4 = 2;
-          else if (plperc4 >= 30)
-            plc4 = 1;
-          else
-            plc4 = 0;
-
-          if ((getCurST(party4)) >= GET_MAX_MOVE(party4)) {
-            stam4 = 7;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .9) {
-            stam4 = 6;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .8) {
-            stam4 = 5;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .7) {
-            stam4 = 4;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .5) {
-            stam4 = 3;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .4) {
-            stam4 = 2;
-          } else if ((getCurST(party4)) >= GET_MAX_MOVE(party4) * .2) {
-            stam4 = 1;
-          } else {
-            stam4 = 0;
-          }
-        }
-      } /* Is follower */
-    } /* End for */
-
-    sprintf(result1, "@D[@BG@D]-------@YL@D------- -------@mF@D------- "
-                     "-------@mF@D------- -------@mF@D-------[@BG@D]@n\n");
-    sprintf(result2, "@D[@BR@D]@C%-15s %-15s %-15s %-15s@D[@BR@D]@n\n",
-            party1 ? get_i_name(ch, party1) : "Empty",
-            party2 ? get_i_name(ch, party2) : "Empty",
-            party3 ? get_i_name(ch, party3) : "Empty",
-            party4 ? get_i_name(ch, party4) : "Empty");
-    sprintf(result3,
-            "@D[@BO@D]@RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T
-            "@w%s @RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T
-            "@w%s@D[@BO@D]@n\n",
-            plcol[plc1], plperc1, "%", plcol[plc2], plperc2, "%", plcol[plc3],
-            plperc3, "%", plcol[plc4], plperc4, "%");
-    sprintf(result4,
-            "@D[@BU@D]@cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T
-            "@w%s @cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T
-            "@w%s@D[@BU@D]@n\n",
-            kiperc1, "%", kiperc2, "%", kiperc3, "%", kiperc4, "%");
-    sprintf(result5,
-            "@D[@BP@D]@gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s "
-            "@gSt@D:%s%12s@D[@BP@D]@n",
-            excol[stam1], exhaust[stam1], excol[stam2], exhaust[stam2],
-            excol[stam3], exhaust[stam3], excol[stam4], exhaust[stam4]);
-    sprintf(result_party_health, "%s%s%s%s%s\n", result1, result2, result3,
-            result4, result5);
-    ch->temp_prompt = strdup(result_party_health);
-    return (ch->temp_prompt);
+    party[n++] = ch->master;
+    for (auto *k = ch->master->followers; k && n < 4; k = k->next)
+      if (k->follower != ch && char_condition_has(k->follower, "group"))
+        party[n++] = k->follower;
   } else {
-    return ("");
+    return "";
   }
+
+  int64_t plperc[4] = {}, kiperc[4] = {};
+  int plc[4] = {4, 4, 4, 4}, stam[4] = {8, 8, 8, 8};
+  for (int i = 0; i < 4; ++i) {
+    if (!party[i]) continue;
+    plperc[i] = (GET_HIT(party[i]) * 100) / GET_MAX_HIT(party[i]);
+    kiperc[i] = (GET_CHARGE(party[i]) * 100) / GET_MAX_MANA(party[i]);
+    int64_t p  = plperc[i];
+    plc[i]     = p >= 80 ? 3 : p >= 50 ? 2 : p >= 30 ? 1 : 0;
+    stam[i]    = member_stam(party[i]);
+  }
+
+  char buf[MAX_STRING_LENGTH];
+  if (is_leader) {
+    snprintf(buf, sizeof(buf),
+      "@D[@BG@D]-------@mF@D------- -------@mF@D------- "
+      "-------@mF@D------- -------@mF@D-------[@BG@D] <@RV@Y%s@R>@n\n"
+      "@D[@BR@D]@C%-15s %-15s %-15s %-15s@D[@BR@D]@n\n"
+      "@D[@BO@D]@RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T
+      "@w%s @RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T "@w%s@D[@BO@D]@n\n"
+      "@D[@BU@D]@cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T
+      "@w%s @cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T "@w%s@D[@BU@D]@n\n"
+      "@D[@BP@D]@gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s "
+      "@gSt@D:%s%12s@D[@BP@D]@n\n",
+      add_commas(GET_GROUPKILLS(ch)),
+      party[0] ? get_i_name(ch, party[0]) : "Empty",
+      party[1] ? get_i_name(ch, party[1]) : "Empty",
+      party[2] ? get_i_name(ch, party[2]) : "Empty",
+      party[3] ? get_i_name(ch, party[3]) : "Empty",
+      plcol[plc[0]], plperc[0], "%", plcol[plc[1]], plperc[1], "%",
+      plcol[plc[2]], plperc[2], "%", plcol[plc[3]], plperc[3], "%",
+      kiperc[0], "%", kiperc[1], "%", kiperc[2], "%", kiperc[3], "%",
+      excol[stam[0]], exhaust[stam[0]], excol[stam[1]], exhaust[stam[1]],
+      excol[stam[2]], exhaust[stam[2]], excol[stam[3]], exhaust[stam[3]]);
+  } else {
+    snprintf(buf, sizeof(buf),
+      "@D[@BG@D]-------@YL@D------- -------@mF@D------- "
+      "-------@mF@D------- -------@mF@D-------[@BG@D]@n\n"
+      "@D[@BR@D]@C%-15s %-15s %-15s %-15s@D[@BR@D]@n\n"
+      "@D[@BO@D]@RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T
+      "@w%s @RPL@D:%s%11" I64T "@w%s @RPL@D:%s%11" I64T "@w%s@D[@BO@D]@n\n"
+      "@D[@BU@D]@cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T
+      "@w%s @cCharge@D:@B%7" I64T "@w%s @cCharge@D:@B%7" I64T "@w%s@D[@BU@D]@n\n"
+      "@D[@BP@D]@gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s "
+      "@gSt@D:%s%12s@D[@BP@D]@n\n",
+      party[0] ? get_i_name(ch, party[0]) : "Empty",
+      party[1] ? get_i_name(ch, party[1]) : "Empty",
+      party[2] ? get_i_name(ch, party[2]) : "Empty",
+      party[3] ? get_i_name(ch, party[3]) : "Empty",
+      plcol[plc[0]], plperc[0], "%", plcol[plc[1]], plperc[1], "%",
+      plcol[plc[2]], plperc[2], "%", plcol[plc[3]], plperc[3], "%",
+      kiperc[0], "%", kiperc[1], "%", kiperc[2], "%", kiperc[3], "%",
+      excol[stam[0]], exhaust[stam[0]], excol[stam[1]], exhaust[stam[1]],
+      excol[stam[2]], exhaust[stam[2]], excol[stam[3]], exhaust[stam[3]]);
+  }
+
+  ch->temp_prompt = strdup(buf);
+  return ch->temp_prompt;
 }
 
 /* Check to see if anything interferes with their "knowing" the skill */
@@ -2740,85 +2470,56 @@ void reveal_hiding(struct char_data *ch, int type) {
 }
 
 int block_calc(struct char_data *ch) {
-  struct char_data *blocker = NULL;
+  auto *blocker = BLOCKED(ch);
+  if (!blocker)
+    return 1;
 
-  if (BLOCKED(ch)) {
-    blocker = BLOCKED(ch);
-  } else {
-    return (1);
-  }
-
-  if (GET_SPEEDI(ch) < GET_SPEEDI(blocker) && GET_POS(blocker) > POS_SITTING) {
-    if (!AFF_FLAGGED(blocker, AFF_BLIND) && !PLR_FLAGGED(blocker, PLR_EYEC)) {
-      int minimum = GET_CHA(blocker) + rand_number(5, 20);
-      if (minimum > 100) {
-        minimum = 100;
-      }
-      if (!GET_SKILL(ch, SKILL_ESCAPE_ARTIST) ||
-          (GET_SKILL(ch, SKILL_ESCAPE_ARTIST) &&
-           GET_SKILL(ch, SKILL_ESCAPE_ARTIST) < rand_number(minimum, 120))) {
-        act("$n tries to leave, but can't outrun $N!", TRUE, ch, 0, blocker,
-            TO_NOTVICT);
-        act("$n tries to leave, but can't outrun you!", TRUE, ch, 0, blocker,
-            TO_VICT);
-        act("You try to leave, but can't outrun $N!", TRUE, ch, 0, blocker,
-            TO_CHAR);
-        if (char_condition_has(ch, "flying") && !char_condition_has(blocker, "flying") &&
-            GET_ALT(ch) == 1) {
-          send_to_char(blocker, "You're now floating in the air.\r\n");
-          char_condition_add(blocker, "flying", "skill", "fly");
-          char_condition_number_set(blocker, "flying", "altitude", GET_ALT(ch));
-        } else if (char_condition_has(ch, "flying") &&
-                   !char_condition_has(blocker, "flying") && GET_ALT(ch) == 2) {
-          send_to_char(blocker, "You're now floating high in the sky.\r\n");
-          char_condition_add(blocker, "flying", "skill", "fly");
-          char_condition_number_set(blocker, "flying", "altitude", GET_ALT(ch));
-        }
-        return (0);
-      } else {
-        act("$n proves $s great skill and escapes from $N's attempted block!",
-            TRUE, ch, 0, blocker, TO_NOTVICT);
-        act("$n proves $s great skill and escapes from your attempted block!",
-            TRUE, ch, 0, blocker, TO_VICT);
-        act("Using your great skill you manage to escape from $N's attempted "
-            "block!",
-            TRUE, ch, 0, blocker, TO_CHAR);
-        BLOCKED(ch) = NULL;
-        BLOCKS(blocker) = NULL;
-      }
-    } else {
+  auto escape_acts = [&](bool attempted) {
+    if (attempted) {
       act("$n proves $s great skill and escapes from $N's attempted block!",
           TRUE, ch, 0, blocker, TO_NOTVICT);
       act("$n proves $s great skill and escapes from your attempted block!",
           TRUE, ch, 0, blocker, TO_VICT);
-      act("Using your great skill you manage to escape from $N's attempted "
-          "block!",
+      act("Using your great skill you manage to escape from $N's attempted block!",
           TRUE, ch, 0, blocker, TO_CHAR);
-      BLOCKED(ch) = NULL;
-      BLOCKS(blocker) = NULL;
+    } else {
+      act("$n proves $s great skill and escapes from $N!", TRUE, ch, 0, blocker, TO_NOTVICT);
+      act("$n proves $s great skill and escapes from you!", TRUE, ch, 0, blocker, TO_VICT);
+      act("Using your great skill you manage to escape from $N!", TRUE, ch, 0, blocker, TO_CHAR);
     }
+    BLOCKED(ch) = NULL;
+    BLOCKS(blocker) = NULL;
+  };
+
+  if (GET_SPEEDI(ch) < GET_SPEEDI(blocker) && GET_POS(blocker) > POS_SITTING) {
+    if (!AFF_FLAGGED(blocker, AFF_BLIND) && !PLR_FLAGGED(blocker, PLR_EYEC)) {
+      int minimum = GET_CHA(blocker) + rand_number(5, 20);
+      if (minimum > 100) minimum = 100;
+      int ea = GET_SKILL(ch, SKILL_ESCAPE_ARTIST);
+      if (!ea || ea < rand_number(minimum, 120)) {
+        act("$n tries to leave, but can't outrun $N!", TRUE, ch, 0, blocker, TO_NOTVICT);
+        act("$n tries to leave, but can't outrun you!", TRUE, ch, 0, blocker, TO_VICT);
+        act("You try to leave, but can't outrun $N!", TRUE, ch, 0, blocker, TO_CHAR);
+        if (char_condition_has(ch, "flying") && !char_condition_has(blocker, "flying")) {
+          int alt = GET_ALT(ch);
+          if (alt == 1 || alt == 2) {
+            send_to_char(blocker, alt == 1 ? "You're now floating in the air.\r\n"
+                                           : "You're now floating high in the sky.\r\n");
+            char_condition_add(blocker, "flying", "skill", "fly");
+            char_condition_number_set(blocker, "flying", "altitude", alt);
+          }
+        }
+        return 0;
+      }
+    }
+    escape_acts(true);
   } else if (GET_POS(blocker) <= POS_SITTING) {
-    act("$n proves $s great skill and escapes from $N!", TRUE, ch, 0, blocker,
-        TO_NOTVICT);
-    act("$n proves $s great skill and escapes from you!", TRUE, ch, 0, blocker,
-        TO_VICT);
-    act("Using your great skill you manage to escape from $N!", TRUE, ch, 0,
-        blocker, TO_CHAR);
-    BLOCKED(ch) = NULL;
-    BLOCKS(blocker) = NULL;
-  } else if (GET_POS(blocker) > POS_SITTING) {
-    act("$n proves $s great skill and escapes from $N's attempted block!", TRUE,
-        ch, 0, blocker, TO_NOTVICT);
-    act("$n proves $s great skill and escapes from your attempted block!", TRUE,
-        ch, 0, blocker, TO_VICT);
-    act("Using your great skill you manage to escape from $N's attempted "
-        "block!",
-        TRUE, ch, 0, blocker, TO_CHAR);
-    BLOCKED(ch) = NULL;
-    BLOCKS(blocker) = NULL;
+    escape_acts(false);
+  } else {
+    escape_acts(true);
   }
 
-  return (1);
+  return 1;
 }
 
 int64_t molt_threshold(struct char_data *ch) {
@@ -3003,362 +2704,183 @@ void mob_talk(struct char_data *ch, const char *speech) {
 
 int mob_respond(struct char_data *ch, struct char_data *vict,
                 const char *speech) {
-  if (ch != NULL && vict != NULL) {
-    if (!IS_NPC(ch) && IS_NPC(vict)) {
-      if ((strstr(speech, "hello") || strstr(speech, "greet") ||
-           strstr(speech, "Hello") || strstr(speech, "Greet")) &&
-          !FIGHTING(vict)) {
-        send_to_room(char_room_get(vict), "\r\n");
-        if (IS_HUMAN(vict) || IS_HALFBREED(vict)) {
-          switch (rand_number(1, 4)) {
-          case 1:
-            act("@w$n@W says, '@CYes, hello to you as well $N.@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CHello!@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 3:
-            act("@w$n@W says, '@CHi, $N, how are you doing?@W'@n", TRUE, vict,
-                0, ch, TO_ROOM);
-            break;
-          case 4:
-            act("@w$n@W says, '@CGreetings, $N. What are you up to?@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          }
-        } /* End Human Section */
-        else if (IS_SAIYAN(vict)) {
-          switch (rand_number(1, 4)) {
-          case 1:
-            act("@w$n@W says, '@CHmph, hi.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CHello weakling.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-            break;
-          case 3:
-            act("@w$n@W says, '@C$N do all weaklings like you waste time in "
-                "idle talk?@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 4:
-            act("@w$n@W says, '@C$N, you are not welcome around me.@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          }
-        } /* End Saiyan Section */
-        else if (IS_ICER(vict)) {
-          switch (rand_number(1, 4)) {
-          case 1:
-            act("@w$n@W says, '@CHa ha... Yes, hello.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CAh a polite greeting. It's good to know your "
-                "kind isn't totally worthless.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 3:
-            act("@w$n@W says, '@C$N, hello. Now leave me be.@W'@n", TRUE, vict,
-                0, ch, TO_ROOM);
-            break;
-          case 4:
-            act("@w$n@W says, '@C$N, you are below me. Now begone.@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          }
-        } /* End Icer Section */
-        else if (IS_KONATSU(vict)) {
-          switch (rand_number(1, 4)) {
-          case 1:
-            act("@w$n@W says, '@CGreetings, $N, may your travels be well.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CHello.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 3:
-            act("@w$n@W says, '@C$N, hello.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 4:
-            act("@w$n@W says, '@C$N, it is nice to meet you.@W'@n", TRUE, vict,
-                0, ch, TO_ROOM);
-            break;
-          }
-        } /* End Konatsu Section */
-        else if (IS_NAMEK(vict)) {
-          switch (rand_number(1, 4)) {
-          case 1:
-            act("@w$n@W says, '@CHello.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CA peaceful greeting to you, $N.@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          case 3:
-            act("@w$n@W says, '@C$N, hello. What is your business here?@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 4:
-            act("@w$n@W says, '@C$N, greetings.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-            break;
-          }
-        } /* End Namek Section */
-        else if (IS_ARLIAN(vict)) {
-          switch (rand_number(1, 4)) {
-          case 1:
-            act("@w$n@W says, '@CPeace, stranger.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CStay out of my way.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-            break;
-          case 3:
-            act("@w$n@W says, '@C$N, what is your business here?@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          case 4:
-            act("@w$n@W says, '@C...Hello.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          }
-        } /* End Arlian Section */
-        else if (IS_ANDROID(vict)) {
-          act("@w$n@W says, '@C...@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-        } /* End Android Section */
-        else if (IS_MAJIN(vict)) {
-          switch (rand_number(1, 2)) {
-          case 1:
-            act("@w$n@W says, '@CHa ha...@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            break;
-          case 2:
-            act("@w$n@W says, '@CHello. What candy you want to be?@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            break;
-          }
-        } /* End MAJIN Section */
-        else if (IS_TRUFFLE(vict)) {
-          switch (rand_number(1, 3)) {
-          case 1:
-            if (IS_SAIYAN(ch)) {
-              act("@w$n@W says, '@CEwww, dirty monkey...@W'@n", TRUE, vict, 0,
-                  ch, TO_ROOM);
-            } else {
-              act("@w$n@W says, '@CHello.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            }
-            break;
-          case 2:
-            if (IS_SAIYAN(ch)) {
-              act("@w$n@W says, '@CEwww, dirty monkey...@W'@n", TRUE, vict, 0,
-                  ch, TO_ROOM);
-            } else {
-              act("@w$n@W says, '@C$N, hello. You are a curious "
-                  "individual.@W'@n",
-                  TRUE, vict, 0, ch, TO_ROOM);
-            }
-            break;
-          case 3:
-            if (IS_SAIYAN(ch)) {
-              act("@w$n@W says, '@CEwww, dirty monkey...@W'@n", TRUE, vict, 0,
-                  ch, TO_ROOM);
-            } else {
-              act("@w$n@W says, '@C$N, hello. What's your IQ?@W'@n", TRUE, vict,
-                  0, ch, TO_ROOM);
-            }
-            break;
-          }
-        } /* End Truffle Section */
-        else {
-          act("Hmph, yeah hi.", TRUE, vict, 0, ch, TO_ROOM);
-        }
-      } /* End Hello Section */
+  if (!ch || !vict)
+    return 1;
+  if (IS_NPC(ch) || !IS_NPC(vict))
+    return 1;
 
-      if ((strstr(speech, "spar") || strstr(speech, "Spar")) &&
-          !FIGHTING(vict)) {
-        send_to_room(char_room_get(vict), "\r\n");
+  auto hears = [speech](const char *word) { return strstr(speech, word) != nullptr; };
+  auto say   = [&](const char *line) { act(line, TRUE, vict, 0, ch, TO_ROOM); };
+  auto say_one_of = [&](std::initializer_list<const char *> lines) {
+    say(*(lines.begin() + rand_number(1, (int)lines.size()) - 1));
+  };
 
-        if (vict->original == ch) {
-          act("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n", TRUE, vict,
-              0, ch, TO_ROOM);
-          SET_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
-          return 0;
-        }
+  if ((hears("hello") || hears("Hello") || hears("greet") || hears("Greet")) && !FIGHTING(vict)) {
+    send_to_room(char_room_get(vict), "\r\n");
+    if (IS_HUMAN(vict) || IS_HALFBREED(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CYes, hello to you as well $N.@W'@n",
+        "@w$n@W says, '@CHello!@W'@n",
+        "@w$n@W says, '@CHi, $N, how are you doing?@W'@n",
+        "@w$n@W says, '@CGreetings, $N. What are you up to?@W'@n",
+      });
+    } else if (IS_SAIYAN(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CHmph, hi.@W'@n",
+        "@w$n@W says, '@CHello weakling.@W'@n",
+        "@w$n@W says, '@C$N do all weaklings like you waste time in idle talk?@W'@n",
+        "@w$n@W says, '@C$N, you are not welcome around me.@W'@n",
+      });
+    } else if (IS_ICER(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CHa ha... Yes, hello.@W'@n",
+        "@w$n@W says, '@CAh a polite greeting. It's good to know your kind isn't totally worthless.@W'@n",
+        "@w$n@W says, '@C$N, hello. Now leave me be.@W'@n",
+        "@w$n@W says, '@C$N, you are below me. Now begone.@W'@n",
+      });
+    } else if (IS_KONATSU(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CGreetings, $N, may your travels be well.@W'@n",
+        "@w$n@W says, '@CHello.@W'@n",
+        "@w$n@W says, '@C$N, hello.@W'@n",
+        "@w$n@W says, '@C$N, it is nice to meet you.@W'@n",
+      });
+    } else if (IS_NAMEK(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CHello.@W'@n",
+        "@w$n@W says, '@CA peaceful greeting to you, $N.@W'@n",
+        "@w$n@W says, '@C$N, hello. What is your business here?@W'@n",
+        "@w$n@W says, '@C$N, greetings.@W'@n",
+      });
+    } else if (IS_ARLIAN(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CPeace, stranger.@W'@n",
+        "@w$n@W says, '@CStay out of my way.@W'@n",
+        "@w$n@W says, '@C$N, what is your business here?@W'@n",
+        "@w$n@W says, '@C...Hello.@W'@n",
+      });
+    } else if (IS_ANDROID(vict)) {
+      say("@w$n@W says, '@C...@W'@n");
+    } else if (IS_MAJIN(vict)) {
+      say_one_of({
+        "@w$n@W says, '@CHa ha...@W'@n",
+        "@w$n@W says, '@CHello. What candy you want to be?@W'@n",
+      });
+    } else if (IS_TRUFFLE(vict)) {
+      if (IS_SAIYAN(ch))
+        say("@w$n@W says, '@CEwww, dirty monkey...@W'@n");
+      else
+        say_one_of({
+          "@w$n@W says, '@CHello.@W'@n",
+          "@w$n@W says, '@C$N, hello. You are a curious individual.@W'@n",
+          "@w$n@W says, '@C$N, hello. What's your IQ?@W'@n",
+        });
+    } else {
+      say("Hmph, yeah hi.");
+    }
+  }
 
-        if (GET_LEVEL(vict) > 4 && GET_ALIGNMENT(vict) >= 0) {
-          memory_rec *names;
-          int remember = FALSE;
-
-          for (names = MEMORY(vict); names && !remember; names = names->next) {
-            if (names->id != GET_IDNUM(ch))
-              continue;
-
-            remember = TRUE;
-          }
-
-          if (remember == TRUE) {
-            act("@w$n@W says, '@C$N you will die by my hand!@W'@n", TRUE, vict,
-                0, ch, TO_ROOM);
-            return 1;
-          } else if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-            act("@w$n@W says, '@C$N, I have no need to spar with you.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-            return 1;
-          } else if (MOB_FLAGGED(vict, MOB_AGGRESSIVE)) {
-            act("@w$n@W says, '@C$N, I will kill you instead.@W'@n", TRUE, vict,
-                0, ch, TO_ROOM);
-            return 1;
-          } else if (MOB_FLAGGED(vict, MOB_DUMMY)) {
-            act("@w$n@W says, '@C...@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            return 1;
-          } else if (GET_MAX_HIT(ch) > GET_MAX_HIT(vict) * 2) {
-            act("@w$n@W says, '@C$N, no way will I spar. I already know I "
-                "would lose badly.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-            return 1;
-          } else if (GET_MAX_HIT(vict) > GET_MAX_HIT(ch) * 2) {
-            act("@w$n@W says, '@C$N, you wouldn't last very long.@W'@n", TRUE,
-                vict, 0, ch, TO_ROOM);
-            return 1;
-          } else if (GET_HIT(vict) < GET_MAX_HIT(vict) * .8) {
-            act("@w$n@W says, '@C$N, I need to recover first.@W'@n", TRUE, vict,
-                0, ch, TO_ROOM);
-            return 1;
-          } else if (rand_number(1, 50) >= 40 && !MOB_FLAGGED(vict, MOB_SPAR)) {
-            act("@w$n@W says, '@C$N, maybe in a bit.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-            return 1;
-          } else {
-            if (MOB_FLAGGED(vict, MOB_SPAR)) {
-              act("@w$n@W says, '@C$N, fine our match will wait till later "
-                  "then.@W'@n",
-                  TRUE, vict, 0, ch, TO_ROOM);
-              REMOVE_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
-            } else {
-              act("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n", TRUE,
-                  vict, 0, ch, TO_ROOM);
-              SET_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
-            }
-            return 0;
-          }
-        } else if (GET_LEVEL(vict) > 4 && GET_ALIGNMENT(vict) < 0) {
-          act("@w$n@W says, '@CSpar? I don't play games, I play for "
-              "blood...@W'@n",
-              TRUE, vict, 0, ch, TO_ROOM);
-          return 1;
-        } else {
-          act("@w$n@W says, '@CSpar? I prefer not to thank you...@W'@n", TRUE,
-              vict, 0, ch, TO_ROOM);
-          return 1;
-        }
-      } /* End challenge section */
-      if (strstr(speech, "goodbye") || strstr(speech, "Goodbye") ||
-          strstr(speech, "bye") || strstr(speech, "Bye")) {
-        send_to_room(char_room_get(vict), "\r\n");
-        if (GET_ALIGNMENT(vict) >= 0) {
-          if (GET_SEX(vict) == SEX_MALE) {
-            if (GET_SEX(ch) == SEX_FEMALE) {
-              act("@w$n@W says, '@C$N, goodbye babe.@W'@n", TRUE, vict, 0, ch,
-                  TO_ROOM);
-            } else {
-              act("@w$n@W says, '@C$N, goodbye.@W'@n", TRUE, vict, 0, ch,
-                  TO_ROOM);
-            }
-          } else if (GET_SEX(vict) == SEX_FEMALE) {
-            if (GET_SEX(ch) == SEX_MALE) {
-              act("@w$n@W says, '@C$N, goodbye...@W'@n", TRUE, vict, 0, ch,
-                  TO_ROOM);
-            } else {
-              act("@w$n@W says, '@C$N, bye.@W'@n", TRUE, vict, 0, ch, TO_ROOM);
-            }
-          } else {
-            act("@w$n@W says, '@C$N, goodbye.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-          }
-        }
-        if (GET_ALIGNMENT(vict) < 0) {
-          if (GET_SEX(vict) == SEX_MALE) {
-            if (GET_SEX(ch) == SEX_FEMALE) {
-              act("@w$n@W says, '@CGoodbye. Eh heh heh.@W'@n", TRUE, vict, 0,
-                  ch, TO_ROOM);
-            } else {
-              act("@w$n@W says, '@CSo long and good ridance.@W'@n", TRUE, vict,
-                  0, ch, TO_ROOM);
-            }
-          } else if (GET_SEX(vict) == SEX_FEMALE) {
-            if (GET_SEX(ch) == SEX_MALE) {
-              act("@w$n@W says, '@CGoodbye then...@W'@n", TRUE, vict, 0, ch,
-                  TO_ROOM);
-            } else {
-              act("@w$n@W says, '@C$N, no one wanted you around anyway.@W'@n",
-                  TRUE, vict, 0, ch, TO_ROOM);
-            }
-          } else {
-            act("@w$n@W says, '@CFine get lost.@W'@n", TRUE, vict, 0, ch,
-                TO_ROOM);
-          }
-        }
-      } /* End goodbye If */
-      if (strstr(speech, "train") || strstr(speech, "Train") ||
-          strstr(speech, "exercise") || strstr(speech, "Exercise")) {
-        send_to_room(char_room_get(vict), "\r\n");
-        if (GET_ALIGNMENT(vict) >= 0 && !MOB_FLAGGED(vict, MOB_NOKILL)) {
-          if (GET_LEVEL(vict) > 4 && GET_LEVEL(vict) < 10) {
-            act("@w$n@W says, '@CTraining is good for the body. I think I may "
-                "need to go workout myself.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) >= 10 && GET_LEVEL(vict) < 30) {
-            act("@w$n@W says, '@CI think I might need a little more "
-                "training...@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) >= 30 && GET_LEVEL(vict) < 60) {
-            act("@w$n@W says, '@CI'm pretty tough already. Though I should "
-                "probably work on my skills.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) >= 60) {
-            act("@w$n@W says, '@CI'm on top of my game.@W'@n", TRUE, vict, 0,
-                ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) < 5) {
-            act("@w$n@W says, '@CI really need to bust ass and train.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-        }
-        if (GET_ALIGNMENT(vict) < 0 && !MOB_FLAGGED(vict, MOB_NOKILL)) {
-          if (GET_LEVEL(vict) > 4 && GET_LEVEL(vict) < 10) {
-            act("@w$n@W says, '@CWell maybe I could use some more "
-                "training.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) >= 10 && GET_LEVEL(vict) < 30) {
-            act("@w$n@W says, '@CTrain? Yeah it has become harder to take what "
-                "I want....@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) >= 30 && GET_LEVEL(vict) < 60) {
-            act("@w$n@W says, '@CTrain? I don't need to train to take "
-                "you!@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) >= 60) {
-            act("@w$n@W says, '@CTraining won't save you when I tire of your "
-                "continued life.@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-          if (GET_LEVEL(vict) < 5) {
-            act("@w$n@W says, '@CYes. I need to train so I can reach the top. "
-                "Then everyone will have to listen to me!@W'@n",
-                TRUE, vict, 0, ch, TO_ROOM);
-          }
-        }
-      }
+  if ((hears("spar") || hears("Spar")) && !FIGHTING(vict)) {
+    send_to_room(char_room_get(vict), "\r\n");
+    if (vict->original == ch) {
+      say("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n");
+      SET_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
+      return 0;
+    }
+    if (GET_LEVEL(vict) <= 4) {
+      say("@w$n@W says, '@CSpar? I prefer not to thank you...@W'@n");
       return 1;
     }
-  } /* End Valid targets Loop. */
+    if (GET_ALIGNMENT(vict) < 0) {
+      say("@w$n@W says, '@CSpar? I don't play games, I play for blood...@W'@n");
+      return 1;
+    }
+    for (memory_rec *names = MEMORY(vict); names; names = names->next) {
+      if (names->id == GET_IDNUM(ch)) {
+        say("@w$n@W says, '@C$N you will die by my hand!@W'@n");
+        return 1;
+      }
+    }
+    if (MOB_FLAGGED(vict, MOB_NOKILL)) {
+      say("@w$n@W says, '@C$N, I have no need to spar with you.@W'@n");
+      return 1;
+    }
+    if (MOB_FLAGGED(vict, MOB_AGGRESSIVE)) {
+      say("@w$n@W says, '@C$N, I will kill you instead.@W'@n");
+      return 1;
+    }
+    if (MOB_FLAGGED(vict, MOB_DUMMY)) {
+      say("@w$n@W says, '@C...@W'@n");
+      return 1;
+    }
+    if (GET_MAX_HIT(ch) > GET_MAX_HIT(vict) * 2) {
+      say("@w$n@W says, '@C$N, no way will I spar. I already know I would lose badly.@W'@n");
+      return 1;
+    }
+    if (GET_MAX_HIT(vict) > GET_MAX_HIT(ch) * 2) {
+      say("@w$n@W says, '@C$N, you wouldn't last very long.@W'@n");
+      return 1;
+    }
+    if (GET_HIT(vict) < GET_MAX_HIT(vict) * .8) {
+      say("@w$n@W says, '@C$N, I need to recover first.@W'@n");
+      return 1;
+    }
+    if (rand_number(1, 50) >= 40 && !MOB_FLAGGED(vict, MOB_SPAR)) {
+      say("@w$n@W says, '@C$N, maybe in a bit.@W'@n");
+      return 1;
+    }
+    if (MOB_FLAGGED(vict, MOB_SPAR)) {
+      say("@w$n@W says, '@C$N, fine our match will wait till later then.@W'@n");
+      REMOVE_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
+    } else {
+      say("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n");
+      SET_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
+    }
+    return 0;
+  }
+
+  if (hears("goodbye") || hears("Goodbye") || hears("bye") || hears("Bye")) {
+    send_to_room(char_room_get(vict), "\r\n");
+    int vs = GET_SEX(vict), cs = GET_SEX(ch);
+    if (GET_ALIGNMENT(vict) >= 0) {
+      if      (vs == SEX_MALE   && cs == SEX_FEMALE) say("@w$n@W says, '@C$N, goodbye babe.@W'@n");
+      else if (vs == SEX_MALE)                        say("@w$n@W says, '@C$N, goodbye.@W'@n");
+      else if (vs == SEX_FEMALE && cs == SEX_MALE)    say("@w$n@W says, '@C$N, goodbye...@W'@n");
+      else if (vs == SEX_FEMALE)                      say("@w$n@W says, '@C$N, bye.@W'@n");
+      else                                            say("@w$n@W says, '@C$N, goodbye.@W'@n");
+    } else {
+      if      (vs == SEX_MALE   && cs == SEX_FEMALE) say("@w$n@W says, '@CGoodbye. Eh heh heh.@W'@n");
+      else if (vs == SEX_MALE)                        say("@w$n@W says, '@CSo long and good ridance.@W'@n");
+      else if (vs == SEX_FEMALE && cs == SEX_MALE)    say("@w$n@W says, '@CGoodbye then...@W'@n");
+      else if (vs == SEX_FEMALE)                      say("@w$n@W says, '@C$N, no one wanted you around anyway.@W'@n");
+      else                                            say("@w$n@W says, '@CFine get lost.@W'@n");
+    }
+  }
+
+  if ((hears("train") || hears("Train") || hears("exercise") || hears("Exercise")) &&
+      !MOB_FLAGGED(vict, MOB_NOKILL)) {
+    static const char *train_lines[2][5] = {
+      { /* good alignment, tiers: <5, 5-9, 10-29, 30-59, 60+ */
+        "@w$n@W says, '@CI really need to bust ass and train.@W'@n",
+        "@w$n@W says, '@CTraining is good for the body. I think I may need to go workout myself.@W'@n",
+        "@w$n@W says, '@CI think I might need a little more training...@W'@n",
+        "@w$n@W says, '@CI'm pretty tough already. Though I should probably work on my skills.@W'@n",
+        "@w$n@W says, '@CI'm on top of my game.@W'@n",
+      },
+      { /* evil alignment */
+        "@w$n@W says, '@CYes. I need to train so I can reach the top. Then everyone will have to listen to me!@W'@n",
+        "@w$n@W says, '@CWell maybe I could use some more training.@W'@n",
+        "@w$n@W says, '@CTrain? Yeah it has become harder to take what I want....@W'@n",
+        "@w$n@W says, '@CTrain? I don't need to train to take you!@W'@n",
+        "@w$n@W says, '@CTraining won't save you when I tire of your continued life.@W'@n",
+      },
+    };
+    send_to_room(char_room_get(vict), "\r\n");
+    int lv   = GET_LEVEL(vict);
+    int tier = lv < 5 ? 0 : lv < 10 ? 1 : lv < 30 ? 2 : lv < 60 ? 3 : 4;
+    say(train_lines[GET_ALIGNMENT(vict) < 0 ? 1 : 0][tier]);
+  }
+
   return 1;
 }
 
@@ -3962,44 +3484,45 @@ const char *get_i_name(struct char_data *ch, struct char_data *vict) {
 int can_grav(struct char_data *ch) {
   /* Gravity Related */
   int gravity = room_gravity_get(char_room_get(ch));
-  if (gravity == 10 && GET_MAX_HIT(ch) < 5000 && !IS_BARDOCK(ch) &&
+  auto pl = GET_MAX_HIT(ch);
+  if (gravity == 10 && pl < 5000 && !IS_BARDOCK(ch) &&
       !IS_NPC(ch)) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 20 && GET_MAX_HIT(ch) < 20000) {
+  } else if (gravity == 20 && pl < 20000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 30 && GET_MAX_HIT(ch) < 50000) {
+  } else if (gravity == 30 && pl < 50000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 40 && GET_MAX_HIT(ch) < 100000) {
+  } else if (gravity == 40 && pl < 100000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 50 && GET_MAX_HIT(ch) < 200000) {
+  } else if (gravity == 50 && pl < 200000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 100 && GET_MAX_HIT(ch) < 400000) {
+  } else if (gravity == 100 && pl < 400000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 200 && GET_MAX_HIT(ch) < 1000000) {
+  } else if (gravity == 200 && pl < 1000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 300 && GET_MAX_HIT(ch) < 5000000) {
+  } else if (gravity == 300 && pl < 5000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 400 && GET_MAX_HIT(ch) < 8000000) {
+  } else if (gravity == 400 && pl < 8000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 500 && GET_MAX_HIT(ch) < 15000000) {
+  } else if (gravity == 500 && pl < 15000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 1000 && GET_MAX_HIT(ch) < 25000000) {
+  } else if (gravity == 1000 && pl < 25000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 5000 && GET_MAX_HIT(ch) < 100000000) {
+  } else if (gravity == 5000 && pl < 100000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
-  } else if (gravity == 10000 && GET_MAX_HIT(ch) < 200000000) {
+  } else if (gravity == 10000 && pl < 200000000) {
     send_to_char(ch, "You are hardly able to move in this gravity!\r\n");
     return 0;
   } else {

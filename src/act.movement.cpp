@@ -1147,18 +1147,6 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     }
   }
 
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_TIMED_DT)) &&
-      !ADM_FLAGGED(ch, ADM_WALKANYWHERE))
-    timed_dt(NULL);
-
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_DEATH)) &&
-      !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
-    log_death_trap(ch);
-    death_cry(ch);
-    extract_char(ch);
-    return (0);
-  }
-
   entry_memory_mtrigger(ch);
   if (!greet_mtrigger(ch, dir)) {
     char_from_room(ch);

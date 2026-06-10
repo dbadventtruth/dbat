@@ -262,53 +262,7 @@ void load_race_sensei() {
   dbat::sensei::load_sensei();
 }
 
-/*
- * init_socket sets up the mother descriptor - creates the socket, sets
- * its options up, binds it, and listens.
- */
-socklen_t init_socket(uint16_t cmport) {
-  socklen_t s;
-  struct sockaddr_in sa;
-  int opt;
 
-  if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-    perror("SYSERR: Error creating socket");
-    exit(1);
-  }
-
-  opt = 1;
-  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0) {
-    perror("SYSERR: setsockopt REUSEADDR");
-    exit(1);
-  }
-
-  set_sendbuf(s);
-
-  {
-    struct linger ld;
-
-    ld.l_onoff = 0;
-    ld.l_linger = 0;
-    if (setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&ld, sizeof(ld)) < 0)
-      perror("SYSERR: setsockopt SO_LINGER"); /* Not fatal I suppose. */
-  }
-
-  /* Clear the structure */
-  memset((char *)&sa, 0, sizeof(sa));
-
-  sa.sin_family = AF_INET;
-  sa.sin_port = htons(cmport);
-  sa.sin_addr = *(get_bind_addr());
-
-  if (bind(s, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
-    perror("SYSERR: bind");
-    close(s);
-    exit(1);
-  }
-  nonblock(s);
-  listen(s, 5);
-  return (s);
-}
 
 int get_max_players(void) {
 
@@ -611,9 +565,6 @@ void heartbeat_legacy(int heart_pulse) {
   if (!(heart_pulse % PULSE_TIMESAVE))
     save_mud_time(&time_info);
 
-  if (!(heart_pulse % (30 * PASSES_PER_SEC))) {
-    timed_dt(NULL);
-  }
 
   /* Every pulse! Don't want them to stink the place up... */
   extract_pending_chars();
@@ -1891,32 +1842,6 @@ void free_bufpool(void) {
  * we can.  If neither is available, we always bind to INADDR_ANY.
  */
 
-struct in_addr *get_bind_addr() {
-  static struct in_addr bind_addr;
-
-  /* Clear the structure */
-  memset((char *)&bind_addr, 0, sizeof(bind_addr));
-
-  /* If DLFT_IP is unspecified, use INADDR_ANY */
-  if (CONFIG_DFLT_IP == NULL) {
-    bind_addr.s_addr = htonl(INADDR_ANY);
-  } else {
-    /* If the parsing fails, use INADDR_ANY */
-    if (!inet_aton(CONFIG_DFLT_IP, &bind_addr)) {
-      log("SYSERR: DFLT_IP of %s appears to be an invalid IP address",
-          CONFIG_DFLT_IP);
-      bind_addr.s_addr = htonl(INADDR_ANY);
-    }
-  }
-
-  /* Put the address that we've finally decided on into the logs */
-  if (bind_addr.s_addr == htonl(INADDR_ANY))
-    log("Binding to all IP interfaces on this host.");
-  else
-    log("Binding only to IP address %s", inet_ntoa(bind_addr));
-
-  return (&bind_addr);
-}
 
 /* Sets the kernel's send buffer size for the descriptor */
 int set_sendbuf(socklen_t s) {

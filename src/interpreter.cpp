@@ -455,6 +455,7 @@ int enter_player_game(struct descriptor_data *d) {
   GET_ID(ch) = GET_IDNUM(ch);
   /* find_char helper */
   (void)char_register_id(GET_ID(ch), ch);
+  char_subscribe_add(ch, "player");
   read_saved_vars(ch);
   for (check = character_list; check; check = check->next)
     if (!check->master && IS_NPC(check) &&

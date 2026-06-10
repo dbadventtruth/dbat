@@ -24,6 +24,7 @@
 #include "comm.h"
 #include "consts/affflags.h"
 #include "consts/applies.h"
+#include "consts/itemdata.h"
 #include "consts/mobflags.h"
 #include "consts/playerflags.h"
 #include "consts/positions.h"
@@ -180,8 +181,20 @@ void char_game_deactivate(struct char_data *ch) {
 }
 
 void obj_game_activate(struct obj_data *obj) {
-  if (GET_OBJ_VNUM(obj) == 82 || GET_OBJ_VNUM(obj) == 83)
+  if (GET_OBJ_VNUM(obj) == 82 || GET_OBJ_VNUM(obj) == 83) {
     obj_subscribe_add(obj, "obj_huge_attack");
+    obj_subscribe_add(obj, "obj_huge_ki");
+  }
+  if (GET_OBJ_VNUM(obj) == 80 || GET_OBJ_VNUM(obj) == 81 || GET_OBJ_VNUM(obj) == 84)
+    obj_subscribe_add(obj, "obj_homing");
+  if (GET_OBJ_VNUM(obj) == 11 || GET_OBJ_VNUM(obj) == 3034)
+    obj_subscribe_add(obj, "obj_broken");
+  if (GET_OBJ_TYPE(obj) == ITEM_PLANT)
+    obj_subscribe_add(obj, "obj_plant");
+  if (IS_CORPSE(obj))
+    obj_subscribe_add(obj, "obj_corpse");
+  if (OBJ_FLAGGED(obj, ITEM_ICE))
+    obj_subscribe_add(obj, "obj_ice");
 }
 
 void obj_game_deactivate(struct obj_data *obj) {

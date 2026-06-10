@@ -2,6 +2,9 @@
 - (Internal) Object Prototypes, Mobile Prototypes, Rooms, Shops, Guilds, and Zones are now stored in Zig HashMaps. The global arrays and rnum<->vnum mappings are gone. New per-type APIs have been added for handling entity retrieval, iteration, and querying. [Volund]
 - (Internal) Adjusted many functions for shops, guilds, zones, and rooms that used rnum indexes to now use pointers. [Volund]
 - Removed text page system. [Volund]
+- Moved the majority of old status affects to the new Lua Conditions system.
+- Truffle charging speed bonuses should now work. [Volund]
+- Several display and logic bugs with Runic now solved. [Volund]
 
 # 2.9.3
 - Fixing fireshield message to not get all mishmoshed. [Volund]

@@ -2045,665 +2045,307 @@ void update_mob_absorb() {
 }
 
 /* This is for huge attacks that are slowly descending on a room */
-void huge_update() {
-  int dge = 0, skill = 0, bonus = 1, count = 0;
-  int64_t dmg = 0;
-  struct obj_data *k;
-  struct char_data *ch, *vict, *next_v;
 
-  /* Checking the object list for any huge ki attacks */
-  for (k = object_list; k; k = k->next) {
-    if (GET_AUCTER(k) > 0 && GET_AUCTIME(k) + 604800 <= time(0)) {
-      if (obj_room_vnum_get(k) == 80) {
-        struct room_data *inroom = obj_room_get(k);
-        room_flag_set(inroom, ROOM_HOUSE_CRASH, FALSE);
-        extract_obj(k);
-        continue;
-      }
+struct HugeKiConfig {
+  int        skill_id;
+  int        stop_mult;    /* stopped if GET_HIT(target)*bonus < KICHARGE*stop_mult */
+  double     dmg_mult;     /* primary target dmg = KICHARGE * dmg_mult */
+  bool       hurt_zanzoken;
+  const char *colorname;  /* colored attack name used in act strings */
+  const char *area_msg;   /* send_to_room message when target has fled the room */
+};
+
+static const HugeKiConfig genki_cfg{
+  SKILL_GENKIDAMA, 5, 1.25, true,
+  "@cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb",
+  "@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends on the area! "
+  "It slowly burns into the ground before exploding magnificently!@n\r\n"
+};
+
+static const HugeKiConfig genocide_cfg{
+  SKILL_GENOCIDE, 10, 1.0, false,
+  "@mG@Me@wn@mo@Mc@wi@md@Me",
+  "@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on the area! "
+  "It slowly burns into the ground before exploding magnificantly!@n\r\n"
+};
+
+static void huge_room_blast(struct obj_data *k, struct char_data *ch,
+                             int skill, int64_t dmg,
+                             bool skip_target, bool hurt_zanzoken) {
+  int count = 0;
+  room_people_iterate(obj_room_get(k), [&](auto vict) {
+    if (vict == ch) return true;
+    if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) return true;
+    if (skip_target && vict == TARGET(k)) return true;
+    if (char_condition_has(vict, "group")) {
+      if (vict->master == ch || ch->master == vict) return true;
+      if (skip_target && vict->master == ch->master) return true;
     }
-    if (KICHARGE(k) <= 0) {
-      continue;
-    }
-    if (GET_OBJ_VNUM(k) != 82 && GET_OBJ_VNUM(k) != 83) {
-      continue;
-    } else if (KIDIST(k) <= 0) {
-      /* Genki Dama Section */
-      if (KITYPE(k) == 497) {
-        if (char_room_get(TARGET(k)) == obj_room_get(k)) {
-          ch = USER(k);
-          if (char_room_vnum_get(ch) == obj_room_vnum_get(k)) {
-            bonus = 2;
-          }
-
-          act("@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends on YOU! "
-              "It eclipses everything above you as it crushes down into you! "
-              "You struggle against it with all your might!@n",
-              TRUE, TARGET(k), 0, 0, TO_CHAR);
-          act("@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends on "
-              "@C$n@W! It completely obscures $m from view as it crushes into "
-              "$s body! It appears to be facing some resistance from $m!@n",
-              TRUE, TARGET(k), 0, 0, TO_ROOM);
-          send_to_room(obj_room_get(k), "\r\n");
-          if (GET_HIT(TARGET(k)) * bonus < KICHARGE(k) * 5) {
-
-            act("@WYour strength is no match for the power of the attack! It "
-                "slowly grinds into you before exploding into a massive "
-                "blast!@n",
-                TRUE, TARGET(k), 0, 0, TO_CHAR);
-            act("@C$n@W's strength is no match for the power of the attack! It "
-                "slowly grinds into $m before exploding into a massive "
-                "blast!@n",
-                TRUE, TARGET(k), 0, 0, TO_ROOM);
-            skill = init_skill(ch, SKILL_GENKIDAMA); /* Set skill value */
-            dmg = KICHARGE(k) * 1.25;
-            hurt(0, 0, ch, TARGET(k), NULL, dmg, 1);
-            dmg /= 2;
-
-            /* Hit those in the current room. */
-            room_people_iterate(obj_room_get(k), [&](auto vict) {
-              if (vict == ch) {
-                return true;
-              }
-              if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-                return true;
-              }
-              if (vict == TARGET(k)) {
-                return true;
-              }
-              if (char_condition_has(vict, "group")) {
-                if (vict->master == ch) {
-                  return true;
-                } else if (ch->master == vict) {
-                  return true;
-                } else if (vict->master == ch->master) {
-                  return true;
-                }
-              }
-              if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-                return true;
-              }
-              if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-                return true;
-              }
-              dge = handle_dodge(vict);
-              if (((!IS_NPC(vict) && IS_ICER(vict) &&
-                    rand_number(1, 30) >= 28) ||
-                   char_condition_has(vict, "zanzoken")) &&
-                  (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-                act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
-                    0, vict, TO_CHAR);
-                act("@cYou disappear, avoiding the explosion!@n", FALSE, ch, 0,
-                    vict, TO_VICT);
-                act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
-                    0, vict, TO_NOTVICT);
-                char_condition_remove(vict, "zanzoken", "zanzoken_over");
-                pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-                hurt(0, 0, ch, vict, NULL, 0, 1);
-                return true;
-              } else if (dge + rand_number(-10, 5) > skill) {
-                act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                    vict, TO_CHAR);
-                act("@WYou manage to escape the explosion!@n", TRUE, ch, 0,
-                    vict, TO_VICT);
-                act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                    vict, TO_NOTVICT);
-                hurt(0, 0, ch, vict, NULL, 0, 1);
-                improve_skill(vict, SKILL_DODGE, 0);
-                return true;
-              } else {
-                count += 1;
-                if (IS_NPC(vict) && count > 10) {
-                  if (GET_HIT(vict) < dmg) {
-                    double loss = 0.0;
-
-                    if (count >= 30) {
-                      loss = 0.80;
-                    } else if (count >= 20) {
-                      loss = 0.6;
-                    } else if (count >= 15) {
-                      loss = 0.4;
-                    } else if (count >= 10) {
-                      loss = 0.25;
-                    }
-                    char_stat_mod(vict, "experience", -(GET_EXP(vict) * loss));
-                  }
-                }
-                act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                    TO_CHAR);
-                act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict,
-                    TO_VICT);
-                act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                    TO_NOTVICT);
-                hurt(0, 0, ch, vict, NULL, dmg, 1);
-                return true;
-              }
-            });
-            room_dmg_set(obj_room_get(k), 100);
-            if (auto zone = char_zone_get(ch); zone) {
-              send_to_zone("A MASSIVE explosion shakes the entire area!\r\n",
-                           zone);
-            }
-
-            extract_obj(k);
-            continue;
-          } /* It isn't stopped! */
-          else {
-            act("@WYou manage to overpower the attack! You lift up into the "
-                "sky slowly with it and toss it up and away out of sight!@n",
-                TRUE, TARGET(k), 0, 0, TO_CHAR);
-            act("@C$n@W manages to unbelievably overpower the attack! It is "
-                "lifted up into the sky and tossed away dramaticly!@n",
-                TRUE, TARGET(k), 0, 0, TO_ROOM);
-            hurt(0, 0, ch, TARGET(k), NULL, 0, 1);
-            decCurST(TARGET(k), KICHARGE(k) / 4);
-            extract_obj(k);
-            continue;
-          }
-        } else if (char_room_get(TARGET(k)) != obj_room_get(k)) {
-          ch = USER(k);
-
-          send_to_room(obj_room_get(k),
-                       "@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends "
-                       "on the area! It slowly burns into the ground before "
-                       "exploding magnificently!@n\r\n");
-
-          skill = init_skill(ch, SKILL_GENKIDAMA); /* Set skill value */
-          dmg = KICHARGE(k);
-          dmg /= 2;
-
-          /* Hit those in the current room. */
-          room_people_iterate(obj_room_get(k), [&](auto vict) {
-            if (vict == ch) {
-              return true;
-            }
-            if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-              return true;
-            }
-            if (char_condition_has(vict, "group") &&
-                (vict->master == ch || ch->master == vict)) {
-              return true;
-            }
-            if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-              return true;
-            }
-            if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-              return true;
-            }
-            dge = handle_dodge(vict);
-            if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-                 char_condition_has(vict, "zanzoken")) &&
-                (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-              act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
-                  vict, TO_CHAR);
-              act("@cYou disappear, avoiding the explosion!@n", FALSE, ch, 0,
-                  vict, TO_VICT);
-              act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
-                  vict, TO_NOTVICT);
-              char_condition_remove(vict, "zanzoken", "zanzoken_over");
-              pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-              hurt(0, 0, ch, vict, NULL, 0, 1);
-              return true;
-            } else if (dge + rand_number(-10, 5) > skill) {
-              act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                  vict, TO_CHAR);
-              act("@WYou manage to escape the explosion!@n", TRUE, ch, 0, vict,
-                  TO_VICT);
-              act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                  vict, TO_NOTVICT);
-              hurt(0, 0, ch, vict, NULL, 0, 1);
-              improve_skill(vict, SKILL_DODGE, 0);
-              return true;
-            } else {
-              act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                  TO_CHAR);
-              act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict,
-                  TO_VICT);
-              act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                  TO_NOTVICT);
-              hurt(0, 0, ch, vict, NULL, dmg, 1);
-              return true;
-            }
-          });
-          room_dmg_set(obj_room_get(k), 100);
-          auto zone = char_zone_get(ch);
-          if (zone) {
-            send_to_zone("A MASSIVE explosion shakes the entire area!\r\n",
-                         zone);
-          }
-          extract_obj(k);
-          continue;
-        } /* End Genki */
-        continue;
+    if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) return true;
+    if (MOB_FLAGGED(vict, MOB_NOKILL)) return true;
+    int dge = handle_dodge(vict);
+    if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
+         char_condition_has(vict, "zanzoken")) &&
+        getCurST(vict) >= 1 && GET_POS(vict) != POS_SLEEPING) {
+      act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0, vict, TO_CHAR);
+      act("@cYou disappear, avoiding the explosion!@n",   FALSE, ch, 0, vict, TO_VICT);
+      act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0, vict, TO_NOTVICT);
+      char_condition_remove(vict, "zanzoken", "zanzoken_over");
+      pcost(vict, 0, GET_MAX_HIT(vict) / 200);
+      if (hurt_zanzoken) hurt(0, 0, ch, vict, NULL, 0, 1);
+      return true;
+    } else if (dge + rand_number(-10, 5) > skill) {
+      act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
+      act("@WYou manage to escape the explosion!@n",   TRUE, ch, 0, vict, TO_VICT);
+      act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+      hurt(0, 0, ch, vict, NULL, 0, 1);
+      improve_skill(vict, SKILL_DODGE, 0);
+      return true;
+    } else {
+      if (skip_target) {
+        count++;
+        if (IS_NPC(vict) && count > 10 && GET_HIT(vict) < dmg) {
+          double loss = count >= 30 ? 0.80 : count >= 20 ? 0.6 : count >= 15 ? 0.4 : 0.25;
+          char_stat_mod(vict, "experience", -(GET_EXP(vict) * loss));
+        }
       }
-      /* Genocide Section */
-      if (KITYPE(k) == 498) {
-        if (char_room_get(TARGET(k)) == obj_room_get(k)) {
-          ch = USER(k);
-          if (char_room_vnum_get(ch) == obj_room_vnum_get(k)) {
-            bonus = 2;
-          }
-
-          act("@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on YOU! It "
-              "eclipses everything above you as it crushes down into you! You "
-              "struggle against it with all your might!@n",
-              TRUE, TARGET(k), 0, 0, TO_CHAR);
-          act("@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on @C$n@W! It "
-              "completely obscures $m from view as it crushes into $s body! It "
-              "appears to be facing some resistance from $m!@n",
-              TRUE, TARGET(k), 0, 0, TO_ROOM);
-          send_to_room(obj_room_get(k), "\r\n");
-          if (GET_HIT(TARGET(k)) * bonus < KICHARGE(k) * 10) {
-
-            act("@WYour strength is no match for the power of the attack! It "
-                "slowly grinds into you before exploding into a massive "
-                "blast!@n",
-                TRUE, TARGET(k), 0, 0, TO_CHAR);
-            act("@C$n@W's strength is no match for the power of the attack! It "
-                "slowly grinds into $m before exploding into a massive "
-                "blast!@n",
-                TRUE, TARGET(k), 0, 0, TO_ROOM);
-            skill = init_skill(ch, SKILL_GENOCIDE); /* Set skill value */
-            dmg = KICHARGE(k);
-            hurt(0, 0, ch, TARGET(k), NULL, dmg, 1);
-            dmg /= 2;
-
-            /* Hit those in the current room. */
-            room_people_iterate(obj_room_get(k), [&](auto vict) {
-              if (vict == ch) {
-                return true;
-              }
-              if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-                return true;
-              }
-              if (vict == TARGET(k)) {
-                return true;
-              }
-              if (char_condition_has(vict, "group")) {
-                if (vict->master == ch) {
-                  return true;
-                } else if (ch->master == vict) {
-                  return true;
-                } else if (vict->master == ch->master) {
-                  return true;
-                }
-              }
-              if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-                return true;
-              }
-              if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-                return true;
-              }
-              dge = handle_dodge(vict);
-              if (((!IS_NPC(vict) && IS_ICER(vict) &&
-                    rand_number(1, 30) >= 28) ||
-                   char_condition_has(vict, "zanzoken")) &&
-                  (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-                act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
-                    0, vict, TO_CHAR);
-                act("@cYou disappear, avoiding the explosion!@n", FALSE, ch, 0,
-                    vict, TO_VICT);
-                act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch,
-                    0, vict, TO_NOTVICT);
-                char_condition_remove(vict, "zanzoken", "zanzoken_over");
-                pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-                return true;
-              } else if (dge + rand_number(-10, 5) > skill) {
-                act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                    vict, TO_CHAR);
-                act("@WYou manage to escape the explosion!@n", TRUE, ch, 0,
-                    vict, TO_VICT);
-                act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                    vict, TO_NOTVICT);
-                hurt(0, 0, ch, vict, NULL, 0, 1);
-                improve_skill(vict, SKILL_DODGE, 0);
-                return true;
-              } else {
-                count += 1;
-                if (IS_NPC(vict) && count > 10) {
-                  if (GET_HIT(vict) < dmg) {
-                    double loss = 0.0;
-
-                    if (count >= 30) {
-                      loss = 0.80;
-                    } else if (count >= 20) {
-                      loss = 0.6;
-                    } else if (count >= 15) {
-                      loss = 0.4;
-                    } else if (count >= 10) {
-                      loss = 0.25;
-                    }
-                    char_stat_mod(vict, "experience", -(GET_EXP(vict) * loss));
-                  }
-                }
-                act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                    TO_CHAR);
-                act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict,
-                    TO_VICT);
-                act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                    TO_NOTVICT);
-                hurt(0, 0, ch, vict, NULL, dmg, 1);
-                return true;
-              }
-            });
-            room_dmg_set(obj_room_get(k), 100);
-            auto zone = char_zone_get(ch);
-            if (zone) {
-              send_to_zone("A MASSIVE explosion shakes the entire area!\r\n",
-                           zone);
-            }
-            extract_obj(k);
-            continue;
-          } /* It isn't stopped! */
-          else {
-            act("@WYou manage to overpower the attack! You lift up into the "
-                "sky slowly with it and toss it up and away out of sight!@n",
-                TRUE, TARGET(k), 0, 0, TO_CHAR);
-            act("@C$n@W manages to unbelievably overpower the attack! It is "
-                "lifted up into the sky and tossed away dramaticly!@n",
-                TRUE, TARGET(k), 0, 0, TO_ROOM);
-            hurt(0, 0, ch, TARGET(k), NULL, 0, 1);
-            decCurST(TARGET(k), KICHARGE(k) / 4);
-            extract_obj(k);
-            continue;
-          }
-        } else if (char_room_get(TARGET(k)) != obj_room_get(k)) {
-          ch = USER(k);
-
-          send_to_room(obj_room_get(k),
-                       "@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on the "
-                       "area! It slowly burns into the ground before exploding "
-                       "magnificantly!@n\r\n");
-
-          skill = init_skill(ch, SKILL_GENOCIDE); /* Set skill value */
-          dmg = KICHARGE(k);
-          dmg /= 2;
-
-          /* Hit those in the current room. */
-          room_people_iterate(obj_room_get(k), [&](auto vict) {
-            if (vict == ch) {
-              return true;
-            }
-            if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) {
-              return true;
-            }
-            if (char_condition_has(vict, "group") &&
-                (vict->master == ch || ch->master == vict)) {
-              return true;
-            }
-            if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
-              return true;
-            }
-            if (MOB_FLAGGED(vict, MOB_NOKILL)) {
-              return true;
-            }
-            dge = handle_dodge(vict);
-            if (((!IS_NPC(vict) && IS_ICER(vict) && rand_number(1, 30) >= 28) ||
-                 char_condition_has(vict, "zanzoken")) &&
-                (getCurST(vict)) >= 1 && GET_POS(vict) != POS_SLEEPING) {
-              act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
-                  vict, TO_CHAR);
-              act("@cYou disappear, avoiding the explosion!@n", FALSE, ch, 0,
-                  vict, TO_VICT);
-              act("@C$N@c disappears, avoiding the explosion!@n", FALSE, ch, 0,
-                  vict, TO_NOTVICT);
-              char_condition_remove(vict, "zanzoken", "zanzoken_over");
-              pcost(vict, 0, GET_MAX_HIT(vict) / 200);
-              return true;
-            } else if (dge + rand_number(-10, 5) > skill) {
-              act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                  vict, TO_CHAR);
-              act("@WYou manage to escape the explosion!@n", TRUE, ch, 0, vict,
-                  TO_VICT);
-              act("@c$N@W manages to escape the explosion!@n", TRUE, ch, 0,
-                  vict, TO_NOTVICT);
-              hurt(0, 0, ch, vict, NULL, 0, 1);
-              improve_skill(vict, SKILL_DODGE, 0);
-              return true;
-            } else {
-              act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                  TO_CHAR);
-              act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict,
-                  TO_VICT);
-              act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict,
-                  TO_NOTVICT);
-              hurt(0, 0, ch, vict, NULL, dmg, 1);
-              return true;
-            }
-          });
-          room_dmg_set(obj_room_get(k), 100);
-          auto zone = char_zone_get(ch);
-          if (zone) {
-            send_to_zone("A MASSIVE explosion shakes the entire area!\r\n",
-                         zone);
-          }
-          extract_obj(k);
-          continue;
-        } /* End Genocide */
-        continue;
-      } else {
-        extract_obj(k);
-        continue;
-      }
+      act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_CHAR);
+      act("@RYou are caught by the explosion!@n", TRUE, ch, 0, vict, TO_VICT);
+      act("@R$N@r is caught by the explosion!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+      hurt(0, 0, ch, vict, NULL, dmg, 1);
+      return true;
     }
+  });
+  room_dmg_set(obj_room_get(k), 100);
+  if (auto zone = char_zone_get(ch); zone)
+    send_to_zone("A MASSIVE explosion shakes the entire area!\r\n", zone);
+}
+
+static void tick_huge_ki_attack(struct obj_data *k, const HugeKiConfig &cfg) {
+  auto *ch  = USER(k);
+  auto *tgt = TARGET(k);
+  char buf[512];
+
+  if (char_room_get(tgt) == obj_room_get(k)) {
+    int bonus = (char_room_vnum_get(ch) == obj_room_vnum_get(k)) ? 2 : 1;
+    snprintf(buf, sizeof(buf),
+             "@WThe large %s@W descends on YOU! It eclipses everything above you "
+             "as it crushes down into you! You struggle against it with all your might!@n",
+             cfg.colorname);
+    act(buf, TRUE, tgt, 0, 0, TO_CHAR);
+    snprintf(buf, sizeof(buf),
+             "@WThe large %s@W descends on @C$n@W! It completely obscures $m from view "
+             "as it crushes into $s body! It appears to be facing some resistance from $m!@n",
+             cfg.colorname);
+    act(buf, TRUE, tgt, 0, 0, TO_ROOM);
+    send_to_room(obj_room_get(k), "\r\n");
+
+    if (GET_HIT(tgt) * bonus < KICHARGE(k) * cfg.stop_mult) {
+      act("@WYour strength is no match for the power of the attack! "
+          "It slowly grinds into you before exploding into a massive blast!@n",
+          TRUE, tgt, 0, 0, TO_CHAR);
+      act("@C$n@W's strength is no match for the power of the attack! "
+          "It slowly grinds into $m before exploding into a massive blast!@n",
+          TRUE, tgt, 0, 0, TO_ROOM);
+      int    skill = init_skill(ch, cfg.skill_id);
+      int64_t dmg  = (int64_t)(KICHARGE(k) * cfg.dmg_mult);
+      hurt(0, 0, ch, tgt, NULL, dmg, 1);
+      huge_room_blast(k, ch, skill, dmg / 2, true, cfg.hurt_zanzoken);
+    } else {
+      act("@WYou manage to overpower the attack! You lift up into the sky slowly "
+          "with it and toss it up and away out of sight!@n",
+          TRUE, tgt, 0, 0, TO_CHAR);
+      act("@C$n@W manages to unbelievably overpower the attack! It is lifted up "
+          "into the sky and tossed away dramaticly!@n",
+          TRUE, tgt, 0, 0, TO_ROOM);
+      hurt(0, 0, ch, tgt, NULL, 0, 1);
+      decCurST(tgt, KICHARGE(k) / 4);
+    }
+  } else {
+    send_to_room(obj_room_get(k), cfg.area_msg);
+    int    skill = init_skill(ch, cfg.skill_id);
+    int64_t dmg  = KICHARGE(k) / 2;
+    huge_room_blast(k, ch, skill, dmg, false, cfg.hurt_zanzoken);
+  }
+  extract_obj(k);
+}
+
+static void tick_huge_ki(struct obj_data *k) {
+  if (KICHARGE(k) <= 0) return;
+  if (KIDIST(k) > 0) {
     act("$p@W descends slowly towards the ground!@n", TRUE, 0, k, 0, TO_ROOM);
     KIDIST(k)--;
+    return;
   }
+  if      (KITYPE(k) == 497) tick_huge_ki_attack(k, genki_cfg);
+  else if (KITYPE(k) == 498) tick_huge_ki_attack(k, genocide_cfg);
+  else extract_obj(k);
+}
+
+void huge_update() {
+  /* clean up expired auction items parked in room 80 */
+  struct obj_data *next_k;
+  for (auto *k = object_list; k; k = next_k) {
+    next_k = k->next;
+    if (GET_AUCTER(k) > 0 && GET_AUCTIME(k) + 604800 <= time(0) &&
+        obj_room_vnum_get(k) == 80) {
+      room_flag_set(obj_room_get(k), ROOM_HOUSE_CRASH, FALSE);
+      extract_obj(k);
+    }
+  }
+  obj_iterate_subscriptions("obj_huge_ki", [](struct obj_data *k) {
+    tick_huge_ki(k);
+    return true;
+  });
 }
 /* End huge ki attack update */
 
-/* For handling homing attacks */
-void homing_update() {
-  struct obj_data *k;
-  struct obj_data *next_k;
-
-  for (k = object_list; k; k = next_k) {
-
-    next_k = k->next;
-
+/* shared deflect outcome for any homing projectile that is parried */
+static void homing_deflect(struct obj_data *k, struct char_data *vict) {
+  if (rand_number(1, 3) > 1) {
+    act("@wYou manage to deflect the $p@W sending it flying away and depleting some of its energy.@n",
+        TRUE, vict, k, 0, TO_CHAR);
+    act("@C$n @wmanages to deflect the $p@w sending it flying away and depleting some of its energy.@n",
+        TRUE, vict, k, 0, TO_ROOM);
+    KICHARGE(k) -= KICHARGE(k) / 10;
     if (KICHARGE(k) <= 0) {
-      continue;
+      send_to_room(obj_room_get(k), "%s has lost all its energy and disappears.\r\n",
+                   k->short_description);
+      extract_obj(k);
     }
+  } else {
+    act("@wYou manage to deflect the $p@w sending it flying away into the nearby surroundings!@n",
+        TRUE, vict, k, 0, TO_CHAR);
+    act("@C$n @wmanages to deflect the $p@w sending it flying away into the nearby surroundings!@n",
+        TRUE, vict, k, 0, TO_ROOM);
+    if (room_dmg_get(char_room_get(vict)) <= 95)
+      room_dmg_mod(char_room_get(vict), 5);
+    extract_obj(k);
+  }
+}
 
-    if (GET_OBJ_VNUM(k) != 80 && GET_OBJ_VNUM(k) != 81 &&
-        GET_OBJ_VNUM(k) != 84) {
-      continue;
-    } else if (TARGET(k) && USER(k)) {
-      struct char_data *ch = USER(k);
-      struct char_data *vict = TARGET(k);
+/* Kienzan (vnum 84) hit logic — caller extracts k afterward */
+static void kienzan_hit(struct obj_data *k, struct char_data *ch, struct char_data *vict) {
+  int64_t dmg = KICHARGE(k);
 
-      if (GET_OBJ_VNUM(k) == 80) { // Tsuihidan
-        if (obj_room_get(k) != char_room_get(vict)) {
-          act("@wThe $p@w pursues after you!@n", TRUE, vict, k, 0, TO_CHAR);
-          act("@wThe $p@W pursues after @C$n@w!@n", TRUE, vict, k, 0, TO_ROOM);
-          obj_from_room(k);
-          obj_to_room(k, char_room_get(vict));
-          continue;
-        } else {
-          act("@RThe $p@R makes a tight turn and rockets straight for you!@n",
-              TRUE, vict, k, 0, TO_CHAR);
-          act("@RThe $p@R makes a tight turn and rockets straight for @r$n@n",
-              TRUE, vict, k, 0, TO_ROOM);
-          if (handle_parry(vict) < rand_number(1, 140)) {
-            act("@rThe $p@r slams into your body, exploding in a flash of "
-                "bright light!@n",
-                TRUE, vict, k, 0, TO_CHAR);
-            act("@rThe $p@r slams into @R$n's@r body, exploding in a flash of "
-                "bright light!@n",
-                TRUE, vict, k, 0, TO_ROOM);
-            int64_t dmg = KICHARGE(k);
-            extract_obj(k);
-            hurt(0, 0, ch, vict, NULL, dmg, 1);
-            continue;
-          } else if (rand_number(1, 3) > 1) {
-            act("@wYou manage to deflect the $p@W sending it flying away and "
-                "depleting some of its energy.@n",
-                TRUE, vict, k, 0, TO_CHAR);
-            act("@C$n @wmanages to deflect the $p@w sending it flying away and "
-                "depleting some of its energy.@n",
-                TRUE, vict, k, 0, TO_ROOM);
-            KICHARGE(k) -= KICHARGE(k) / 10;
-            if (KICHARGE(k) <= 0) {
-              send_to_room(obj_room_get(k),
-                           "%s has lost all its energy and disappears.\r\n",
-                           k->short_description);
-              extract_obj(k);
-            }
-            continue;
-          } else {
-            act("@wYou manage to deflect the $p@w sending it flying away into "
-                "the nearby surroundings!@n",
-                TRUE, vict, k, 0, TO_CHAR);
-            act("@C$n @wmanages to deflect the $p@w sending it flying away "
-                "into the nearby surroundings!@n",
-                TRUE, vict, k, 0, TO_ROOM);
-            if (room_dmg_get(char_room_get(vict)) <= 95) {
-              room_dmg_mod(char_room_get(vict), 5);
-            }
-            extract_obj(k);
-            continue;
-          }
-        }
-        continue;
-      } else if (GET_OBJ_VNUM(k) == 81 ||
-                 GET_OBJ_VNUM(k) == 84) { // Spirit Ball
-        if (obj_room_get(k) != char_room_get(vict)) {
-          act("@wYou lose sight of @C$N@W and let $p@W fly away!@n", TRUE, ch,
-              k, vict, TO_CHAR);
-          act("@wYou manage to escape @C$n's@W $p@W!@n", TRUE, ch, k, vict,
-              TO_VICT);
-          act("@C$n@W loses sight of @c$N@W and lets $s $p@W fly away!@n", TRUE,
-              ch, k, vict, TO_NOTVICT);
-          extract_obj(k);
-          continue;
-        } else {
-          act("@RYou move your hand and direct $p@R after @r$N@R!@n", TRUE, ch,
-              k, vict, TO_CHAR);
-          act("@r$n@R moves $s hand and directs $p@R after YOU!@n", TRUE, ch, k,
-              vict, TO_VICT);
-          act("@r$n@R moves $s hand and directs $p@R after @r$N@R!@n", TRUE, ch,
-              k, vict, TO_NOTVICT);
-          if (handle_parry(vict) < rand_number(1, 140)) {
-            if (GET_OBJ_VNUM(k) != 84) {
-              act("@rThe $p@r slams into your body, exploding in a flash of "
-                  "bright light!@n",
-                  TRUE, vict, k, 0, TO_CHAR);
-              act("@rThe $p@r slams into @R$n's@r body, exploding in a flash "
-                  "of bright light!@n",
-                  TRUE, vict, k, 0, TO_ROOM);
-              int64_t dmg = KICHARGE(k);
-              extract_obj(k);
-              hurt(0, 0, ch, vict, NULL, dmg, 1);
-            } else if (GET_OBJ_VNUM(k) == 84) {
-              int64_t dmg = KICHARGE(k);
-              if (dmg > GET_MAX_HIT(vict) / 5 &&
-                  (!IS_MAJIN(vict) && !IS_BIO(vict))) {
-                act("@R$N@r is cut in half by the attack!@n", TRUE, ch, 0, vict,
-                    TO_CHAR);
-                act("@rYou are cut in half by the attack!@n", TRUE, ch, 0, vict,
-                    TO_VICT);
-                act("@R$N@r is cut in half by the attack!@n", TRUE, ch, 0, vict,
-                    TO_NOTVICT);
-                die(vict, ch);
-                if (!IS_NPC(ch) && (ch != vict) &&
-                    PRF_FLAGGED(ch, PRF_AUTOGOLD)) {
-                  do_get(ch, "all.zenni corpse", 0, 0);
-                }
-                if (!IS_NPC(ch) && (ch != vict) &&
-                    PRF_FLAGGED(ch, PRF_AUTOLOOT)) {
-                  do_get(ch, "all corpse", 0, 0);
-                }
-              } else if (dmg > GET_MAX_HIT(vict) / 5 &&
-                         (IS_MAJIN(vict) || IS_BIO(vict))) {
-                if (GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) &&
-                    (getCurKI(vict)) >= GET_MAX_MANA(vict) / 40) {
-                  act("@R$N@r is cut in half by the attack but regenerates a "
-                      "moment later!@n",
-                      TRUE, ch, 0, vict, TO_CHAR);
-                  act("@rYou are cut in half by the attack but regenerate a "
-                      "moment later!@n",
-                      TRUE, ch, 0, vict, TO_VICT);
-                  act("@R$N@r is cut in half by the attack but regenerates a "
-                      "moment later!@n",
-                      TRUE, ch, 0, vict, TO_NOTVICT);
-                  decCurKI(vict, getMaxKI(vict) / 40);
-                  hurt(0, 0, ch, vict, NULL, dmg, 1);
-                } else if (dmg > GET_MAX_HIT(vict) / 5 &&
-                           (IS_MAJIN(vict) || IS_BIO(vict))) {
-                  if (GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) &&
-                      (getCurKI(vict)) >= GET_MAX_MANA(vict) / 40) {
-                    act("@R$N@r is cut in half by the attack but regenerates a "
-                        "moment later!@n",
-                        TRUE, ch, 0, vict, TO_CHAR);
-                    act("@rYou are cut in half by the attack but regenerate a "
-                        "moment later!@n",
-                        TRUE, ch, 0, vict, TO_VICT);
-                    act("@R$N@r is cut in half by the attack but regenerates a "
-                        "moment later!@n",
-                        TRUE, ch, 0, vict, TO_NOTVICT);
-                    decCurKI(vict, getMaxKI(vict) / 40);
-                    hurt(0, 0, ch, vict, NULL, dmg, 1);
-                  } else {
-                    act("@R$N@r is cut in half by the attack!@n", TRUE, ch, 0,
-                        vict, TO_CHAR);
-                    act("@rYou are cut in half by the attack!@n", TRUE, ch, 0,
-                        vict, TO_VICT);
-                    act("@R$N@r is cut in half by the attack!@n", TRUE, ch, 0,
-                        vict, TO_NOTVICT);
-                    die(vict, ch);
-                    if (!IS_NPC(ch) && (ch != vict) &&
-                        PRF_FLAGGED(ch, PRF_AUTOGOLD)) {
-                      do_get(ch, "all.zenni corpse", 0, 0);
-                    }
-                    if (!IS_NPC(ch) && (ch != vict) &&
-                        PRF_FLAGGED(ch, PRF_AUTOLOOT)) {
-                      do_get(ch, "all corpse", 0, 0);
-                    }
-                  }
-                }
-              } else {
-                act("@rThe $p@r slams into your body, exploding in a flash of "
-                    "bright light!@n",
-                    TRUE, vict, k, 0, TO_CHAR);
-                act("@rThe $p@r slams into @R$n's@r body, exploding in a flash "
-                    "of bright light!@n",
-                    TRUE, vict, k, 0, TO_ROOM);
-                hurt(0, 0, ch, vict, NULL, dmg, 1);
-              }
-              extract_obj(k);
-            }
-            continue;
-          } else if (rand_number(1, 3) > 1) {
-            act("@wYou manage to deflect the $p@W sending it flying away and "
-                "depleting some of its energy.@n",
-                TRUE, vict, k, 0, TO_CHAR);
-            act("@C$n @wmanages to deflect the $p@w sending it flying away and "
-                "depleting some of its energy.@n",
-                TRUE, vict, k, 0, TO_ROOM);
-            KICHARGE(k) -= KICHARGE(k) / 10;
-            if (KICHARGE(k) <= 0) {
-              send_to_room(obj_room_get(k),
-                           "%s has lost all its energy and disappears.\r\n",
-                           k->short_description);
-              extract_obj(k);
-            }
-            continue;
-          } else {
-            act("@wYou manage to deflect the $p@w sending it flying away into "
-                "the nearby surroundings!@n",
-                TRUE, vict, k, 0, TO_CHAR);
-            act("@C$n @wmanages to deflect the $p@w sending it flying away "
-                "into the nearby surroundings!@n",
-                TRUE, vict, k, 0, TO_ROOM);
-            if (room_dmg_get(char_room_get(vict)) <= 95) {
-              room_dmg_mod(char_room_get(vict), 5);
-            }
-            extract_obj(k);
-            continue;
-          }
-        }
-      } // Spiritball attack
-    } // pursue the target.
-  } // End for
+  auto autoloot = [&]() {
+    if (!IS_NPC(ch) && ch != vict) {
+      if (PRF_FLAGGED(ch, PRF_AUTOGOLD)) do_get(ch, "all.zenni corpse", 0, 0);
+      if (PRF_FLAGGED(ch, PRF_AUTOLOOT)) do_get(ch, "all corpse", 0, 0);
+    }
+  };
+
+  auto bisect_and_die = [&]() {
+    act("@R$N@r is cut in half by the attack!@n", TRUE, ch, 0, vict, TO_CHAR);
+    act("@rYou are cut in half by the attack!@n", TRUE, ch, 0, vict, TO_VICT);
+    act("@R$N@r is cut in half by the attack!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+    die(vict, ch);
+    autoloot();
+  };
+
+  /* returns true and applies regen damage if the regen roll succeeds */
+  auto try_regen = [&]() -> bool {
+    if (!(IS_MAJIN(vict) || IS_BIO(vict))) return false;
+    if (GET_SKILL(vict, SKILL_REGENERATE) <= rand_number(1, 101)) return false;
+    if (getCurKI(vict) < GET_MAX_MANA(vict) / 40) return false;
+    act("@R$N@r is cut in half by the attack but regenerates a moment later!@n",
+        TRUE, ch, 0, vict, TO_CHAR);
+    act("@rYou are cut in half by the attack but regenerate a moment later!@n",
+        TRUE, ch, 0, vict, TO_VICT);
+    act("@R$N@r is cut in half by the attack but regenerates a moment later!@n",
+        TRUE, ch, 0, vict, TO_NOTVICT);
+    decCurKI(vict, getMaxKI(vict) / 40);
+    hurt(0, 0, ch, vict, NULL, dmg, 1);
+    return true;
+  };
+
+  if (dmg > GET_MAX_HIT(vict) / 5) {
+    /* majin/bio get two regen roll attempts before dying */
+    if (!(IS_MAJIN(vict) || IS_BIO(vict)) || (!try_regen() && !try_regen()))
+      bisect_and_die();
+  } else {
+    act("@rThe $p@r slams into your body, exploding in a flash of bright light!@n",
+        TRUE, vict, k, 0, TO_CHAR);
+    act("@rThe $p@r slams into @R$n's@r body, exploding in a flash of bright light!@n",
+        TRUE, vict, k, 0, TO_ROOM);
+    hurt(0, 0, ch, vict, NULL, dmg, 1);
+  }
+}
+
+/* Tsuihidan (vnum 80): pursues target across rooms, then slams or is deflected */
+static void homing_hit_tsuihidan(struct obj_data *k, struct char_data *ch, struct char_data *vict) {
+  act("@RThe $p@R makes a tight turn and rockets straight for you!@n",
+      TRUE, vict, k, 0, TO_CHAR);
+  act("@RThe $p@R makes a tight turn and rockets straight for @r$n@n",
+      TRUE, vict, k, 0, TO_ROOM);
+  if (handle_parry(vict) < rand_number(1, 140)) {
+    act("@rThe $p@r slams into your body, exploding in a flash of bright light!@n",
+        TRUE, vict, k, 0, TO_CHAR);
+    act("@rThe $p@r slams into @R$n's@r body, exploding in a flash of bright light!@n",
+        TRUE, vict, k, 0, TO_ROOM);
+    int64_t dmg = KICHARGE(k);
+    extract_obj(k);
+    hurt(0, 0, ch, vict, NULL, dmg, 1);
+  } else {
+    homing_deflect(k, vict);
+  }
+}
+
+/* Spirit Ball (vnum 81) and Kienzan (vnum 84): user-directed, escapes if target leaves room */
+static void homing_hit_spiritball(struct obj_data *k, struct char_data *ch, struct char_data *vict) {
+  act("@RYou move your hand and direct $p@R after @r$N@R!@n", TRUE, ch, k, vict, TO_CHAR);
+  act("@r$n@R moves $s hand and directs $p@R after YOU!@n",   TRUE, ch, k, vict, TO_VICT);
+  act("@r$n@R moves $s hand and directs $p@R after @r$N@R!@n", TRUE, ch, k, vict, TO_NOTVICT);
+  if (handle_parry(vict) < rand_number(1, 140)) {
+    if (GET_OBJ_VNUM(k) == 81) {
+      act("@rThe $p@r slams into your body, exploding in a flash of bright light!@n",
+          TRUE, vict, k, 0, TO_CHAR);
+      act("@rThe $p@r slams into @R$n's@r body, exploding in a flash of bright light!@n",
+          TRUE, vict, k, 0, TO_ROOM);
+      int64_t dmg = KICHARGE(k);
+      extract_obj(k);
+      hurt(0, 0, ch, vict, NULL, dmg, 1);
+    } else { /* vnum 84 — Kienzan */
+      kienzan_hit(k, ch, vict);
+      extract_obj(k);
+    }
+  } else {
+    homing_deflect(k, vict);
+  }
+}
+
+static void tick_homing(struct obj_data *k) {
+  if (KICHARGE(k) <= 0) return;
+  auto *ch   = USER(k);
+  auto *vict = TARGET(k);
+  if (!ch || !vict) return;
+
+  if (GET_OBJ_VNUM(k) == 80) { /* Tsuihidan */
+    if (auto chroom = char_room_get(vict); obj_room_get(k) != chroom) {
+      act("@wThe $p@w pursues after you!@n",     TRUE, vict, k, 0, TO_CHAR);
+      act("@wThe $p@W pursues after @C$n@w!@n",  TRUE, vict, k, 0, TO_ROOM);
+      obj_from_room(k);
+      obj_to_room(k, chroom);
+    } else {
+      homing_hit_tsuihidan(k, ch, vict);
+    }
+  } else { /* Spirit Ball (81) or Kienzan (84) */
+    if (obj_room_get(k) != char_room_get(vict)) {
+      act("@wYou lose sight of @C$N@W and let $p@W fly away!@n",          TRUE, ch, k, vict, TO_CHAR);
+      act("@wYou manage to escape @C$n's@W $p@W!@n",                       TRUE, ch, k, vict, TO_VICT);
+      act("@C$n@W loses sight of @c$N@W and lets $s $p@W fly away!@n",    TRUE, ch, k, vict, TO_NOTVICT);
+      extract_obj(k);
+    } else {
+      homing_hit_spiritball(k, ch, vict);
+    }
+  }
+}
+
+void homing_update() {
+  obj_iterate_subscriptions("obj_homing", [](struct obj_data *k) {
+    tick_homing(k);
+    return true;
+  });
 }
 
 int handle_block(struct char_data *ch) {
