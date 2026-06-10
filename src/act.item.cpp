@@ -213,27 +213,24 @@ static int can_harvest(struct obj_data *plant) {
 }
 
 static void harvest_plant(struct char_data *ch, struct obj_data *plant) {
-  int extract = FALSE, reward = rand_number(5, 15), count = reward;
-  struct obj_data *fruit = NULL;
+  int reward = rand_number(5, 15);
 
-  if (GET_OBJ_VAL(plant, VAL_SOILQ) > 7) {
+  int soilq = GET_OBJ_VAL(plant, VAL_SOILQ);
+  if (soilq > 7) {
     reward += 10;
-    send_to_char(
-        ch, "@GThe soil seems to have made the plant exteremely bountiful");
-  } else if (GET_OBJ_VAL(plant, VAL_SOILQ) >= 5) {
+    send_to_char(ch, "@GThe soil seems to have made the plant exteremely bountiful");
+  } else if (soilq >= 5) {
     reward += 6;
     send_to_char(ch, "@GThe soil seems to have made the plant very bountiful");
-  } else if (GET_OBJ_VAL(plant, VAL_SOILQ) >= 3) {
+  } else if (soilq >= 3) {
     reward += 4;
     send_to_char(ch, "@GThe soil seems to have made the plant bountiful");
-  } else if (GET_OBJ_VAL(plant, VAL_SOILQ) > 0) {
+  } else if (soilq > 0) {
     reward += 2;
-    send_to_char(
-        ch, "@GThe soil seems to have made the plant a bit more bountiful");
+    send_to_char(ch, "@GThe soil seems to have made the plant a bit more bountiful");
   }
 
   int skill = GET_SKILL(ch, SKILL_GARDENING);
-
   if (skill >= 100) {
     reward += 10;
     send_to_char(ch, " and your outstanding skill has helped the plant be more "
@@ -262,160 +259,55 @@ static void harvest_plant(struct char_data *ch, struct obj_data *plant) {
     send_to_char(ch, ".@n\r\n");
   }
 
-  count = reward;
+  static const struct {
+    int plant_vnum;
+    int fruit_vnum;
+    bool extract;
+    int bonus;
+    int cap;    /* max reward, 0 = no cap */
+    int floor;  /* min reward, 0 = no floor */
+    bool mult_25; /* reward -= reward * 0.75 */
+    bool rand_3;  /* reward += rand_number(1, 3) */
+  } plant_table[] = {
+    {250,   1,     false,  0,  2, 0, false, false},
+    {1129,  1131,  true,   0,  0, 0, false, false},
+    {17210, 17212, true,   2,  0, 0, false, false},
+    {17211, 17213, true,   2,  0, 0, false, false},
+    {17214, 17215, true,   1,  0, 0, false, false},
+    {17216, 17217, true,   0,  0, 0, false, false},
+    {17218, 17219, true,  14,  0, 0, false, false},
+    {17220, 17221, true,   0,  0, 0, true,  false},
+    {17222, 17223, true,   0,  0, 0, false, true},
+    {17224, 17225, true,  10,  0, 0, false, false},
+    {17226, 17227, true,  -8,  0, 1, false, false},
+    {3702,  3703,  true,  -2,  0, 0, false, false},
+  };
 
-  switch (GET_OBJ_VNUM(plant)) {
-  case 250:
-    if (reward > 2) {
-      reward = 2;
-      count = 2;
-    }
-    while (count > 0) {
-      fruit = read_object(1, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = FALSE;
-    break;
-  case 1129:
-    while (count > 0) {
-      fruit = read_object(1131, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17210:
-    reward += 2;
-    count += 2;
-    while (count > 0) {
-      fruit = read_object(17212, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17211:
-    reward += 2;
-    count += 2;
-    while (count > 0) {
-      fruit = read_object(17213, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17214:
-    reward += 1;
-    count += 1;
-    while (count > 0) {
-      fruit = read_object(17215, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17216:
-    while (count > 0) {
-      fruit = read_object(17217, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17218:
-    reward += 14;
-    count += 14;
-    while (count > 0) {
-      fruit = read_object(17219, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17220:
-    reward -= reward * 0.75;
-    count = reward;
-    while (count > 0) {
-      fruit = read_object(17221, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17222:
-    reward += rand_number(1, 3);
-    count = reward;
-    while (count > 0) {
-      fruit = read_object(17223, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17224:
-    reward += 10;
-    count = reward;
-    while (count > 0) {
-      fruit = read_object(17225, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 17226:
-    reward -= 8;
-    if (reward < 0)
-      reward = 1;
-    count = reward;
-    while (count > 0) {
-      fruit = read_object(17227, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  case 3702:
-    reward -= 2;
-    count = reward;
-    while (count > 0) {
-      fruit = read_object(3703, VIRTUAL);
-      obj_to_char(fruit, ch);
-      count -= 1;
-    }
-    send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
-                 fruit->short_description);
-    extract = TRUE;
-    break;
-  default:
+  decltype(&plant_table[0]) entry = nullptr;
+  for (auto &e : plant_table)
+    if (e.plant_vnum == GET_OBJ_VNUM(plant)) { entry = &e; break; }
+
+  if (!entry) {
     send_to_imm("ERROR: Harvest plant called for illegitimate plant, VNUM %d.",
                 GET_OBJ_VNUM(plant));
-    break;
+    return;
   }
 
-  if (extract == TRUE) {
+  if (entry->rand_3)       reward += rand_number(1, 3);
+  else if (entry->mult_25) reward -= (int)(reward * 0.75);
+  else                     reward += entry->bonus;
+  if (entry->cap > 0 && reward > entry->cap)     reward = entry->cap;
+  if (entry->floor > 0 && reward < entry->floor) reward = entry->floor;
+
+  struct obj_data *fruit = nullptr;
+  for (int i = 0; i < reward; i++) {
+    fruit = read_object(entry->fruit_vnum, VIRTUAL);
+    obj_to_char(fruit, ch);
+  }
+  send_to_char(ch, "@YYou harvest @D[@G%d@D]@Y @g%s@Y!@n\r\n", reward,
+               fruit->short_description);
+
+  if (entry->extract) {
     send_to_char(ch, "@wThe harvesting process has killed the plant. Do not "
                      "worry, this is normal for that type.@n\r\n");
     extract_obj(plant);

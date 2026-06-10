@@ -148,7 +148,7 @@ test:case("effective powerlevel uses lower suppression or burden result", functi
   t:eq(ch:der_base("burden"), 909090)
   t:eq(ch:der_base("powerlevel_effective"), 90)
 
-  ch:stat_set("suppression", 95)
+  ch:stat_set("suppression", 5)
   t:eq(ch:der_base("powerlevel_effective"), 50)
 end)
 
