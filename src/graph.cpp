@@ -130,7 +130,7 @@ int find_first_step(struct room_data *src, struct room_data *target) {
   room_rnum curr_room;
 
   if (!src || !target) {
-    log("SYSERR: Illegal value %d or %d passed to find_first_step.");
+    mud_log("SYSERR: Illegal value %d or %d passed to find_first_step.");
     return (BFS_ERROR);
   }
 

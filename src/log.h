@@ -20,18 +20,16 @@ void core_dump_real(const char *who, int line);
   (((major) << 16) + ((minor) << 8) + (patchlevel))
 
 void log_death_trap(struct char_data *ch);
-void basic_mud_vlog(const char *format, va_list args);
-void basic_mud_log(const char *format, ...)
+void mud_vlog(const char *format, va_list args);
+void mud_log(const char *format, ...)
     __attribute__((format(printf, 1, 2)));
 void mudlog(int type, int level, int file, const char *str, ...)
     __attribute__((format(printf, 4, 5)));
 
-#define log basic_mud_log
-
 #define CREATE(result, type, number)                                           \
   do {                                                                         \
     if ((number) * sizeof(type) <= 0)                                          \
-      log("SYSERR: Zero bytes or less requested at %s:%d.", __FILE__,          \
+      mud_log("SYSERR: Zero bytes or less requested at %s:%d.", __FILE__,          \
           __LINE__);                                                           \
     if (!((result) = (type *)calloc((number), sizeof(type)))) {                \
       perror("SYSERR: malloc failure");                                        \

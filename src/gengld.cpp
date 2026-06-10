@@ -147,7 +147,7 @@ int save_guilds(struct zone_data *zone) {
   struct guild_data *guild;
 
   if (!zone) {
-    log("SYSERR: GenOLC: save_guilds: Invalid zone!");
+    mud_log("SYSERR: GenOLC: save_guilds: Invalid zone!");
     return FALSE;
   }
 
@@ -201,7 +201,7 @@ int save_guilds(struct zone_data *zone) {
   if (in_save_list(zone->number, SL_GLD)) {
     remove_from_save_list(zone->number, SL_GLD);
     create_world_index(zone->number, "gld");
-    log("GenOLC: save_guilds: Saving guilds '%s'", fname);
+    mud_log("GenOLC: save_guilds: Saving guilds '%s'", fname);
   }
   return TRUE;
 }

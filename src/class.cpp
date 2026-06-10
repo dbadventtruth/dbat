@@ -406,7 +406,7 @@ void do_start(struct char_data *ch) {
   }
 
   if (GET_CLASS(ch) < 0 || GET_CLASS(ch) > NUM_CLASSES) {
-    log("Unknown character class %d in do_start, resetting.", GET_CLASS(ch));
+    mud_log("Unknown character class %d in do_start, resetting.", GET_CLASS(ch));
     // GET_CLASS(ch) = 0;
   }
   if (GET_ALIGNMENT(ch) < 51 && GET_ALIGNMENT(ch) > -51) {
@@ -662,12 +662,12 @@ void advance_level(struct char_data *ch, int whichclass) {
   char buf[MAX_STRING_LENGTH];
 
   if (whichclass < 0 || whichclass >= NUM_CLASSES) {
-    log("Invalid class %d passed to advance_level, resetting.", whichclass);
+    mud_log("Invalid class %d passed to advance_level, resetting.", whichclass);
     whichclass = 0;
   }
 
   if (!CONFIG_ALLOW_MULTICLASS && whichclass != GET_CLASS(ch)) {
-    log("Attempt to gain a second class without multiclass enabled for %s",
+    mud_log("Attempt to gain a second class without multiclass enabled for %s",
         GET_NAME(ch));
     whichclass = GET_CLASS(ch);
   }
@@ -1672,7 +1672,7 @@ int load_levels() {
   int linenum = 0, tp, cls, sect_type = -1;
 
   if (!(fp = fopen(LEVEL_CONFIG, "r"))) {
-    log("SYSERR: Could not open level configuration file, error: %s!",
+    mud_log("SYSERR: Could not open level configuration file, error: %s!",
         strerror(errno));
     return -1;
   }
@@ -1687,7 +1687,7 @@ int load_levels() {
   for (;;) {
     linenum++;
     if (!fgets(line, READ_SIZE, fp)) { /* eof check */
-      log("SYSERR: Unexpected EOF in file %s.", LEVEL_CONFIG);
+      mud_log("SYSERR: Unexpected EOF in file %s.", LEVEL_CONFIG);
       return -1;
     } else if (*line == '$') { /* end of file */
       break;
@@ -1695,19 +1695,19 @@ int load_levels() {
       continue;
     } else if (*line == '#') { /* start of a section */
       if ((tp = sscanf(line, "#%s", sect_name)) != 1) {
-        log("SYSERR: Format error in file %s, line number %d - text: %s.",
+        mud_log("SYSERR: Format error in file %s, line number %d - text: %s.",
             LEVEL_CONFIG, linenum, line);
         return -1;
       } else if ((sect_type = search_block(sect_name, config_sect, FALSE)) ==
                  -1) {
-        log("SYSERR: Invalid section in file %s, line number %d: %s.",
+        mud_log("SYSERR: Invalid section in file %s, line number %d: %s.",
             LEVEL_CONFIG, linenum, sect_name);
         return -1;
       }
     } else {
       if (sect_type == CONFIG_LEVEL_VERSION) {
         if (!strncmp(line, "Suntzu", 6)) {
-          log("SYSERR: Suntzu %s config files are not compatible with rasputin",
+          mud_log("SYSERR: Suntzu %s config files are not compatible with rasputin",
               LEVEL_CONFIG);
           return -1;
         } else {
@@ -1724,7 +1724,7 @@ int load_levels() {
         for (ptr = line; ptr && *ptr && !isdigit(*ptr); ptr++)
           ;
         if (!ptr || !*ptr || !isdigit(*ptr)) {
-          log("SYSERR: Cannot find class number in file %s, line number %d, "
+          mud_log("SYSERR: Cannot find class number in file %s, line number %d, "
               "section %s.",
               LEVEL_CONFIG, linenum, sect_name);
           return -1;
@@ -1735,7 +1735,7 @@ int load_levels() {
         for (; ptr && *ptr && !isdigit(*ptr); ptr++)
           ;
         if (ptr && *ptr && !isdigit(*ptr)) {
-          log("SYSERR: Non-numeric entry in file %s, line number %d, section "
+          mud_log("SYSERR: Non-numeric entry in file %s, line number %d, section "
               "%s.",
               LEVEL_CONFIG, linenum, sect_name);
           return -1;
@@ -1743,12 +1743,12 @@ int load_levels() {
         if (ptr && *ptr) /* There's a value */
           tp = atoi(ptr);
         else {
-          log("SYSERR: Need 1 value in %s, line number %d, section %s.",
+          mud_log("SYSERR: Need 1 value in %s, line number %d, section %s.",
               LEVEL_CONFIG, linenum, sect_name);
           return -1;
         }
         if (cls < 0 || cls >= NUM_CLASSES) {
-          log("SYSERR: Invalid class number %d in file %s, line number %d.",
+          mud_log("SYSERR: Invalid class number %d in file %s, line number %d.",
               cls, LEVEL_CONFIG, linenum);
           return -1;
         } else {
@@ -1760,7 +1760,7 @@ int load_levels() {
           }
         }
       } else {
-        log("Unsupported level config option");
+        mud_log("Unsupported level config option");
       }
     }
   }

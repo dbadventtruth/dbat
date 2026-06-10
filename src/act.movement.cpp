@@ -158,7 +158,7 @@ void handle_teleport(struct char_data *ch, struct char_data *tar,
       GRAPTYPE(ch) = -1;
     }
   } else { /* Wut... */
-    log("ERROR: handle_teleport called without a destination.");
+    mud_log("ERROR: handle_teleport called without a destination.");
     return;
   }
 }

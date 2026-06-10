@@ -53,7 +53,7 @@ void extract_char_final(struct char_data *ch) {
   struct obj_data *obj;
 
   if (char_room_get(ch) == NULL) {
-    log("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)",
+    mud_log("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)",
         GET_NAME(ch), __FILE__);
     exit(1);
   }
@@ -311,7 +311,7 @@ void extract_obj(struct obj_data *obj) {
 
   if (obj->worn_by != NULL)
     if (unequip_char(obj->worn_by, obj->worn_on) != obj)
-      log("SYSERR: Inconsistent worn_by and worn_on pointers!!");
+      mud_log("SYSERR: Inconsistent worn_by and worn_on pointers!!");
   if (obj_room_get(obj) != NULL)
     obj_from_room(obj);
   else if (obj->carried_by)
@@ -369,7 +369,7 @@ void extract_pending_chars(void) {
   struct char_data *vict, *next_vict, *prev_vict, *temp;
 
   if (extractions_pending < 0)
-    log("SYSERR: Negative (%d) extractions pending.", extractions_pending);
+    mud_log("SYSERR: Negative (%d) extractions pending.", extractions_pending);
 
   for (vict = character_list, prev_vict = NULL; vict && extractions_pending;
        vict = next_vict) {
@@ -396,7 +396,7 @@ void extract_pending_chars(void) {
   }
 
   if (extractions_pending > 0)
-    log("SYSERR: Couldn't find %d extractions as counted.",
+    mud_log("SYSERR: Couldn't find %d extractions as counted.",
         extractions_pending);
 
   extractions_pending = 0;

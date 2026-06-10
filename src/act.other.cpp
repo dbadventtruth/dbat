@@ -10568,7 +10568,7 @@ ACMD(do_use) {
       }
       break;
     default:
-      log("SYSERR: Unknown subcmd %d passed to do_use.", subcmd);
+      mud_log("SYSERR: Unknown subcmd %d passed to do_use.", subcmd);
       /*  SYSERR_DESC:
        *  This is the same as the unhandled case in do_gen_ps(), but in the
        *  function which handles 'quaff', 'recite', and 'use'.
@@ -10749,7 +10749,7 @@ ACMD(do_value) {
       }
       break;
     default:
-      log("Unknown subcmd to do_value %d called by %s", subcmd, GET_NAME(ch));
+      mud_log("Unknown subcmd to do_value %d called by %s", subcmd, GET_NAME(ch));
       break;
     }
   } else
@@ -11191,7 +11191,7 @@ ACMD(do_gen_tog) {
     result = PRF_TOG_CHK(ch, PRF_IHEALTH);
     break;
   default:
-    log("SYSERR: Unknown subcmd %d in do_gen_toggle.", subcmd);
+    mud_log("SYSERR: Unknown subcmd %d in do_gen_toggle.", subcmd);
     /*  SYSERR_DESC:
      *  This is the same as the unhandled case in do_gen_ps(), but in the
      *  function which handles 'compact', 'brief', and so forth.

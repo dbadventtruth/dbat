@@ -734,7 +734,7 @@ void do_stat_trigger(struct char_data *ch, trig_data *trig) {
   int len = 0;
 
   if (!trig) {
-    log("SYSERR: NULL trigger passed to do_stat_trigger.");
+    mud_log("SYSERR: NULL trigger passed to do_stat_trigger.");
     return;
   }
 
@@ -1310,10 +1310,10 @@ void script_vlog(const char *format, va_list args) {
 
   snprintf(output, sizeof(output), "SCRIPT ERR: %s", format);
 
-  basic_mud_vlog(output, args_copy);
+  mud_vlog(output, args_copy);
   va_end(args_copy);
 
-  /* the rest is mostly a rip from basic_mud_log() */
+  /* the rest is mostly a rip from mud_log() */
   strcpy(output, "[ "); /* strcpy: OK */
   // va_start(args, format);
   vsnprintf(print_to, sizeof(print_to), format, args);
@@ -2759,7 +2759,7 @@ void read_saved_vars(struct char_data *ch) {
 
   /* if we failed to open the file, return */
   if (!file) {
-    log("%s had no variable file", GET_NAME(ch));
+    mud_log("%s had no variable file", GET_NAME(ch));
     return;
   }
   /* walk through each line in the file parsing variables */

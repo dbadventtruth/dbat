@@ -105,7 +105,7 @@ int racial_ability_mods[][6] = {
 void racial_ability_modifiers(struct char_data *ch) {
   int chrace = 0;
   if (GET_RACE(ch) >= NUM_RACES || GET_RACE(ch) < 0) {
-    log("SYSERR: Unknown race %d in racial_ability_modifiers", GET_RACE(ch));
+    mud_log("SYSERR: Unknown race %d in racial_ability_modifiers", GET_RACE(ch));
   } else {
     chrace = GET_RACE(ch);
   }
@@ -176,11 +176,11 @@ void set_height_and_weight_by_race(struct char_data *ch) {
   race = GET_RACE(ch);
   sex = GET_SEX(ch);
   if (sex < SEX_NEUTRAL || sex >= NUM_SEX) {
-    log("Invalid gender in set_height_and_weight_by_race: %d", sex);
+    mud_log("Invalid gender in set_height_and_weight_by_race: %d", sex);
     sex = SEX_NEUTRAL;
   }
   if (race <= RACE_UNDEFINED || race >= NUM_RACES) {
-    log("Invalid gender in set_height_and_weight_by_race: %d", GET_SEX(ch));
+    mud_log("Invalid gender in set_height_and_weight_by_race: %d", GET_SEX(ch));
     race = RACE_UNDEFINED + 1; /* first defined race */
   }
 
@@ -257,7 +257,7 @@ int wield_type(int chsize, const struct obj_data *weap) {
   } else if (chsize < GET_OBJ_SIZE(weap) - 1) {
     return WIELD_TWOHAND;
   } else {
-    log("unknown size vector in wield_type: chsize=%d, weapsize=%d", chsize,
+    mud_log("unknown size vector in wield_type: chsize=%d, weapsize=%d", chsize,
         GET_OBJ_SIZE(weap));
     return WIELD_NONE;
   }

@@ -186,7 +186,7 @@ void boot_social_messages(void) {
   if (CONFIG_NEW_SOCIALS == TRUE) {
     /* open social file */
     if (!(fl = fopen(SOCMESS_FILE_NEW, "r"))) {
-      log("SYSERR: can't open socials file '%s': %s", SOCMESS_FILE_NEW,
+      mud_log("SYSERR: can't open socials file '%s': %s", SOCMESS_FILE_NEW,
           strerror(errno));
       /*  SYSERR_DESC:
        *  This error, from boot_social_messages(), occurs when the server
@@ -206,7 +206,7 @@ void boot_social_messages(void) {
 
     /* open social file */
     if (!(fl = fopen(SOCMESS_FILE, "r"))) {
-      log("SYSERR: can't open socials file '%s': %s", SOCMESS_FILE,
+      mud_log("SYSERR: can't open socials file '%s': %s", SOCMESS_FILE,
           strerror(errno));
       exit(1);
     }
@@ -218,7 +218,7 @@ void boot_social_messages(void) {
     }
   }
 
-  log("Social table contains %d socials.", top_of_socialt);
+  mud_log("Social table contains %d socials.", top_of_socialt);
   rewind(fl);
 
   CREATE(soc_mess_list, struct social_messg, top_of_socialt + 1);
@@ -232,7 +232,7 @@ void boot_social_messages(void) {
     if (CONFIG_NEW_SOCIALS == TRUE) {
       if (fscanf(fl, " %s %d %d %d %d \n", sorted, &hide, &min_char_pos,
                  &min_pos, &min_lvl) != 5) {
-        log("SYSERR: format error in social file near social '%s'", next_soc);
+        mud_log("SYSERR: format error in social file near social '%s'", next_soc);
         /*  SYSERR_DESC:
          *  From boot_social_messages(), this error is output when the
          *  server is expecting to find the remainder of the first line of the
@@ -252,7 +252,7 @@ void boot_social_messages(void) {
       soc_mess_list[curr_soc].min_level_char = min_lvl;
     } else { /* old style */
       if (fscanf(fl, " %d %d \n", &hide, &min_pos) != 2) {
-        log("SYSERR: format error in social file near social '%s'", next_soc);
+        mud_log("SYSERR: format error in social file near social '%s'", next_soc);
         exit(1);
       }
       curr_soc++;
@@ -266,7 +266,7 @@ void boot_social_messages(void) {
 
 #ifdef CIRCLE_ACORN
     if (fgetc(fl) != '\n')
-      log("SYSERR: Acorn bug workaround failed.");
+      mud_log("SYSERR: Acorn bug workaround failed.");
     /*  SYSERR_DESC:
      *  The only time that this error should ever arise is if you are running
      *  your CircleMUD on the Acorn platform.  The error arises when the
@@ -361,7 +361,7 @@ void create_command_list(void) {
   complete_cmd_info[k].minimum_level = 0;
   complete_cmd_info[k].minimum_admlevel = 0;
   complete_cmd_info[k].subcmd = 0;
-  log("Command info rebuilt, %d total commands.", k);
+  mud_log("Command info rebuilt, %d total commands.", k);
 }
 
 void free_command_list(void) {
@@ -374,7 +374,7 @@ char *fread_action(FILE *fl, int nr) {
 
   fgets(buf, MAX_STRING_LENGTH, fl);
   if (feof(fl)) {
-    log("SYSERR: fread_action: unexpected EOF near action #%d", nr);
+    mud_log("SYSERR: fread_action: unexpected EOF near action #%d", nr);
     /*  SYSERR_DESC:
      *  fread_action() will fail if it discovers an end of file marker
      *  before it is able to read in the expected string.  This can be

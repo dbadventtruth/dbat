@@ -121,7 +121,7 @@ void trig_data_copy(trig_data *this_data, const trig_data *trg) {
     this_data->name = strdup(trg->name);
   else {
     this_data->name = strdup("unnamed trigger");
-    log("Trigger with no name! (%d)", trg->vnum);
+    mud_log("Trigger with no name! (%d)", trg->vnum);
   }
   this_data->trigger_type = trg->trigger_type;
   this_data->cmdlist = trg->cmdlist;
@@ -288,7 +288,7 @@ void assign_triggers(void *i, int type) {
     while (trg_proto) {
       rnum = real_trigger(trg_proto->vnum);
       if (rnum == NOTHING) {
-        log("SYSERR: trigger #%d non-existant, for obj #%d", trg_proto->vnum,
+        mud_log("SYSERR: trigger #%d non-existant, for obj #%d", trg_proto->vnum,
             obj->vnum);
       } else {
         if (!SCRIPT(obj))

@@ -713,7 +713,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
         send_to_char(ch, "That's not a name for a monster you can summon. "
                          "Summoning something else.\r\n");
       } else {
-        log("lev=%d, i=%d, ngen=%d", lev, i, lev - i);
+        mud_log("lev=%d, i=%d, ngen=%d", lev, i, lev - i);
         switch (lev - i) {
         case 1:
           num = 1;
@@ -732,7 +732,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
       for (count = 0; monsum_list[lev - 1][j][count] != NOBODY; count++)
         ;
       if (!count) {
-        log("No monsums for spell level %d align %s", lev, alignments[j]);
+        mud_log("No monsums for spell level %d align %s", lev, alignments[j]);
         return;
       }
       count--;
@@ -945,7 +945,7 @@ void mag_creations(int level, struct char_data *ch, int spellnum) {
 
   if (!(tobj = read_object(z, VIRTUAL))) {
     send_to_char(ch, "I seem to have goofed.\r\n");
-    log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum,
+    mud_log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum,
         z);
     return;
   }

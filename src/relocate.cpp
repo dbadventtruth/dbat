@@ -39,7 +39,7 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   struct obj_data *vehicle = NULL;
 
   if (!object || !room) {
-    log("SYSERR: Illegal value(s) passed to obj_to_room.");
+    mud_log("SYSERR: Illegal value(s) passed to obj_to_room.");
     return;
   }
 
@@ -112,7 +112,7 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
         SET_BIT(GET_OBJ_VAL(object, VAL_CONTAINER_FLAGS), CONT_CLOSED);
         SET_BIT(GET_OBJ_VAL(object, VAL_CONTAINER_FLAGS), CONT_LOCKED);
       } else {
-        log("Hatch load: Hatch with no vehicle load room: #%d!",
+        mud_log("Hatch load: Hatch with no vehicle load room: #%d!",
             GET_OBJ_VNUM(object));
       }
     }
@@ -153,7 +153,7 @@ void obj_from_room(struct obj_data *object) {
   struct obj_data *temp;
 
   if (!object || obj_room_get(object) == NULL) {
-    log("SYSERR: NULL object (%p) or obj not in a room (%d) passed to "
+    mud_log("SYSERR: NULL object (%p) or obj not in a room (%d) passed to "
         "obj_from_room",
         object, IN_ROOM(object));
     return;
@@ -189,7 +189,7 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
   struct obj_data *tmp_obj;
 
   if (!obj || !obj_to || obj == obj_to) {
-    log("SYSERR: NULL object (%p) or same source (%p) and target (%p VNUM: %d) "
+    mud_log("SYSERR: NULL object (%p) or same source (%p) and target (%p VNUM: %d) "
         "obj passed to obj_to_obj.",
         obj, obj, obj_to, obj_to ? GET_OBJ_VNUM(obj_to) : -1);
     return;
@@ -224,7 +224,7 @@ void obj_from_obj(struct obj_data *obj) {
   struct obj_data *temp, *obj_from;
 
   if (obj->in_obj == NULL) {
-    log("SYSERR: (%s): trying to illegally extract obj from obj.", __FILE__);
+    mud_log("SYSERR: (%s): trying to illegally extract obj from obj.", __FILE__);
     return;
   }
   obj_from = obj->in_obj;
@@ -258,7 +258,7 @@ void char_from_room(struct char_data *ch) {
   struct char_data *temp;
 
   if (ch == NULL || char_room_get(ch) == NULL) {
-    log("SYSERR: NULL character or NOWHERE in %s, char_from_room", __FILE__);
+    mud_log("SYSERR: NULL character or NOWHERE in %s, char_from_room", __FILE__);
     return;
   }
 
@@ -286,7 +286,7 @@ void char_from_room(struct char_data *ch) {
 void char_to_room(struct char_data *ch, struct room_data *room) {
 
   if (!ch || !room) {
-    log("SYSERR: Illegal value(s) passed to char_to_room.");
+    mud_log("SYSERR: Illegal value(s) passed to char_to_room.");
     return;
   }
 
@@ -294,7 +294,7 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
 
   room_people_iterate(rm, [&](struct char_data *tch) {
     if (tch == ch) {
-      log("SYSERR: Attempting to char_to_room char %s into room %d, but they "
+      mud_log("SYSERR: Attempting to char_to_room char %s into room %d, but they "
           "are already in that room.",
           GET_NAME(ch), room_vnum_get(rm));
       return false;
@@ -349,7 +349,7 @@ void obj_to_char(struct obj_data *object, struct char_data *ch) {
     if (!IS_NPC(ch))
       SET_BIT_AR(PLR_FLAGS(ch), PLR_CRASH);
   } else
-    log("SYSERR: NULL obj (%p) or char (%p) passed to obj_to_char.", object,
+    mud_log("SYSERR: NULL obj (%p) or char (%p) passed to obj_to_char.", object,
         ch);
 }
 
@@ -358,7 +358,7 @@ void obj_from_char(struct obj_data *object) {
   struct obj_data *temp;
 
   if (object == NULL) {
-    log("SYSERR: NULL object passed to obj_from_char.");
+    mud_log("SYSERR: NULL object passed to obj_from_char.");
     return;
   }
   auto ch = object->carried_by;
@@ -436,16 +436,16 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
   }
 
   if (GET_EQ(ch, pos)) {
-    log("SYSERR: Char is already equipped: %s, %s", GET_NAME(ch),
+    mud_log("SYSERR: Char is already equipped: %s, %s", GET_NAME(ch),
         obj->short_description);
     return;
   }
   if (obj->carried_by) {
-    log("SYSERR: EQUIP: Obj is carried_by when equip.");
+    mud_log("SYSERR: EQUIP: Obj is carried_by when equip.");
     return;
   }
   if (obj_room_get(obj) != NULL) {
-    log("SYSERR: EQUIP: Obj is in_room when equip.");
+    mud_log("SYSERR: EQUIP: Obj is in_room when equip.");
     return;
   }
   if (invalid_align(ch, obj) || invalid_class(ch, obj) ||
@@ -471,7 +471,7 @@ void equip_char(struct char_data *ch, struct obj_data *obj, int pos) {
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS)) /* if light is ON */
         room_light_mod(char_room_get(ch), 1);
   } else
-    log("SYSERR: IN_ROOM(ch) = NOWHERE when equipping char %s.", GET_NAME(ch));
+    mud_log("SYSERR: IN_ROOM(ch) = NOWHERE when equipping char %s.", GET_NAME(ch));
 
   char_der_invalidate(ch);
 }
@@ -497,7 +497,7 @@ struct obj_data *unequip_char(struct char_data *ch, int pos) {
       if (GET_OBJ_VAL(obj, VAL_LIGHT_HOURS)) /* if light is ON */
         room_light_mod(char_room_get(ch), -1);
   } else
-    log("SYSERR: IN_ROOM(ch) = NOWHERE when unequipping char %s.",
+    mud_log("SYSERR: IN_ROOM(ch) = NOWHERE when unequipping char %s.",
         GET_NAME(ch));
 
   GET_EQ(ch, pos) = NULL;

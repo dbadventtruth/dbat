@@ -2000,7 +2000,7 @@ ACMD(do_bid) {
       auc_save();
       struct descriptor_data *d;
       int bid = atoi(arg2);
-      log("AUCTION: %s has bid %s on %s", GET_NAME(ch), obj2->short_description,
+      mud_log("AUCTION: %s has bid %s on %s", GET_NAME(ch), obj2->short_description,
           add_commas(bid));
       for (d = descriptor_list; d; d = d->next) {
         if (STATE(d) != CON_PLAYING || IS_NPC(d->character))
@@ -3104,7 +3104,7 @@ static int perform_drop(struct char_data *ch, struct obj_data *obj, int8_t mode,
     extract_obj(obj);
     return (value);
   default:
-    log("SYSERR: Incorrect argument %d passed to perform_drop.", mode);
+    mud_log("SYSERR: Incorrect argument %d passed to perform_drop.", mode);
     /*  SYSERR_DESC:
      *  This error comes from perform_drop() and is output when perform_drop()
      *  is called with an illegal 'mode' argument.
@@ -3527,7 +3527,7 @@ void weight_change_object(struct obj_data *obj, int weight) {
     GET_OBJ_WEIGHT(obj) += weight;
     obj_to_obj(obj, tmp_obj);
   } else {
-    log("SYSERR: Unknown attempt to subtract weight from an object.");
+    mud_log("SYSERR: Unknown attempt to subtract weight from an object.");
     /*  SYSERR_DESC:
      *  weight_change_object() outputs this error when weight is attempted to
      *  be removed from an object that is not carried or in another object.
@@ -3546,7 +3546,7 @@ void name_from_drinkcon(struct obj_data *obj) {
 
   liqname = drinknames[GET_OBJ_VAL(obj, VAL_DRINKCON_LIQUID)];
   if (!isname(liqname, obj->name)) {
-    /*log("SYSERR: Can't remove liquid '%s' from '%s' (%d) item.", liqname,
+    /*mud_log("SYSERR: Can't remove liquid '%s' from '%s' (%d) item.", liqname,
      * obj->name, obj->item_number);*/
     /*  SYSERR_DESC:
      *  From name_from_drinkcon(), this error comes about if the object
@@ -4671,7 +4671,7 @@ void perform_remove(struct char_data *ch, int pos) {
   int64_t previous = GET_HIT(ch);
 
   if (!(obj = GET_EQ(ch, pos)))
-    log("SYSERR: perform_remove: bad pos %d passed.", pos);
+    mud_log("SYSERR: perform_remove: bad pos %d passed.", pos);
   /*  SYSERR_DESC:
    *  This error occurs when perform_remove() is passed a bad 'pos'
    *  (location) to remove an object from.

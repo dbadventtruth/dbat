@@ -571,7 +571,7 @@ int roll_skill(struct char_data *ch, int snum) {
       return roll + rand_number(1, 20);
     }
   } else {
-    log("Trying to roll uncategorized skill/spell #%d for %s", snum,
+    mud_log("Trying to roll uncategorized skill/spell #%d for %s", snum,
         GET_NAME(ch));
     return 0;
   }

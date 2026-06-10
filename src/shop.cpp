@@ -331,7 +331,7 @@ static int pop(struct stack_data *stack) {
   if (S_LEN(stack) > 0)
     return (S_DATA(stack, --S_LEN(stack)));
   else {
-    log("SYSERR: Illegal expression %d in shop keyword list.", S_LEN(stack));
+    mud_log("SYSERR: Illegal expression %d in shop keyword list.", S_LEN(stack));
     return (0);
   }
 }
@@ -397,7 +397,7 @@ static int evaluate_expression(struct obj_data *obj, char *expr) {
 
         if (temp == OPER_CLOSE_PAREN) {
           if ((temp = pop(&ops)) != OPER_OPEN_PAREN) {
-            log("SYSERR: Illegal parenthesis in shop keyword expression.");
+            mud_log("SYSERR: Illegal parenthesis in shop keyword expression.");
             return (FALSE);
           }
         } else
@@ -410,7 +410,7 @@ static int evaluate_expression(struct obj_data *obj, char *expr) {
     evaluate_operation(&ops, &vals);
   temp = pop(&vals);
   if (top(&vals) != -1) {
-    log("SYSERR: Extra operands left on shop keyword expression stack.");
+    mud_log("SYSERR: Extra operands left on shop keyword expression stack.");
     return (FALSE);
   }
   return (temp);
@@ -1020,7 +1020,7 @@ static struct obj_data *get_selling_obj(struct char_data *ch, char *name,
     snprintf(buf, sizeof(buf), "%s %s", GET_NAME(ch), MSG_NO_USED_WANDSTAFF);
     break;
   default:
-    log("SYSERR: Illegal return value of %d from trade_with() (%s)", result,
+    mud_log("SYSERR: Illegal return value of %d from trade_with() (%s)", result,
         __FILE__); /* Someone might rename it... */
     snprintf(buf, sizeof(buf), "%s An error has occurred.", GET_NAME(ch));
     break;
@@ -1465,7 +1465,7 @@ static int add_to_list(struct shop_buy_data *list, int type, int *len,
 
 static int end_read_list(struct shop_buy_data *list, int len, int error) {
   if (error)
-    log("SYSERR: Raise MAX_SHOP_OBJ constant in shop.h to %d", len + error);
+    mud_log("SYSERR: Raise MAX_SHOP_OBJ constant in shop.h to %d", len + error);
   BUY_WORD(list[len]) = NULL;
   BUY_TYPE(list[len++]) = NOTHING;
   return (len);
@@ -1476,7 +1476,7 @@ static void read_line(FILE *shop_f, const char *string, void *data,
   char buf[READ_SIZE];
 
   if (!get_line(shop_f, buf) || !sscanf(buf, string, data)) {
-    log("SYSERR: Error in shop #%d, near '%s' with '%s'", SHOP_NUM(shop), buf,
+    mud_log("SYSERR: Error in shop #%d, near '%s' with '%s'", SHOP_NUM(shop), buf,
         string);
     exit(1);
   }
@@ -1566,19 +1566,19 @@ static char *read_shop_message(int mnum, room_vnum shr, FILE *shop_f,
       ss++;
     else if (tbuf[cht + 1] == 'd' && (mnum == 5 || mnum == 6)) {
       if (ss == 0) {
-        log("SYSERR: Shop #%d has %%d before %%s, message #%d.", shr, mnum);
+        mud_log("SYSERR: Shop #%d has %%d before %%s, message #%d.", shr, mnum);
         err++;
       }
       ds++;
     } else if (tbuf[cht + 1] != '%') {
-      log("SYSERR: Shop #%d has invalid format '%%%c' in message #%d.", shr,
+      mud_log("SYSERR: Shop #%d has invalid format '%%%c' in message #%d.", shr,
           tbuf[cht + 1], mnum);
       err++;
     }
   }
 
   if (ss > 1 || ds > 1) {
-    log("SYSERR: Shop #%d has too many specifiers for message #%d. %%s=%d "
+    mud_log("SYSERR: Shop #%d has too many specifiers for message #%d. %%s=%d "
         "%%d=%d",
         shr, mnum, ss, ds);
     err++;
@@ -1643,7 +1643,7 @@ void boot_the_shops(FILE *shop_f, char *filename, int rec_count) {
         if (!p || !*p)
           break;
         if (sscanf(p, "%d", &count) != 1) {
-          log("SYSERR: Can't parse TRADE_WITH line in %s: '%s'", buf2, buf);
+          mud_log("SYSERR: Can't parse TRADE_WITH line in %s: '%s'", buf2, buf);
           break;
         }
         shop->with_who[temp] = count;

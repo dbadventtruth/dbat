@@ -90,6 +90,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <time.h>
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -137,7 +138,7 @@ char *last_act_message = NULL;
 int enter_player_game(struct descriptor_data *d);
 
 void copyover_recover_begin(void) {
-  log("Copyover recovery initiated");
+  mud_log("Copyover recovery initiated");
   PCOUNTDAY = time(0) + 60;
 }
 
@@ -230,10 +231,10 @@ void copyover_recover_descriptor(socklen_t desc, const char *name,
 
 /* Reload players after a copyover */
 void copyover_recover() {
-  log("Copyover recovery initiated");
+  mud_log("Copyover recovery initiated");
   PCOUNTDAY = time(0) + 60;
   if (!net_copyover_recover(COPYOVER_FILE)) {
-    log("Copyover recovery failed. Exitting.\n\r");
+    mud_log("Copyover recovery failed. Exitting.\n\r");
     exit(1);
   }
 }
@@ -242,7 +243,7 @@ void load_spacemap() {
   FILE *mapfile;
   int rowcounter, colcounter;
   int vnum_read;
-  log("Loading Space Map. ");
+  mud_log("Loading Space Map. ");
 
   // Load the map vnums from a file into an array
   mapfile = fopen("data/surface.map", "r");
@@ -299,11 +300,11 @@ int get_max_players(void) {
   max_descs = MIN(CONFIG_MAX_PLAYING, max_descs - NUM_RESERVED_DESCS);
 
   if (max_descs <= 0) {
-    log("SYSERR: Non-positive max player limit!  (Set at %d using %s).",
+    mud_log("SYSERR: Non-positive max player limit!  (Set at %d using %s).",
         max_descs, method);
     exit(1);
   }
-  log("   Setting player limit to %d using %s.", max_descs, method);
+  mud_log("   Setting player limit to %d using %s.", max_descs, method);
   return (max_descs);
 }
 
@@ -372,7 +373,7 @@ void game_legacy_send_outputs(void) {
     next_d = d->next;
     if (*(d->output)) {
       if (process_output(d) < 0) {
-        log("ERROR: Tried to send output to dead socket!");
+        mud_log("ERROR: Tried to send output to dead socket!");
       } else
         d->has_prompt = 1;
     }
@@ -417,15 +418,36 @@ void game_legacy_post_tick(void) {
 
 void heartbeat_legacy(int heart_pulse) {
   static int mins_since_crashsave = 0;
-  struct char_data *next_char;
-  struct obj_data *next_obj;
 
-  for(auto ch = character_list; ch; ch = ch->next) {
-    char_der_invalidate(ch);
-  }
-  
+  struct PhaseTime { const char *name; double ms; };
+  constexpr double SLOW_PHASE_MS = 20.0;
+  constexpr double SLOW_TOTAL_MS = 50.0;
+  PhaseTime phases[24];
+  size_t np = 0;
+
+  auto mono_now = []() -> struct timespec {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts;
+  };
+  auto elapsed_ms = [](const struct timespec &t0, const struct timespec &t1) -> double {
+    return (t1.tv_sec - t0.tv_sec) * 1000.0 + (t1.tv_nsec - t0.tv_nsec) / 1.0e6;
+  };
+  const struct timespec t_hb = mono_now();
+
+  auto time_phase = [&](const char *label, auto fn) {
+    const struct timespec t = mono_now();
+    fn();
+    phases[np++] = {label, elapsed_ms(t, mono_now())};
+  };
+
+  time_phase("char_der_invalidate", [&]{
+    for (auto ch = character_list; ch; ch = ch->next)
+      char_der_invalidate(ch);
+  });
+
   /*
-  
+
   for(auto ch = character_list; ch; ch = next_char) {
     next_char = ch->next;
     char_on_heartbeat(ch, heart_pulse);
@@ -447,12 +469,14 @@ void heartbeat_legacy(int heart_pulse) {
   */
 
   if(!(heart_pulse % PULSE_1SEC)) {
+
+    /*
     for (auto ch = character_list; ch; ch = next_char) {
       next_char = ch->next;
       char_on_second(ch);
     }
 
-    /*
+    
 
     for (auto obj = object_list; obj; obj = next_obj) {
       next_obj = obj->next;
@@ -468,6 +492,7 @@ void heartbeat_legacy(int heart_pulse) {
   }
 
   if (!(heart_pulse % (SECS_PER_MUD_HOUR * PASSES_PER_SEC))) {
+    /*
     for (auto ch = character_list; ch; ch = next_char) {
       next_char = ch->next;
       char_on_mud_hour(ch);
@@ -478,96 +503,117 @@ void heartbeat_legacy(int heart_pulse) {
       obj_on_mud_hour(obj);
     }
 
-    /*
+    
     room_iterate([](auto room) {
       room_on_mud_hour(room);
       return true;
     });
     */
   }
-  
-  event_process();
 
-  if (!(heart_pulse % PULSE_DG_SCRIPT))
-    script_trigger_check();
+  time_phase("event_process", [&]{ event_process(); });
 
-  if (!(heart_pulse % PULSE_ZONE))
-    zone_update();
+  time_phase("script_trigger_check", [&]{
+    if (!(heart_pulse % PULSE_DG_SCRIPT)) script_trigger_check();
+  });
 
-  if (!(heart_pulse % PULSE_IDLEPWD)) /* 15 seconds */
-    check_idle_passwords();
+  time_phase("zone_update", [&]{
+    if (!(heart_pulse % PULSE_ZONE)) zone_update();
+  });
 
-  if (!(heart_pulse % (PULSE_1SEC * 60))) /* 15 seconds */
-    check_idle_menu();
+  time_phase("check_idle_passwords", [&]{
+    if (!(heart_pulse % PULSE_IDLEPWD)) check_idle_passwords();
+    if (!(heart_pulse % (PULSE_1SEC * 60))) check_idle_menu();
+  });
 
-  if (!(heart_pulse % (PULSE_IDLEPWD / 15))) { /* 1 second */
-    // dball_load();
-  }
-  
-  if (!(heart_pulse % (PULSE_2SEC))) {
-    base_update();
-    fish_update();
-  }
+  time_phase("base_update", [&]{
+    if (!(heart_pulse % PULSE_2SEC)) { base_update(); fish_update(); }
+  });
 
-  if (!(heart_pulse % (PULSE_1SEC * 15))) {
-    handle_songs();
-  }
+  time_phase("handle_songs", [&]{
+    if (!(heart_pulse % (PULSE_1SEC * 15))) handle_songs();
+  });
 
-  if (!(heart_pulse % (PULSE_1SEC)))
-    wishSYS();
+  time_phase("wishSYS", [&]{
+    if (!(heart_pulse % PULSE_1SEC)) wishSYS();
+  });
 
-  if (!(heart_pulse % PULSE_MOBILE))
-    mobile_activity();
+  time_phase("mobile_activity", [&]{
+    if (!(heart_pulse % PULSE_MOBILE)) mobile_activity();
+  });
 
-  if (!(heart_pulse % PULSE_AUCTION))
-    check_auction();
+  time_phase("check_auction", [&]{
+    if (!(heart_pulse % PULSE_AUCTION)) check_auction();
+  });
 
-  if (!(heart_pulse % (PULSE_IDLEPWD / 15))) {
-    fight_stack();
-  }
+  time_phase("fight_stack", [&]{
+    if (!(heart_pulse % (PULSE_IDLEPWD / 15))) fight_stack();
+  });
 
-  if (!(heart_pulse % ((PULSE_IDLEPWD / 15) * 2))) {
-    if (rand_number(1, 2) == 2) {
-      homing_update();
+  time_phase("homing_huge_broken", [&]{
+    if (!(heart_pulse % ((PULSE_IDLEPWD / 15) * 2))) {
+      if (rand_number(1, 2) == 2) homing_update();
+      huge_update();
+      broken_update();
     }
-    huge_update();
-    broken_update();
-    /*update_mob_absorb();*/
-  }
+  });
 
-  if (!(heart_pulse % (1 * PASSES_PER_SEC))) { /* EVERY second */
-    char_condition_update_all("second", PULSE_1SEC, 1);
-    copyover_check();
-  }
-
-  if (!(heart_pulse % (SECS_PER_MUD_HOUR * PASSES_PER_SEC))) {
-    weather_and_time(1);
-    check_time_triggers();
-    affect_update();
-  }
-
-  if (!(heart_pulse % ((SECS_PER_MUD_HOUR / 3) * PASSES_PER_SEC))) {
-    point_update();
-  }
-
-  if (CONFIG_AUTO_SAVE && !(heart_pulse % PULSE_AUTOSAVE)) { /* 1 minute */
-    clan_update();
-    if (++mins_since_crashsave >= CONFIG_AUTOSAVE_TIME) {
-      mins_since_crashsave = 0;
-      Crash_save_all();
-      House_save_all();
+  time_phase("char_condition_update", [&]{
+    if (!(heart_pulse % PASSES_PER_SEC)) {
+      char_condition_update_all("second", PULSE_1SEC, 1);
+      copyover_check();
     }
-  }
+  });
 
-  if (!(heart_pulse % PULSE_USAGE))
-    record_usage();
+  time_phase("weather_time_affects", [&]{
+    if (!(heart_pulse % (SECS_PER_MUD_HOUR * PASSES_PER_SEC))) {
+      weather_and_time(1);
+      check_time_triggers();
+      affect_update();
+    }
+  });
 
-  if (!(heart_pulse % PULSE_TIMESAVE))
-    save_mud_time(&time_info);
+  time_phase("point_update", [&]{
+    if (!(heart_pulse % ((SECS_PER_MUD_HOUR / 3) * PASSES_PER_SEC)))
+      point_update();
+  });
 
+  time_phase("autosave", [&]{
+    if (CONFIG_AUTO_SAVE && !(heart_pulse % PULSE_AUTOSAVE)) {
+      clan_update();
+      if (++mins_since_crashsave >= CONFIG_AUTOSAVE_TIME) {
+        mins_since_crashsave = 0;
+        Crash_save_all();
+        House_save_all();
+      }
+    }
+  });
+
+  time_phase("record_usage", [&]{
+    if (!(heart_pulse % PULSE_USAGE)) record_usage();
+  });
+
+  time_phase("save_mud_time", [&]{
+    if (!(heart_pulse % PULSE_TIMESAVE)) save_mud_time(&time_info);
+  });
 
   /* Every pulse! Don't want them to stink the place up... */
-  extract_pending_chars();
+  time_phase("extract_pending_chars", [&]{ extract_pending_chars(); });
+
+  const double total_ms = elapsed_ms(t_hb, mono_now());
+  bool any_slow = total_ms >= SLOW_TOTAL_MS;
+  if (!any_slow) {
+    for (size_t i = 0; i < np; ++i)
+      if (phases[i].ms >= SLOW_PHASE_MS) { any_slow = true; break; }
+  }
+  if (any_slow) {
+    char buf[512];
+    int pos = snprintf(buf, sizeof(buf), "SLOW HEARTBEAT %.0fms:", total_ms);
+    for (size_t i = 0; i < np && pos < static_cast<int>(sizeof(buf)) - 32; ++i)
+      if (phases[i].ms >= 1.0)
+        pos += snprintf(buf + pos, sizeof(buf) - pos, " %s=%.0fms", phases[i].name, phases[i].ms);
+    mud_log("%s", buf);
+  }
 }
 
 /* ******************************************************************
@@ -629,7 +675,7 @@ void record_usage(void) {
       sockets_playing++;
   }
 
-  log("nusage: %-3d sockets connected, %-3d sockets playing", sockets_connected,
+  mud_log("nusage: %-3d sockets connected, %-3d sockets playing", sockets_connected,
       sockets_playing);
 }
 
@@ -1681,7 +1727,7 @@ ssize_t perform_socket_write(socklen_t desc, const char *txt, size_t length) {
 
   if (result == 0) {
     /* This should never happen! */
-    log("SYSERR: Huh??  write() returned 0???  Please report this!");
+    mud_log("SYSERR: Huh??  write() returned 0???  Please report this!");
     return (-1);
   }
 
@@ -1751,7 +1797,7 @@ ssize_t perform_socket_read(socklen_t desc, char *read_point,
 
   /* read() returned 0, meaning we got an EOF. */
   if (ret == 0) {
-    log("WARNING: EOF on socket read (connection broken by peer)");
+    mud_log("WARNING: EOF on socket read (connection broken by peer)");
     return (-1);
   }
 
@@ -1798,7 +1844,7 @@ int descriptor_process_bytes(struct descriptor_data *t, const char *bytes,
   buf_length = strlen(t->inbuf);
   space_left = MAX_RAW_INPUT_LENGTH - buf_length - 1;
   if (len > space_left) {
-    log("WARNING: descriptor_process_bytes: about to close connection: input overflow");
+    mud_log("WARNING: descriptor_process_bytes: about to close connection: input overflow");
     return (-1);
   }
 
@@ -1918,7 +1964,7 @@ int process_input(struct descriptor_data *t) {
 
   do {
     if (space_left <= 0) {
-      log("WARNING: process_input: about to close connection: input overflow");
+      mud_log("WARNING: process_input: about to close connection: input overflow");
       return (-1);
     }
 
@@ -2131,7 +2177,7 @@ void free_user(struct descriptor_data *d) {
   if (!strcasecmp(d->user, "Empty"))
     return;
 
-  log("Freeing User: %s", d->user);
+  mud_log("Freeing User: %s", d->user);
 
   /* Free up all the user data as needed */
   if (d->user) {
@@ -2331,7 +2377,7 @@ void reap(int sig) {
 void checkpointing(int sig) {
 #ifndef MEMORY_DEBUG
   if (!tics_passed) {
-    log("SYSERR: CHECKPOINT shutdown: tics not updated. (Infinite loop "
+    mud_log("SYSERR: CHECKPOINT shutdown: tics not updated. (Infinite loop "
         "suspected)");
     abort();
   } else
@@ -2341,7 +2387,7 @@ void checkpointing(int sig) {
 
 /* Dying anyway... */
 void hupsig(int sig) {
-  log("SYSERR: Received SIGHUP, SIGINT, or SIGTERM.  Shutting down...");
+  mud_log("SYSERR: Received SIGHUP, SIGINT, or SIGTERM.  Shutting down...");
   exit(1); /* perhaps something more elegant should
             * substituted */
 }
@@ -2967,7 +3013,7 @@ void send_to_range(room_vnum start, room_vnum finish, const char *messg, ...) {
   int j;
 
   if (start > finish) {
-    log("send_to_range passed start room value greater then finish.");
+    mud_log("send_to_range passed start room value greater then finish.");
     return;
   }
   if (messg == NULL)
@@ -3026,10 +3072,10 @@ int passcomm(struct char_data *ch, char *comm) {
 }
 
 void cleanup_game_world() {
-  log("Clearing game world.");
+  mud_log("Clearing game world.");
   destroy_db();
 
-  log("Clearing other memory.");
+  mud_log("Clearing other memory.");
   free_bufpool();                        /* comm.c */
   free_player_index();                   /* players.c */
   clear_free_list();                     /* mail.c */
@@ -3051,5 +3097,5 @@ void cleanup_game_world() {
   /* probably should free the entire config here.. */
   free(CONFIG_CONFFILE);
 
-  log("Done.");
+  mud_log("Done.");
 }

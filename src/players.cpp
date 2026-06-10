@@ -99,7 +99,7 @@ void build_player_index(void) {
   sprintf(index_name, "%s%s", LIB_PLRFILES, INDEX_FILE);
   if (!(plr_index = fopen(index_name, "r"))) {
     top_of_p_table = -1;
-    log("No player index file!  First new char will be IMP!");
+    mud_log("No player index file!  First new char will be IMP!");
     return;
   }
 
@@ -171,7 +171,7 @@ void save_player_index(void) {
 
   sprintf(index_name, "%s%s", LIB_PLRFILES, INDEX_FILE);
   if (!(index_file = fopen(index_name, "w"))) {
-    log("SYSERR: Could not write player index file");
+    mud_log("SYSERR: Could not write player index file");
     return;
   }
 
@@ -768,18 +768,18 @@ int load_char(const char *name, struct char_data *ch) {
   }
 
   if (!ch->time.created) {
-    log("No creation timestamp for user %s, using current time", GET_NAME(ch));
+    mud_log("No creation timestamp for user %s, using current time", GET_NAME(ch));
     ch->time.created = time(0);
   }
 
   if (!ch->time.birth) {
-    log("No birthday for user %s, using standard starting age determination",
+    mud_log("No birthday for user %s, using standard starting age determination",
         GET_NAME(ch));
     ch->time.birth = time(0) - birth_age(ch);
   }
 
   if (!ch->time.maxage) {
-    log("No max age for user %s, using standard max age determination",
+    mud_log("No max age for user %s, using standard max age determination",
         GET_NAME(ch));
     ch->time.maxage = ch->time.birth + max_age(ch);
   }
@@ -926,7 +926,7 @@ void save_char(struct char_data *ch) {
     affect_remove(ch, ch->affected);
 
   if ((i >= MAX_AFFECT) && aff && aff->next)
-    log("SYSERR: WARNING: OUT OF STORE ROOM FOR AFFECTED TYPES!!!");
+    mud_log("SYSERR: WARNING: OUT OF STORE ROOM FOR AFFECTED TYPES!!!");
 
   /* end char_to_store code */
 
@@ -1544,7 +1544,7 @@ void remove_player(int pfilepos) {
       unlink(fname);
   }
 
-  log("PCLEAN: %s Lev: %d Last: %s", player_table[pfilepos].name,
+  mud_log("PCLEAN: %s Lev: %d Last: %s", player_table[pfilepos].name,
       player_table[pfilepos].level,
       asctime(localtime(&player_table[pfilepos].last)));
   player_table[pfilepos].name[0] = '\0';

@@ -206,7 +206,7 @@ static void mob_spec_update() {
     if (!MOB_FLAGGED(ch, MOB_SPEC) || no_specials)
       return;
     if (auto spec = mob_proto_special_get(GET_MOB_VNUM(ch)); !spec) {
-      log("SYSERR: %s (#%d): Attempting to call non-existing mob function.",
+      mud_log("SYSERR: %s (#%d): Attempting to call non-existing mob function.",
           GET_NAME(ch), GET_MOB_VNUM(ch));
       REMOVE_BIT_AR(MOB_FLAGS(ch), MOB_SPEC);
     } else {

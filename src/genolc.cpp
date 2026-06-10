@@ -71,15 +71,15 @@ int save_all(void) {
     if (save_list->type < 0 || save_list->type > SL_MAX) {
       switch (save_list->type) {
       case SL_ACT:
-        log("Actions not saved - can not autosave. Use 'aedit save'.");
+        mud_log("Actions not saved - can not autosave. Use 'aedit save'.");
         save_list = save_list->next; /* Fatal error, skip this one. */
         break;
       case SL_HLP:
-        log("Help not saved - can not autosave. Use 'hedit save'.");
+        mud_log("Help not saved - can not autosave. Use 'hedit save'.");
         save_list = save_list->next; /* Fatal error, skip this one. */
         break;
       default:
-        log("SYSERR: GenOLC: Invalid save type %d in save list.\n",
+        mud_log("SYSERR: GenOLC: Invalid save type %d in save list.\n",
             save_list->type);
         break;
       }
@@ -124,7 +124,7 @@ void free_ex_descriptions(struct extra_descr_data *head) {
   struct extra_descr_data *thised, *next_one;
 
   if (!head) {
-    log("free_ex_descriptions: NULL pointer or NULL data.");
+    mud_log("free_ex_descriptions: NULL pointer or NULL data.");
     return;
   }
 
@@ -146,7 +146,7 @@ int remove_from_save_list(zone_vnum zone, int type) {
       break;
 
   if (ritem == NULL) {
-    log("SYSERR: remove_from_save_list: Saved item not found. (%d/%d)", zone,
+    mud_log("SYSERR: remove_from_save_list: Saved item not found. (%d/%d)", zone,
         type);
     return FALSE;
   }
@@ -166,7 +166,7 @@ int add_to_save_list(zone_vnum zone, int type) {
 
   if (!z) {
     if (zone != AEDIT_PERMISSION && zone != HEDIT_PERMISSION) {
-      log("SYSERR: add_to_save_list: Invalid zone number passed. (%d)", zone);
+      mud_log("SYSERR: add_to_save_list: Invalid zone number passed. (%d)", zone);
       return FALSE;
     }
   }

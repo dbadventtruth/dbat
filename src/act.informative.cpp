@@ -1005,7 +1005,7 @@ void introCreate(struct char_data *ch) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save user, %s, to filename, %s.", GET_NAME(ch),
+    mud_log("ERROR: could not save user, %s, to filename, %s.", GET_NAME(ch),
         fname);
     return;
   }
@@ -1087,7 +1087,7 @@ void introWrite(struct char_data *ch, struct char_data *vict, char *name) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save intro file, %s, to filename, %s.", GET_NAME(ch),
+    mud_log("ERROR: could not save intro file, %s, to filename, %s.", GET_NAME(ch),
         fname);
     return;
   }
@@ -1906,7 +1906,7 @@ static void display_scroll(struct char_data *ch, struct obj_data *obj) {
 static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
                              int mode) {
   if (!obj || !ch) {
-    log("SYSERR: NULL pointer in show_obj_to_char(): obj=%p ch=%p", obj, ch);
+    mud_log("SYSERR: NULL pointer in show_obj_to_char(): obj=%p ch=%p", obj, ch);
     /*  SYSERR_DESC:
      *  Somehow a NULL pointer was sent to show_obj_to_char() in either the
      *  'obj' or the 'ch' variable.  The error will indicate which was NULL
@@ -2330,7 +2330,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
     break;
 
   default:
-    log("SYSERR: Bad display mode (%d) in show_obj_to_char().", mode);
+    mud_log("SYSERR: Bad display mode (%d) in show_obj_to_char().", mode);
     /*  SYSERR_DESC:
      *  show_obj_to_char() has some predefined 'mode's (argument #3) to tell
      *  it what to display to the character when it is called.  If the mode
@@ -3532,7 +3532,7 @@ append_immortal_exit_door_details(char *line, size_t line_size,
   if (!keyword) {
     send_to_char(ch, "@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION %s@n\r\n",
                  dirs[door]);
-    log("ERROR: %s found error direction %s at room %d", GET_NAME(ch),
+    mud_log("ERROR: %s found error direction %s at room %d", GET_NAME(ch),
         dirs[door], char_room_vnum_get(ch));
     return false;
   }
@@ -7030,7 +7030,7 @@ ACMD(do_gen_ps) {
     send_to_char(ch, "%s\r\n", GET_NAME(ch));
     break;
   default:
-    log("SYSERR: Unhandled case in do_gen_ps. (%d)", subcmd);
+    mud_log("SYSERR: Unhandled case in do_gen_ps. (%d)", subcmd);
     /*  SYSERR_DESC:
      *  General page string function for such things as 'credits', 'news',
      *  'wizlist', 'clear', 'version'.  This occurs when a call is made to

@@ -1802,7 +1802,7 @@ void senseCreate(struct char_data *ch) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save sense memory of, %s, to filename, %s.",
+    mud_log("ERROR: could not save sense memory of, %s, to filename, %s.",
         GET_NAME(ch), fname);
     return;
   }
@@ -1820,7 +1820,7 @@ int read_sense_memory(struct char_data *ch, struct char_data *vict) {
 
   /* Read Sense File */
   if (vict == NULL) {
-    log("Noone.");
+    mud_log("Noone.");
     return 0;
   }
 
@@ -1885,7 +1885,7 @@ void sense_memory_write(struct char_data *ch, struct char_data *vict) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save sense memory file, %s, to filename, %s.",
+    mud_log("ERROR: could not save sense memory file, %s, to filename, %s.",
         GET_NAME(ch), fname);
     return;
   }
@@ -3007,11 +3007,11 @@ int64_t gear_exp(struct char_data *ch, int64_t exp) {
 int planet_check(struct char_data *ch, struct char_data *vict) {
 
   if (ch == NULL) {
-    log("ERROR: planet_check called without ch!");
+    mud_log("ERROR: planet_check called without ch!");
     return 0;
   }
   if (vict == NULL) {
-    log("ERROR: planet_check called without vict!");
+    mud_log("ERROR: planet_check called without vict!");
     return 0;
   }
   int success = 0;

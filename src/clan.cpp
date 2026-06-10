@@ -125,7 +125,7 @@ void writeClanMasterlist() {
   char buf[MAX_STRING_LENGTH];
 
   if (!(fl = fopen(CLAN_LIST, "w"))) {
-    log("ERROR: could not open clan masterlist for writing.");
+    mud_log("ERROR: could not open clan masterlist for writing.");
     return;
   }
 
@@ -192,12 +192,12 @@ struct clan_data *clanLoad(const char *filename) {
   struct clan_data *S;
 
   if (filename == NULL) {
-    log("ERROR: passed null pointer to clanLoad");
+    mud_log("ERROR: passed null pointer to clanLoad");
     return NULL;
   }
 
   if (!(fl = fopen(filename, "r"))) {
-    log("ERROR: could not open file, %s, in clanLoad.", filename);
+    mud_log("ERROR: could not open file, %s, in clanLoad.", filename);
     return NULL;
   }
 
@@ -327,12 +327,12 @@ bool clanSave(const struct clan_data *S, const char *filename) {
   struct clan_member *list;
 
   if (filename == NULL) {
-    log("ERROR: passed null pointer to clanSave when saving %s", S->name);
+    mud_log("ERROR: passed null pointer to clanSave when saving %s", S->name);
     return FALSE;
   }
 
   if (!(fl = fopen(filename, "w"))) {
-    log("ERROR: could not save clan, %s, to filename, %s.", S->name, filename);
+    mud_log("ERROR: could not save clan, %s, to filename, %s.", S->name, filename);
     return FALSE;
   }
 
@@ -407,7 +407,7 @@ void clanRemove(struct clan_data *S) {
       break;
 
   if (i == num_clans) {
-    log("ERROR: tried to remove clan, %s, which did not formally exist.",
+    mud_log("ERROR: tried to remove clan, %s, which did not formally exist.",
         S->name);
     clanDelete(S);
     return;
@@ -494,19 +494,19 @@ void clanBoot() {
   char line[MAX_STRING_LENGTH];
 
   if (!(fl = fopen(CLAN_LIST, "r"))) {
-    log("  Could not open clan masterlist. Aborting.");
+    mud_log("  Could not open clan masterlist. Aborting.");
     return;
   }
 
   if (feof(fl)) {
-    log("  Clan masterlist contained no data! Aborting.");
+    mud_log("  Clan masterlist contained no data! Aborting.");
     return;
   }
 
   len = fgetlinetomax(fl, line, MAX_STRING_LENGTH);
   sscanf(line, "%d", &num_clans);
   if (num_clans <= 0) {
-    log("  No clans have formed yet.");
+    mud_log("  No clans have formed yet.");
     clan = NULL;
     return;
   }
@@ -516,11 +516,11 @@ void clanBoot() {
   for (i = 0; i < num_clans; i++) {
     char buf[MAX_STRING_LENGTH];
     if ((len = fgetlinetomax(fl, line, MAX_STRING_LENGTH)) > 0) {
-      log("  Loading clan: %s", line);
+      mud_log("  Loading clan: %s", line);
       sprintf(buf, "data/%s", line);
       clan[i] = clanLoad(buf);
     } else {
-      log("  Found blank line while looking for clan names. Aborting.");
+      mud_log("  Found blank line while looking for clan names. Aborting.");
       for (i--; i >= 0; i--)
         clanDelete(clan[i]);
       free(clan); // ...it would be nice, wouldn't it?

@@ -344,7 +344,7 @@ int save_zone(struct zone_data *zone) {
   char zbuf4[MAX_STRING_LENGTH];
 
   if (!zone) {
-    log("SYSERR: GenOLC: save_zone: Invalid zone pointer.");
+    mud_log("SYSERR: GenOLC: save_zone: Invalid zone pointer.");
     return FALSE;
   }
 
@@ -502,7 +502,7 @@ int save_zone(struct zone_data *zone) {
   if (in_save_list(zn->number, SL_ZON)) {
     remove_from_save_list(zn->number, SL_ZON);
     create_world_index(zn->number, "zon");
-    log("GenOLC: save_zone: Saving zone '%s'", oldname);
+    mud_log("GenOLC: save_zone: Saving zone '%s'", oldname);
   }
   return TRUE;
 }

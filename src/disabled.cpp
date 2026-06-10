@@ -147,7 +147,7 @@ void load_disabled() {
       if (!strcasecmp(cmd_info[i].command, name))
         break;
     if (*cmd_info[i].command == '\n') { /* command does not exist? */
-      log("WARNING: load_disabled(): Skipping unknown disabled command - '%s'!",
+      mud_log("WARNING: load_disabled(): Skipping unknown disabled command - '%s'!",
           name);
       free(p);
     } else { /* add new disabled command */
@@ -172,7 +172,7 @@ void save_disabled() {
   }
 
   if ((fp = fopen(DISABLED_FILE, "w")) == NULL) {
-    log("SYSERR: Could not open " DISABLED_FILE " for writing");
+    mud_log("SYSERR: Could not open " DISABLED_FILE " for writing");
     return;
   }
 

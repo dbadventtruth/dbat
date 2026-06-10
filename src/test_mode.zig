@@ -9,7 +9,7 @@ pub const Options = struct {
 };
 
 pub fn run(init: std.process.Init, options: Options) u8 {
-    cdb.log("Running test mode.");
+    cdb.mud_log("Running test mode.");
 
     var passed: usize = 0;
     var failed: usize = 0;
@@ -24,7 +24,7 @@ pub fn run(init: std.process.Init, options: Options) u8 {
     }
 
     std.log.info("test mode summary: {} passed, {} failed", .{ passed, failed });
-    cdb.log(
+    cdb.mud_log(
         "Test mode summary: %d passed, %d failed.",
         @as(c_int, @intCast(passed)),
         @as(c_int, @intCast(failed)),

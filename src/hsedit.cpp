@@ -173,7 +173,7 @@ void hedit_delete_house(struct descriptor_data *d, int house_vnum) {
   if (auto room = room_by_id(house_control[i].vnum); room)
     room_flag_set(room, ROOM_HOUSE, FALSE);
   else
-    log("SYSERR: House %d had invalid vnum %d!", house_vnum,
+    mud_log("SYSERR: House %d had invalid vnum %d!", house_vnum,
         house_control[i].vnum);
 
   House_delete_file(house_control[i].vnum);

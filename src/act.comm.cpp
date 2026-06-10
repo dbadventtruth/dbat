@@ -1107,7 +1107,7 @@ static int is_tell_ok(struct char_data *ch, struct char_data *vict) {
 
   return (FALSE);
 }
-m
+
 /*
  * Yes, do_tell probably could be combined with whisper and ask, but
  * called frequently, and should IMHO be kept as tight as possible.

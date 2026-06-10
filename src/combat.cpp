@@ -4694,7 +4694,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
       }
     }
   } else {
-    log("Log: Error with hurt.\n");
+    mud_log("Log: Error with hurt.\n");
   }
 }
 

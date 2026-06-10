@@ -312,7 +312,7 @@ void medit_save_internally(struct descriptor_data *d) {
   OLC_MOB(d)->vnum = v;
   OLC_MOB(d)->proto_script = OLC_SCRIPT(d);
   if ((new_rnum = add_mobile(OLC_MOB(d), v)) == NOBODY) {
-    log("medit_save_internally: add_mobile failed.");
+    mud_log("medit_save_internally: add_mobile failed.");
     return;
   }
 

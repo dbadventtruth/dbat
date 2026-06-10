@@ -3,25 +3,21 @@ const std = @import("std");
 
 const RoomMap = std.AutoHashMap(cdb.room_vnum, *cdb.room_data);
 const RoomIdSet = std.AutoHashMap(cdb.room_vnum, void);
-const ListSet = std.StringHashMap(void);
 
 var allocator: std.mem.Allocator = undefined;
 var room_map: RoomMap = undefined;
 var subscriptions_by_tag: std.StringHashMap(RoomIdSet) = undefined;
-var tags_by_vnum: std.AutoHashMap(cdb.room_vnum, ListSet) = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     room_map = RoomMap.init(allocator);
     subscriptions_by_tag = std.StringHashMap(RoomIdSet).init(allocator);
-    tags_by_vnum = std.AutoHashMap(cdb.room_vnum, ListSet).init(allocator);
 }
 
 pub fn deinit() void {
     deinitSubscriptions();
     room_map.deinit();
     subscriptions_by_tag.deinit();
-    tags_by_vnum.deinit();
 }
 
 const RoomIterator = struct {
@@ -80,39 +76,16 @@ pub export fn room_subscribe_add(room: *cdb.room_data, tag: ?[*:0]const u8) c_in
 
     var id_set = subscriptions_by_tag.getPtr(name) orelse blk: {
         const owned_name = allocator.dupe(u8, name) catch return -1;
-        errdefer allocator.free(owned_name);
-
         var new_set = RoomIdSet.init(allocator);
-        errdefer new_set.deinit();
-
-        subscriptions_by_tag.put(owned_name, new_set) catch return -1;
+        subscriptions_by_tag.put(owned_name, new_set) catch {
+            allocator.free(owned_name);
+            new_set.deinit();
+            return -1;
+        };
         break :blk subscriptions_by_tag.getPtr(name).?;
     };
 
-    if (id_set.contains(vnum)) return 0;
-
-    var list_set = tags_by_vnum.getPtr(vnum) orelse blk: {
-        var new_set = ListSet.init(allocator);
-        errdefer new_set.deinit();
-
-        tags_by_vnum.put(vnum, new_set) catch return -1;
-        break :blk tags_by_vnum.getPtr(vnum).?;
-    };
-
-    if (list_set.contains(name)) {
-        id_set.put(vnum, {}) catch return -1;
-        return 0;
-    }
-
-    const owned_name = allocator.dupe(u8, name) catch return -1;
-    errdefer allocator.free(owned_name);
-
     id_set.put(vnum, {}) catch return -1;
-    list_set.put(owned_name, {}) catch {
-        _ = id_set.remove(vnum);
-        return -1;
-    };
-
     return 0;
 }
 
@@ -127,13 +100,24 @@ pub export fn room_unsubscribe_all(room: *cdb.room_data) void {
 }
 
 pub export fn room_clear_subscriptions(vnum: cdb.room_vnum) void {
-    var removed = tags_by_vnum.fetchRemove(vnum) orelse return;
-    defer removed.value.deinit();
+    var empty_names: [64][]const u8 = undefined;
+    var empty_count: usize = 0;
 
-    var it = removed.value.keyIterator();
-    while (it.next()) |name_ptr| {
-        removeVnumFromTag(vnum, name_ptr.*);
-        allocator.free(name_ptr.*);
+    var it = subscriptions_by_tag.iterator();
+    while (it.next()) |entry| {
+        if (entry.value_ptr.remove(vnum)) {
+            if (entry.value_ptr.count() == 0 and empty_count < 64) {
+                empty_names[empty_count] = entry.key_ptr.*;
+                empty_count += 1;
+            }
+        }
+    }
+    for (empty_names[0..empty_count]) |name| {
+        if (subscriptions_by_tag.fetchRemove(name)) |removed| {
+            var val = removed.value;
+            val.deinit();
+            allocator.free(removed.key);
+        }
     }
 }
 
@@ -168,15 +152,6 @@ pub export fn room_subscribe_ids_free(ptr: ?[*]cdb.room_vnum) void {
 
 fn unsubscribe(vnum: cdb.room_vnum, name: []const u8) void {
     removeVnumFromTag(vnum, name);
-
-    const list_set = tags_by_vnum.getPtr(vnum) orelse return;
-    if (list_set.fetchRemove(name)) |removed| {
-        allocator.free(removed.key);
-    }
-    if (list_set.count() == 0) {
-        list_set.deinit();
-        _ = tags_by_vnum.remove(vnum);
-    }
 }
 
 fn removeVnumFromTag(vnum: cdb.room_vnum, name: []const u8) void {
@@ -196,15 +171,6 @@ fn deinitSubscriptions() void {
     while (tag_it.next()) |entry| {
         allocator.free(entry.key_ptr.*);
         entry.value_ptr.deinit();
-    }
-
-    var vnum_it = tags_by_vnum.valueIterator();
-    while (vnum_it.next()) |list_set| {
-        var key_it = list_set.keyIterator();
-        while (key_it.next()) |key_ptr| {
-            allocator.free(key_ptr.*);
-        }
-        list_set.deinit();
     }
 }
 

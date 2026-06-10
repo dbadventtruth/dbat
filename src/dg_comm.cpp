@@ -603,6 +603,6 @@ void send_to_imm(char *messg, ...) {
   }
   va_list args;
   va_start(args, messg);
-  basic_mud_vlog(messg, args);
+  mud_vlog(messg, args);
   va_end(args);
 }

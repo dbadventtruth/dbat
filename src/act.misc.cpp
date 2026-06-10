@@ -3042,7 +3042,7 @@ void rpp_feature(struct char_data *ch, const char *arg) {
       send_to_char(ch, "The immortals have been notified about this change. It "
                        "had better have been for a good reason.\r\n");
     }
-    log("%s RPP Feature: '%s' Check for rule compliance.", GET_USER(ch), buf8);
+    mud_log("%s RPP Feature: '%s' Check for rule compliance.", GET_USER(ch), buf8);
     return;
   }
 }

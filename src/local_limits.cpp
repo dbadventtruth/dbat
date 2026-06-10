@@ -471,7 +471,7 @@ void run_autowiz(void) {
       system(buf);
       reboot_wizlists();
     } else
-      log("Cannot run autowiz: command-line doesn't fit in buffer.");
+      mud_log("Cannot run autowiz: command-line doesn't fit in buffer.");
   }
 #endif /* CIRCLE_UNIX || CIRCLE_WINDOWS */
 }
@@ -1285,7 +1285,7 @@ static bool tick_obj_norent(struct obj_data *j) {
     return false;
   time_t diff = time(0) - GET_LAST_LOAD(j);
   if (diff > 240 && GET_LAST_LOAD(j) > 0) {
-    log("No rent object (%s) extracted from room (%d)",
+    mud_log("No rent object (%s) extracted from room (%d)",
         j->short_description, obj_room_vnum_get(j));
     extract_obj(j);
     return true;

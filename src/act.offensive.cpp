@@ -13543,7 +13543,7 @@ ACMD(do_kiball) {
         pcost(ch, 0, GET_MAX_MANA(ch) * 0.01);
         }
       } */
-  // log("Log 1 - attperc: %f, minimum: %f, charge: %" I64T "", attperc,
+  // mud_log("Log 1 - attperc: %f, minimum: %f, charge: %" I64T "", attperc,
   // minimum, GET_CHARGE(ch));
   //}
 
@@ -13554,12 +13554,12 @@ ACMD(do_kiball) {
     attperc = (long double)(GET_CHARGE(ch)) / (long double)(GET_MAX_MANA(ch));
   }
 
-  // log("Log 2 - attperc: %f, minimum: %f, charge: %" I64T "", attperc,
+  // mud_log("Log 2 - attperc: %f, minimum: %f, charge: %" I64T "", attperc,
   // minimum, GET_CHARGE(ch));
   if (!check_points(ch, GET_MAX_MANA(ch) * minimum, 0)) {
     return;
   }
-  // log("Log 3 - attperc: %f, minimum: %f, charge: %" I64T "", attperc,
+  // mud_log("Log 3 - attperc: %f, minimum: %f, charge: %" I64T "", attperc,
   // minimum, GET_CHARGE(ch));
   skill = init_skill(ch, SKILL_KIBALL);
 

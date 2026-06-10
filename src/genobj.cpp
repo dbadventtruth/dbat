@@ -253,7 +253,7 @@ int save_objects(struct zone_data *zone) {
   struct extra_descr_data *ex_desc;
 
   if (!zone) {
-    log("SYSERR: OasisOLC: save_objects: Invalid zone!");
+    mud_log("SYSERR: OasisOLC: save_objects: Invalid zone!");
     return FALSE;
   }
 
@@ -373,7 +373,7 @@ int save_objects(struct zone_data *zone) {
   if (in_save_list(zone->number, SL_OBJ)) {
     remove_from_save_list(zone->number, SL_OBJ);
     create_world_index(zone->number, "obj");
-    log("GenOLC: save_objects: Saving objects '%s'", buf);
+    mud_log("GenOLC: save_objects: Saving objects '%s'", buf);
   }
   return TRUE;
 }
@@ -462,7 +462,7 @@ int delete_object(obj_vnum vnum) {
   obj_proto_delete(obj->vnum);
 
   /* This is something you might want to read about in the logs. */
-  log("GenOLC: delete_object: Deleting object #%d (%s).", GET_OBJ_VNUM(obj),
+  mud_log("GenOLC: delete_object: Deleting object #%d (%s).", GET_OBJ_VNUM(obj),
       obj->short_description);
 
   for (tmp = object_list; tmp; tmp = tmp->next) {
