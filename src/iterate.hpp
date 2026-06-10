@@ -12,6 +12,7 @@
 #include "room_api.h"
 #include "shop_db.h"
 #include "zone_db.h"
+#include "zone_api.h"
 
 template <typename Func> inline void mob_proto_iterate(Func &&func) {
   void *iterator = mob_proto_iterator_create();
@@ -310,4 +311,33 @@ inline void guild_iterate(bool (*func)(struct guild_data *guild)) {
     return;
   }
   guild_iterate([&](struct guild_data *guild) { return func(guild); });
+}
+
+template <typename Func> inline void zone_iterate_active(Func &&func) {
+  zone_iterate([&](struct zone_data *zone) {
+    if (zone_player_count_get(zone_id_get(zone)) > 0)
+      return func(zone);
+    return true;
+  });
+}
+
+template <typename Func> inline void zone_players_iterate(zone_vnum vnum, Func &&func) {
+  size_t count;
+  auto ids = zone_player_ids(vnum, &count);
+  char_iterate_id_list(ids, count, func);
+  zone_player_ids_free(ids);
+}
+
+template <typename Func> inline void zone_mobs_iterate(zone_vnum vnum, Func &&func) {
+  size_t count;
+  auto ids = zone_mob_ids(vnum, &count);
+  char_iterate_id_list(ids, count, func);
+  zone_mob_ids_free(ids);
+}
+
+template <typename Func> inline void zone_objs_iterate(zone_vnum vnum, Func &&func) {
+  size_t count;
+  auto ids = zone_obj_ids(vnum, &count);
+  obj_iterate_id_list(ids, count, func);
+  zone_obj_ids_free(ids);
 }

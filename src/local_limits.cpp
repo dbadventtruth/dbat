@@ -1233,48 +1233,107 @@ static bool tick_char_poison(struct char_data *i) {
   }
 }
 
+namespace {
+  inline struct timespec pu_now() {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts;
+  }
+  inline double pu_elapsed(const struct timespec &a, const struct timespec &b) {
+    return (b.tv_sec - a.tv_sec) * 1000.0 + (b.tv_nsec - a.tv_nsec) / 1.0e6;
+  }
+  struct PUTimings {
+    double relax = 0, flags = 0, vitals = 0, heal = 0,
+           obj_upd = 0, innate = 0, idle = 0;
+    int count = 0;
+  };
+}
+
+static void process_char_point_update(struct char_data *i, PUTimings &t) {
+  ++t.count;
+
+  struct timespec tp = pu_now();
+  tick_char_relax(i);
+  tick_char_needs(i);
+  if (IS_NPC(i)) i->aggtimer = 0;
+  t.relax += pu_elapsed(tp, pu_now());
+
+  if (GET_POS(i) >= POS_STUNNED) {
+    bool change = false;
+
+    tp = pu_now();
+    update_flags(i);
+    if (!IS_NPC(i) && !isFullVitals(i)) change = true;
+    tick_char_aura(i);
+    if (IS_MUTANT(i) && (GET_GENOME(i, 0) == 6 || GET_GENOME(i, 1) == 6))
+      mutant_limb_regen(i);
+    tick_char_sleep_kaioken(i);
+    tick_char_burns(i);
+    t.flags += pu_elapsed(tp, pu_now());
+
+    tp = pu_now();
+    tick_char_vitals(i);
+    bool dead = tick_char_survival(i);
+    t.vitals += pu_elapsed(tp, pu_now());
+    if (dead) return;
+
+    tp = pu_now();
+    tick_char_heal_messages(i, change);
+    bool poisoned = tick_char_poison(i);
+    if (GET_POS(i) <= POS_STUNNED) update_pos(i);
+    t.heal += pu_elapsed(tp, pu_now());
+    if (poisoned) return;
+
+  } else if (GET_POS(i) == POS_INCAP || GET_POS(i) == POS_MORTALLYW) {
+    return;
+  }
+
+  if (getCurKI(i) >= GET_MAX_MANA(i) * 0.5 &&
+      GET_CHARGE(i) < GET_MAX_MANA(i) * 0.1 &&
+      GET_PREFERENCE(i) == PREFERENCE_KI && !PLR_FLAGGED(i, PLR_AURALIGHT))
+    GET_CHARGE(i) = GET_MAX_MANA(i) * 0.1;
+
+  if (!IS_NPC(i)) {
+    tp = pu_now();
+    update_char_objects(i);
+    t.obj_upd += pu_elapsed(tp, pu_now());
+
+    tp = pu_now();
+    update_innate(i);
+    t.innate += pu_elapsed(tp, pu_now());
+
+    tp = pu_now();
+    if (GET_ADMLEVEL(i) < CONFIG_IDLE_MAX_LEVEL)
+      check_idling(i);
+    else
+      (i->timer)++;
+    t.idle += pu_elapsed(tp, pu_now());
+  }
+}
+
 static void point_update_characters(void) {
-  struct char_data *next_char;
-  for (auto *i = character_list; i; i = next_char) {
-    next_char = i->next;
+  PUTimings t;
+  const struct timespec t_total = pu_now();
 
-    tick_char_relax(i);
-    tick_char_needs(i);
-    if (IS_NPC(i)) i->aggtimer = 0;
+  zone_iterate_active([&](struct zone_data *zone) {
+    auto vnum = zone_id_get(zone);
+    zone_players_iterate(vnum, [&](struct char_data *i) {
+      process_char_point_update(i, t);
+      return true;
+    });
+    zone_mobs_iterate(vnum, [&](struct char_data *i) {
+      process_char_point_update(i, t);
+      return true;
+    });
+    return true;
+  });
 
-    if (GET_POS(i) >= POS_STUNNED) {
-      bool change = false;
-      update_flags(i);
-      if (!IS_NPC(i) && !isFullVitals(i)) change = true;
-
-      tick_char_aura(i);
-      if (IS_MUTANT(i) && (GET_GENOME(i, 0) == 6 || GET_GENOME(i, 1) == 6))
-        mutant_limb_regen(i);
-      tick_char_sleep_kaioken(i);
-      tick_char_burns(i);
-      tick_char_vitals(i);
-      if (tick_char_survival(i)) continue;
-      tick_char_heal_messages(i, change);
-      if (tick_char_poison(i)) continue;
-      if (GET_POS(i) <= POS_STUNNED)
-        update_pos(i);
-    } else if (GET_POS(i) == POS_INCAP || GET_POS(i) == POS_MORTALLYW) {
-      continue;
-    }
-
-    if (getCurKI(i) >= GET_MAX_MANA(i) * 0.5 &&
-        GET_CHARGE(i) < GET_MAX_MANA(i) * 0.1 &&
-        GET_PREFERENCE(i) == PREFERENCE_KI && !PLR_FLAGGED(i, PLR_AURALIGHT))
-      GET_CHARGE(i) = GET_MAX_MANA(i) * 0.1;
-
-    if (!IS_NPC(i)) {
-      update_char_objects(i);
-      update_innate(i);
-      if (GET_ADMLEVEL(i) < CONFIG_IDLE_MAX_LEVEL)
-        check_idling(i);
-      else
-        (i->timer)++;
-    }
+  const double total_ms = pu_elapsed(t_total, pu_now());
+  if (total_ms >= 100.0) {
+    mud_log("SLOW point_update_chars %.0fms (%d ents): "
+            "relax=%.0fms flags=%.0fms vitals=%.0fms heal=%.0fms "
+            "char_objs=%.0fms innate=%.0fms idle=%.0fms",
+            total_ms, t.count,
+            t.relax, t.flags, t.vitals, t.heal,
+            t.obj_upd, t.innate, t.idle);
   }
 }
 
@@ -1461,6 +1520,19 @@ static void point_update_objects(void) {
 }
 
 void point_update(void) {
+  auto mono_now = []() -> struct timespec {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts;
+  };
+  auto elapsed_ms = [](const struct timespec &a, const struct timespec &b) -> double {
+    return (b.tv_sec - a.tv_sec) * 1000.0 + (b.tv_nsec - a.tv_nsec) / 1.0e6;
+  };
+  const struct timespec t0 = mono_now();
   point_update_characters();
+  const struct timespec t1 = mono_now();
   point_update_objects();
+  const struct timespec t2 = mono_now();
+  const double chars_ms = elapsed_ms(t0, t1), objs_ms = elapsed_ms(t1, t2);
+  if (chars_ms + objs_ms >= 100.0)
+    mud_log("point_update %.0fms: chars=%.0fms objs=%.0fms",
+            chars_ms + objs_ms, chars_ms, objs_ms);
 }

@@ -62,6 +62,7 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   object->next_content = rm->contents;
   rm->contents = object;
   IN_ROOM(object) = room_vnum_get(rm);
+  zone_obj_add(room_zone_vnum_get(rm), obj_id_get(object));
   object->carried_by = NULL;
   GET_LAST_LOAD(object) = time(0);
   if (GET_OBJ_TYPE(object) == ITEM_VEHICLE &&
@@ -178,6 +179,7 @@ void obj_from_room(struct obj_data *object) {
   }
 
   REMOVE_FROM_LIST(object, rm->contents, next_content, temp);
+  zone_obj_remove(room_zone_vnum_get(rm), obj_id_get(object));
 
   if (room_flagged(rm, ROOM_HOUSE))
     room_flag_set(rm, ROOM_HOUSE_CRASH, TRUE);
@@ -278,7 +280,9 @@ void char_from_room(struct char_data *ch) {
   if (PLR_FLAGGED(ch, PLR_AURALIGHT))
     room_light_mod(char_room_get(ch), -1);
   if (!IS_NPC(ch))
-    zone_player_count_dec(char_zone_vnum_get(ch));
+    zone_player_remove(char_zone_vnum_get(ch), char_id_get(ch));
+  else
+    zone_mob_remove(char_zone_vnum_get(ch), char_id_get(ch));
   auto room = char_room_get(ch);
   REMOVE_FROM_LIST(ch, room->people, next_in_room, temp);
   IN_ROOM(ch) = NOWHERE;
@@ -308,8 +312,11 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
   ch->next_in_room = rm->people;
   rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
+  auto zone_vnum = room_zone_vnum_get(rm);
   if (!IS_NPC(ch))
-    zone_player_count_inc(char_zone_vnum_get(ch));
+    zone_player_add(zone_vnum, char_id_get(ch));
+  else
+    zone_mob_add(zone_vnum, char_id_get(ch));
 
   char_equipment_iterate(ch, [&](auto i, auto eq) {
     if (GET_OBJ_TYPE(eq) == ITEM_LIGHT)

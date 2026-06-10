@@ -269,30 +269,31 @@ static void mob_scavenger_update() {
 static void mob_wander_update() {
   std::vector<int> available_dirs(12, 0);
   size_t available = 0;
-  char_iterate_subscriptions("mob_wander", [&](struct char_data *ch) {
-    if (!zone_player_count_get(char_zone_vnum_get(ch))) return true;
-    if (!AWAKE(ch) || FIGHTING(ch))
-      return true;
-    if (MOB_FLAGGED(ch, MOB_SENTINEL) || GET_POS(ch) != POS_STANDING)
-      return true;
-    if (AFF_FLAGGED(ch, AFF_TAMED) || ABSORBBY(ch) || IS_AFFECTED(ch, AFF_PARALYZE))
-      return true;
-    if (rand_number(1, 3) != 3)
-      return true;
+  zone_iterate_active([&](auto zone) {
+    zone_mobs_iterate(zone_id_get(zone), [&](struct char_data *ch) {
+      if (MOB_FLAGGED(ch, MOB_SENTINEL) || GET_POS(ch) != POS_STANDING)
+        return true;
+      if (!AWAKE(ch) || FIGHTING(ch))
+        return true;
+      if (AFF_FLAGGED(ch, AFF_TAMED) || ABSORBBY(ch) || IS_AFFECTED(ch, AFF_PARALYZE))
+        return true;
+      if (rand_number(1, 3) != 3)
+        return true;
 
-    available = 0;
+      available = 0;
 
-    auto zone = char_zone_get(ch);
-    room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
-      if (auto dest = char_can_go_exit(ch, exit); dest &&
-          !room_flagged(dest, ROOM_NOMOB) && !room_flagged(dest, ROOM_DEATH) &&
-          (!MOB_FLAGGED(ch, MOB_STAY_ZONE) || (room_zone_get(dest) == zone))) {
-        available_dirs[available++] = dir;
-      }
+      room_exits_iterate(char_room_get(ch), [&](auto dir, auto exit) {
+        if (auto dest = char_can_go_exit(ch, exit); dest &&
+            !room_flagged(dest, ROOM_NOMOB) && !room_flagged(dest, ROOM_DEATH) &&
+            (!MOB_FLAGGED(ch, MOB_STAY_ZONE) || (room_zone_get(dest) == zone))) {
+          available_dirs[available++] = dir;
+        }
+        return true;
+      });
+      if (available > 0 && block_calc(ch))
+        perform_move(ch, available_dirs[rand_number(0, available - 1)], 1);
       return true;
     });
-    if (available > 0 && block_calc(ch))
-      perform_move(ch, available_dirs[rand_number(0, available - 1)], 1);
     return true;
   });
 }

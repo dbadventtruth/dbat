@@ -2,37 +2,69 @@ const cdb = @import("cdb");
 const std = @import("std");
 
 const ZoneMap = std.AutoHashMap(cdb.zone_vnum, *cdb.zone_data);
-const PlayerCountMap = std.AutoHashMap(cdb.zone_vnum, i32);
+const IdSet = std.AutoHashMap(i64, void);
+const ZoneEntityMap = std.AutoHashMap(cdb.zone_vnum, IdSet);
 
 var allocator: std.mem.Allocator = undefined;
 var zone_map: ZoneMap = undefined;
-var zone_players: PlayerCountMap = undefined;
+var zone_players: ZoneEntityMap = undefined;
+var zone_mobs: ZoneEntityMap = undefined;
+var zone_objs: ZoneEntityMap = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     zone_map = ZoneMap.init(allocator);
-    zone_players = PlayerCountMap.init(allocator);
+    zone_players = ZoneEntityMap.init(allocator);
+    zone_mobs = ZoneEntityMap.init(allocator);
+    zone_objs = ZoneEntityMap.init(allocator);
 }
 
 pub fn deinit() void {
+    deinitEntityMap(&zone_objs);
+    deinitEntityMap(&zone_mobs);
+    deinitEntityMap(&zone_players);
     zone_map.deinit();
-    zone_players.deinit();
 }
 
-pub export fn zone_player_count_inc(vnum: cdb.zone_vnum) void {
-    const entry = zone_players.getOrPutValue(vnum, 0) catch return;
-    entry.value_ptr.* += 1;
+fn deinitEntityMap(map: *ZoneEntityMap) void {
+    var it = map.valueIterator();
+    while (it.next()) |set| set.deinit();
+    map.deinit();
 }
 
-pub export fn zone_player_count_dec(vnum: cdb.zone_vnum) void {
-    if (zone_players.getPtr(vnum)) |ptr| {
-        if (ptr.* > 0) ptr.* -= 1;
+fn addToZone(map: *ZoneEntityMap, vnum: cdb.zone_vnum, id: i64) void {
+    const gop = map.getOrPut(vnum) catch return;
+    if (!gop.found_existing) gop.value_ptr.* = IdSet.init(allocator);
+    gop.value_ptr.put(id, {}) catch return;
+}
+
+fn removeFromZone(map: *ZoneEntityMap, vnum: cdb.zone_vnum, id: i64) void {
+    const set = map.getPtr(vnum) orelse return;
+    _ = set.remove(id);
+    if (set.count() == 0) {
+        set.deinit();
+        _ = map.remove(vnum);
     }
 }
 
-pub export fn zone_player_count_get(vnum: cdb.zone_vnum) c_int {
-    return zone_players.get(vnum) orelse 0;
+fn countInZone(map: *ZoneEntityMap, vnum: cdb.zone_vnum) usize {
+    return if (map.getPtr(vnum)) |s| s.count() else 0;
 }
+
+fn idsForZone(map: *ZoneEntityMap, vnum: cdb.zone_vnum, out_count: *usize) ?[*]i64 {
+    const set = map.getPtr(vnum) orelse { out_count.* = 0; return null; };
+    const count = set.count();
+    if (count == 0) { out_count.* = 0; return null; }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse { out_count.* = 0; return null; };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    var i: usize = 0;
+    var it = set.keyIterator();
+    while (it.next()) |id_ptr| { ids[i] = id_ptr.*; i += 1; }
+    out_count.* = count;
+    return ids;
+}
+
+// --- Zone map ---
 
 const ZoneIterator = struct {
     iter: ZoneMap.ValueIterator,
@@ -73,4 +105,82 @@ pub export fn zone_count() usize {
 
 pub export fn zone_get(vnum: cdb.zone_vnum) ?*cdb.zone_data {
     return zone_map.get(vnum) orelse null;
+}
+
+// --- Players ---
+
+pub export fn zone_player_add(vnum: cdb.zone_vnum, id: i64) void {
+    addToZone(&zone_players, vnum, id);
+}
+
+pub export fn zone_player_remove(vnum: cdb.zone_vnum, id: i64) void {
+    removeFromZone(&zone_players, vnum, id);
+}
+
+pub export fn zone_player_count(vnum: cdb.zone_vnum) usize {
+    return countInZone(&zone_players, vnum);
+}
+
+pub export fn zone_player_count_get(vnum: cdb.zone_vnum) c_int {
+    return @intCast(countInZone(&zone_players, vnum));
+}
+
+pub export fn zone_player_ids(vnum: cdb.zone_vnum, out_count: *usize) ?[*]i64 {
+    return idsForZone(&zone_players, vnum, out_count);
+}
+
+pub export fn zone_player_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+// --- Mobs ---
+
+pub export fn zone_mob_add(vnum: cdb.zone_vnum, id: i64) void {
+    addToZone(&zone_mobs, vnum, id);
+}
+
+pub export fn zone_mob_remove(vnum: cdb.zone_vnum, id: i64) void {
+    removeFromZone(&zone_mobs, vnum, id);
+}
+
+pub export fn zone_mob_count(vnum: cdb.zone_vnum) usize {
+    return countInZone(&zone_mobs, vnum);
+}
+
+pub export fn zone_mob_count_get(vnum: cdb.zone_vnum) c_int {
+    return @intCast(countInZone(&zone_mobs, vnum));
+}
+
+pub export fn zone_mob_ids(vnum: cdb.zone_vnum, out_count: *usize) ?[*]i64 {
+    return idsForZone(&zone_mobs, vnum, out_count);
+}
+
+pub export fn zone_mob_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+// --- Objects ---
+
+pub export fn zone_obj_add(vnum: cdb.zone_vnum, id: i64) void {
+    addToZone(&zone_objs, vnum, id);
+}
+
+pub export fn zone_obj_remove(vnum: cdb.zone_vnum, id: i64) void {
+    removeFromZone(&zone_objs, vnum, id);
+}
+
+pub export fn zone_obj_count(vnum: cdb.zone_vnum) usize {
+    return countInZone(&zone_objs, vnum);
+}
+
+pub export fn zone_obj_count_get(vnum: cdb.zone_vnum) c_int {
+    return @intCast(countInZone(&zone_objs, vnum));
+}
+
+pub export fn zone_obj_ids(vnum: cdb.zone_vnum, out_count: *usize) ?[*]i64 {
+    return idsForZone(&zone_objs, vnum, out_count);
+}
+
+pub export fn zone_obj_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
 }
