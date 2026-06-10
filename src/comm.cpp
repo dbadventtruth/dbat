@@ -441,11 +441,6 @@ void heartbeat_legacy(int heart_pulse) {
     phases[np++] = {label, elapsed_ms(t, mono_now())};
   };
 
-  time_phase("char_der_invalidate", [&]{
-    for (auto ch = character_list; ch; ch = ch->next)
-      char_der_invalidate(ch);
-  });
-
   /*
 
   for(auto ch = character_list; ch; ch = next_char) {

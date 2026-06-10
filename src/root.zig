@@ -17,6 +17,7 @@ pub const guilds = @import("guild.zig");
 pub const zones = @import("zone.zig");
 pub const zones_api = @import("zone_api.zig");
 pub const lua_api = @import("lua_api.zig");
+pub const intern = @import("intern.zig");
 pub const json_api = @import("json_api.zig");
 pub const flags_json = @import("flags_json.zig");
 pub const extradesc_json = @import("extradesc_json.zig");
@@ -49,6 +50,7 @@ comptime {
     forceApiExports(zones);
     forceApiExports(zones_api);
     forceApiExports(lua_api);
+    forceApiExports(intern);
     forceApiExports(json_api);
     forceApiExports(dgscripts);
     forceApiExports(net);
@@ -80,6 +82,7 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !void {
     guilds.init(allocator);
     zones.init(allocator);
     dgscripts.init(allocator);
+    intern.init(allocator);
     net.init(allocator, io);
     game.init(io);
     json_api.init(io);
@@ -91,6 +94,7 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !void {
 
 pub fn deinit() void {
     lua_api.deinit();
+    intern.deinit();
     game.deinit();
     net.deinit();
     dgscripts.deinit();
