@@ -88,6 +88,8 @@
 #include "screen.h"
 #include "sensei.h"
 
+#include "event_queue_api.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <time.h>
@@ -416,199 +418,109 @@ void game_legacy_post_tick(void) {
   tics_passed++;
 }
 
-void heartbeat_legacy(int heart_pulse) {
+// --- Event queue handler wrappers ---
+// Each ignores context (int, long long, long long) — these are global game-state events.
+
+static void ev_wishSYS(int, long long, long long) { wishSYS(); }
+
+static void ev_char_condition_update(int, long long, long long) {
+  char_condition_update_all("second", PULSE_1SEC, 1);
+  copyover_check();
+}
+
+static void ev_base_fish_update(int, long long, long long) {
+  base_update();
+  fish_update();
+}
+
+static void ev_script_trigger_check(int, long long, long long) {
+  script_trigger_check();
+}
+
+static void ev_check_auction(int, long long, long long) { check_auction(); }
+static void ev_handle_songs(int, long long, long long) { handle_songs(); }
+static void ev_zone_update(int, long long, long long) { zone_update(); }
+static void ev_check_idle_passwords(int, long long, long long) { check_idle_passwords(); }
+static void ev_check_idle_menu(int, long long, long long) { check_idle_menu(); }
+static void ev_fight_stack(int, long long, long long) { fight_stack(); }
+
+static void ev_homing_huge_broken(int, long long, long long) {
+  if (rand_number(1, 2) == 2) homing_update();
+  huge_update();
+  broken_update();
+}
+
+static void ev_mobile_activity(int, long long, long long) { mobile_activity(); }
+static void ev_point_update(int, long long, long long) { point_update(); }
+
+static void ev_weather_time_affects(int, long long, long long) {
+  weather_and_time(1);
+  check_time_triggers();
+  affect_update();
+}
+
+static void ev_autosave(int, long long, long long) {
   static int mins_since_crashsave = 0;
-
-  struct PhaseTime { const char *name; double ms; };
-  constexpr double SLOW_PHASE_MS = 20.0;
-  constexpr double SLOW_TOTAL_MS = 50.0;
-  PhaseTime phases[24];
-  size_t np = 0;
-
-  auto mono_now = []() -> struct timespec {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts;
-  };
-  auto elapsed_ms = [](const struct timespec &t0, const struct timespec &t1) -> double {
-    return (t1.tv_sec - t0.tv_sec) * 1000.0 + (t1.tv_nsec - t0.tv_nsec) / 1.0e6;
-  };
-  const struct timespec t_hb = mono_now();
-
-  auto time_phase = [&](const char *label, auto fn) {
-    const struct timespec t = mono_now();
-    fn();
-    phases[np++] = {label, elapsed_ms(t, mono_now())};
-  };
-
-  /*
-
-  for(auto ch = character_list; ch; ch = next_char) {
-    next_char = ch->next;
-    char_on_heartbeat(ch, heart_pulse);
+  if (!CONFIG_AUTO_SAVE) return;
+  clan_update();
+  if (++mins_since_crashsave >= CONFIG_AUTOSAVE_TIME) {
+    mins_since_crashsave = 0;
+    Crash_save_all();
+    House_save_all();
   }
+}
 
-  
-  for(auto obj = object_list; obj; obj = next_obj) {
-    next_obj = obj->next;
-    obj_on_heartbeat(obj, heart_pulse);
-  }
+static void ev_record_usage(int, long long, long long) { record_usage(); }
+static void ev_save_mud_time(int, long long, long long) { save_mud_time(&time_info); }
 
+void event_queue_register_heartbeat_events() {
+  const int64_t now = event_queue_now_ms();
 
+  // Fixed intervals (milliseconds)
+  event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_wishSYS,               EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_char_condition_update, EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + EQ_MS_2SEC,  EQ_MS_2SEC,  ev_base_fish_update,      EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + EQ_MS_15SEC, EQ_MS_15SEC, ev_check_auction,         EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + EQ_MS_15SEC, EQ_MS_15SEC, ev_handle_songs,          EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + EQ_MS_1MIN,  EQ_MS_1MIN,  ev_check_idle_menu,       EQ_CTX_NONE, 0, 0);
 
-  room_iterate([heart_pulse](auto room) {
-    room_on_heartbeat(room, heart_pulse);
-    return true;
-  });
+  // Config-driven intervals (convert pulse count to ms: pulses * 100)
+  const int64_t dg_ms     = (int64_t)PULSE_DG_SCRIPT * 100;
+  const int64_t zone_ms   = (int64_t)PULSE_ZONE       * 100;
+  const int64_t idle_ms   = (int64_t)PULSE_IDLEPWD    * 100;
+  const int64_t mobile_ms = (int64_t)PULSE_MOBILE     * 100;
+  const int64_t fight_ms  = idle_ms / 15;
 
-  */
+  event_schedule_c(now + dg_ms,          dg_ms,          ev_script_trigger_check, EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + zone_ms,         zone_ms,         ev_zone_update,          EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + idle_ms,         idle_ms,         ev_check_idle_passwords, EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + fight_ms,        fight_ms,        ev_fight_stack,          EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + fight_ms * 2,    fight_ms * 2,    ev_homing_huge_broken,   EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + mobile_ms,       mobile_ms,       ev_mobile_activity,      EQ_CTX_NONE, 0, 0);
 
-  if(!(heart_pulse % PULSE_1SEC)) {
+  // Mud-time intervals (SECS_PER_MUD_HOUR is in real seconds)
+  const int64_t point_ms  = (int64_t)(SECS_PER_MUD_HOUR / 3) * 1000;
+  const int64_t hour_ms   = (int64_t)SECS_PER_MUD_HOUR        * 1000;
 
-    /*
-    for (auto ch = character_list; ch; ch = next_char) {
-      next_char = ch->next;
-      char_on_second(ch);
-    }
+  event_schedule_c(now + point_ms, point_ms, ev_point_update,         EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + hour_ms,  hour_ms,  ev_weather_time_affects, EQ_CTX_NONE, 0, 0);
 
-    
+  // Long-interval admin events
+  const int64_t autosave_ms  = (int64_t)PULSE_AUTOSAVE  * 100;
+  const int64_t usage_ms     = (int64_t)PULSE_USAGE      * 100;
+  const int64_t timesave_ms  = (int64_t)PULSE_TIMESAVE   * 100;
 
-    for (auto obj = object_list; obj; obj = next_obj) {
-      next_obj = obj->next;
-      obj_on_second(obj);
-    }
-    
-    room_iterate([](auto room) {
-      room_on_second(room);
-      return true;
-    });
+  event_schedule_c(now + autosave_ms, autosave_ms, ev_autosave,      EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + usage_ms,    usage_ms,    ev_record_usage,  EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + timesave_ms, timesave_ms, ev_save_mud_time, EQ_CTX_NONE, 0, 0);
+}
 
-    */
-  }
-
-  if (!(heart_pulse % (SECS_PER_MUD_HOUR * PASSES_PER_SEC))) {
-    /*
-    for (auto ch = character_list; ch; ch = next_char) {
-      next_char = ch->next;
-      char_on_mud_hour(ch);
-    }
-
-    for (auto obj = object_list; obj; obj = next_obj) {
-      next_obj = obj->next;
-      obj_on_mud_hour(obj);
-    }
-
-    
-    room_iterate([](auto room) {
-      room_on_mud_hour(room);
-      return true;
-    });
-    */
-  }
-
-  time_phase("event_process", [&]{ event_process(); });
-
-  time_phase("script_trigger_check", [&]{
-    if (!(heart_pulse % PULSE_DG_SCRIPT)) script_trigger_check();
-  });
-
-  time_phase("zone_update", [&]{
-    if (!(heart_pulse % PULSE_ZONE)) zone_update();
-  });
-
-  time_phase("check_idle_passwords", [&]{
-    if (!(heart_pulse % PULSE_IDLEPWD)) check_idle_passwords();
-    if (!(heart_pulse % (PULSE_1SEC * 60))) check_idle_menu();
-  });
-
-  time_phase("base_update", [&]{
-    if (!(heart_pulse % PULSE_2SEC)) { base_update(); fish_update(); }
-  });
-
-  time_phase("handle_songs", [&]{
-    if (!(heart_pulse % (PULSE_1SEC * 15))) handle_songs();
-  });
-
-  time_phase("wishSYS", [&]{
-    if (!(heart_pulse % PULSE_1SEC)) wishSYS();
-  });
-
-  time_phase("mobile_activity", [&]{
-    if (!(heart_pulse % PULSE_MOBILE)) mobile_activity();
-  });
-
-  time_phase("check_auction", [&]{
-    if (!(heart_pulse % PULSE_AUCTION)) check_auction();
-  });
-
-  time_phase("fight_stack", [&]{
-    if (!(heart_pulse % (PULSE_IDLEPWD / 15))) fight_stack();
-  });
-
-  time_phase("homing_huge_broken", [&]{
-    if (!(heart_pulse % ((PULSE_IDLEPWD / 15) * 2))) {
-      if (rand_number(1, 2) == 2) homing_update();
-      huge_update();
-      broken_update();
-    }
-  });
-
-  time_phase("char_condition_update", [&]{
-    if (!(heart_pulse % PASSES_PER_SEC)) {
-      char_condition_update_all("second", PULSE_1SEC, 1);
-      copyover_check();
-    }
-  });
-
-  time_phase("weather_time_affects", [&]{
-    if (!(heart_pulse % (SECS_PER_MUD_HOUR * PASSES_PER_SEC))) {
-      weather_and_time(1);
-      check_time_triggers();
-      affect_update();
-    }
-  });
-
-  time_phase("point_update", [&]{
-    if (!(heart_pulse % ((SECS_PER_MUD_HOUR / 3) * PASSES_PER_SEC)))
-      point_update();
-  });
-
-  time_phase("autosave", [&]{
-    if (CONFIG_AUTO_SAVE && !(heart_pulse % PULSE_AUTOSAVE)) {
-      clan_update();
-      if (++mins_since_crashsave >= CONFIG_AUTOSAVE_TIME) {
-        mins_since_crashsave = 0;
-        Crash_save_all();
-        House_save_all();
-      }
-    }
-  });
-
-  time_phase("record_usage", [&]{
-    if (!(heart_pulse % PULSE_USAGE)) record_usage();
-  });
-
-  time_phase("save_mud_time", [&]{
-    if (!(heart_pulse % PULSE_TIMESAVE)) save_mud_time(&time_info);
-  });
-
-  /* Every pulse! Don't want them to stink the place up... */
-  time_phase("extract_pending_chars", [&]{ extract_pending_chars(); });
-
-  const double total_ms = elapsed_ms(t_hb, mono_now());
-  bool any_slow = total_ms >= SLOW_TOTAL_MS;
-  if (!any_slow) {
-    for (size_t i = 0; i < np; ++i)
-      if (phases[i].ms >= SLOW_PHASE_MS) { any_slow = true; break; }
-  }
-  if (any_slow) {
-    char buf[512];
-    int pos = snprintf(buf, sizeof(buf), "SLOW HEARTBEAT %.0fms:", total_ms);
-    for (size_t i = 0; i < np && pos < static_cast<int>(sizeof(buf)) - 32; ++i)
-      if (phases[i].ms >= 1.0)
-        pos += snprintf(buf + pos, sizeof(buf) - pos, " %s=%.0fms", phases[i].name, phases[i].ms);
-    mud_log("%s", buf);
-  }
+void heartbeat_legacy(int heart_pulse) {
+  (void)heart_pulse;
+  // All periodic game logic now runs through the event queue (see event_queue.zig).
+  // Only unconditional per-tick operations remain here.
+  event_process();
+  extract_pending_chars();
 }
 
 /* ******************************************************************

@@ -4,6 +4,7 @@ const lua_api = @import("lua_api.zig");
 const characters_lua = @import("character_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const objects_lua = @import("object_lua.zig");
+const event_queue = @import("event_queue.zig");
 
 
 var io: std.Io = undefined;
@@ -27,9 +28,20 @@ pub export fn game_loop() void {
     var next_tick_ns = nowNs() + tick.nanoseconds;
     while (cdb.circle_shutdown == 0) {
         const before_wait_ns = nowNs();
-        const wait_ms: c_int = waitUntilMs(before_wait_ns, next_tick_ns);
-        if (cdb.net_wait(wait_ms) < 0) {
-            std.Io.sleep(io, .fromMilliseconds(@intCast(wait_ms)), .awake) catch {};
+        const now_ms = nowMs();
+
+        // Drain any events that are due before waiting for I/O.
+        event_queue.process(now_ms);
+
+        // Sleep until the earlier of: next 100ms tick, or next queued event.
+        const tick_wait_ms = waitUntilMs(before_wait_ns, next_tick_ns);
+        const event_wait_ms: c_int = if (event_queue.peekDeadline()) |dl|
+            @intCast(@max(0, @min(tick_wait_ms, dl - now_ms)))
+        else
+            tick_wait_ms;
+
+        if (cdb.net_wait(event_wait_ms) < 0) {
+            std.Io.sleep(io, .fromMilliseconds(@intCast(event_wait_ms)), .awake) catch {};
         }
 
         _ = cdb.net_accept_all_pending();
@@ -63,6 +75,10 @@ pub export fn game_loop() void {
 
 fn nowNs() i96 {
     return std.Io.Timestamp.now(io, .awake).nanoseconds;
+}
+
+fn nowMs() i64 {
+    return @intCast(@divTrunc(nowNs(), std.time.ns_per_ms));
 }
 
 fn waitUntilMs(now_ns: i96, deadline_ns: i96) c_int {

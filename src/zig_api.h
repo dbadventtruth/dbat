@@ -63,3 +63,4 @@
 #include "zone_impl.h"
 #include "zone_api.h"
 #include "zone_db.h"
+#include "event_queue_api.h"
