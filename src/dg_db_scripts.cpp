@@ -20,7 +20,6 @@
 #include "consts/admlevel.h"
 #include "consts/mobflags.h"
 #include "db.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "dgscript_db.h"
 #include "dgscript_impl.h"
@@ -95,6 +94,7 @@ trig_data *read_trigger(trig_vnum nr) {
 }
 
 void trig_data_init(trig_data *this_data) {
+  this_data->id = 0;
   this_data->proto_id = NOTHING;
   this_data->data_type = 0;
   this_data->name = NULL;
@@ -104,7 +104,7 @@ void trig_data_init(trig_data *this_data) {
   this_data->narg = 0;
   this_data->arglist = NULL;
   this_data->depth = 0;
-  this_data->wait_event = NULL;
+  this_data->wait_event_id = 0;
   this_data->purged = FALSE;
   this_data->var_list = NULL;
 

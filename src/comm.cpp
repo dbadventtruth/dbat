@@ -44,7 +44,6 @@
 #include "descriptor_impl.h"
 #include "descriptor_macros.h"
 #include "dg_comm.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "dgscript_impl.h"
 #include "flags.h"
@@ -510,14 +509,6 @@ void event_queue_register_heartbeat_events() {
   event_schedule_c(now + autosave_ms, autosave_ms, ev_autosave,      EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + usage_ms,    usage_ms,    ev_record_usage,  EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + timesave_ms, timesave_ms, ev_save_mud_time, EQ_CTX_NONE, 0, 0);
-}
-
-void heartbeat_legacy(int heart_pulse) {
-  (void)heart_pulse;
-  // All periodic game logic now runs through the event queue (see event_queue.zig).
-  // Only unconditional per-tick operations remain here.
-  event_process();
-  extract_pending_chars();
 }
 
 /* ******************************************************************

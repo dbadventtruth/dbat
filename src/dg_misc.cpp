@@ -20,7 +20,6 @@
 #include "consts/skills.h"
 #include "consts/triggers.h"
 #include "db.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "dgscript_impl.h"
 #include "fight.h"

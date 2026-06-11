@@ -40,6 +40,9 @@ uint64_t event_schedule_c(int64_t fire_at, int64_t interval,
 // Cancel a previously scheduled event by ID. Safe to call with stale IDs.
 void eq_cancel(uint64_t id);
 
+// Milliseconds until the event fires, or -1 if not pending (unknown/cancelled).
+int64_t eq_remaining_ms(uint64_t id);
+
 // Current wall time in milliseconds. Use as base for fire_at calculations.
 int64_t event_queue_now_ms(void);
 

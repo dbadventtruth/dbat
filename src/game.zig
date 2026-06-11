@@ -60,7 +60,6 @@ pub export fn game_loop() void {
             }
             next_tick_ns = current_ns + tick.nanoseconds;
             cdb.pulse += 1;
-            heartbeat(@intCast(cdb.pulse));
         }
 
         cdb.extract_pending_chars();
@@ -86,10 +85,6 @@ fn waitUntilMs(now_ns: i96, deadline_ns: i96) c_int {
     const remaining = deadline_ns - now_ns;
     if (remaining <= 0) return 0;
     return @intCast(@max(@as(i96, 1), @divTrunc(remaining, std.time.ns_per_ms)));
-}
-
-pub export fn heartbeat(heart_pulse: c_int) void {
-    cdb.heartbeat_legacy(heart_pulse);
 }
 
 pub export fn game_active_player_enter() void {

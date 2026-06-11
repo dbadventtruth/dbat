@@ -80,6 +80,7 @@ struct trig_var_data {
 
 /* structure for triggers */
 struct trig_data {
+  int64_t id;                         /* instance id; 0 = prototype      */
   trig_vnum proto_id;                  /* trigger's rnum                  */
   uint8_t attach_type;                /* mob/obj/wld intentions          */
   uint8_t data_type;                  /* type of game_data for trig      */
@@ -91,7 +92,7 @@ struct trig_data {
   char *arglist;                      /* argument list                   */
   int depth;                          /* depth into nest ifs/whiles/etc  */
   int loops;                          /* loop iteration counter          */
-  struct event *wait_event;           /* event to pause the trigger      */
+  uint64_t wait_event_id;             /* event queue id; 0 = not waiting */
   bool purged;                        /* trigger is set to be purged     */
   struct trig_var_data *var_list;     /* list of local vars for trigger  */
 
@@ -108,13 +109,6 @@ struct script_data {
   long context;                      /* current context for statics */
 
   struct script_data *next; /* used for purged_scripts    */
-};
-
-/* The event data for the wait command */
-struct wait_event_data {
-  struct trig_data *trigger;
-  void *go;
-  int type;
 };
 
 /* typedefs that the dg functions rely on */

@@ -30,7 +30,7 @@
 #include "descriptor_db.h"
 #include "descriptor_impl.h"
 #include "descriptor_macros.h"
-#include "dg_event.h"
+#include "event_queue_api.h"
 #include "flags.h"
 #include "genolc.h"
 #include "genzon.h"
@@ -516,8 +516,8 @@ void trigedit_save(struct descriptor_data *d) {
 
         /* anything could have happened so we don't want to keep these */
         if (GET_TRIG_WAIT(live_trig)) {
-          event_cancel(GET_TRIG_WAIT(live_trig));
-          GET_TRIG_WAIT(live_trig) = NULL;
+          eq_cancel(GET_TRIG_WAIT(live_trig));
+          GET_TRIG_WAIT(live_trig) = 0;
         }
         if (live_trig->var_list) {
           free_varlist(live_trig->var_list);

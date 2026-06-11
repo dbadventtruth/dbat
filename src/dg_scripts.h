@@ -183,7 +183,6 @@ void obj_proto_free_script(struct obj_proto_data *obj);
 void obj_proto_copy_script_to_obj(struct obj_proto_data *source,
                                   struct obj_data *dest);
 void delete_variables(const char *charname);
-void update_wait_events(struct room_data *to, struct room_data *from);
 
 /* from dg_comm.c */
 char *any_one_name(char *argument, char *first_arg);
@@ -218,7 +217,7 @@ struct room_data *obj_room(obj_data *obj);
 #define GET_TRIG_NARG(t) ((t)->narg)
 #define GET_TRIG_ARG(t) ((t)->arglist)
 #define GET_TRIG_VARS(t) ((t)->var_list)
-#define GET_TRIG_WAIT(t) ((t)->wait_event)
+#define GET_TRIG_WAIT(t) ((t)->wait_event_id)
 #define GET_TRIG_DEPTH(t) ((t)->depth)
 #define GET_TRIG_LOOPS(t) ((t)->loops)
 

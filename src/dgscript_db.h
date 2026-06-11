@@ -1,12 +1,17 @@
 #pragma once
 #include "consts/types.h"
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern struct trig_data *trigger_list;
+
+int64_t trig_assign_id(struct trig_data *trig);
+struct trig_data *trig_by_id(int64_t id);
+void trig_unregister_id(int64_t id);
 
 void *trig_proto_iterator_create();
 struct trig_data *trig_proto_next(void *iterator);

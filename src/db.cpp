@@ -82,7 +82,6 @@
 #include "class.h"
 #include "comm.h"
 #include "config.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "feats.h"
 #include "genmob.h"
@@ -738,9 +737,6 @@ void destroy_db(void) {
     free_trigger(trig);
     return true;
   });
-
-  /* Events */
-  event_free_all();
 
   /* context sensitive help system */
   free_context_help();

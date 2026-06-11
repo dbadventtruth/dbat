@@ -226,6 +226,14 @@ pub export fn eq_cancel(id: u64) void {
     cancel_set.put(id, {}) catch {};
 }
 
+pub export fn eq_remaining_ms(id: u64) i64 {
+    if (id == 0 or cancel_set.contains(id)) return -1;
+    for (queue.items) |e| {
+        if (e.id == id) return e.fire_at - nowMs();
+    }
+    return -1;
+}
+
 pub export fn event_queue_now_ms() i64 {
     return nowMs();
 }
