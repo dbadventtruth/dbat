@@ -91,6 +91,7 @@ int64_t char_legacy_modifier(struct char_data *ch, int location, int specific);
 int64_t char_der_base_get(struct char_data *ch, const char *stat);
 int64_t char_der_total_get(struct char_data *ch, const char *stat);
 void char_der_invalidate(struct char_data *ch);
+uint64_t char_modifier_gen_get(struct char_data *ch);
 
 int64_t char_meter_get(struct char_data *ch, const char *meter);
 int64_t char_meter_set(struct char_data *ch, const char *meter, int64_t value);

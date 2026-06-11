@@ -85,6 +85,14 @@ var allocator: std.mem.Allocator = undefined;
 var io: std.Io = undefined;
 var lua_state: ?*Lua = null;
 var initialized = false;
+
+pub fn isInitialized() bool {
+    return initialized;
+}
+
+pub fn getLuaState() ?*Lua {
+    return lua_state;
+}
 var loaded_entries: usize = 0;
 var active_repl: ?*LuaRepl = null;
 var definition_cache: DefinitionCache = undefined;
@@ -522,6 +530,37 @@ pub fn derivedDefinition(name: []const u8) ?DerivedDefinition {
     return definition_cache.derived.get(name);
 }
 
+pub fn callLuaDerTotal(ch: *cdb.char_data, name: []const u8) ?i64 {
+    if (!initialized or name.len == 0) return null;
+    const lua = lua_state orelse return null;
+    // Stack: [ch]
+    characters_lua.pushCharacter(lua, ch.id);
+    // Stack: [ch, fn]
+    if (lua.getField(-1, "der_total") != .function) {
+        lua.pop(2);
+        return null;
+    }
+    // Stack: [ch, fn, ch]
+    lua.pushValue(-2);
+    const name_z = std.heap.page_allocator.dupeZ(u8, name) catch {
+        lua.pop(3);
+        return null;
+    };
+    defer std.heap.page_allocator.free(name_z);
+    // Stack: [ch, fn, ch, name] → call(args=2,results=1) → [ch, result]
+    _ = lua.pushString(name_z);
+    lua.protectedCall(.{ .args = 2, .results = 1 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("ch:der_total({s}) failed: {s}", .{ name, message });
+        lua.pop(2);
+        return null;
+    };
+    // Stack: [ch, result]
+    const result = lua.toInteger(-1) catch null;
+    lua.pop(2);
+    return result;
+}
+
 pub fn calculateDerivedBase(ch: *cdb.char_data, name: []const u8) ?i64 {
     if (!initialized or name.len == 0) return null;
     if (!(pushThing("derived", name) catch return null)) return null;
@@ -692,7 +731,6 @@ pub fn emitCharacterModifiers(ch: *cdb.char_data, cache: *modifiers_api.Modifier
     lua.protectedCall(.{ .args = 1, .results = 1 }) catch |err| {
         const message = lua.toString(-1) catch @errorName(err);
         std.log.err("ch:modifiers() failed: {s}", .{message});
-        lua.pop(3);
         return;
     };
     defer lua.pop(1);

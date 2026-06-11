@@ -4564,28 +4564,28 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
     if (GET_SKILL(ch, SKILL_FOCUS) && type == 1)
       improve_skill(ch, SKILL_FOCUS, 1);
 
-    /* Increases GET_FURY for halfbreeds who get damaged. */
+    if (dead != TRUE) {
+      /* Increases GET_FURY for halfbreeds who get damaged. */
+      if (!is_sparring(ch) && IS_HALFBREED(vict) && GET_FURY(vict) < 100 &&
+          !PLR_FLAGGED(vict, PLR_FURY)) {
+        send_to_char(vict, "@RYour fury increases a little bit!@n\r\n");
+        char_stat_mod(vict, "fury", 1);
+      }
 
-    if (!is_sparring(ch) && IS_HALFBREED(vict) && GET_FURY(vict) < 100 &&
-        !PLR_FLAGGED(vict, PLR_FURY)) {
-      send_to_char(vict, "@RYour fury increases a little bit!@n\r\n");
-      char_stat_mod(vict, "fury", 1);
-    }
-
-    /* Ends GET_FURY increase for halfbreeds who got damaged */
-
-    if (GET_ALT(ch) == GET_ALT(vict) && LASTATK(ch) != -1) {
-      spar_gain(ch, vict, type, dmg);
-      spar_gain(vict, ch, type, dmg);
-    }
-    if ((IS_SAIYAN(ch) ||
-         (IS_BIO(ch) && (GET_GENOME(ch, 0) == 2 || GET_GENOME(ch, 1) == 2))) &&
-        !IS_NPC(ch) &&
-        ((is_sparring(ch) && is_sparring(vict)) ||
-         (!is_sparring(ch) && !is_sparring(vict)))) {
-      if (GET_POS(ch) != POS_RESTING && GET_POS(vict) != POS_RESTING &&
-          dmg > 1) {
-        saiyan_gain(ch, vict);
+      if (GET_ALT(ch) == GET_ALT(vict) && LASTATK(ch) != -1) {
+        spar_gain(ch, vict, type, dmg);
+        spar_gain(vict, ch, type, dmg);
+      }
+      if ((IS_SAIYAN(ch) ||
+           (IS_BIO(ch) &&
+            (GET_GENOME(ch, 0) == 2 || GET_GENOME(ch, 1) == 2))) &&
+          !IS_NPC(ch) &&
+          ((is_sparring(ch) && is_sparring(vict)) ||
+           (!is_sparring(ch) && !is_sparring(vict)))) {
+        if (GET_POS(ch) != POS_RESTING && GET_POS(vict) != POS_RESTING &&
+            dmg > 1) {
+          saiyan_gain(ch, vict);
+        }
       }
     }
     if (IS_ARLIAN(vict) && dead != TRUE && !is_sparring(vict) &&

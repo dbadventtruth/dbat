@@ -189,6 +189,7 @@ pub const CharacterData = struct {
     deriveds: DerivedStorage,
     modifiers: modifiers_api.ModifierCache,
     deriveds_dirty: bool,
+    modifier_gen: u64,
     transforms: std.AutoHashMap(intern_mod.InternedId, TransformData),
     meters: std.AutoHashMap(intern_mod.InternedId, i64),
     skills: std.AutoHashMap(intern_mod.InternedId, SkillData),
@@ -200,6 +201,7 @@ pub const CharacterData = struct {
             .deriveds = DerivedStorage.init(alloc),
             .modifiers = modifiers_api.ModifierCache.init(alloc),
             .deriveds_dirty = true,
+            .modifier_gen = 0,
             .transforms = std.AutoHashMap(intern_mod.InternedId, TransformData).init(alloc),
             .meters = std.AutoHashMap(intern_mod.InternedId, i64).init(alloc),
             .skills = std.AutoHashMap(intern_mod.InternedId, SkillData).init(alloc),
@@ -325,7 +327,7 @@ pub export fn mob_proto_stats_copy_to_char(proto: *cdb.mob_proto_data, ch: *cdb.
         data.stats.copyFrom(&proto_data.stats);
     }
     copyMobProtoLegacyStatsToChar(proto, ch);
-    invalidateDeriveds(data);
+    invalidateDeriveds(ch, data);
 }
 
 pub export fn char_stats_copy_to_mob_proto(ch: *cdb.char_data, proto: *cdb.mob_proto_data) void {
@@ -613,7 +615,7 @@ pub export fn char_stat_set(ch: *cdb.char_data, stat: ?[*:0]const u8, value: i64
 
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
     zigdata.stats.set(id, clamped);
-    invalidateDeriveds(zigdata);
+    invalidateDeriveds(ch, zigdata);
     return clamped;
 }
 
@@ -649,6 +651,8 @@ fn charDerGetBaseName(ch: *cdb.char_data, name: []const u8) i64 {
 
 pub export fn char_der_total_get(ch: *cdb.char_data, stat: ?[*:0]const u8) i64 {
     const name = statName(stat) orelse return 0;
+    if (lua_api.callLuaDerTotal(ch, name)) |v| return v;
+    if (lua_api.isInitialized()) return 0;
     return charDerGetTotalName(ch, name);
 }
 
@@ -665,7 +669,6 @@ fn charDerGetTotalName(ch: *cdb.char_data, name: []const u8) i64 {
         zigdata.modifiers.rebuild(ch);
         emitConditionModifiers(ch, zigdata);
     }
-    if (!definition.no_modifiers) addLegacyDerivedModifiers(ch, zigdata, name, definition);
     const total = calculateDerivedTotal(ch, zigdata, name, definition);
     cacheDerived(zigdata, id, total);
     return total;
@@ -673,10 +676,15 @@ fn charDerGetTotalName(ch: *cdb.char_data, name: []const u8) i64 {
 
 pub export fn char_der_invalidate(ch: *cdb.char_data) void {
     const zigdata = char_ensure_zigdata(ch) orelse return;
-    invalidateDeriveds(zigdata);
+    invalidateDeriveds(ch, zigdata);
 }
 
-fn accumulateDerivedModifiers(cache: *modifiers_api.ModifierCache, category: []const u8, id: []const u8, flat: *i64, percent: *i64, multipliers: *std.ArrayListUnmanaged(i64), min_override: *?i64, max_override: *?i64, set_override: *?i64) void {
+pub export fn char_modifier_gen_get(ch: *cdb.char_data) u64 {
+    const zigdata = char_ensure_zigdata(ch) orelse return 0;
+    return zigdata.modifier_gen;
+}
+
+pub fn accumulateDerivedModifiers(cache: *modifiers_api.ModifierCache, category: []const u8, id: []const u8, flat: *i64, percent: *i64, multipliers: *std.ArrayListUnmanaged(i64), min_override: *?i64, max_override: *?i64, set_override: *?i64) void {
     if (cache.modifiersFor(category, id)) |modifiers| {
         for (modifiers) |modifier| {
             switch (modifier.kind) {
@@ -701,6 +709,9 @@ fn calculateDerivedTotal(ch: *cdb.char_data, zigdata: *CharacterData, name: []co
     var set_override: ?i64 = null;
 
     if (!definition.no_modifiers) {
+        for (definition.legacy_modifiers[0..definition.legacy_modifier_count]) |lm| {
+            flat += cdb.char_legacy_modifier(ch, lm.location, lm.specific);
+        }
         accumulateDerivedModifiers(&zigdata.modifiers, "derived", name, &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
         for (definition.modifier_targets[0..definition.modifier_target_count]) |target| {
             accumulateDerivedModifiers(&zigdata.modifiers, target.category[0..target.category_len], target.id[0..target.id_len], &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
@@ -720,12 +731,6 @@ fn calculateDerivedTotal(ch: *cdb.char_data, zigdata: *CharacterData, name: []co
     return value;
 }
 
-fn addLegacyDerivedModifiers(ch: *cdb.char_data, zigdata: *CharacterData, name: []const u8, definition: lua_api.DerivedDefinition) void {
-    for (definition.legacy_modifiers[0..definition.legacy_modifier_count]) |modifier| {
-        modifiers_api.addLegacyDerivedFlat(&zigdata.modifiers, ch, name, modifier.location, modifier.specific);
-    }
-}
-
 fn cacheDerived(zigdata: *CharacterData, id: DerivedId, value: i64) void {
     if (zigdata.deriveds_dirty) {
         clearDerivedCache(zigdata);
@@ -734,13 +739,15 @@ fn cacheDerived(zigdata: *CharacterData, id: DerivedId, value: i64) void {
     zigdata.deriveds.set(id, .{ .value = value });
 }
 
-fn invalidateDeriveds(zigdata: *CharacterData) void {
+fn invalidateDeriveds(ch: *cdb.char_data, zigdata: *CharacterData) void {
+    _ = ch;
     zigdata.deriveds_dirty = true;
     zigdata.modifiers.invalidate();
+    zigdata.modifier_gen +%= 1;
 }
 
-fn conditionChanged(zigdata: *CharacterData) void {
-    invalidateDeriveds(zigdata);
+fn conditionChanged(ch: *cdb.char_data, zigdata: *CharacterData) void {
+    invalidateDeriveds(ch, zigdata);
 }
 
 fn clearDerivedCache(zigdata: *CharacterData) void {
@@ -950,7 +957,7 @@ pub export fn char_condition_add_with_variables(ch: *cdb.char_data, condition: ?
         addConditionVariables(instance, numbers, number_count, strings, string_count) catch return false;
         addConditionSource(instance, source_category, source_id) catch {};
     }
-    conditionChanged(zigdata);
+    conditionChanged(ch, zigdata);
     lua_api.callConditionHook(ch, name, "on_apply", null);
     return true;
 }
@@ -1004,7 +1011,7 @@ fn char_condition_remove_name(ch: *cdb.char_data, name: []const u8, reason: ?[*:
     const cond_id = intern_mod.lookup(name) orelse return false;
     var removed = zigdata.conditions.fetchRemove(cond_id) orelse return false;
     removed.value.deinit(std.heap.page_allocator);
-    conditionChanged(zigdata);
+    conditionChanged(ch, zigdata);
     const reason_slice: ?[]const u8 = if (reason) |r| r[0..std.mem.len(r)] else null;
     lua_api.callConditionHook(ch, name, "on_remove", reason_slice);
     return true;
@@ -1086,7 +1093,7 @@ fn char_condition_update_context(ch: *cdb.char_data, kind: []const u8, pulses: i
         const updated = conditionGet(ch, name_z.ptr) orelse continue;
         if (seconds > 0 and updated.duration > 0) {
             updated.duration = @max(0, updated.duration - seconds);
-            conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+            conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
         }
         const after_duration = conditionGet(ch, name_z.ptr) orelse continue;
         if (after_duration.duration == 0) _ = char_condition_remove(ch, name_z.ptr, "expired");
@@ -1101,7 +1108,7 @@ pub export fn char_condition_stacks_get(ch: *cdb.char_data, condition: ?[*:0]con
 pub export fn char_condition_stacks_set(ch: *cdb.char_data, condition: ?[*:0]const u8, value: i64) i64 {
     const instance = conditionGet(ch, condition) orelse return 0;
     instance.stacks = @max(0, value);
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return instance.stacks;
 }
 
@@ -1113,7 +1120,7 @@ pub export fn char_condition_duration_get(ch: *cdb.char_data, condition: ?[*:0]c
 pub export fn char_condition_duration_set(ch: *cdb.char_data, condition: ?[*:0]const u8, value: i64) i64 {
     const instance = conditionGet(ch, condition) orelse return 0;
     instance.duration = value;
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return value;
 }
 
@@ -1127,7 +1134,7 @@ pub export fn char_condition_number_set(ch: *cdb.char_data, condition: ?[*:0]con
     const instance = conditionGet(ch, condition) orelse return 0;
     const name = statName(key) orelse return 0;
     putOwnedNumber(instance, name, value) catch return 0;
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return value;
 }
 
@@ -1148,7 +1155,7 @@ pub export fn char_condition_string_set(ch: *cdb.char_data, condition: ?[*:0]con
     const name = statName(key) orelse return false;
     const text = statName(value) orelse return false;
     putOwnedString(instance, name, text) catch return false;
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return true;
 }
 

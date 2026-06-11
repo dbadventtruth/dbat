@@ -3571,7 +3571,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
     } else if (MOB_FLAGGED(vict, MOB_NOKILL)) {
       send_to_char(ch, "But they are not to be killed!\r\n");
       return 0;
-    } else if (char_condition_number_get(ch, "majinized", "lord") == GET_IDNUM(vict)) {
+    } else if (char_condition_has(ch, "majinized") && char_condition_number_get(ch, "majinized", "lord") == GET_IDNUM(vict)) {
       send_to_char(ch, "You can not harm your master!\r\n");
       return 0;
     } else if (GET_BONUS(ch, BONUS_COWARD) > 0 &&
@@ -3580,7 +3580,7 @@ int can_kill(struct char_data *ch, struct char_data *vict, struct obj_data *obj,
       send_to_char(ch, "You are too cowardly to start anything with someone so "
                        "much stronger than yourself!\r\n");
       return 0;
-    } else if (char_condition_number_get(vict, "majinized", "lord") == GET_IDNUM(ch)) {
+    } else if (char_condition_has(vict, "majinized") && char_condition_number_get(vict, "majinized", "lord") == GET_IDNUM(ch)) {
       send_to_char(ch, "You can not harm your servant.\r\n");
       return 0;
     } else if ((GRAPPLING(ch) && GRAPTYPE(ch) != 3) ||
