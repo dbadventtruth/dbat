@@ -1991,12 +1991,12 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
         if (GET_OBJ_POSTED(obj) == NULL) {
           send_to_char(ch, "@D[@G%d@D]@w ", GET_OBJ_VNUM(obj));
           if (SCRIPT(obj))
-            send_to_char(ch, "@D[@wT%d@D]@w ", obj->proto_script->vnum);
+            send_to_char(ch, "@D[@wT%d@D]@w ", obj->proto_script->id);
         } else {
           if (GET_OBJ_POSTTYPE(obj) <= 0) {
             send_to_char(ch, "@D[@G%d@D]@w ", GET_OBJ_VNUM(obj));
             if (SCRIPT(obj))
-              send_to_char(ch, "@D[@wT%d@D]@w ", obj->proto_script->vnum);
+              send_to_char(ch, "@D[@wT%d@D]@w ", obj->proto_script->id);
           }
         }
       }
@@ -2049,7 +2049,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
     if (!IS_NPC(ch) && PRF_FLAGGED(ch, PRF_ROOMFLAGS)) {
       send_to_char(ch, "[%d] ", GET_OBJ_VNUM(obj));
       if (SCRIPT(obj))
-        send_to_char(ch, "[T%d] ", obj->proto_script->vnum);
+        send_to_char(ch, "[T%d] ", obj->proto_script->id);
     }
 
     if (PRF_FLAGGED(ch, PRF_IHEALTH)) {
@@ -2465,7 +2465,7 @@ static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
       for (j = obj_list; j != i; j = j->next_content)
         if ((!strcasecmp(j->short_description, i->short_description) &&
              !strcasecmp(j->description, i->description)) &&
-            (j->vnum == i->vnum) &&
+            (j->proto_id == i->proto_id) &&
             ((OBJ_FLAGGED(j, ITEM_BROKEN) && OBJ_FLAGGED(i, ITEM_BROKEN)) ||
              (!OBJ_FLAGGED(j, ITEM_BROKEN) && !OBJ_FLAGGED(i, ITEM_BROKEN))))
           if ((!SITTING(j) && !SITTING(i)))
@@ -2493,7 +2493,7 @@ static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
       for (d = j = i; j; j = j->next_content)
         if ((!strcasecmp(j->short_description, i->short_description) &&
              !strcasecmp(j->description, i->description)) &&
-            (j->vnum == i->vnum) &&
+            (j->proto_id == i->proto_id) &&
             ((OBJ_FLAGGED(j, ITEM_BROKEN) && OBJ_FLAGGED(i, ITEM_BROKEN)) ||
              (!OBJ_FLAGGED(j, ITEM_BROKEN) && !OBJ_FLAGGED(i, ITEM_BROKEN))))
           if ((!SITTING(j) && !SITTING(i)))
@@ -3453,7 +3453,7 @@ static void list_char_to_char(struct room_data *room, struct char_data *ch) {
       if (CONFIG_STACK_MOBS) {
         /* How many other occurences of this mob are there? */
         for (j = room_people_get(room); j != i; j = j->next_in_room)
-          if ((i->vnum == j->vnum) && (GET_POS(i) == GET_POS(j)) &&
+          if ((i->proto_id == j->proto_id) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
               (AFF_FLAGS(i)[1] == AFF_FLAGS(j)[1]) &&
               (AFF_FLAGS(i)[2] == AFF_FLAGS(j)[2]) &&
@@ -3474,7 +3474,7 @@ static void list_char_to_char(struct room_data *room, struct char_data *ch) {
            */
           return true;
         for (j = i; j; j = j->next_in_room)
-          if ((i->vnum == j->vnum) && (GET_POS(i) == GET_POS(j)) &&
+          if ((i->proto_id == j->proto_id) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
               (AFF_FLAGS(i)[1] == AFF_FLAGS(j)[1]) &&
               (AFF_FLAGS(i)[2] == AFF_FLAGS(j)[2]) &&
@@ -7083,7 +7083,7 @@ static void print_object_location(int num, struct obj_data *obj,
     send_to_char(ch, "%33s", " - ");
 
   if (SCRIPT(obj))
-    send_to_char(ch, "[T%d]", obj->proto_script->vnum);
+    send_to_char(ch, "[T%d]", obj->proto_script->id);
 
   if (obj_room_get(obj) != NULL)
     send_to_char(ch, "[%5d] %s\r\n", obj_room_vnum_get(obj),

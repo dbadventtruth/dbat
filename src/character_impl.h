@@ -62,7 +62,7 @@ struct skill_data {
 };
 
 struct mob_proto_data {
-  mob_vnum vnum; /* Where in data-base                 */
+  mob_vnum id;   /* Where in data-base                 */
 
   char *name;        /* NPC aliases / keywords             */
   char *short_descr; /* NPC short description              */
@@ -91,7 +91,7 @@ struct char_data {
   int32_t idnum; /* player's idnum; -1 for mobiles	*/
 
   int pfilepos;          /* playerfile pos			*/
-  mob_vnum vnum;         /* Mob's vnum. -1 for non-mobs	*/
+  mob_vnum proto_id;     /* Mob's proto vnum. -1 for non-mobs	*/
   room_vnum in_room;     /* Location (real room number)		*/
   room_vnum was_in_room; /* location for linkdead people		*/
   int wait;              /* wait for how many loops		*/

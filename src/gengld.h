@@ -20,7 +20,7 @@ int save_guilds(struct zone_data *zone);
  * Handy macros.
  */
 
-#define G_NUM(i) ((i)->vnum)
+#define G_NUM(i) ((i)->id)
 #define G_TRAINER(i) ((i)->gm)
 #define G_OPEN(i) ((i)->open)
 #define G_CLOSE(i) ((i)->close)

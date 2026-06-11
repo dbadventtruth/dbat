@@ -50,7 +50,7 @@ pub fn serializeObjectPrototype(allocator: std.mem.Allocator, obj: *cdb.obj_prot
     var object = jsonx.newObject(allocator);
 
     try jsonx.putSlice(&object, allocator, "kind", "object_prototype");
-    try jsonx.putInt(&object, allocator, "proto_id", obj.vnum);
+    try jsonx.putInt(&object, allocator, "proto_id", obj.id);
     try jsonx.putInt(&object, allocator, "type", obj.type_flag);
     try jsonx.putInt(&object, allocator, "level", obj.level);
     try jsonx.putInt(&object, allocator, "weight", obj.weight);
@@ -104,7 +104,7 @@ pub fn deserializeObject(obj: *cdb.obj_data, options: DeserializeOptions, value:
 pub fn deserializeObjectPrototype(obj: *cdb.obj_proto_data, options: DeserializeOptions, value: JsonValue) !void {
     if (value != .object) return error.ExpectedObject;
 
-    if (try jsonx.intField(value, "proto_id", cdb.obj_vnum)) |v| obj.vnum = v;
+    if (try jsonx.intField(value, "proto_id", cdb.obj_vnum)) |v| obj.id = v;
     if (try jsonx.intField(value, "type", i8)) |v| obj.type_flag = v;
     if (try jsonx.intField(value, "level", c_int)) |v| obj.level = v;
     if (try jsonx.intField(value, "weight", i64)) |v| obj.weight = v;

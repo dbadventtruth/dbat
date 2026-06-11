@@ -45,8 +45,8 @@ extern "C" {
 #define HCHARGE(obj) ((obj)->healcharge)
 #define GET_LAST_LOAD(obj) ((obj)->lload)
 #define GET_OBJ_SIZE(obj) ((obj)->size)
-#define GET_OBJ_RNUM(obj) ((obj)->vnum)
-#define GET_OBJ_VNUM(obj) ((obj) ? (obj)->vnum : NOTHING)
+#define GET_OBJ_RNUM(obj) ((obj)->proto_id)
+#define GET_OBJ_VNUM(obj) ((obj) ? (obj)->proto_id : NOTHING)
 #define GET_OBJ_SPEC(obj)                                                      \
   (VALID_OBJ_RNUM(obj) ? obj_proto_special_get(GET_OBJ_VNUM(obj)) : NULL)
 #define GET_FUEL(obj) (GET_OBJ_VAL((obj), 2))

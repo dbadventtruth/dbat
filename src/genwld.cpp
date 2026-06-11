@@ -53,7 +53,7 @@ room_vnum add_room(struct room_data *room) {
   if (!room)
     return NOWHERE;
 
-  if (auto irm = room_by_id(room->number)) {
+  if (auto irm = room_by_id(room->id)) {
     if (SCRIPT(irm))
       extract_script(irm, WLD_TRIGGER);
     tch = room_people_get(irm);
@@ -62,16 +62,16 @@ room_vnum add_room(struct room_data *room) {
     irm->people = tch;
     irm->contents = tobj;
     add_to_save_list(room_zone_vnum_get(room), SL_WLD);
-    mud_log("GenOLC: add_room: Updated existing room #%d.", room->number);
-    return room->number;
+    mud_log("GenOLC: add_room: Updated existing room #%d.", room->id);
+    return room->id;
   }
 
   struct room_data *new_room;
   CREATE(new_room, struct room_data, 1);
   copy_room(new_room, room);
-  room_put(room->number, new_room);
+  room_put(room->id, new_room);
 
-  mud_log("GenOLC: add_room: Added room %d.", room->number);
+  mud_log("GenOLC: add_room: Added room %d.", room->id);
 
   add_to_save_list(room_zone_vnum_get(room), SL_WLD);
 
@@ -96,7 +96,7 @@ int delete_room(room_vnum vnum) {
   add_to_save_list(room_zone_vnum_get(room), SL_WLD);
 
   /* This is something you might want to read about in the logs. */
-  mud_log("GenOLC: delete_room: Deleting room #%d (%s).", room->number, room->name);
+  mud_log("GenOLC: delete_room: Deleting room #%d (%s).", room->id, room->name);
 
   /*
    * Dump the contents of this room into the Void.  We could also just
@@ -204,10 +204,10 @@ int save_rooms(struct zone_data *zone) {
     return FALSE;
   }
 
-  mud_log("GenOLC: save_rooms: Saving rooms in zone #%d (%d-%d).", zone->number,
+  mud_log("GenOLC: save_rooms: Saving rooms in zone #%d (%d-%d).", zone->id,
       zone->bot, zone->top);
 
-  snprintf(filename, sizeof(filename), "%s%d.new", WLD_PREFIX, zone->number);
+  snprintf(filename, sizeof(filename), "%s%d.new", WLD_PREFIX, zone->id);
   if (!(sf = fopen(filename, "w"))) {
     perror("SYSERR: save_rooms");
     return FALSE;
@@ -239,7 +239,7 @@ int save_rooms(struct zone_data *zone) {
             "%s%c\n"
             "%s%c\n"
             "%d %s %s %s %s %d\n",
-            room->number, room->name ? room->name : "Untitled",
+            room->id, room->name ? room->name : "Untitled",
             STRING_TERMINATOR, buf, STRING_TERMINATOR, room->zone, rbuf1, rbuf2,
             rbuf3, rbuf4, room->sector_type);
 
@@ -313,14 +313,14 @@ int save_rooms(struct zone_data *zone) {
   fclose(sf);
 
   /* Old file we're replacing. */
-  snprintf(buf, sizeof(buf), "%s%d.wld", WLD_PREFIX, zone->number);
+  snprintf(buf, sizeof(buf), "%s%d.wld", WLD_PREFIX, zone->id);
 
   remove(buf);
   rename(filename, buf);
 
-  if (in_save_list(zone->number, SL_WLD)) {
-    remove_from_save_list(zone->number, SL_WLD);
-    create_world_index(zone->number, "wld");
+  if (in_save_list(zone->id, SL_WLD)) {
+    remove_from_save_list(zone->id, SL_WLD);
+    create_world_index(zone->id, "wld");
     mud_log("GenOLC: save_rooms: Saving rooms '%s'", buf);
   }
   return TRUE;

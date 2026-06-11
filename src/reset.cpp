@@ -21,7 +21,7 @@ bool pre_reset(struct zone_data *zone) {
   /* By default, a normal zone reset follows this function */
   bool ret_value = PERFORM_NORMAL_RESET;
 
-  switch (zone->number) {
+  switch (zone->id) {
   /* Gauntlet zone reset type determined by players in the zone */
   case RESET_GAUNTLET:
     ret_value = prereset_gauntlet_zone();
@@ -36,7 +36,7 @@ bool pre_reset(struct zone_data *zone) {
 
 /* post_reset is called after a normal zone reset */
 void post_reset(struct zone_data *zone) {
-  switch (zone->number) {
+  switch (zone->id) {
   default:
     break;
   }

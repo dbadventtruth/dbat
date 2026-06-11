@@ -633,7 +633,7 @@ void remove_limb(struct char_data *vict, int num) {
   char buf2[1000];
 
   body_part = create_obj();
-  body_part->vnum = NOTHING;
+  body_part->proto_id = NOTHING;
   IN_ROOM(body_part) = NOWHERE;
 
   switch (num) {
@@ -1547,7 +1547,7 @@ static void scatter_ashes(struct char_data *ch) {
 
 static struct obj_data *init_corpse_obj(struct char_data *ch, int timer) {
   auto *corpse = create_obj();
-  corpse->vnum = NOTHING;
+  corpse->proto_id = NOTHING;
   IN_ROOM(corpse) = NOWHERE;
 
   handle_corpse_condition(corpse, ch);

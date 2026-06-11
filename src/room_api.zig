@@ -7,19 +7,19 @@ extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
 
 pub export fn room_id_get(room: *cdb.room_data) cdb.room_vnum {
-    return room.number;
+    return room.id;
 }
 
 pub export fn room_id_set(room: *cdb.room_data, id: cdb.room_vnum) void {
-    room.number = id;
+    room.id = id;
 }
 
 pub export fn room_vnum_get(room: *cdb.room_data) cdb.room_vnum {
-    return room.number;
+    return room.id;
 }
 
 pub export fn room_vnum_set(room: *cdb.room_data, vnum: cdb.room_vnum) void {
-    room.number = vnum;
+    room.id = vnum;
 }
 
 pub export fn room_zone_get(room: *cdb.room_data) [*c]cdb.zone_data {
@@ -31,7 +31,7 @@ pub export fn room_zone_get(room: *cdb.room_data) [*c]cdb.zone_data {
 pub export fn room_zone_vnum_get(room: *cdb.room_data) cdb.zone_vnum {
     const zone = cdb.zone_by_id(room.zone);
     if (zone == null) return cdb.NOWHERE;
-    return zone.*.number;
+    return zone.*.id;
 }
 
 pub export fn room_zone_set(room: *cdb.room_data, vnum: cdb.zone_vnum) void {

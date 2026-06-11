@@ -286,6 +286,9 @@ fn mobProtoEnsureZigdata(proto: *cdb.mob_proto_data) ?*MobProtoData {
     return @ptrCast(@alignCast(proto.zigdata.?));
 }
 
+pub export fn mob_proto_id_get(proto: *cdb.mob_proto_data) cdb.mob_vnum { return proto.id; }
+pub export fn mob_proto_id_set(proto: *cdb.mob_proto_data, id: cdb.mob_vnum) void { proto.id = id; }
+
 pub export fn mob_proto_zig_free(proto: *cdb.mob_proto_data) void {
     if (proto.zigdata == null) return;
     const data: *MobProtoData = @ptrCast(@alignCast(proto.zigdata.?));
@@ -395,11 +398,11 @@ pub export fn char_proto_id_set(ch: *cdb.char_data, vnum: cdb.mob_vnum) void {
 }
 
 pub export fn char_vnum_get(ch: *cdb.char_data) cdb.mob_vnum {
-    return ch.vnum;
+    return ch.proto_id;
 }
 
 pub export fn char_vnum_set(ch: *cdb.char_data, vnum: cdb.mob_vnum) void {
-    ch.vnum = vnum;
+    ch.proto_id = vnum;
 }
 
 pub export fn char_room_get(ch: *cdb.char_data) [*c]cdb.room_data {
@@ -409,7 +412,7 @@ pub export fn char_room_get(ch: *cdb.char_data) [*c]cdb.room_data {
 pub export fn char_room_vnum_get(ch: *cdb.char_data) cdb.room_vnum {
     const room = char_room_get(ch);
     if (room == null) return cdb.NOWHERE;
-    return room.*.number;
+    return room.*.id;
 }
 
 pub export fn char_zone_get(ch: *cdb.char_data) [*c]cdb.zone_data {
@@ -421,7 +424,7 @@ pub export fn char_zone_get(ch: *cdb.char_data) [*c]cdb.zone_data {
 pub export fn char_zone_vnum_get(ch: *cdb.char_data) cdb.zone_vnum {
     const zone = char_zone_get(ch);
     if (zone == null) return cdb.NOWHERE;
-    return zone.*.number;
+    return zone.*.id;
 }
 
 pub export fn char_room_vnum_set(ch: *cdb.char_data, vnum: cdb.room_vnum) void {

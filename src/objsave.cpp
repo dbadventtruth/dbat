@@ -1171,7 +1171,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
       /* we have the number, check it, load obj. */
       if (nr == NOTHING) { /* then it is unique */
         temp = create_obj();
-        temp->vnum = NOTHING;
+        temp->proto_id = NOTHING;
         GET_OBJ_SIZE(temp) = SIZE_MEDIUM;
       } else if (nr < 0) {
         continue;

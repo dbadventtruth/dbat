@@ -126,7 +126,7 @@ struct stack_data {
 #define OPER_NOT 4
 #define MAX_OPER 4
 
-#define SHOP_NUM(i) ((i)->vnum)
+#define SHOP_NUM(i) ((i)->id)
 #define SHOP_KEEPER(i) ((i)->keeper)
 #define SHOP_OPEN1(i) ((i)->open1)
 #define SHOP_CLOSE1(i) ((i)->close1)

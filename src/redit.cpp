@@ -188,16 +188,16 @@ ACMD(do_oasis_redit) {
 
   /* Make sure the builder is allowed to modify this zone. */
   if (!can_edit_zone(ch, zone) && remodeling == FALSE) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
     free(d->olc);
     d->olc = NULL;
     return;
   }
 
   if (save) {
-    send_to_char(ch, "Saving all rooms in zone %d.\r\n", zone->number);
+    send_to_char(ch, "Saving all rooms in zone %d.\r\n", zone->id);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
-           "OLC: %s saves room info for zone %d.", GET_NAME(ch), zone->number);
+           "OLC: %s saves room info for zone %d.", GET_NAME(ch), zone->id);
 
     /* Save the rooms. */
     save_rooms(zone);
@@ -222,7 +222,7 @@ ACMD(do_oasis_redit) {
 
   mudlog(BRF, ADMLVL_IMMORT, TRUE,
          "OLC: %s starts editing zone %d allowed zone %d", GET_NAME(ch),
-         zone->number, GET_OLC_ZONE(ch));
+         zone->id, GET_OLC_ZONE(ch));
 }
 
 void redit_setup_new(struct descriptor_data *d) {
@@ -230,7 +230,7 @@ void redit_setup_new(struct descriptor_data *d) {
 
   OLC_ROOM(d)->name = strdup("An unfinished room");
   OLC_ROOM(d)->description = strdup("You are in an unfinished room.\r\n");
-  OLC_ROOM(d)->number = NOWHERE;
+  OLC_ROOM(d)->id = NOWHERE;
   OLC_ITEM_TYPE(d) = WLD_TRIGGER;
   OLC_ROOM(d)->proto_script = OLC_SCRIPT(d) = NULL;
 
@@ -316,10 +316,10 @@ void redit_save_internally(struct descriptor_data *d) {
   int j, room_num, new_room = FALSE;
   struct descriptor_data *dsc;
 
-  if (OLC_ROOM(d)->number == NOWHERE) {
+  if (OLC_ROOM(d)->id == NOWHERE) {
     new_room = TRUE;
   }
-  OLC_ROOM(d)->number = OLC_NUM(d);
+  OLC_ROOM(d)->id = OLC_NUM(d);
   /* FIXME: Why is this not set elsewhere? */
   OLC_ROOM(d)->zone = OLC_ZNUM(d);
 
@@ -495,7 +495,7 @@ void redit_disp_sector_menu(struct descriptor_data *d) {
 
 static int _redit_disp_menu_helper(struct room_data *room, int dir) {
   if (auto dest = exit_dest_get(room->dir_option[dir]); dest)
-    return dest->number;
+    return dest->id;
   else
     return -1;
 }
@@ -1084,14 +1084,14 @@ void redit_parse(struct descriptor_data *d, char *arg) {
 
   case REDIT_COPY:
     if ((room = room_by_id(atoi(arg))) != NULL) {
-      redit_setup_existing(d, room->number);
+      redit_setup_existing(d, room->id);
     } else
       write_to_output(d, "That room does not exist.\r\n");
     break;
 
   case REDIT_DELETE:
     if (*arg == 'y' || *arg == 'Y') {
-      if (delete_room(OLC_ROOM(d)->number))
+      if (delete_room(OLC_ROOM(d)->id))
         write_to_output(d, "Room deleted.\r\n");
       else
         write_to_output(d, "Couldn't delete the room!\r\n");

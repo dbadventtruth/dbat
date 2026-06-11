@@ -1988,7 +1988,7 @@ char *sense_location(struct char_data *ch) {
   CREATE(message, char, MAX_INPUT_LENGTH);
   int roomnum = char_room_vnum_get(ch), num = 0;
   auto zone = char_zone_get(ch);
-  num = zone->number;
+  num = zone->id;
 
   switch (num) {
   case 2:

@@ -51,7 +51,7 @@ copy_trig_proto_list(const struct trig_proto_list *from) {
   for (; from; from = from->next) {
     struct trig_proto_list *node;
     CREATE(node, struct trig_proto_list, 1);
-    node->vnum = from->vnum;
+    node->id = from->id;
     if (tail)
       tail->next = node;
     else
@@ -92,7 +92,7 @@ void obj_proto_copy(struct obj_proto_data *to,
                     const struct obj_proto_data *from) {
   obj_proto_free_strings(to);
   free_trig_proto_list(to->proto_script);
-  to->vnum = from->vnum;
+  to->id = from->id;
   memcpy(to->value, from->value, sizeof(to->value));
   to->type_flag = from->type_flag;
   to->level = from->level;
@@ -122,7 +122,7 @@ void obj_proto_from_instance(struct obj_proto_data *to,
   obj_proto_free_strings(to);
   free_trig_proto_list(to->proto_script);
 
-  to->vnum = from->vnum;
+  to->id = from->proto_id;
   memcpy(to->value, from->value, sizeof(to->value));
   to->type_flag = from->type_flag;
   to->level = from->level;
@@ -150,7 +150,7 @@ void obj_proto_from_instance(struct obj_proto_data *to,
 
 void obj_apply_proto_to_instance(struct obj_data *to,
                                  const struct obj_proto_data *from) {
-  to->vnum = from->vnum;
+  to->proto_id = from->id;
   memcpy(to->value, from->value, sizeof(to->value));
   to->type_flag = from->type_flag;
   to->level = from->level;
@@ -195,7 +195,7 @@ obj_vnum add_object(struct obj_proto_data *newobj, obj_vnum ovnum) {
     obj_proto_copy(proto, newobj);
     update_objects(proto);
     add_to_save_list(znum, SL_OBJ);
-    return newobj->vnum;
+    return newobj->id;
   }
 
   struct obj_proto_data *obj = NULL;
@@ -222,7 +222,7 @@ int update_objects(struct obj_proto_data *refobj) {
   int count = 0;
 
   for (obj = object_list; obj; obj = obj->next) {
-    if (obj->vnum != refobj->vnum)
+    if (obj->proto_id != refobj->id)
       continue;
 
     count++;
@@ -257,7 +257,7 @@ int save_objects(struct zone_data *zone) {
     return FALSE;
   }
 
-  snprintf(cmfname, sizeof(cmfname), "%s%d.new", OBJ_PREFIX, zone->number);
+  snprintf(cmfname, sizeof(cmfname), "%s%d.new", OBJ_PREFIX, zone->id);
   if (!(fp = fopen(cmfname, "w+"))) {
     mudlog(BRF, ADMLVL_IMMORT, TRUE,
            "SYSERR: OLC: Cannot open objects file %s!", cmfname);
@@ -283,7 +283,7 @@ int save_objects(struct zone_data *zone) {
             "%s~\n"
             "%s~\n",
 
-            GET_OBJ_VNUM(obj),
+            obj->id,
             (obj->name && *obj->name) ? obj->name : "undefined",
             (obj->short_description && *obj->short_description)
                 ? obj->short_description
@@ -366,13 +366,13 @@ int save_objects(struct zone_data *zone) {
    */
   fprintf(fp, "$~\n");
   fclose(fp);
-  snprintf(buf, sizeof(buf), "%s%d.obj", OBJ_PREFIX, zone->number);
+  snprintf(buf, sizeof(buf), "%s%d.obj", OBJ_PREFIX, zone->id);
   remove(buf);
   rename(cmfname, buf);
 
-  if (in_save_list(zone->number, SL_OBJ)) {
-    remove_from_save_list(zone->number, SL_OBJ);
-    create_world_index(zone->number, "obj");
+  if (in_save_list(zone->id, SL_OBJ)) {
+    remove_from_save_list(zone->id, SL_OBJ);
+    create_world_index(zone->id, "obj");
     mud_log("GenOLC: save_objects: Saving objects '%s'", buf);
   }
   return TRUE;
@@ -457,16 +457,16 @@ int delete_object(obj_vnum vnum) {
 
   auto zone = zone_by_id(virtual_zone_by_thing(vnum));
 
-  add_to_save_list(zone->number, SL_OBJ);
+  add_to_save_list(zone->id, SL_OBJ);
 
-  obj_proto_delete(obj->vnum);
+  obj_proto_delete(obj->id);
 
   /* This is something you might want to read about in the logs. */
-  mud_log("GenOLC: delete_object: Deleting object #%d (%s).", GET_OBJ_VNUM(obj),
+  mud_log("GenOLC: delete_object: Deleting object #%d (%s).", obj->id,
       obj->short_description);
 
   for (tmp = object_list; tmp; tmp = tmp->next) {
-    if (tmp->vnum != obj->vnum)
+    if (tmp->id != obj->id)
       continue;
 
     /* extract_obj() will just axe contents. */

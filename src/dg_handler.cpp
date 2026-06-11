@@ -115,7 +115,7 @@ void extract_trigger(struct trig_data *trig) {
     GET_TRIG_WAIT(trig) = NULL;
   }
 
-  trig_proto_count_decrement(trig->vnum);
+  trig_proto_count_decrement(trig->proto_id);
 
   /* walk the trigger list and remove this one */
   REMOVE_FROM_LIST(trig, trigger_list, next_in_world, temp);
@@ -211,7 +211,7 @@ copy_trig_proto_list(const struct trig_proto_list *from) {
   for (; from; from = from->next) {
     struct trig_proto_list *node;
     CREATE(node, struct trig_proto_list, 1);
-    node->vnum = from->vnum;
+    node->id = from->id;
     if (tail)
       tail->next = node;
     else
@@ -277,7 +277,7 @@ void copy_proto_script(void *source, void *dest, int type) {
     }
 
     while (tp_src) {
-      tp_dst->vnum = tp_src->vnum;
+      tp_dst->id = tp_src->id;
       tp_src = tp_src->next;
       if (tp_src)
         CREATE(tp_dst->next, struct trig_proto_list, 1);

@@ -1356,7 +1356,7 @@ SPECIAL(guild) {
                        {"grand", handle_grand},       {NULL, NULL}};
 
   guild_iterate([&](auto g) {
-    if (GM_TRAINER(g) == keeper->vnum) {
+    if (GM_TRAINER(g) == keeper->proto_id) {
       guild = g;
       return false;
     }
@@ -1507,11 +1507,11 @@ void assign_the_guilds(void) {
     if (!keeper)
       return true;
 
-    if (mob_proto_special_get(GET_MOB_VNUM(keeper)) &&
-        mob_proto_special_get(GET_MOB_VNUM(keeper)) != guild)
-      GM_FUNC(g) = mob_proto_special_get(GET_MOB_VNUM(keeper));
+    if (mob_proto_special_get(mob_proto_id_get(keeper)) &&
+        mob_proto_special_get(mob_proto_id_get(keeper)) != guild)
+      GM_FUNC(g) = mob_proto_special_get(mob_proto_id_get(keeper));
 
-    mob_proto_special_set(GET_MOB_VNUM(keeper), guild);
+    mob_proto_special_set(mob_proto_id_get(keeper), guild);
     return true;
   });
 }
@@ -1582,7 +1582,7 @@ void list_all_guilds(struct char_data *ch) {
       strcpy(buf1, "<NONE>"); /* strcpy: OK (for 'buf1 >= 7') */
     else
       sprintf(buf1, "%6d",
-              keeper->vnum); /* sprintf: OK (for 'buf1 >= 11', 32-bit int) */
+              keeper->id); /* sprintf: OK (for 'buf1 >= 11', 32-bit int) */
 
     len +=
         snprintf(buf + len, sizeof(buf) - len,
@@ -1605,7 +1605,7 @@ void list_detailed_guild(struct char_data *ch, struct guild_data *guild) {
   if (!keeper)
     strcpy(buf1, "<NONE>");
   else
-    sprintf(buf1, "%6d   ", keeper->vnum);
+    sprintf(buf1, "%6d   ", keeper->id);
 
   sprintf(buf, " Guild Master: %s\r\n", buf1);
   sprintf(buf, "%s Hours: %4d to %4d,  Surcharge: %5.2f\r\n", buf,
@@ -1680,7 +1680,7 @@ void list_guilds(struct char_data *ch, struct zone_data *zone, guild_vnum vmin,
       continue;
     counter++;
 
-    send_to_char(ch, "@g%4d@n) [@c%-5d@n]", counter, guild->vnum);
+    send_to_char(ch, "@g%4d@n) [@c%-5d@n]", counter, guild->id);
 
     /************************************************************************/
     /** Retrieve the list of rooms for this guild.                         **/
@@ -1688,7 +1688,7 @@ void list_guilds(struct char_data *ch, struct zone_data *zone, guild_vnum vmin,
 
     auto keeper = mob_proto_by_id(guild->gm);
 
-    send_to_char(ch, " @c[@y%d@c]@y %s@n", keeper ? keeper->vnum : -1,
+    send_to_char(ch, " @c[@y%d@c]@y %s@n", keeper ? keeper->id : -1,
                  keeper ? keeper->short_descr : "None");
 
     send_to_char(ch, "\r\n");

@@ -8,6 +8,8 @@ extern "C" {
 #endif
 
 // Object API functions, implemented in objects_api.zig
+obj_vnum obj_proto_self_id_get(struct obj_proto_data *proto);
+void obj_proto_self_id_set(struct obj_proto_data *proto, obj_vnum id);
 int64_t obj_id_get(struct obj_data *obj);
 void obj_id_set(struct obj_data *obj, int64_t id);
 obj_vnum obj_proto_id_get(struct obj_data *obj);

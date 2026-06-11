@@ -352,28 +352,28 @@ int add_shop(struct shop_data *nshp) {
   /*
    * The shop already exists, just update it.
    */
-  if (shop = shop_by_id(nshp->vnum)) {
+  if (shop = shop_by_id(nshp->id)) {
     /* free old strings. They're not used in any other place -- Welcor */
     copy_shop(shop, nshp, TRUE);
     if (zone)
-      add_to_save_list(zone->number, SL_SHP);
+      add_to_save_list(zone->id, SL_SHP);
     else
       mudlog(BRF, ADMLVL_BUILDER, TRUE,
              "SYSERR: GenOLC: Cannot determine shop zone.");
-    return shop->vnum;
+    return shop->id;
   }
 
   CREATE(shop, struct shop_data, 1);
   copy_shop(shop, nshp, FALSE);
-  shop_put(shop->vnum, shop);
+  shop_put(shop->id, shop);
 
   if (zone)
-    add_to_save_list(zone->number, SL_SHP);
+    add_to_save_list(zone->id, SL_SHP);
   else
     mudlog(BRF, ADMLVL_BUILDER, TRUE,
            "SYSERR: GenOLC: Cannot determine shop zone.");
 
-  return shop->vnum;
+  return shop->id;
 }
 
 /*-------------------------------------------------------------------*/
@@ -390,7 +390,7 @@ int save_shops(struct zone_data *zone) {
     return FALSE;
   }
 
-  snprintf(fname, sizeof(fname), "%s%d.new", SHP_PREFIX, zone->number);
+  snprintf(fname, sizeof(fname), "%s%d.new", SHP_PREFIX, zone->id);
   if (!(shop_file = fopen(fname, "w"))) {
     mudlog(BRF, ADMLVL_GOD, TRUE, "SYSERR: OLC: Cannot open shop file!");
     return FALSE;
@@ -459,7 +459,7 @@ int save_shops(struct zone_data *zone) {
             S_NOCASH2(shop) ? S_NOCASH2(shop) : "%s Ke?!",
             S_BUY(shop) ? S_BUY(shop) : "%s Ke?! %d?",
             S_SELL(shop) ? S_SELL(shop) : "%s Ke?! %d?", S_BROKE_TEMPER(shop),
-            S_BITVECTOR(shop), keeper ? keeper->vnum : -1);
+            S_BITVECTOR(shop), keeper ? keeper->id : -1);
     for (j = 0; j < SW_ARRAY_MAX; j++)
       fprintf(shop_file, "%s%d", j ? " " : "", S_NOTRADE(shop)[j]);
     fprintf(shop_file, "\n");
@@ -479,13 +479,13 @@ int save_shops(struct zone_data *zone) {
   }
   fprintf(shop_file, "$~\n");
   fclose(shop_file);
-  snprintf(oldname, sizeof(oldname), "%s%d.shp", SHP_PREFIX, zone->number);
+  snprintf(oldname, sizeof(oldname), "%s%d.shp", SHP_PREFIX, zone->id);
   remove(oldname);
   rename(fname, oldname);
 
-  if (in_save_list(zone->number, SL_SHP)) {
-    remove_from_save_list(zone->number, SL_SHP);
-    create_world_index(zone->number, "shp");
+  if (in_save_list(zone->id, SL_SHP)) {
+    remove_from_save_list(zone->id, SL_SHP);
+    create_world_index(zone->id, "shp");
     mud_log("GenOLC: save_shops: Saving shops '%s'", oldname);
   }
   return TRUE;

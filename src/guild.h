@@ -8,7 +8,7 @@ extern "C" {
 
 ACMD(do_teach);
 
-#define GM_NUM(i) ((i)->vnum)
+#define GM_NUM(i) ((i)->id)
 #define GM_TRAINER(i) ((i)->gm)
 #define GM_OPEN(i) ((i)->open)
 #define GM_CLOSE(i) ((i)->close)

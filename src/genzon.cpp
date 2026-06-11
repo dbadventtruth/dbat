@@ -185,7 +185,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top,
    * Ok, insert the new zone here.
    */
   zone->name = strdup("New Zone");
-  zone->number = vzone_num;
+  zone->id = vzone_num;
   zone->builders = strdup("None");
   zone->bot = bottom;
   zone->top = top;
@@ -206,7 +206,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top,
 
   zone_put(vzone_num, zone);
 
-  add_to_save_list(zone->number, SL_ZON);
+  add_to_save_list(zone->id, SL_ZON);
   return rznum;
 }
 
@@ -348,10 +348,10 @@ int save_zone(struct zone_data *zone) {
     return FALSE;
   }
 
-  snprintf(fname, sizeof(fname), "%s%d.new", ZON_PREFIX, zone->number);
+  snprintf(fname, sizeof(fname), "%s%d.new", ZON_PREFIX, zone->id);
   if (!(zfile = fopen(fname, "w"))) {
     mudlog(BRF, ADMLVL_BUILDER, TRUE,
-           "SYSERR: OLC: save_zones:  Can't write zone %d.", zone->number);
+           "SYSERR: OLC: save_zones:  Can't write zone %d.", zone->id);
     return FALSE;
   }
 
@@ -371,7 +371,7 @@ int save_zone(struct zone_data *zone) {
           "%s~\n"
           "%s~\n"
           "%d %d %d %d %s %s %s %s %d %d\n",
-          zn->number, (zn->builders && *zn->builders) ? zn->builders : "None.",
+          zn->id, (zn->builders && *zn->builders) ? zn->builders : "None.",
           (zn->name && *zn->name) ? zn->name : "undefined", zn->bot, zn->top,
           zn->lifespan, zn->reset_mode, zbuf1, zbuf2, zbuf3, zbuf4,
           zn->min_level, zn->max_level);
@@ -402,7 +402,7 @@ int save_zone(struct zone_data *zone) {
     switch (cmd->command) {
     case 'M': {
       auto proto = mob_proto_by_id(cmd->arg1);
-      arg1 = proto->vnum;
+      arg1 = proto->id;
       arg2 = cmd->arg2;
       arg3 = cmd->arg3;
       arg4 = cmd->arg4;
@@ -411,7 +411,7 @@ int save_zone(struct zone_data *zone) {
     } break;
     case 'O': {
       auto obj = obj_proto_by_id(cmd->arg1);
-      arg1 = obj->vnum;
+      arg1 = obj->id;
       arg2 = cmd->arg2;
       arg3 = cmd->arg3;
       arg4 = cmd->arg4;
@@ -420,7 +420,7 @@ int save_zone(struct zone_data *zone) {
     } break;
     case 'G': {
       auto obj = obj_proto_by_id(cmd->arg1);
-      arg1 = obj->vnum;
+      arg1 = obj->id;
       arg2 = cmd->arg2;
       arg3 = -1;
       arg4 = -1;
@@ -429,7 +429,7 @@ int save_zone(struct zone_data *zone) {
     } break;
     case 'E': {
       auto obj = obj_proto_by_id(cmd->arg1);
-      arg1 = obj->vnum;
+      arg1 = obj->id;
       arg2 = cmd->arg2;
       arg3 = cmd->arg3;
       arg4 = -1;
@@ -438,7 +438,7 @@ int save_zone(struct zone_data *zone) {
     } break;
     case 'P': {
       auto obj = obj_proto_by_id(cmd->arg1);
-      arg1 = obj->vnum;
+      arg1 = obj->id;
       arg2 = cmd->arg2;
       arg3 = cmd->arg3;
       arg4 = -1;
@@ -455,7 +455,7 @@ int save_zone(struct zone_data *zone) {
     case 'R': {
       auto obj = obj_proto_by_id(cmd->arg2);
       arg1 = cmd->arg1;
-      arg2 = obj->vnum;
+      arg2 = obj->id;
       comment = obj->short_description;
     }
       arg3 = -1;
@@ -495,13 +495,13 @@ int save_zone(struct zone_data *zone) {
   }
   fputs("S\n$\n", zfile);
   fclose(zfile);
-  snprintf(oldname, sizeof(oldname), "%s%d.zon", ZON_PREFIX, zn->number);
+  snprintf(oldname, sizeof(oldname), "%s%d.zon", ZON_PREFIX, zn->id);
   remove(oldname);
   rename(fname, oldname);
 
-  if (in_save_list(zn->number, SL_ZON)) {
-    remove_from_save_list(zn->number, SL_ZON);
-    create_world_index(zn->number, "zon");
+  if (in_save_list(zn->id, SL_ZON)) {
+    remove_from_save_list(zn->id, SL_ZON);
+    create_world_index(zn->id, "zon");
     mud_log("GenOLC: save_zone: Saving zone '%s'", oldname);
   }
   return TRUE;

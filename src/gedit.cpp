@@ -53,7 +53,7 @@
  * Should check more things.
  */
 void gedit_save_internally(struct descriptor_data *d) {
-  OLC_GUILD(d)->vnum = OLC_NUM(d);
+  OLC_GUILD(d)->id = OLC_NUM(d);
   add_guild(OLC_GUILD(d));
 }
 
@@ -155,7 +155,7 @@ ACMD(do_oasis_gedit) {
   /****************************************************************************/
   struct zone_data *zone = zone_by_id(OLC_ZNUM(d));
   if (!can_edit_zone(ch, zone)) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
 
     /**************************************************************************/
     /** Free the OLC structure.                                              **/
@@ -166,9 +166,9 @@ ACMD(do_oasis_gedit) {
   }
 
   if (save) {
-    send_to_char(ch, "Saving all guilds in zone %d.\r\n", zone->number);
+    send_to_char(ch, "Saving all guilds in zone %d.\r\n", zone->id);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
-           "OLC: %s saves guild info for zone %d.", GET_NAME(ch), zone->number);
+           "OLC: %s saves guild info for zone %d.", GET_NAME(ch), zone->id);
 
     /**************************************************************************/
     /** Save the guild to the guild file.                                    **/
@@ -454,7 +454,7 @@ void gedit_disp_menu(struct descriptor_data *d) {
                   "@g Q@n) Quit\r\n"
                   "Enter Choice : ",
 
-                  OLC_NUM(d), keeper ? keeper->vnum : NOTHING,
+                  OLC_NUM(d), keeper ? keeper->id : NOTHING,
                   keeper ? keeper->short_descr : "None", G_NO_SKILL(guilddata),
                   G_NO_GOLD(guilddata), G_OPEN(guilddata), G_CLOSE(guilddata),
                   G_CHARGE(guilddata), G_MINLVL(guilddata), buf1);
@@ -607,9 +607,9 @@ void gedit_parse(struct descriptor_data *d, char *arg) {
       if (i == -1)
         break;
       /*. Fiddle with special procs . */
-      auto spec = mob_proto_special_get(keeper->vnum);
+      auto spec = mob_proto_special_get(keeper->id);
       G_FUNC(OLC_GUILD(d)) = spec != guild ? spec : NULL;
-      mob_proto_special_set(keeper->vnum, guild);
+      mob_proto_special_set(keeper->id, guild);
       break;
     } else {
       write_to_output(d, "Invalid response.\r\n");

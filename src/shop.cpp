@@ -918,7 +918,7 @@ static void shopping_buy(char *arg, struct char_data *ch,
     bought++;
     /* Test if producing shop ! */
     if (shop_producing(obj, shop)) {
-      obj = read_object(obj->vnum, VIRTUAL);
+      obj = read_object(obj->proto_id, VIRTUAL);
     } else {
       obj_from_char(obj);
       SHOP_SORT(shop)--;
@@ -1608,7 +1608,7 @@ void boot_the_shops(FILE *shop_f, char *filename, int rec_count) {
 
       struct shop_data *shop = NULL;
       CREATE(shop, struct shop_data, 1);
-      shop->vnum = temp;
+      shop->id = temp;
       shop_put(temp, shop);
       temp = read_list(shop_f, list, new_format, MAX_PROD, LIST_PRODUCE, shop);
       CREATE(shop->producing, obj_vnum, temp);
@@ -1686,11 +1686,11 @@ void assign_the_shopkeepers(void) {
       return true;
 
     /* Having SHOP_FUNC() as 'shop_keeper' will cause infinite recursion. */
-    auto func = mob_proto_special_get(proto->vnum);
+    auto func = mob_proto_special_get(proto->id);
     if (func && func != shop_keeper)
       SHOP_FUNC(shop) = func;
 
-    mob_proto_special_set(proto->vnum, shop_keeper);
+    mob_proto_special_set(proto->id, shop_keeper);
     return true;
   });
 }
@@ -1758,12 +1758,12 @@ static void list_all_shops(struct char_data *ch) {
       strcpy(buf1, "<NONE>"); /* strcpy: OK (for 'buf1 >= 7') */
     else
       sprintf(buf1, "%6d",
-              keeper->vnum); /* sprintf: OK (for 'buf1 >= 11', 32-bit int) */
+              keeper->id); /* sprintf: OK (for 'buf1 >= 11', 32-bit int) */
 
     len +=
         snprintf(buf + len, sizeof(buf) - len,
                  "%3d   %6d   %6d    %s   %3.2f   %3.2f    %s\r\n", shop_nr + 1,
-                 shop->vnum, shop->in_room[0], buf1, shop->profit_sell,
+                 shop->id, shop->in_room[0], buf1, shop->profit_sell,
                  shop->profit_buy, customer_string(shop, FALSE));
 
     shop_nr++;
@@ -1778,7 +1778,7 @@ static void list_detailed_shop(struct char_data *ch, struct shop_data *shop) {
   int sindex, column;
   char *ptrsave;
 
-  send_to_char(ch, "Vnum:       [%5d]\r\n", shop->vnum);
+  send_to_char(ch, "Vnum:       [%5d]\r\n", shop->id);
 
   send_to_char(ch, "Rooms:      ");
   column = 12; /* ^^^ strlen ^^^ */
@@ -1818,9 +1818,9 @@ static void list_detailed_shop(struct char_data *ch, struct shop_data *shop) {
   auto keeper = mob_proto_by_id(shop->keeper);
   if (keeper) {
     send_to_char(ch, "%s (#%d), Special Function: %s\r\n", GET_NAME(keeper),
-                 keeper->vnum, YESNO(shop->func));
+                 keeper->id, YESNO(shop->func));
 
-    if ((k = get_char_num(keeper->vnum)))
+    if ((k = get_char_num(keeper->id)))
       send_to_char(ch, "Coins:      [%9d], Bank: [%9d] (Total: %d)\r\n",
                    GET_GOLD(k), shop->bankAccount,
                    GET_GOLD(k) + shop->bankAccount);
@@ -1842,7 +1842,7 @@ static void list_detailed_shop(struct char_data *ch, struct shop_data *shop) {
     }
     auto obj = obj_proto_by_id(shop->producing[sindex]);
     linelen = snprintf(buf1, sizeof(buf1), "%s (#%d)", obj->short_description,
-                       obj->vnum);
+                       obj->id);
 
     /* Implementing word-wrapping: assumes screen-size == 80 */
     if (linelen + column >= 78 && column >= 20) {
@@ -1962,7 +1962,7 @@ void destroy_shops(void) {
           free(BUY_WORD(shop->type[itr]));
       free(shop->type);
     }
-    shop_delete(shop->vnum);
+    shop_delete(shop->id);
     free(shop);
     return true;
   });
@@ -1972,7 +1972,7 @@ int count_shops(shop_vnum low, shop_vnum high) {
   int j = 0;
 
   shop_iterate([&](auto shop) {
-    if (shop->vnum >= low && shop->vnum <= high)
+    if (shop->id >= low && shop->id <= high)
       j++;
     return true;
   });

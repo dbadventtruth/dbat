@@ -412,7 +412,7 @@ struct obj_data *create_money(int amount) {
   SET_BIT_AR(GET_OBJ_WEAR(obj), ITEM_WEAR_TAKE);
   GET_OBJ_VAL(obj, VAL_MONEY_SIZE) = amount;
   GET_OBJ_COST(obj) = amount;
-  obj->vnum = NOTHING;
+  obj->proto_id = NOTHING;
 
   return (obj);
 }

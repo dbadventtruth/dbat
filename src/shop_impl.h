@@ -13,7 +13,7 @@ struct shop_buy_data {
 #define SW_ARRAY_MAX 4
 
 struct shop_data {
-  room_vnum vnum;                     /* Virtual number of this shop		*/
+  shop_vnum id;                       /* Virtual number of this shop		*/
   obj_vnum *producing;                /* Which item to produce (virtual)	*/
   float profit_buy;                   /* Factor to multiply cost with		*/
   float profit_sell;                  /* Factor to multiply cost with		*/

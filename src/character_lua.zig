@@ -584,7 +584,7 @@ fn luaCharacterRoomGet(lua: *Lua) i32 {
         lua.pushNil();
         return 1;
     }
-    rooms_lua.pushRoom(lua, room.*.number);
+    rooms_lua.pushRoom(lua, room.*.id);
     return 1;
 }
 

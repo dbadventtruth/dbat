@@ -47,7 +47,7 @@ void parse_trigger(FILE *trig_f, int nr) {
 
   CREATE(trig, struct trig_data, 1);
   snprintf(errors, sizeof(errors), "trig vnum %d", nr);
-  trig->vnum = nr;
+  trig->proto_id = nr;
   trig->name = fread_string(trig_f, errors);
 
   trig_proto_put(nr, trig);
@@ -95,7 +95,7 @@ trig_data *read_trigger(trig_vnum nr) {
 }
 
 void trig_data_init(trig_data *this_data) {
-  this_data->vnum = NOTHING;
+  this_data->proto_id = NOTHING;
   this_data->data_type = 0;
   this_data->name = NULL;
   this_data->trigger_type = 0;
@@ -114,14 +114,14 @@ void trig_data_init(trig_data *this_data) {
 void trig_data_copy(trig_data *this_data, const trig_data *trg) {
   trig_data_init(this_data);
 
-  this_data->vnum = trg->vnum;
+  this_data->proto_id = trg->proto_id;
   this_data->attach_type = trg->attach_type;
   this_data->data_type = trg->data_type;
   if (trg->name)
     this_data->name = strdup(trg->name);
   else {
     this_data->name = strdup("unnamed trigger");
-    mud_log("Trigger with no name! (%d)", trg->vnum);
+    mud_log("Trigger with no name! (%d)", trg->proto_id);
   }
   this_data->trigger_type = trg->trigger_type;
   this_data->cmdlist = trg->cmdlist;
@@ -177,7 +177,7 @@ void dg_read_trigger(FILE *fp, void *proto, int type) {
   switch (type) {
   case MOB_TRIGGER:
     CREATE(new_trg, struct trig_proto_list, 1);
-    new_trg->vnum = vnum;
+    new_trg->id = vnum;
     new_trg->next = NULL;
 
     mob = (char_data *)proto;
@@ -192,7 +192,7 @@ void dg_read_trigger(FILE *fp, void *proto, int type) {
     break;
   case WLD_TRIGGER:
     CREATE(new_trg, struct trig_proto_list, 1);
-    new_trg->vnum = vnum;
+    new_trg->id = vnum;
     new_trg->next = NULL;
     room = (room_data *)proto;
     trg_proto = room->proto_script;
@@ -239,12 +239,12 @@ void dg_obj_trigger(char *line, struct obj_proto_data *obj) {
     mudlog(BRF, ADMLVL_BUILDER, TRUE,
            "SYSERR: Trigger vnum #%d asked for but non-existant! (Object: %s - "
            "%d)",
-           vnum, obj->short_description, GET_OBJ_VNUM(obj));
+           vnum, obj->short_description, obj->id);
     return;
   }
 
   CREATE(new_trg, struct trig_proto_list, 1);
-  new_trg->vnum = vnum;
+  new_trg->id = vnum;
   new_trg->next = NULL;
 
   trg_proto = obj->proto_script;
@@ -269,11 +269,11 @@ void assign_triggers(void *i, int type) {
     mob = (char_data *)i;
     trg_proto = mob->proto_script;
     while (trg_proto) {
-      rnum = real_trigger(trg_proto->vnum);
+      rnum = real_trigger(trg_proto->id);
       if (rnum == NOTHING) {
         mudlog(BRF, ADMLVL_BUILDER, TRUE,
-               "SYSERR: trigger #%d non-existant, for mob #%d", trg_proto->vnum,
-               mob->vnum);
+               "SYSERR: trigger #%d non-existant, for mob #%d", trg_proto->id,
+               mob->proto_id);
       } else {
         if (!SCRIPT(mob))
           CREATE(SCRIPT(mob), struct script_data, 1);
@@ -286,10 +286,10 @@ void assign_triggers(void *i, int type) {
     obj = (obj_data *)i;
     trg_proto = obj->proto_script;
     while (trg_proto) {
-      rnum = real_trigger(trg_proto->vnum);
+      rnum = real_trigger(trg_proto->id);
       if (rnum == NOTHING) {
-        mud_log("SYSERR: trigger #%d non-existant, for obj #%d", trg_proto->vnum,
-            obj->vnum);
+        mud_log("SYSERR: trigger #%d non-existant, for obj #%d", trg_proto->id,
+            obj->proto_id);
       } else {
         if (!SCRIPT(obj))
           CREATE(SCRIPT(obj), struct script_data, 1);
@@ -302,11 +302,11 @@ void assign_triggers(void *i, int type) {
     room = (struct room_data *)i;
     trg_proto = room->proto_script;
     while (trg_proto) {
-      rnum = real_trigger(trg_proto->vnum);
+      rnum = real_trigger(trg_proto->id);
       if (rnum == NOTHING) {
         mudlog(BRF, ADMLVL_BUILDER, TRUE,
                "SYSERR: trigger #%d non-existant, for room #%d",
-               trg_proto->vnum, room_vnum_get(room));
+               trg_proto->id, room_vnum_get(room));
       } else {
         struct script_data *sc = room_script_ensure(room);
         add_trigger(sc, read_trigger(rnum), -1);

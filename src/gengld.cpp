@@ -120,14 +120,14 @@ int add_guild(struct guild_data *ngld) {
     } else
       mudlog(BRF, ADMLVL_BUILDER, TRUE,
              "SYSERR: GenOLC: Cannot determine guild zone.");
-    return guild->vnum;
+    return guild->id;
   }
 
   mudlog(BRF, ADMLVL_BUILDER, TRUE, "SYSERR: GenOLC: Creating new guild.");
 
   CREATE(guild, struct guild_data, 1);
   copy_guild(guild, ngld);
-  guild_put(guild->vnum, guild);
+  guild_put(guild->id, guild);
 
   if (zv != NOTHING) {
     add_to_save_list(zv, SL_GLD);
@@ -135,7 +135,7 @@ int add_guild(struct guild_data *ngld) {
     mudlog(BRF, ADMLVL_BUILDER, TRUE,
            "SYSERR: GenOLC: Cannot determine guild zone.");
 
-  return guild->vnum;
+  return guild->id;
 }
 
 /*-------------------------------------------------------------------*/
@@ -151,7 +151,7 @@ int save_guilds(struct zone_data *zone) {
     return FALSE;
   }
 
-  snprintf(fname, sizeof(fname), "%s%d.gld", GLD_PREFIX, zone->number);
+  snprintf(fname, sizeof(fname), "%s%d.gld", GLD_PREFIX, zone->id);
   if (!(guild_file = fopen(fname, "w"))) {
     mudlog(BRF, ADMLVL_GOD, TRUE, "SYSERR: OLC: Cannot open Guild file!");
     return FALSE;
@@ -189,7 +189,7 @@ int save_guilds(struct zone_data *zone) {
     auto keeper = mob_proto_by_id(G_TRAINER(guild));
 
     /*. Save the rest . */
-    fprintf(guild_file, "%d\n%d\n%d\n%d\n", keeper ? keeper->vnum : -1,
+    fprintf(guild_file, "%d\n%d\n%d\n%d\n", keeper ? keeper->id : -1,
             G_WITH_WHO(guild)[0], G_OPEN(guild), G_CLOSE(guild));
     for (j = 1; j < SW_ARRAY_MAX; j++)
       fprintf(guild_file, "%s%d", j == 1 ? "" : " ", G_WITH_WHO(guild)[j]);
@@ -198,9 +198,9 @@ int save_guilds(struct zone_data *zone) {
   fprintf(guild_file, "$~\n");
   fclose(guild_file);
 
-  if (in_save_list(zone->number, SL_GLD)) {
-    remove_from_save_list(zone->number, SL_GLD);
-    create_world_index(zone->number, "gld");
+  if (in_save_list(zone->id, SL_GLD)) {
+    remove_from_save_list(zone->id, SL_GLD);
+    create_world_index(zone->id, "gld");
     mud_log("GenOLC: save_guilds: Saving guilds '%s'", fname);
   }
   return TRUE;
