@@ -117,6 +117,7 @@ pub fn main(init: std.process.Init) u8 {
 
     cdb.boot_db();
     defer cdb.cleanup_game_world();
+    cdb.zone_schedule_all_resets();
 
     cdb.load_spacemap();
     cdb.topLoad();

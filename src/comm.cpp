@@ -439,7 +439,6 @@ static void ev_script_trigger_check(int, long long, long long) {
 
 static void ev_check_auction(int, long long, long long) { check_auction(); }
 static void ev_handle_songs(int, long long, long long) { handle_songs(); }
-static void ev_zone_update(int, long long, long long) { zone_update(); }
 static void ev_check_idle_passwords(int, long long, long long) { check_idle_passwords(); }
 static void ev_check_idle_menu(int, long long, long long) { check_idle_menu(); }
 static void ev_fight_stack(int, long long, long long) { fight_stack(); }
@@ -486,13 +485,11 @@ void event_queue_register_heartbeat_events() {
 
   // Config-driven intervals (convert pulse count to ms: pulses * 100)
   const int64_t dg_ms     = (int64_t)PULSE_DG_SCRIPT * 100;
-  const int64_t zone_ms   = (int64_t)PULSE_ZONE       * 100;
   const int64_t idle_ms   = (int64_t)PULSE_IDLEPWD    * 100;
   const int64_t mobile_ms = (int64_t)PULSE_MOBILE     * 100;
   const int64_t fight_ms  = idle_ms / 15;
 
   event_schedule_c(now + dg_ms,          dg_ms,          ev_script_trigger_check, EQ_CTX_NONE, 0, 0);
-  event_schedule_c(now + zone_ms,         zone_ms,         ev_zone_update,          EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + idle_ms,         idle_ms,         ev_check_idle_passwords, EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + fight_ms,        fight_ms,        ev_fight_stack,          EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + fight_ms * 2,    fight_ms * 2,    ev_homing_huge_broken,   EQ_CTX_NONE, 0, 0);

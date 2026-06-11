@@ -130,7 +130,7 @@ void index_boot(int mode);
 void boot_db(void);
 void destroy_db(void);
 int create_entry(char *name);
-void zone_update(void);
+void zone_schedule_all_resets(void);
 char *fread_string(FILE *fl, const char *error);
 long get_id_by_name(const char *name);
 char *get_name_by_id(long id);
