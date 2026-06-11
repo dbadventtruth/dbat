@@ -158,7 +158,7 @@ ACMD(do_oasis_medit) {
   /****************************************************************************/
   auto zone = zone_by_id(OLC_ZNUM(d));
   if (!can_edit_zone(ch, zone)) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
     free(d->olc);
     d->olc = NULL;
     return;
@@ -168,10 +168,10 @@ ACMD(do_oasis_medit) {
   /** If save is TRUE, save the mobiles.                                     **/
   /****************************************************************************/
   if (save) {
-    send_to_char(ch, "Saving all mobiles in zone %d.\r\n", zone->number);
+    send_to_char(ch, "Saving all mobiles in zone %d.\r\n", zone->id);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
            "OLC: %s saves mobile info for zone %d.", GET_NAME(ch),
-           zone->number);
+           zone->id);
 
     /**************************************************************************/
     /** Save the mobiles.                                                    **/
@@ -209,7 +209,7 @@ ACMD(do_oasis_medit) {
 
   mudlog(BRF, ADMLVL_IMMORT, TRUE,
          "OLC: %s starts editing zone %d allowed zone %d", GET_NAME(ch),
-         zone->number, GET_OLC_ZONE(ch));
+         zone->id, GET_OLC_ZONE(ch));
 }
 
 void medit_save_to_disk(zone_vnum foo) { if(config_info.test_mode) return;
@@ -225,7 +225,7 @@ void medit_setup_new(struct descriptor_data *d) {
 
   init_mobile(mob);
 
-  mob->vnum = NOBODY;
+  mob->proto_id = NOBODY;
   /*
    * Set up some default strings.
    */
@@ -309,7 +309,7 @@ void medit_save_internally(struct descriptor_data *d) {
   struct char_data *mob;
   mob_vnum v = OLC_NUM(d);
 
-  OLC_MOB(d)->vnum = v;
+  OLC_MOB(d)->proto_id = v;
   OLC_MOB(d)->proto_script = OLC_SCRIPT(d);
   if ((new_rnum = add_mobile(OLC_MOB(d), v)) == NOBODY) {
     mud_log("medit_save_internally: add_mobile failed.");
@@ -919,7 +919,7 @@ void medit_parse(struct descriptor_data *d, char *arg) {
 
   case MEDIT_DELETE:
     if (*arg == 'y' || *arg == 'Y') {
-      if (delete_mobile(OLC_MOB(d)->vnum) != NOBODY)
+      if (delete_mobile(OLC_MOB(d)->proto_id) != NOBODY)
         write_to_output(d, "Mobile deleted.\r\n");
       else
         write_to_output(d, "Couldn't delete the mobile!\r\n");

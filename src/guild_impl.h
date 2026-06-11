@@ -11,7 +11,7 @@ extern "C" {
 #define GW_ARRAY_MAX 4
 
 struct guild_data {
-  room_vnum vnum;               /* number of the guild */
+  guild_vnum id;                /* number of the guild */
   int skills[SKILL_TABLE_SIZE]; /* array to keep track of which feats things
                                    we'll train */
   float charge;          /* charge * skill level = how much we'll charge */

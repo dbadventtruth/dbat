@@ -160,9 +160,9 @@ fn exportRooms(folder: []const u8) !void {
     defer cdb.room_iterator_free(iterator);
 
     while (cdb.room_next(iterator)) |room| {
-        const path = try assetPath(folder, room.*.number);
+        const path = try assetPath(folder, room.*.id);
         defer std.heap.page_allocator.free(path);
-        try exportRoom(room.*.number, path);
+        try exportRoom(room.*.id, path);
     }
 }
 
@@ -178,9 +178,9 @@ fn exportAllRoomExits(folder: []const u8) !void {
     defer cdb.room_iterator_free(iterator);
 
     while (cdb.room_next(iterator)) |room| {
-        const path = try assetPath(folder, room.*.number);
+        const path = try assetPath(folder, room.*.id);
         defer std.heap.page_allocator.free(path);
-        try exportRoomExits(room.*.number, path);
+        try exportRoomExits(room.*.id, path);
     }
 }
 
@@ -196,7 +196,7 @@ fn exportNpcPrototypes(folder: []const u8) !void {
     defer cdb.mob_proto_iterator_free(iterator);
 
     while (cdb.mob_proto_next(iterator)) |mob| {
-        const vnum = mob.*.vnum;
+        const vnum = mob.*.id;
         if (vnum == cdb.NOTHING) continue;
         const path = try assetPath(folder, vnum);
         defer std.heap.page_allocator.free(path);
@@ -216,7 +216,7 @@ fn exportObjPrototypes(folder: []const u8) !void {
     defer cdb.obj_proto_iterator_free(iterator);
 
     while (cdb.obj_proto_next(iterator)) |obj| {
-        const vnum = obj.*.vnum;
+        const vnum = obj.*.id;
         if (vnum == cdb.NOTHING) continue;
         const path = try assetPath(folder, vnum);
         defer std.heap.page_allocator.free(path);
@@ -236,9 +236,9 @@ fn exportZones(folder: []const u8) !void {
     defer cdb.zone_iterator_free(iterator);
 
     while (cdb.zone_next(iterator)) |zone| {
-        const path = try assetPath(folder, zone.*.number);
+        const path = try assetPath(folder, zone.*.id);
         defer std.heap.page_allocator.free(path);
-        try exportZone(zone.*.number, path);
+        try exportZone(zone.*.id, path);
     }
 }
 
@@ -254,9 +254,9 @@ fn exportShops(folder: []const u8) !void {
     defer cdb.shop_iterator_free(iterator);
 
     while (cdb.shop_next(iterator)) |shop| {
-        const path = try assetPath(folder, shop.*.vnum);
+        const path = try assetPath(folder, shop.*.id);
         defer std.heap.page_allocator.free(path);
-        try exportShop(shop.*.vnum, path);
+        try exportShop(shop.*.id, path);
     }
 }
 
@@ -272,9 +272,9 @@ fn exportGuilds(folder: []const u8) !void {
     defer cdb.guild_iterator_free(iterator);
 
     while (cdb.guild_next(iterator)) |guild| {
-        const path = try assetPath(folder, guild.*.vnum);
+        const path = try assetPath(folder, guild.*.id);
         defer std.heap.page_allocator.free(path);
-        try exportGuild(guild.*.vnum, path);
+        try exportGuild(guild.*.id, path);
     }
 }
 
@@ -289,7 +289,7 @@ fn exportDgScripts(folder: []const u8) !void {
     defer cdb.trig_proto_iterator_free(iterator);
 
     while (cdb.trig_proto_next(iterator)) |trigger| {
-        const vnum = trigger.*.vnum;
+        const vnum = trigger.*.proto_id;
         if (vnum == cdb.NOTHING) continue;
         const path = try assetPath(folder, vnum);
         defer std.heap.page_allocator.free(path);
@@ -404,7 +404,7 @@ fn importZones(folder: []const u8) !void {
             logImportFileError("zones", file, err);
             return err;
         };
-        cdb.zone_put(zone.number, zone);
+        cdb.zone_put(zone.id, zone);
         progress.tick(index);
     }
 }
@@ -425,14 +425,14 @@ fn importRooms(folder: []const u8) !void {
             return err;
         };
         const room = try allocCOne(cdb.room_data);
-        room.number = @intCast(file.vnum);
-        room.zone = cdb.virtual_zone_by_thing(room.number);
+        room.id = @intCast(file.vnum);
+        room.zone = cdb.virtual_zone_by_thing(room.id);
         rooms_json.deserializeRoom(room, .{}, value) catch |err| {
             logImportFileError("rooms", file, err);
             return err;
         };
-        room.zone = cdb.virtual_zone_by_thing(room.number);
-        cdb.room_put(room.number, room);
+        room.zone = cdb.virtual_zone_by_thing(room.id);
+        cdb.room_put(room.id, room);
         progress.tick(index);
     }
 }
@@ -503,12 +503,12 @@ fn importNpcPrototypes(folder: []const u8) !void {
             return err;
         };
         const mob = try allocCOne(cdb.mob_proto_data);
-        mob.vnum = @intCast(file.vnum);
+        mob.id = @intCast(file.vnum);
         characters_json.deserializeMobPrototype(mob, .{ .mode = .npc_prototype }, value) catch |err| {
             logImportFileError("npc_prototypes", file, err);
             return err;
         };
-        mob.vnum = @intCast(file.vnum);
+        mob.id = @intCast(file.vnum);
         cdb.mob_proto_put(@intCast(file.vnum), mob);
         progress.tick(index);
     }
@@ -530,12 +530,12 @@ fn importObjPrototypes(folder: []const u8) !void {
             return err;
         };
         const obj = try allocCOne(cdb.obj_proto_data);
-        obj.vnum = @intCast(file.vnum);
+        obj.id = @intCast(file.vnum);
         objects_json.deserializeObjectPrototype(obj, .{ .mode = .prototype }, value) catch |err| {
             logImportFileError("obj_prototypes", file, err);
             return err;
         };
-        obj.vnum = @intCast(file.vnum);
+        obj.id = @intCast(file.vnum);
         cdb.obj_proto_put(@intCast(file.vnum), obj);
         progress.tick(index);
     }
@@ -557,7 +557,7 @@ fn importShops(folder: []const u8) !void {
             return err;
         };
         const shop = try allocCOne(cdb.shop_data);
-        shop.vnum = @intCast(file.vnum);
+        shop.id = @intCast(file.vnum);
         shops_json.deserializeShop(shop, .{}, value) catch |err| {
             logImportFileError("shops", file, err);
             return err;
@@ -583,7 +583,7 @@ fn importGuilds(folder: []const u8) !void {
             return err;
         };
         const guild = try allocCOne(cdb.guild_data);
-        guild.vnum = @intCast(file.vnum);
+        guild.id = @intCast(file.vnum);
         guilds_json.deserializeGuild(guild, .{}, value) catch |err| {
             logImportFileError("guilds", file, err);
             return err;

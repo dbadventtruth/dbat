@@ -5,10 +5,10 @@ const bitflags = @import("flags.zig");
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 
 pub export fn guild_id_get(guild: *cdb.guild_data) cdb.guild_vnum {
-    return guild.vnum;
+    return guild.id;
 }
 pub export fn guild_id_set(guild: *cdb.guild_data, id: cdb.guild_vnum) void {
-    guild.vnum = id;
+    guild.id = id;
 }
 pub export fn guild_skill_get(guild: *cdb.guild_data, skill: usize) bool {
     return skill < guild.skills.len and guild.skills[skill] != 0;

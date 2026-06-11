@@ -1090,10 +1090,10 @@ ACMD(do_oasis_hsedit) {
   if (!can_edit_zone(ch, zone)) {
     send_to_char(
         ch, " You do not have permission to edit zone %d. Try zone %d.\r\n",
-        zone->number, GET_OLC_ZONE(ch));
+        zone->id, GET_OLC_ZONE(ch));
     mudlog(BRF, ADMLVL_BUILDER, TRUE,
            "OLC: %s tried to edit zone %d allowed zone %d", GET_NAME(ch),
-           zone->number, GET_OLC_ZONE(ch));
+           zone->id, GET_OLC_ZONE(ch));
 
     /**************************************************************************/
     /** Free the descriptor's OLC structure.                                **/
@@ -1109,9 +1109,9 @@ ACMD(do_oasis_hsedit) {
 
   /****************************************************************************/
   if (save) {
-    send_to_char(ch, "Saving all houses in zone %d.\r\n", zone->number);
+    send_to_char(ch, "Saving all houses in zone %d.\r\n", zone->id);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
-           "OLC: %s saves house info for zone %d.", GET_NAME(ch), zone->number);
+           "OLC: %s saves house info for zone %d.", GET_NAME(ch), zone->id);
 
     /**************************************************************************/
     /** Save the houses in this zone.                                       **/
@@ -1167,5 +1167,5 @@ ACMD(do_oasis_hsedit) {
   /****************************************************************************/
   mudlog(CMP, ADMLVL_BUILDER, TRUE,
          "OLC: (hsedit) %s starts editing zone %d allowed zone %d",
-         GET_NAME(ch), zone->number, GET_OLC_ZONE(ch));
+         GET_NAME(ch), zone->id, GET_OLC_ZONE(ch));
 }

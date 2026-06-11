@@ -1099,7 +1099,7 @@ int remove_trigger(struct script_data *sc, char *name) {
     /* is found. originally the number was position-only */
     else if (++n >= num)
       break;
-    else if (i->vnum == num)
+    else if (i->proto_id == num)
       break;
   }
 

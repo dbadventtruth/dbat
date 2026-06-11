@@ -10,7 +10,7 @@ pub fn serializeProtoScript(allocator: std.mem.Allocator, head: [*c]cdb.trig_pro
     var array = jsonx.JsonArray.init(allocator);
     var current = head;
     while (current != null) : (current = current.*.next) {
-        try array.append(.{ .integer = current.*.vnum });
+        try array.append(.{ .integer = current.*.id });
     }
     return .{ .array = array };
 }
@@ -36,7 +36,7 @@ pub fn deserializeProtoScript(target: *[*c]cdb.trig_proto_list, value: JsonValue
 
 fn newProtoScriptNode(vnum: c_int) !*cdb.trig_proto_list {
     const node: *cdb.trig_proto_list = @ptrCast(@alignCast(calloc(1, @sizeOf(cdb.trig_proto_list)) orelse return error.OutOfMemory));
-    node.vnum = vnum;
+    node.id = vnum;
     node.next = null;
     return node;
 }
@@ -53,7 +53,7 @@ fn freeProtoScript(head: [*c]cdb.trig_proto_list) void {
 pub fn serializeTrigger(allocator: std.mem.Allocator, trigger: *cdb.trig_data) !JsonValue {
     var object = jsonx.newObject(allocator);
     try jsonx.putSlice(&object, allocator, "kind", "trigger");
-    try jsonx.putInt(&object, allocator, "id", trigger.vnum);
+    try jsonx.putInt(&object, allocator, "id", trigger.proto_id);
     try jsonx.putString(&object, allocator, "name", trigger.name);
     try jsonx.putInt(&object, allocator, "attach_type", trigger.attach_type);
     try jsonx.putInt(&object, allocator, "trigger_type", trigger.trigger_type);

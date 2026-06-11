@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 struct obj_proto_data {
-  obj_vnum vnum;                    /* Where in data-base			*/
+  obj_vnum id;                      /* Where in data-base			*/
   int value[NUM_OBJ_VAL_POSITIONS]; /* Values of the item (see list)    */
   int8_t type_flag;                 /* Type of item                        */
   int level;                        /* Minimum level of object.            */
@@ -35,7 +35,7 @@ struct obj_proto_data {
 };
 
 struct obj_data {
-  obj_vnum vnum;                    /* Where in data-base			*/
+  obj_vnum proto_id;                /* Where in data-base			*/
   int value[NUM_OBJ_VAL_POSITIONS]; /* Values of the item (see list)    */
   int8_t type_flag;                 /* Type of item                        */
   int level;                        /* Minimum level of object.            */

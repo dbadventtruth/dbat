@@ -15,7 +15,7 @@ zone_vnum virtual_zone_by_thing(room_vnum vznum) {
   zone_vnum found = NOTHING;
   zone_iterate([&](auto z) {
     if (z->bot <= vznum && z->top >= vznum) {
-      found = z->number;
+      found = z->id;
       return false; // break
     }
     return true; // continue

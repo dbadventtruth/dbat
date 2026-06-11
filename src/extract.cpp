@@ -232,8 +232,8 @@ void extract_char_final(struct char_data *ch) {
   char_from_room(ch);
 
   if (IS_NPC(ch)) {
-    if (ch->vnum != NOTHING) /* prototyped */
-      mob_proto_count_decrement(ch->vnum);
+    if (ch->proto_id != NOTHING) /* prototyped */
+      mob_proto_count_decrement(ch->proto_id);
     clearMemory(ch);
     if (SCRIPT(ch))
       extract_script(ch, MOB_TRIGGER);

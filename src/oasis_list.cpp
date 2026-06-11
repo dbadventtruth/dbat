@@ -141,7 +141,7 @@ ACMD(do_oasis_links) {
 
   if (!strcmp(arg, ".") || (arg == NULL || !*arg)) {
     auto zone = char_zone_get(ch);
-    zvnum = zone->number;
+    zvnum = zone->id;
   } else {
     zvnum = atoi(arg);
   }
@@ -167,11 +167,11 @@ ACMD(do_oasis_links) {
       auto rzone = room_zone_get(room);
        if (dzone != rzone) {
         send_to_char(ch, "  %s (%d) via %s\r\n", dzone->name,
-                     dzone->number, dirs[dir]);
+                     dzone->id, dirs[dir]);
       }
       if (rzone != dzone) {
         send_to_char(ch, "  %s (%d) via %s\r\n", dzone->name,
-                     dzone->number, dirs[dir]);
+                     dzone->id, dirs[dir]);
       }
       return true;
     });
@@ -261,7 +261,7 @@ void list_mobiles(struct char_data *ch, struct zone_data *zone, mob_vnum vmin,
 
     send_to_char(
         ch, "@g%4d@n) [@g%-5d@n] @[3]%-*s @C%-9s @c%-9s @y[%4d]@n %s\r\n",
-        counter, mob->vnum, count_color_chars(mob->short_descr) + 30,
+        counter, mob->id, count_color_chars(mob->short_descr) + 30,
         mob->short_descr, TRUE_RACE((mob)), SENSEI_NAME((mob)),
         mob_proto_stat_get(mob, "level"), mob->proto_script ? " [TRIG]" : "");
   }
@@ -298,7 +298,7 @@ void list_objects(struct char_data *ch, struct zone_data *zone, obj_vnum vmin,
     counter++;
 
     send_to_char(ch, "@g%4d@n) [@g%-5d@n] @[2]%-*s @y[%s]@n%s\r\n", counter,
-                 obj->vnum, count_color_chars(obj->short_description) + 44,
+                 obj->id, count_color_chars(obj->short_description) + 44,
                  obj->short_description, item_types[obj->type_flag],
                  obj->proto_script ? " [TRIG]" : "");
   }
@@ -334,7 +334,7 @@ void list_shops(struct char_data *ch, struct zone_data *zone, shop_vnum vmin,
     if (auto shop = shop_by_id(i); shop) {
       counter++;
 
-      send_to_char(ch, "@g%4d@n) [@g%-5d@n]", counter, shop->vnum);
+      send_to_char(ch, "@g%4d@n) [@g%-5d@n]", counter, shop->id);
 
       /************************************************************************/
       /** Retrieve the list of rooms for this shop.                          **/
@@ -367,7 +367,7 @@ void list_zones(struct char_data *ch) {
                    "--------------------------------------\r\n");
 
   zone_iterate([&](auto zone) {
-    send_to_char(ch, "[@g%3d@n] @c%-*s @y%-1s@n\r\n", zone->number,
+    send_to_char(ch, "[@g%3d@n] @c%-*s @y%-1s@n\r\n", zone->id,
                  count_color_chars(zone->name) + 30, zone->name,
                  zone->builders ? zone->builders : "None.");
     return true;
@@ -448,7 +448,7 @@ void print_zone(struct char_data *ch, struct zone_data *zone) {
                "@g   Shops       = @c%d\r\n"
                "@g   Triggers    = @c%d\r\n"
                "@g   Guilds      = @c%d@n\r\n",
-               zone->number, zone->name, zone->builders, zone->lifespan,
+               zone->id, zone->name, zone->builders, zone->lifespan,
                zone->age, zone->bot, zone->top,
                zone->reset_mode ? ((zone->reset_mode == 1)
                                        ? "Reset when no players are in zone."
@@ -486,7 +486,7 @@ void list_triggers(struct char_data *ch, struct zone_data *zone, trig_vnum vmin,
       continue;
     counter++;
 
-    send_to_char(ch, "%4d) [@g%5d@n] @[1]%-45.45s ", counter, trig->vnum,
+    send_to_char(ch, "%4d) [@g%5d@n] @[1]%-45.45s ", counter, trig->proto_id,
                  trig->name);
 
     if (trig->attach_type == OBJ_TRIGGER) {

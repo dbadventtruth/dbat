@@ -149,13 +149,13 @@ pub fn serializeMobPrototype(allocator: std.mem.Allocator, proto: *cdb.mob_proto
 
 pub fn deserializeMobPrototype(proto: *cdb.mob_proto_data, options: DeserializeOptions, value: JsonValue) !void {
     var ch: cdb.char_data = std.mem.zeroes(cdb.char_data);
-    ch.vnum = proto.vnum;
+    ch.proto_id = proto.id;
     try deserializeCharacter(&ch, .{ .c_allocator = options.c_allocator, .mode = .npc_prototype }, value);
     characterToMobProto(proto, &ch);
 }
 
 fn mobProtoToCharacter(ch: *cdb.char_data, proto: *const cdb.mob_proto_data) void {
-    ch.vnum = proto.vnum;
+    ch.proto_id = proto.id;
     ch.name = proto.name;
     ch.short_descr = proto.short_descr;
     ch.long_descr = proto.long_descr;
@@ -174,7 +174,7 @@ fn mobProtoToCharacter(ch: *cdb.char_data, proto: *const cdb.mob_proto_data) voi
 }
 
 fn characterToMobProto(proto: *cdb.mob_proto_data, ch: *const cdb.char_data) void {
-    proto.vnum = ch.vnum;
+    proto.id = ch.proto_id;
     proto.name = ch.name;
     proto.short_descr = ch.short_descr;
     proto.long_descr = ch.long_descr;

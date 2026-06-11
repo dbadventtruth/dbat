@@ -5,10 +5,10 @@ const bitflags = @import("flags.zig");
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 
 pub export fn shop_id_get(shop: *cdb.shop_data) cdb.shop_vnum {
-    return shop.vnum;
+    return shop.id;
 }
 pub export fn shop_id_set(shop: *cdb.shop_data, id: cdb.shop_vnum) void {
-    shop.vnum = id;
+    shop.id = id;
 }
 pub export fn shop_profit_buy_get(shop: *cdb.shop_data) f32 {
     return shop.profit_buy;

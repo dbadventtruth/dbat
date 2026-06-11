@@ -314,7 +314,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
           break;
         case WLD_TRIGGER:
           snprintf(str, slen, "%cR%d", UID_CHAR,
-                   ((room_data *)go)->number);
+                   ((room_data *)go)->id);
           break;
         }
       } else if (!strcasecmp(var, "global")) {
@@ -577,7 +577,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 
           switch (type) {
           case WLD_TRIGGER:
-            in_room = room_by_id(((struct room_data *)go)->number);
+            in_room = room_by_id(((struct room_data *)go)->id);
             break;
           case OBJ_TRIGGER:
             in_room = obj_room((struct obj_data *)go);
@@ -1034,11 +1034,11 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 #ifdef ACTOR_ROOM_IS_UID
           snprintf(str, slen, "%cR%d", UID_CHAR,
                    (char_room_get(c) != NULL)
-                       ? char_room_get(c)->number
+                       ? char_room_get(c)->id
                        : 0);
 #else
           snprintf(str, slen, "%d",
-                   (char_room_get(c) != NULL) ? char_room_get(c)->number : 0);
+                   (char_room_get(c) != NULL) ? char_room_get(c)->id : 0);
 #endif
         }
 #ifdef GET_RACE
@@ -1295,7 +1295,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         else if (!strcasecmp(field, "is_inroom")) {
           if (obj_room_get(o) != NULL)
             snprintf(str, slen, "%cR%d", UID_CHAR,
-                     obj_room_get(o)->number);
+                     obj_room_get(o)->id);
           else
             *str = '\0';
         } else if (!strcasecmp(field, "is_pc")) {
@@ -1336,7 +1336,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         if (!strcasecmp(field, "room")) {
           if (obj_room(o))
             snprintf(str, slen, "%cR%d", UID_CHAR,
-                     obj_room(o)->number);
+                     obj_room(o)->id);
           else
             *str = '\0';
         }
@@ -1473,7 +1473,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 
       /* special handling of the void, as it stores all 'full global' variables
        */
-      if (r->number == 0) {
+      if (r->id == 0) {
         if (!SCRIPT(r)) {
           *str = '\0';
           script_log("Trigger: %s, Vnum %d, type %d. Trying to access Global "
@@ -1501,9 +1501,9 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
 
       else if (!strcasecmp(field, "vnum")) {
         if (subfield && *subfield) {
-          snprintf(str, slen, "%d", (int)(r->number == atoi(subfield)));
+          snprintf(str, slen, "%d", (int)(r->id == atoi(subfield)));
         } else {
-          snprintf(str, slen, "%d", r->number);
+          snprintf(str, slen, "%d", r->id);
         }
       } else if (!strcasecmp(field, "contents")) {
         if (subfield && *subfield) {
@@ -1537,9 +1537,9 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         else
           *str = '\0';
       } else if (!strcasecmp(field, "id")) {
-        struct room_data *room = room_by_id(r->number);
+        struct room_data *room = room_by_id(r->id);
         if (room)
-          snprintf(str, slen, "%cR%d", UID_CHAR, room->number);
+          snprintf(str, slen, "%cR%d", UID_CHAR, room->id);
         else
           *str = '\0';
       } else if (!strcasecmp(field, "weather")) {
@@ -1550,7 +1550,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         else
           *str = '\0';
       } else if (!strcasecmp(field, "fishing")) {
-        struct room_data *thisroom = room_by_id(r->number);
+        struct room_data *thisroom = room_by_id(r->id);
         if (room_flagged(thisroom, ROOM_FISHING))
           snprintf(str, slen, "1");
         else
@@ -1561,7 +1561,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         snprintf(str, slen, "%s", zone_by_id(r->zone)->name);
       else if (!strcasecmp(field, "roomflag")) {
         if (subfield && *subfield) {
-          struct room_data *thisroom = room_by_id(r->number);
+          struct room_data *thisroom = room_by_id(r->id);
           if (check_flags_by_name_ar(thisroom->room_flags, NUM_ROOM_FLAGS,
                                      subfield, room_bits) > 0)
             snprintf(str, slen, "1");
@@ -1582,7 +1582,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, NORTH)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1602,7 +1602,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, EAST)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1623,7 +1623,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, SOUTH)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1643,7 +1643,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, WEST)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1663,7 +1663,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, UP)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1683,7 +1683,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, DOWN)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1704,7 +1704,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, NORTHWEST)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1725,7 +1725,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, NORTHEAST)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1746,7 +1746,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, SOUTHWEST)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1767,7 +1767,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, SOUTHEAST)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1788,7 +1788,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, INDIR)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }
@@ -1809,7 +1809,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else if (!strcasecmp(subfield, "room")) {
               if (auto dest = exit_dest_get(R_EXIT(r, OUTDIR)))
                 snprintf(str, slen, "%cR%d", UID_CHAR,
-                         dest->number);
+                         dest->id);
               else
                 *str = '\0';
             }

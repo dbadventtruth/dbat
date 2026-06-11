@@ -79,6 +79,8 @@ void char_stats_copy_to_mob_proto(struct char_data *ch,
                                   struct mob_proto_data *proto);
 void mob_proto_stats_copy_to_char(struct mob_proto_data *proto,
                                   struct char_data *ch);
+mob_vnum mob_proto_id_get(struct mob_proto_data *proto);
+void mob_proto_id_set(struct mob_proto_data *proto, mob_vnum id);
 void mob_proto_zig_free(struct mob_proto_data *proto);
 int64_t mob_proto_stat_get(struct mob_proto_data *proto, const char *stat);
 int64_t mob_proto_stat_set(struct mob_proto_data *proto, const char *stat,

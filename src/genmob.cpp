@@ -66,7 +66,7 @@ copy_trig_proto_list(const struct trig_proto_list *from) {
   for (; from; from = from->next) {
     struct trig_proto_list *node;
     CREATE(node, struct trig_proto_list, 1);
-    node->vnum = from->vnum;
+    node->id = from->id;
     if (tail)
       tail->next = node;
     else
@@ -144,7 +144,7 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from) {
   free_trig_proto_list(to->proto_script);
   to->proto_script = NULL;
 
-  to->vnum = from->vnum;
+  to->id = from->proto_id;
   to->size = from->size;
   to->sex = from->sex;
   to->race = from->race;
@@ -181,7 +181,7 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
   to->next = next;
   to->next_affect = next_affect;
 
-  to->vnum = from->vnum;
+  to->proto_id = from->id;
   to->size = from->size;
   to->sex = from->sex;
   to->race = from->race;
@@ -213,7 +213,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum) {
 
     /* Now re-point all existing mobile strings to here. */
     for (live_mob = character_list; live_mob; live_mob = live_mob->next)
-      if (vnum == live_mob->vnum) {
+      if (vnum == live_mob->proto_id) {
         struct char_data temp = {};
         copy_mobile_from_proto(&temp, proto);
         update_mobile_strings(live_mob, &temp);
@@ -289,7 +289,7 @@ int delete_mobile(mob_vnum refpt) {
       }
     }
     if (changed) {
-      add_to_save_list(zone->number, SL_ZON);
+      add_to_save_list(zone->id, SL_ZON);
     }
     return true;
   });
@@ -313,12 +313,12 @@ int delete_mobile(mob_vnum refpt) {
   last_saved_zone = NOTHING;
   /* Update guild masters */
   guild_iterate([&](auto guild) {
-    zone_vnum zone = virtual_zone_by_thing(guild->vnum);
+    zone_vnum zone = virtual_zone_by_thing(guild->id);
     /* Find the guild for this trainer and reset it's trainer to
      * -1 to keep the guild so it could be assigned to someone else */
     if (GM_TRAINER(guild) == vnum) {
       GM_TRAINER(guild) = NOTHING;
-      zone_vnum zone = virtual_zone_by_thing(guild->vnum);
+      zone_vnum zone = virtual_zone_by_thing(guild->id);
       if (zone != last_saved_zone) {
         add_to_save_list(zone, SL_GLD);
         last_saved_zone = zone;
@@ -409,7 +409,7 @@ int save_mobiles(struct zone_data *zone) {
     return FALSE;
   }
 
-  snprintf(mobfname, sizeof(mobfname), "%s%d.new", MOB_PREFIX, zone->number);
+  snprintf(mobfname, sizeof(mobfname), "%s%d.new", MOB_PREFIX, zone->id);
   if ((mobfd = fopen(mobfname, "w")) == NULL) {
     mudlog(BRF, ADMLVL_GOD, TRUE,
            "SYSERR: GenOLC: Cannot open mob file for writing.");
@@ -426,13 +426,13 @@ int save_mobiles(struct zone_data *zone) {
   fputs("$\n", mobfd);
   written = ftell(mobfd);
   fclose(mobfd);
-  snprintf(usedfname, sizeof(usedfname), "%s%d.mob", MOB_PREFIX, zone->number);
+  snprintf(usedfname, sizeof(usedfname), "%s%d.mob", MOB_PREFIX, zone->id);
   remove(usedfname);
   rename(mobfname, usedfname);
 
-  if (in_save_list(zone->number, SL_MOB)) {
-    remove_from_save_list(zone->number, SL_MOB);
-    create_world_index(zone->number, "mob");
+  if (in_save_list(zone->id, SL_MOB)) {
+    remove_from_save_list(zone->id, SL_MOB);
+    create_world_index(zone->id, "mob");
     mud_log("GenOLC: save_mobiles: Saving mobiles '%s'", usedfname);
   }
   return written;
@@ -546,7 +546,7 @@ int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto,
 }
 
 void check_mobile_strings(struct char_data *mob) {
-  mob_vnum mvnum = mob->vnum;
+  mob_vnum mvnum = mob->proto_id;
   check_mobile_string(mvnum, &GET_LDESC(mob), "long description");
   check_mobile_string(mvnum, &GET_DDESC(mob), "detailed description");
   check_mobile_string(mvnum, &GET_ALIAS(mob), "alias list");

@@ -40,7 +40,7 @@ struct reset_com {
 #define CUR_ZONE_VERSION 2
 
 struct zone_data {
-  zone_vnum number; /* virtual number of this zone	  */
+  zone_vnum id;     /* virtual number of this zone	  */
   char *name;       /* name of this zone                  */
   char *builders;   /* namelist of builders allowed to modify this zone.
                      */

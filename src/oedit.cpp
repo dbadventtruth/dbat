@@ -185,7 +185,7 @@ ACMD(do_oasis_oedit) {
   /** Everyone but IMPLs can only edit zones they have been assigned.        **/
   /****************************************************************************/
   if (!can_edit_zone(ch, zone)) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
 
     /**************************************************************************/
     /** Free the descriptor's OLC structure.                                 **/
@@ -199,10 +199,10 @@ ACMD(do_oasis_oedit) {
   /** If we need to save, save the objects.                                  **/
   /****************************************************************************/
   if (save) {
-    send_to_char(ch, "Saving all objects in zone %d.\r\n", zone->number);
+    send_to_char(ch, "Saving all objects in zone %d.\r\n", zone->id);
     mudlog(CMP, MAX(ADMLVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
            "OLC: %s saves object info for zone %d.", GET_NAME(ch),
-           zone->number);
+           zone->id);
 
     /**************************************************************************/
     /** Save the objects in this zone.                                       **/
@@ -224,7 +224,7 @@ ACMD(do_oasis_oedit) {
   /** existing object.                                                       **/
   /****************************************************************************/
   if ((proto = obj_proto_by_id(number)))
-    oedit_setup_existing(d, proto->vnum);
+    oedit_setup_existing(d, proto->id);
   else
     oedit_setup_new(d);
 
@@ -242,13 +242,13 @@ ACMD(do_oasis_oedit) {
   /****************************************************************************/
   mudlog(BRF, ADMLVL_IMMORT, TRUE,
          "OLC: %s starts editing zone %d allowed zone %d", GET_NAME(ch),
-         zone->number, GET_OLC_ZONE(ch));
+         zone->id, GET_OLC_ZONE(ch));
 }
 
 void oedit_setup_new(struct descriptor_data *d) {
   CREATE(OLC_OPROTO(d), struct obj_proto_data, 1);
 
-  OLC_OPROTO(d)->vnum = OLC_NUM(d);
+  OLC_OPROTO(d)->id = OLC_NUM(d);
   OLC_OBJ(d)->name = strdup("unfinished object");
   OLC_OBJ(d)->description = strdup("An unfinished object is lying here.");
   OLC_OBJ(d)->short_description = strdup("an unfinished object");
@@ -303,7 +303,7 @@ void oedit_save_internally(struct descriptor_data *d) {
 
   i = (obj_proto_by_id(v) == NULL);
 
-  OLC_OPROTO(d)->vnum = v;
+  OLC_OPROTO(d)->id = v;
   OLC_OPROTO(d)->proto_script = OLC_SCRIPT(d);
   if ((robj_num = add_object(OLC_OPROTO(d), v)) == NOTHING) {
     mud_log("oedit_save_internally: add_object failed.");
@@ -314,7 +314,7 @@ void oedit_save_internally(struct descriptor_data *d) {
 
   /* this takes care of the objects currently in-game */
   for (obj = object_list; obj; obj = obj->next) {
-    if (obj->vnum != v)
+    if (obj->proto_id != v)
       continue;
     /* remove any old scripts */
     if (SCRIPT(obj))
@@ -1075,10 +1075,10 @@ void oedit_parse(struct descriptor_data *d, char *arg) {
       } else
         write_to_output(d, "Object saved to memory.\r\n");
       if (GET_OBJ_TYPE(OLC_OBJ(d)) == ITEM_BOARD) {
-        if ((tmp = locate_board(GET_OBJ_VNUM(OLC_OBJ(d)))) != NULL) {
+        if ((tmp = locate_board(OLC_OBJ(d)->id)) != NULL) {
           save_board(tmp);
         } else {
-          tmp = create_new_board(GET_OBJ_VNUM(OLC_OBJ(d)));
+          tmp = create_new_board(OLC_OBJ(d)->id);
           BOARD_NEXT(tmp) = bboards;
           bboards = tmp;
         }
@@ -1104,14 +1104,14 @@ void oedit_parse(struct descriptor_data *d, char *arg) {
 
   case OEDIT_COPY:
     if ((proto = obj_proto_by_id(atoi(arg)))) {
-      oedit_setup_existing(d, proto->vnum);
+      oedit_setup_existing(d, proto->id);
     } else
       write_to_output(d, "That object does not exist.\r\n");
     break;
 
   case OEDIT_DELETE:
     if (*arg == 'y' || *arg == 'Y') {
-      if (delete_object(GET_OBJ_RNUM(OLC_OBJ(d))) != NOTHING)
+      if (delete_object(OLC_OBJ(d)->id) != NOTHING)
         write_to_output(d, "Object deleted.\r\n");
       else
         write_to_output(d, "Couldn't delete the object!\r\n");

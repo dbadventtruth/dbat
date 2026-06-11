@@ -24,7 +24,7 @@ int save_shops(struct zone_data *zone);
 /*
  * Handy macros.
  */
-#define S_NUM(i) ((i)->vnum)
+#define S_NUM(i) ((i)->id)
 #define S_KEEPER(i) ((i)->keeper)
 #define S_OPEN1(i) ((i)->open1)
 #define S_CLOSE1(i) ((i)->close1)

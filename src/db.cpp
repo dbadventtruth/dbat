@@ -382,7 +382,7 @@ static int suntzu_armor_convert(struct obj_data *obj) {
     conv = 1;
   }
   mud_log("Converted armor #%d [%s] armor=%d i=%d maxdex=%d acheck=%d sfail=%d",
-      obj->vnum, GET_OBJ_SHORT(obj), GET_OBJ_VAL(obj, 0), i,
+      obj->proto_id, GET_OBJ_SHORT(obj), GET_OBJ_VAL(obj, 0), i,
       GET_OBJ_VAL(obj, 2), GET_OBJ_VAL(obj, 3), GET_OBJ_VAL(obj, 6));
   return conv;
 }
@@ -668,7 +668,7 @@ void destroy_db(void) {
 
   /* Objects */
   obj_proto_iterate([&](auto obj) {
-    obj_vnum v = obj->vnum;
+    obj_vnum v = obj->id;
     obj_proto_delete(v);
     obj_proto_free(obj);
     return true;
@@ -676,7 +676,7 @@ void destroy_db(void) {
 
   /* Mobiles */
   mob_proto_iterate([&](auto mob) {
-    mob_vnum v = mob->vnum;
+    mob_vnum v = mob->id;
     mob_proto_delete(v);
     mob_proto_free(mob);
     return true;
@@ -716,7 +716,7 @@ void destroy_db(void) {
       /* then free the command list */
       free(zone->cmd);
     }
-    zone_delete(zone->number);
+    zone_delete(zone->id);
     free(zone);
     return true;
   });
@@ -733,7 +733,7 @@ void destroy_db(void) {
 
   /* Triggers */
   trig_proto_iterate([&](auto trig) {
-    trig_vnum vnum = trig->vnum;
+    trig_vnum vnum = trig->proto_id;
     /* make sure to nuke the command list (memory leak) */
     /* free_trigger() doesn't free the command list */
     if (trig->cmdlist) {
@@ -981,7 +981,7 @@ void boot_db(void) {
   }
 
   zone_iterate([&](auto zone) {
-    mud_log("Resetting #%d: %s (rooms %d-%d).", zone->number, zone->name, zone->bot,
+    mud_log("Resetting #%d: %s (rooms %d-%d).", zone->id, zone->name, zone->bot,
         zone->top);
     reset_zone(zone);
     return true;
@@ -1641,7 +1641,7 @@ static void setup_dir(FILE *fl, struct room_data *room, int dir) {
 
   struct room_data *rm = room;
 
-  snprintf(buf2, sizeof(buf2), "room #%d, direction D%d", room->number, dir);
+  snprintf(buf2, sizeof(buf2), "room #%d, direction D%d", room->id, dir);
 
   CREATE(rm->dir_option[dir], struct room_direction_data, 1);
   struct room_direction_data *ex = rm->dir_option[dir];
@@ -1972,7 +1972,7 @@ int parse_mobile_from_file(FILE *mob_f, struct char_data *ch) {
   char line[READ_SIZE], *tmpptr, letter;
   char f1[128], f2[128], f3[128], f4[128], f5[128], f6[128];
   char f7[128], f8[128], buf2[128];
-  mob_vnum nr = ch->vnum;
+  mob_vnum nr = ch->proto_id;
 
   sprintf(buf2, "mob vnum %d", nr); /* sprintf: OK (for 'buf2 >= 19') */
 
@@ -2118,7 +2118,7 @@ static void parse_mobile(FILE *mob_f, int nr) {
   CREATE(ch, struct char_data, 1);
   clear_char(ch);
 
-  ch->vnum = nr;
+  ch->proto_id = nr;
   ch->desc = NULL;
 
   if (parse_mobile_from_file(mob_f, ch)) {
@@ -2147,7 +2147,7 @@ static char *parse_object(FILE *obj_f, int nr) {
   CREATE(proto, struct obj_proto_data, 1);
   obj_proto_put(nr, proto);
 
-  proto->vnum = nr;
+  proto->id = nr;
 
   sprintf(buf2, "object #%d", nr); /* sprintf: OK (for 'buf2 >= 19') */
 
@@ -2477,12 +2477,12 @@ static void load_zones(FILE *fl, char *zonename) {
     line_num += get_line(fl, buf);
   }
 
-  if (sscanf(buf, "#%hd", &z->number) != 1) {
+  if (sscanf(buf, "#%hd", &z->id) != 1) {
     mud_log("SYSERR: Format error in %s, line %d", zname, line_num);
     exit(1);
   }
-  snprintf(buf2, sizeof(buf2), "beginning of zone #%d", z->number);
-  zone_put(z->number, z);
+  snprintf(buf2, sizeof(buf2), "beginning of zone #%d", z->id);
+  zone_put(z->id, z);
 
   line_num += get_line(fl, buf);
   if ((ptr = strchr(buf, '~')) != NULL) /* take off the '~' if it's there */
@@ -2536,7 +2536,7 @@ static void load_zones(FILE *fl, char *zonename) {
     }
   }
   if (z->bot > z->top) {
-    mud_log("SYSERR: Zone %d bottom (%d) > top (%d).", z->number, z->bot, z->top);
+    mud_log("SYSERR: Zone %d bottom (%d) > top (%d).", z->id, z->bot, z->top);
     exit(1);
   }
 
@@ -2723,7 +2723,7 @@ int vnum_mobile(char *searchname, struct char_data *ch) {
 
   mob_proto_iterate([&](auto mob) {
     if (isname(searchname, mob->name))
-      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, mob->vnum,
+      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, mob->id,
                    mob->short_descr, mob->proto_script ? "[TRIG]" : "");
     return true;
   });
@@ -2736,7 +2736,7 @@ int vnum_object(char *searchname, struct char_data *ch) {
 
   obj_proto_iterate([&](auto obj) {
     if (isname(searchname, obj->name))
-      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->vnum,
+      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
                    obj->short_description, obj->proto_script ? "[TRIG]" : "");
     return true;
   });
@@ -2749,7 +2749,7 @@ int vnum_material(char *searchname, struct char_data *ch) {
 
   obj_proto_iterate([&](auto obj) {
     if (isname(searchname, material_names[obj->value[VAL_ALL_MATERIAL]])) {
-      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->vnum,
+      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
                    obj->short_description, obj->proto_script ? "[TRIG]" : "");
     }
     return true;
@@ -2764,7 +2764,7 @@ int vnum_weapontype(char *searchname, struct char_data *ch) {
   obj_proto_iterate([&](auto obj) {
     if (obj->type_flag == ITEM_WEAPON) {
       if (isname(searchname, weapon_type[obj->value[VAL_WEAPON_SKILL]])) {
-        send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->vnum,
+        send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
                      obj->short_description, obj->proto_script ? "[TRIG]" : "");
       }
     }
@@ -2780,7 +2780,7 @@ int vnum_armortype(char *searchname, struct char_data *ch) {
   obj_proto_iterate([&](auto obj) {
     if (obj->type_flag == ITEM_ARMOR) {
       if (isname(searchname, armor_type[obj->value[VAL_ARMOR_SKILL]])) {
-        send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->vnum,
+        send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
                      obj->short_description, obj->proto_script ? "[TRIG]" : "");
       }
     }
@@ -3500,7 +3500,7 @@ void zone_update(void) {
 
         CREATE(update_u, struct reset_q_element, 1);
 
-        update_u->zone_to_reset = zone->number;
+        update_u->zone_to_reset = zone->id;
         update_u->next = 0;
 
         if (!reset_q.head)
@@ -3522,7 +3522,7 @@ void zone_update(void) {
       if (zone->reset_mode == 2 || is_empty(update_u->zone_to_reset)) {
         reset_zone(zone);
         mudlog(CMP, ADMLVL_GOD, FALSE, "Auto zone reset: %s (Zone %d)",
-               zone->name, zone->number);
+               zone->name, zone->id);
         /* dequeue */
         if (update_u == reset_q.head)
           reset_q.head = reset_q.head->next;
@@ -3549,7 +3549,7 @@ static void log_zone_error(struct zone_data *zone, int cmd_no,
   struct reset_com *cmd = &zone->cmd[cmd_no];
   mudlog(NRM, ADMLVL_GOD, TRUE,
          "SYSERR: ...offending cmd: '%c' cmd in zone #%d, line %d",
-         cmd->command, zone->number, cmd->line);
+         cmd->command, zone->id, cmd->line);
 }
 
 #define ZONE_ERROR(message) log_zone_error(zone, cmd_no, message)
@@ -4447,7 +4447,7 @@ void clear_char(struct char_data *ch) {
 void clear_object(struct obj_data *obj) {
   memset((char *)obj, 0, sizeof(struct obj_data));
 
-  obj->vnum = NOTHING;
+  obj->proto_id = NOTHING;
   IN_ROOM(obj) = NOWHERE;
   obj->worn_on = NOWHERE;
 }
@@ -4520,9 +4520,9 @@ static int check_object(struct obj_proto_data *obj) {
 
   if (GET_OBJ_WEIGHT(obj) < 0 && (error = TRUE))
     mud_log("SYSERR: Object #%d (%s) has negative weight (%" I64T ").",
-        GET_OBJ_VNUM(obj), obj->short_description, GET_OBJ_WEIGHT(obj));
+        obj->id, obj->short_description, GET_OBJ_WEIGHT(obj));
 
-  snprintf(objname, sizeof(objname), "Object #%d (%s)", GET_OBJ_VNUM(obj),
+  snprintf(objname, sizeof(objname), "Object #%d (%s)", obj->id,
            obj->short_description);
 
   switch (GET_OBJ_TYPE(obj)) {
@@ -4540,7 +4540,7 @@ static int check_object(struct obj_proto_data *obj) {
     if ((GET_OBJ_VAL(obj, 0) > 0) &&
         (GET_OBJ_VAL(obj, 1) > GET_OBJ_VAL(obj, 0) && (error = TRUE)))
       mud_log("SYSERR: Object #%d (%s) contains (%d) more than maximum (%d).",
-          GET_OBJ_VNUM(obj), obj->short_description, GET_OBJ_VAL(obj, 1),
+          obj->id, obj->short_description, GET_OBJ_VAL(obj, 1),
           GET_OBJ_VAL(obj, 0));
     break;
   case ITEM_SCROLL:
@@ -4556,7 +4556,7 @@ static int check_object(struct obj_proto_data *obj) {
     error |= check_object_spell_number(obj, 3);
     if (GET_OBJ_VAL(obj, 2) > GET_OBJ_VAL(obj, 1) && (error = TRUE))
       mud_log("SYSERR: Object #%d (%s) has more charges (%d) than maximum (%d).",
-          GET_OBJ_VNUM(obj), obj->short_description, GET_OBJ_VAL(obj, 2),
+          obj->id, obj->short_description, GET_OBJ_VAL(obj, 2),
           GET_OBJ_VAL(obj, 1));
     break;
   }
@@ -4584,7 +4584,7 @@ static int check_object_spell_number(struct obj_proto_data *obj, int val) {
     error = TRUE;
   if (error)
     mud_log("SYSERR: Object #%d (%s) has out of range spell #%d.",
-        GET_OBJ_VNUM(obj), obj->short_description, GET_OBJ_VAL(obj, val));
+        obj->id, obj->short_description, GET_OBJ_VAL(obj, val));
 
   /*
    * This bug has been fixed, but if you don't like the special behavior...
@@ -4606,7 +4606,7 @@ static int check_object_spell_number(struct obj_proto_data *obj, int val) {
 
   if ((spellname == unused_spellname || !strcasecmp("UNDEFINED", spellname)) &&
       (error = TRUE))
-    mud_log("SYSERR: Object #%d (%s) uses '%s' spell #%d.", GET_OBJ_VNUM(obj),
+    mud_log("SYSERR: Object #%d (%s) uses '%s' spell #%d.", obj->id,
         obj->short_description, spellname, GET_OBJ_VAL(obj, val));
 
   return (error);
@@ -4617,7 +4617,7 @@ static int check_object_level(struct obj_proto_data *obj, int val) {
 
   if ((GET_OBJ_VAL(obj, val) < 0) && (error = TRUE))
     mud_log("SYSERR: Object #%d (%s) has out of range level #%d.",
-        GET_OBJ_VNUM(obj), obj->short_description, GET_OBJ_VAL(obj, val));
+        obj->id, obj->short_description, GET_OBJ_VAL(obj, val));
 
   return (error);
 }

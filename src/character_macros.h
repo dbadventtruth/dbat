@@ -28,7 +28,7 @@ extern "C" {
 #define ADM_FLAGS(ch) ((ch)->admflags)
 
 #define IS_NPC(ch) (IS_SET_AR(MOB_FLAGS(ch), MOB_ISNPC))
-#define IS_MOB(ch) (IS_NPC(ch) && ch->vnum != NOTHING)
+#define IS_MOB(ch) (IS_NPC(ch) && ch->proto_id != NOTHING)
 
 #define MOB_FLAGGED(ch, flag) (IS_NPC(ch) && IS_SET_AR(MOB_FLAGS(ch), (flag)))
 #define PLR_FLAGGED(ch, flag) (!IS_NPC(ch) && IS_SET_AR(PLR_FLAGS(ch), (flag)))
@@ -291,8 +291,8 @@ extern "C" {
 
 #define GET_EQ(ch, i) ((ch)->equipment[i])
 
-#define GET_MOB_SPEC(ch) (IS_MOB(ch) ? mob_proto_special_get((ch)->vnum) : NULL)
-#define GET_MOB_VNUM(mob) (mob->vnum)
+#define GET_MOB_SPEC(ch) (IS_MOB(ch) ? mob_proto_special_get((ch)->proto_id) : NULL)
+#define GET_MOB_VNUM(mob) (mob->proto_id)
 
 #define GET_DEFAULT_POS(ch) ((ch)->mob_specials.default_pos)
 #define MEMORY(ch) ((ch)->mob_specials.memory)

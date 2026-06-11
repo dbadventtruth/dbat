@@ -417,7 +417,7 @@ int can_edit_zone(struct char_data *ch, struct zone_data *zone) {
   if (!ch->desc || IS_NPC(ch) || zone == NULL)
     return FALSE;
 
-  if (zone->number == HEDIT_PERMISSION)
+  if (zone->id == HEDIT_PERMISSION)
     return TRUE;
 
   /* always access if ch is high enough level */
@@ -437,7 +437,7 @@ int can_edit_zone(struct char_data *ch, struct zone_data *zone) {
     return FALSE;
 
   /* always access if you're assigned to this zone */
-  if (GET_OLC_ZONE(ch) == zone->number)
+  if (GET_OLC_ZONE(ch) == zone->id)
     return TRUE;
 
   return (FALSE);

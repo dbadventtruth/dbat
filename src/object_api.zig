@@ -6,6 +6,9 @@ pub const ObjIterFn = *const fn (*cdb.obj_data, ?*anyopaque) callconv(.c) bool;
 
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 
+pub export fn obj_proto_self_id_get(proto: *cdb.obj_proto_data) cdb.obj_vnum { return proto.id; }
+pub export fn obj_proto_self_id_set(proto: *cdb.obj_proto_data, id: cdb.obj_vnum) void { proto.id = id; }
+
 pub export fn obj_id_get(obj: *cdb.obj_data) i64 {
     return obj.id;
 }
@@ -23,11 +26,11 @@ pub export fn obj_proto_id_set(obj: *cdb.obj_data, vnum: cdb.obj_vnum) void {
 }
 
 pub export fn obj_vnum_get(obj: *cdb.obj_data) cdb.obj_vnum {
-    return obj.vnum;
+    return obj.proto_id;
 }
 
 pub export fn obj_vnum_set(obj: *cdb.obj_data, vnum: cdb.obj_vnum) void {
-    obj.vnum = vnum;
+    obj.proto_id = vnum;
 }
 
 pub export fn obj_room_get(obj: *cdb.obj_data) [*c]cdb.room_data {
@@ -37,7 +40,7 @@ pub export fn obj_room_get(obj: *cdb.obj_data) [*c]cdb.room_data {
 pub export fn obj_room_vnum_get(obj: *cdb.obj_data) cdb.room_vnum {
     const room = obj_room_get(obj);
     if (room == null) return cdb.NOWHERE;
-    return room.*.number;
+    return room.*.id;
 }
 
 pub export fn obj_room_vnum_set(obj: *cdb.obj_data, vnum: cdb.room_vnum) void {

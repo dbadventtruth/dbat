@@ -179,7 +179,7 @@ ACMD(do_oasis_copy) {
   /* Make sure the builder is allowed to modify the target zone. */
   auto zone = zone_by_id(OLC_ZNUM(d));
   if (!can_edit_zone(ch, zone)) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
     free(d->olc);
     d->olc = NULL;
     return;
@@ -239,7 +239,7 @@ ACMD(do_dig) {
   }
   /* Make sure that the builder has access to the zone he's in. */
   if (!can_edit_zone(ch, zone)) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
     return;
   }
   /*
@@ -289,7 +289,7 @@ ACMD(do_dig) {
     return;
   }
   if (!can_edit_zone(ch, z2)) {
-    send_cannot_edit(ch, z2->number);
+    send_cannot_edit(ch, z2->id);
     return;
   }
   /*
@@ -307,7 +307,7 @@ ACMD(do_dig) {
       free(d->olc);
     }
     CREATE(d->olc, struct oasis_olc_data, 1);
-    OLC_ZNUM(d) = zone->number;
+    OLC_ZNUM(d) = zone->id;
     OLC_NUM(d) = rvnum;
     CREATE(OLC_ROOM(d), struct room_data, 1);
 
@@ -320,7 +320,7 @@ ACMD(do_dig) {
     /* Copy the room's description.*/
     OLC_ROOM(d)->description = strdup("You are in an unfinished room.\r\n");
     OLC_ROOM(d)->zone = OLC_ZNUM(d);
-    OLC_ROOM(d)->number = NOWHERE;
+    OLC_ROOM(d)->id = NOWHERE;
 
     /*
      * Save the new room to memory.
@@ -346,7 +346,7 @@ ACMD(do_dig) {
   struct room_direction_data *new_exit = rm->dir_option[dir];
   new_exit->to_room = rvnum;
   auto room_zone = zone_by_id(room_zone_vnum_get(rm));
-  add_to_save_list(room_zone->number, SL_WLD);
+  add_to_save_list(room_zone->id, SL_WLD);
   save_rooms(room_zone);
   send_to_char(ch, "You make an exit %s to room %d (%s).\r\n", dirs[dir], rvnum,
                rrm->name);
@@ -366,7 +366,7 @@ ACMD(do_dig) {
     struct room_direction_data *rev_ex = R_EXIT(dest, rev_dir[dir]);
     rev_ex->to_room = char_room_vnum_get(ch);
     auto dest_zone = zone_by_id(rrm->zone);
-    add_to_save_list(dest_zone->number, SL_WLD);
+    add_to_save_list(dest_zone->id, SL_WLD);
     save_rooms(dest_zone);
   }
 }
@@ -422,7 +422,7 @@ ACMD(do_rcopy) {
   auto zone = zone_by_id(rrm->zone);
   if (!can_edit_zone(ch, zone)) {
     send_to_char(ch, "\r\n");
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
     return;
   }
 
@@ -452,7 +452,7 @@ ACMD(do_rcopy) {
   send_to_imm("Log: %s has copied room [%d] to room [%d].", GET_NAME(ch), tvnum,
               rvnum);
   auto room_zone = zone_by_id(rrm->zone);
-  add_to_save_list(room_zone->number, SL_WLD);
+  add_to_save_list(room_zone->id, SL_WLD);
   save_rooms(room_zone);
   send_to_char(ch, "Room [%d] copied to room [%d].\r\n", tvnum, rvnum);
 }
@@ -482,7 +482,7 @@ int buildwalk(struct char_data *ch, int dir) {
     auto zone = char_zone_get(ch);
 
     if (!can_edit_zone(ch, zone)) {
-      send_cannot_edit(ch, zone->number);
+      send_cannot_edit(ch, zone->id);
     } else if ((vnum = redit_find_new_vnum(zone)) == NOWHERE)
       send_to_char(ch, "No free vnums are available in this zone!\r\n");
     else {
@@ -497,7 +497,7 @@ int buildwalk(struct char_data *ch, int dir) {
         free(d->olc);
       }
       CREATE(d->olc, struct oasis_olc_data, 1);
-      OLC_ZNUM(d) = zone->number;
+      OLC_ZNUM(d) = zone->id;
       OLC_NUM(d) = vnum;
       CREATE(OLC_ROOM(d), struct room_data, 1);
 
@@ -506,7 +506,7 @@ int buildwalk(struct char_data *ch, int dir) {
       sprintf(buf, "This unfinished room was created by %s.\r\n", GET_NAME(ch));
       OLC_ROOM(d)->description = strdup(buf);
       OLC_ROOM(d)->zone = OLC_ZNUM(d);
-      OLC_ROOM(d)->number = NOWHERE;
+      OLC_ROOM(d)->id = NOWHERE;
 
       /*
        * Save the new room to memory.

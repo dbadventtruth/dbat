@@ -7,7 +7,7 @@ extern "C" {
 
 /* linked list for mob/object prototype trigger lists */
 struct trig_proto_list {
-  int vnum;                     /* vnum of the trigger   */
+  trig_vnum id;                 /* vnum of the trigger   */
   struct trig_proto_list *next; /* next trigger          */
 };
 
@@ -80,7 +80,7 @@ struct trig_var_data {
 
 /* structure for triggers */
 struct trig_data {
-  trig_vnum vnum;                     /* trigger's rnum                  */
+  trig_vnum proto_id;                  /* trigger's rnum                  */
   uint8_t attach_type;                /* mob/obj/wld intentions          */
   uint8_t data_type;                  /* type of game_data for trig      */
   char *name;                         /* name of trigger                 */

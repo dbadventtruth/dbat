@@ -4,8 +4,8 @@ const bitflags = @import("flags.zig");
 
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 
-pub export fn zone_id_get(zone: *cdb.zone_data) cdb.zone_vnum { return zone.number; }
-pub export fn zone_id_set(zone: *cdb.zone_data, id: cdb.zone_vnum) void { zone.number = id; }
+pub export fn zone_id_get(zone: *cdb.zone_data) cdb.zone_vnum { return zone.id; }
+pub export fn zone_id_set(zone: *cdb.zone_data, id: cdb.zone_vnum) void { zone.id = id; }
 pub export fn zone_name_get(zone: *cdb.zone_data) [*c]const u8 { return zone.name; }
 pub export fn zone_name_set(zone: *cdb.zone_data, value: ?[*:0]const u8) void { replaceString(&zone.name, value); }
 pub export fn zone_builders_get(zone: *cdb.zone_data) [*c]const u8 { return zone.builders; }

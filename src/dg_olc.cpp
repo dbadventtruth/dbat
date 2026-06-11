@@ -110,7 +110,7 @@ ACMD(do_oasis_trigedit) {
    * Everyone but IMPLs can only edit zones they have been assigned.
    */
   if (!can_edit_zone(ch, zone)) {
-    send_cannot_edit(ch, zone->number);
+    send_cannot_edit(ch, zone->id);
     free(d->olc);
     d->olc = NULL;
     return;
@@ -138,7 +138,7 @@ ACMD(do_oasis_trigedit) {
 
   mudlog(CMP, ADMLVL_IMMORT, TRUE,
          "OLC: %s starts editing zone %d [trigger](allowed zone %d)",
-         GET_NAME(ch), zone->number, GET_OLC_ZONE(ch));
+         GET_NAME(ch), zone->id, GET_OLC_ZONE(ch));
 }
 
 /* called when a mob or object is being saved to disk, so its script can */
@@ -158,7 +158,7 @@ void script_save_to_disk(FILE *fp, void *item, int type) {
   }
 
   while (t) {
-    fprintf(fp, "T %d\n", t->vnum);
+    fprintf(fp, "T %d\n", t->id);
     t = t->next;
   }
 }
@@ -167,7 +167,7 @@ void obj_proto_script_save_to_disk(FILE *fp, struct obj_proto_data *obj) {
   struct trig_proto_list *t = obj ? obj->proto_script : NULL;
 
   while (t) {
-    fprintf(fp, "T %d\n", t->vnum);
+    fprintf(fp, "T %d\n", t->id);
     t = t->next;
   }
 }
@@ -176,7 +176,7 @@ void mob_proto_script_save_to_disk(FILE *fp, struct mob_proto_data *mob) {
   struct trig_proto_list *t = mob ? mob->proto_script : NULL;
 
   while (t) {
-    fprintf(fp, "T %d\n", t->vnum);
+    fprintf(fp, "T %d\n", t->id);
     t = t->next;
   }
 }
@@ -189,7 +189,7 @@ void trigedit_setup_new(struct descriptor_data *d) {
    */
   CREATE(trig, struct trig_data, 1);
 
-  trig->vnum = NOWHERE;
+  trig->proto_id = NOWHERE;
 
   /*
    * Set up some defaults
@@ -499,7 +499,7 @@ void trigedit_save(struct descriptor_data *d) {
     /* go through the mud and replace existing triggers         */
     live_trig = trigger_list;
     while (live_trig) {
-      if (GET_TRIG_VNUM(live_trig) == proto->vnum) {
+      if (GET_TRIG_VNUM(live_trig) == proto->proto_id) {
         if (live_trig->arglist) {
           free(live_trig->arglist);
           live_trig->arglist = NULL;
@@ -569,7 +569,7 @@ void trigedit_save(struct descriptor_data *d) {
   /* could make things hard to debug.                               */
 
   struct zone_data *zn = zone_by_id(OLC_ZNUM(d));
-  zone = zn->number;
+  zone = zn->id;
   top = zn->top;
 
   snprintf(fname, sizeof(fname), "%s/%i.new", TRG_PREFIX, zone);
@@ -641,7 +641,7 @@ void dg_olc_script_copy(struct descriptor_data *d) {
     OLC_SCRIPT(d) = editscript;
 
     while (origscript) {
-      editscript->vnum = origscript->vnum;
+      editscript->id = origscript->id;
       origscript = origscript->next;
       if (origscript)
         CREATE(editscript->next, struct trig_proto_list, 1);
@@ -665,8 +665,8 @@ void dg_script_menu(struct descriptor_data *d) {
   editscript = OLC_SCRIPT(d);
 
   while (editscript) {
-    auto trig = trig_proto_by_id(editscript->vnum);
-    write_to_output(d, "     %2d) [@c%d@n] @c%s@n", ++i, editscript->vnum,
+    auto trig = trig_proto_by_id(editscript->id);
+    write_to_output(d, "     %2d) [@c%d@n] @c%s@n", ++i, editscript->id,
                     trig->name);
     if (trig->attach_type != OLC_ITEM_TYPE(d))
       write_to_output(d, "   @g** Mis-matched Trigger Type **@n\r\n");
@@ -759,7 +759,7 @@ int dg_script_edit_parse(struct descriptor_data *d, char *arg) {
     /* add the new info in position */
     currtrig = OLC_SCRIPT(d);
     CREATE(trig, struct trig_proto_list, 1);
-    trig->vnum = vnum;
+    trig->id = vnum;
 
     if (pos == 1 || !currtrig) {
       trig->next = OLC_SCRIPT(d);
