@@ -116,7 +116,7 @@
 #include <sys/stat.h>
 
 // Forward declarations for zone reset event functions (defined later in this file)
-void ev_zone_reset(int, long long, long long);
+void ev_zone_reset(int, int64_t, int64_t);
 void zone_schedule_reset(struct zone_data *zone);
 void zone_schedule_all_resets(void);
 
@@ -3473,7 +3473,7 @@ void zone_schedule_all_resets(void) {
 
 // Event handler: attempt to reset one zone.
 // ctx_a = zone vnum.  If the zone is mode 1 and players are present, retry in 60 s.
-void ev_zone_reset(int /*ctx_type*/, long long ctx_a, long long /*ctx_b*/) {
+void ev_zone_reset(int /*ctx_type*/, int64_t ctx_a, int64_t /*ctx_b*/) {
   struct zone_data *zone = zone_by_id((zone_vnum)ctx_a);
   if (!zone || zone->reset_mode == 0) return;
 

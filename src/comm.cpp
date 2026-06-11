@@ -418,46 +418,45 @@ void game_legacy_post_tick(void) {
 }
 
 // --- Event queue handler wrappers ---
-// Each ignores context (int, long long, long long) — these are global game-state events.
+// Each ignores context (int, int64_t, int64_t) — these are global game-state events.
 
-static void ev_wishSYS(int, long long, long long) { wishSYS(); }
+static void ev_wishSYS(int, int64_t, int64_t) { wishSYS(); }
 
-static void ev_char_condition_update(int, long long, long long) {
+static void ev_char_condition_update(int, int64_t, int64_t) {
   char_condition_update_all("second", PULSE_1SEC, 1);
   copyover_check();
 }
 
-static void ev_base_fish_update(int, long long, long long) {
+static void ev_base_update(int, int64_t, int64_t) {
   base_update();
-  fish_update();
 }
 
-static void ev_script_trigger_check(int, long long, long long) {
+static void ev_script_trigger_check(int, int64_t, int64_t) {
   script_trigger_check();
 }
 
-static void ev_check_auction(int, long long, long long) { check_auction(); }
-static void ev_handle_songs(int, long long, long long) { handle_songs(); }
-static void ev_check_idle_passwords(int, long long, long long) { check_idle_passwords(); }
-static void ev_check_idle_menu(int, long long, long long) { check_idle_menu(); }
-static void ev_fight_stack(int, long long, long long) { fight_stack(); }
+static void ev_check_auction(int, int64_t, int64_t) { check_auction(); }
+static void ev_handle_songs(int, int64_t, int64_t) { handle_songs(); }
+static void ev_check_idle_passwords(int, int64_t, int64_t) { check_idle_passwords(); }
+static void ev_check_idle_menu(int, int64_t, int64_t) { check_idle_menu(); }
+static void ev_fight_stack(int, int64_t, int64_t) { fight_stack(); }
 
-static void ev_homing_huge_broken(int, long long, long long) {
+static void ev_homing_huge_broken(int, int64_t, int64_t) {
   if (rand_number(1, 2) == 2) homing_update();
   huge_update();
   broken_update();
 }
 
-static void ev_mobile_activity(int, long long, long long) { mobile_activity(); }
-static void ev_point_update(int, long long, long long) { point_update(); }
+static void ev_mobile_activity(int, int64_t, int64_t) { mobile_activity(); }
+static void ev_point_update(int, int64_t, int64_t) { point_update(); }
 
-static void ev_weather_time_affects(int, long long, long long) {
+static void ev_weather_time_affects(int, int64_t, int64_t) {
   weather_and_time(1);
   check_time_triggers();
   affect_update();
 }
 
-static void ev_autosave(int, long long, long long) {
+static void ev_autosave(int, int64_t, int64_t) {
   static int mins_since_crashsave = 0;
   if (!CONFIG_AUTO_SAVE) return;
   clan_update();
@@ -468,8 +467,8 @@ static void ev_autosave(int, long long, long long) {
   }
 }
 
-static void ev_record_usage(int, long long, long long) { record_usage(); }
-static void ev_save_mud_time(int, long long, long long) { save_mud_time(&time_info); }
+static void ev_record_usage(int, int64_t, int64_t) { record_usage(); }
+static void ev_save_mud_time(int, int64_t, int64_t) { save_mud_time(&time_info); }
 
 void event_queue_register_heartbeat_events() {
   const int64_t now = event_queue_now_ms();
@@ -477,7 +476,7 @@ void event_queue_register_heartbeat_events() {
   // Fixed intervals (milliseconds)
   event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_wishSYS,               EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_char_condition_update, EQ_CTX_NONE, 0, 0);
-  event_schedule_c(now + EQ_MS_2SEC,  EQ_MS_2SEC,  ev_base_fish_update,      EQ_CTX_NONE, 0, 0);
+  event_schedule_c(now + EQ_MS_2SEC,  EQ_MS_2SEC,  ev_base_update,           EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_15SEC, EQ_MS_15SEC, ev_check_auction,         EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_15SEC, EQ_MS_15SEC, ev_handle_songs,          EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_1MIN,  EQ_MS_1MIN,  ev_check_idle_menu,       EQ_CTX_NONE, 0, 0);

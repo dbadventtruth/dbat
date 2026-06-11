@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 
-typedef void (*event_handler_fn)(int ctx_type, long long ctx_a, long long ctx_b);
+typedef void (*event_handler_fn)(int ctx_type, int64_t ctx_a, int64_t ctx_b);
 
 // Schedule a Lua-named event (handler looked up by dotted path at fire time).
 // Returns a cancellation ID, or 0 on failure.

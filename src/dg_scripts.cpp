@@ -95,7 +95,7 @@ struct cmdlist_element *find_case(struct trig_data *trig,
                                   struct script_data *sc, int type, char *cond);
 struct cmdlist_element *find_done(struct cmdlist_element *cl);
 int fgetline(FILE *file, char *p);
-static void ev_trig_wait(int ctx_type, long long ctx_a, long long ctx_b);
+static void ev_trig_wait(int ctx_type, int64_t ctx_a, int64_t ctx_b);
 ACMD(do_attach);
 ACMD(do_detach);
 ACMD(do_vdelete);
@@ -715,7 +715,7 @@ void check_time_triggers(void) {
  * stored by ID and re-resolved here, so an event whose trigger or owner was
  * extracted in the meantime is a harmless no-op.
  */
-static void ev_trig_wait(int ctx_type, long long ctx_a, long long ctx_b) {
+static void ev_trig_wait(int ctx_type, int64_t ctx_a, int64_t ctx_b) {
   (void)ctx_type;
   trig_data *trig = trig_by_id(ctx_a);
   if (!trig)
