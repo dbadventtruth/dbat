@@ -440,7 +440,7 @@ SPECIAL(auction) {
     auc_save();
     send_to_char(ch, "You place %s on auction for %s zenni.\r\n",
                  obj2->short_description, add_commas(GET_BID(obj2)));
-    log("AUCTION: %s places %s on auction for %s", GET_NAME(ch),
+    mud_log("AUCTION: %s places %s on auction for %s", GET_NAME(ch),
         obj2->short_description, add_commas(GET_BID(obj2)));
 
     for (d = descriptor_list; d; d = d->next) {

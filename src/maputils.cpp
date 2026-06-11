@@ -303,7 +303,7 @@ MapStruct findcoord(struct room_data *room) {
     }
   }
 
-  log("SYSERR: findcoord for non-map rnum");
+  mud_log("SYSERR: findcoord for non-map rnum");
   return coords;
 }
 

@@ -1,3 +1,96 @@
+-- Per-character derived stat cache, keyed by character id.
+-- Each entry stores {gen=N, ...derived_name=value} so stale entries
+-- are detected via the modifier_gen counter from Zig.
+local der_caches = {}
+
+local scale = 10000
+
+local function der_total(ch, name)
+  local id = ch:id_get()
+  local gen = ch:modifier_gen()
+  local cache = der_caches[id]
+  if cache and cache.gen == gen then
+    local v = cache[name]
+    if v ~= nil then return v end
+  else
+    cache = {gen = gen}
+    der_caches[id] = cache
+  end
+
+  local def = dbat.registry.derived[name]
+  if not def then return 0 end
+
+  -- Base value
+  local base
+  if def.calculate_base then
+    base = def.calculate_base(ch) or 0
+  else
+    base = ch:stat_get(def.base_stat or name)
+  end
+
+  if def.no_modifiers then
+    local value = base
+    if def.min_value ~= nil then value = math.max(value, def.min_value) end
+    if def.max_value ~= nil then value = math.min(value, def.max_value) end
+    cache[name] = value
+    return value
+  end
+
+  -- Modifier accumulation: direct target
+  local mods = ch:modifiers_for("derived", name)
+  local flat = mods.flat
+  local percent = mods.percent
+  local multipliers = mods.multipliers
+  local min_ov = mods.min
+  local max_ov = mods.max
+  local set_ov = mods.set
+
+  -- Additional modifier targets
+  if def.modifier_targets then
+    for _, target in ipairs(def.modifier_targets) do
+      local more = ch:modifiers_for(target[1], target[2])
+      flat = flat + more.flat
+      percent = percent + more.percent
+      for _, m in ipairs(more.multipliers) do
+        multipliers[#multipliers + 1] = m
+      end
+      if more.min ~= nil then
+        min_ov = min_ov and math.max(min_ov, more.min) or more.min
+      end
+      if more.max ~= nil then
+        max_ov = max_ov and math.min(max_ov, more.max) or more.max
+      end
+      if more.set ~= nil then set_ov = more.set end
+    end
+  end
+
+  -- Legacy modifiers (from old affect system)
+  if def.legacy_modifiers then
+    for _, lm in ipairs(def.legacy_modifiers) do
+      flat = flat + ch:legacy_modifier(lm[1], lm[2])
+    end
+  end
+
+  -- Apply modifiers to base
+  local value = base + flat
+  if percent ~= 0 then
+    value = value + math.floor(value * percent / scale)
+  end
+  for _, m in ipairs(multipliers) do
+    value = math.floor(value * m / scale)
+  end
+
+  -- Clamp with definition bounds first, then overrides
+  if def.min_value ~= nil then value = math.max(value, def.min_value) end
+  if def.max_value ~= nil then value = math.min(value, def.max_value) end
+  if min_ov ~= nil then value = math.max(value, min_ov) end
+  if max_ov ~= nil then value = math.min(value, max_ov) end
+  if set_ov ~= nil then value = set_ov end
+
+  cache[name] = value
+  return value
+end
+
 local function can_see(ch, entref)
   local kind = entref and entref:reftype()
 
@@ -151,4 +244,5 @@ return {
   on_heartbeat = on_heartbeat,
   act_self = act_self,
   act_around = act_around,
+  der_total = der_total,
 }

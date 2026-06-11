@@ -8,8 +8,10 @@ test:case("character send_text is safe without descriptor", function(t)
   ch:send_text("literal %s text should not be a format string\r\n")
 
   t:assert(ch:valid())
+  t:assert(not ch:is_extracted())
   ch:extract()
-  t:assert(not ch:valid())
+  t:assert(ch:valid())       -- still in registry until end-of-loop cleanup
+  t:assert(ch:is_extracted()) -- but marked for deferred extraction
 end)
 
 test:case("visibility and darkness helpers return booleans", function(t)

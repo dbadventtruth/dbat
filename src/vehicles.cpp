@@ -903,7 +903,7 @@ ACMD(do_warp) {
                      vehicle->short_description);
       }
     } else {
-      log("ERROR: Ship Instant Warp Failure! Unknown argument!");
+      mud_log("ERROR: Ship Instant Warp Failure! Unknown argument!");
       send_to_char(ch, "ERROR\r\n");
       return;
     }

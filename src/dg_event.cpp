@@ -60,12 +60,12 @@ struct event *event_create(EVENTFUNC(*func), void *event_obj, long when) {
 /* removes the event from the system */
 void event_cancel(struct event *event) {
   if (!event) {
-    log("SYSERR:  Attempted to cancel a NULL event");
+    mud_log("SYSERR:  Attempted to cancel a NULL event");
     return;
   }
 
   if (!event->q_el) {
-    log("SYSERR:  Attempted to cancel a non-NULL unqueued event, freeing "
+    mud_log("SYSERR:  Attempted to cancel a non-NULL unqueued event, freeing "
         "anyway");
   } else
     queue_deq(event_q, event->q_el);
@@ -82,7 +82,7 @@ void event_process(void) {
 
   while ((long)pulse >= queue_key(event_q)) {
     if (!(the_event = (struct event *)queue_head(event_q))) {
-      log("SYSERR: Attempt to get a NULL event");
+      mud_log("SYSERR: Attempt to get a NULL event");
       return;
     }
 

@@ -57,6 +57,7 @@
 #include "skills.h"
 #include "spells.h"
 #include "util_macros.h"
+#include "zone_api.h"
 
 /* local functions */
 int mag_materials(struct char_data *ch, int item0, int item1, int item2,
@@ -70,6 +71,7 @@ void affect_update(void) {
   struct char_data *i;
 
   for (i = affect_list; i; i = i->next_affect) {
+    if (!zone_player_count_get(char_zone_vnum_get(i))) continue;
     for (af = i->affected; af; af = next) {
       next = af->next;
       if (af->duration >= 1)
@@ -713,7 +715,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
         send_to_char(ch, "That's not a name for a monster you can summon. "
                          "Summoning something else.\r\n");
       } else {
-        log("lev=%d, i=%d, ngen=%d", lev, i, lev - i);
+        mud_log("lev=%d, i=%d, ngen=%d", lev, i, lev - i);
         switch (lev - i) {
         case 1:
           num = 1;
@@ -732,7 +734,7 @@ void mag_summons(int level, struct char_data *ch, struct obj_data *obj,
       for (count = 0; monsum_list[lev - 1][j][count] != NOBODY; count++)
         ;
       if (!count) {
-        log("No monsums for spell level %d align %s", lev, alignments[j]);
+        mud_log("No monsums for spell level %d align %s", lev, alignments[j]);
         return;
       }
       count--;
@@ -945,7 +947,7 @@ void mag_creations(int level, struct char_data *ch, int spellnum) {
 
   if (!(tobj = read_object(z, VIRTUAL))) {
     send_to_char(ch, "I seem to have goofed.\r\n");
-    log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum,
+    mud_log("SYSERR: spell_creations, spell %d, obj %d: obj not found", spellnum,
         z);
     return;
   }

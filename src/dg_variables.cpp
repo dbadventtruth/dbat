@@ -74,7 +74,7 @@ void add_var(struct trig_var_data **var_list, char *name, const char *value,
   struct trig_var_data *vd;
 
   if (strchr(name, '.')) {
-    log("add_var() : Attempt to add illegal var: %s", name);
+    mud_log("add_var() : Attempt to add illegal var: %s", name);
     return;
   }
 

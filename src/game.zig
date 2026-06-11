@@ -44,7 +44,7 @@ pub export fn game_loop() void {
         } else if (current_ns >= next_tick_ns) {
             const late_ns = current_ns - next_tick_ns;
             if (late_ns >= std.time.ns_per_s) {
-                cdb.log("SYSERR: Missed %d seconds worth of pulses.", @as(c_int, @intCast(@divTrunc(late_ns, std.time.ns_per_s))));
+                cdb.mud_log("SYSERR: Missed %d seconds worth of pulses.", @as(c_int, @intCast(@divTrunc(late_ns, std.time.ns_per_s))));
             }
             next_tick_ns = current_ns + tick.nanoseconds;
             cdb.pulse += 1;

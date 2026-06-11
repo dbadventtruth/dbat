@@ -42,6 +42,7 @@
 #include "util_macros.h"
 #include "weather_db.h"
 #include "zone_db.h"
+#include "zone_api.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -643,20 +644,19 @@ void script_trigger_check(void) {
   struct script_data *sc;
 
   for (ch = character_list; ch; ch = ch->next) {
+    if (!zone_player_count_get(char_zone_vnum_get(ch))) continue;
     if (SCRIPT(ch)) {
       sc = SCRIPT(ch);
-
-      if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM) &&
-          (!is_empty(room_zone_vnum_get(char_room_get(ch))) ||
-           IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM)))
+      if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM))
         random_mtrigger(ch);
     }
   }
 
   for (obj = object_list; obj; obj = obj->next) {
+    auto obj_rm = obj_room_get(obj);
+    if (!obj_rm || !zone_player_count_get(room_zone_vnum_get(obj_rm))) continue;
     if (SCRIPT(obj)) {
       sc = SCRIPT(obj);
-
       if (IS_SET(SCRIPT_TYPES(sc), OTRIG_RANDOM))
         random_otrigger(obj);
     }
@@ -665,7 +665,7 @@ void script_trigger_check(void) {
   room_iterate([&](auto room) {
     if ((sc = room_script_get(room))) {
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM) &&
-          (!is_empty(room_zone_vnum_get(room)) || IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
+          (zone_player_count_get(room_zone_vnum_get(room)) || IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
         random_wtrigger(room);
     }
     return true;
@@ -734,7 +734,7 @@ void do_stat_trigger(struct char_data *ch, trig_data *trig) {
   int len = 0;
 
   if (!trig) {
-    log("SYSERR: NULL trigger passed to do_stat_trigger.");
+    mud_log("SYSERR: NULL trigger passed to do_stat_trigger.");
     return;
   }
 
@@ -1310,10 +1310,10 @@ void script_vlog(const char *format, va_list args) {
 
   snprintf(output, sizeof(output), "SCRIPT ERR: %s", format);
 
-  basic_mud_vlog(output, args_copy);
+  mud_vlog(output, args_copy);
   va_end(args_copy);
 
-  /* the rest is mostly a rip from basic_mud_log() */
+  /* the rest is mostly a rip from mud_log() */
   strcpy(output, "[ "); /* strcpy: OK */
   // va_start(args, format);
   vsnprintf(print_to, sizeof(print_to), format, args);
@@ -2759,7 +2759,7 @@ void read_saved_vars(struct char_data *ch) {
 
   /* if we failed to open the file, return */
   if (!file) {
-    log("%s had no variable file", GET_NAME(ch));
+    mud_log("%s had no variable file", GET_NAME(ch));
     return;
   }
   /* walk through each line in the file parsing variables */

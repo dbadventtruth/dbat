@@ -122,7 +122,6 @@ void echo_on(struct descriptor_data *d);
 void circle_sleep(struct timeval *timeout);
 int get_from_q(struct txt_q *queue, char *dest, int *aliased);
 void signal_setup(void);
-socklen_t init_socket(uint16_t port);
 int new_descriptor(socklen_t s);
 extern int max_players;
 int get_max_players(void);
@@ -137,7 +136,6 @@ void record_usage(void);
 char *make_prompt(struct descriptor_data *point);
 void check_idle_passwords(void);
 void check_idle_menu(void);
-struct in_addr *get_bind_addr(void);
 
 void cleanup_game_world();
 

@@ -429,7 +429,7 @@ void boot_context_help(void) {
     context_help_list[i] = NO_HELP;
 
   if (!fl) {
-    log("No context help found : %s", strerror(errno));
+    mud_log("No context help found : %s", strerror(errno));
     return;
   }
   while (get_line(fl, line)) {

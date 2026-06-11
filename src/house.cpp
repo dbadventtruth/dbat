@@ -143,7 +143,7 @@ void House_crashsave(room_vnum vnum) {
   snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", buf);
   if (json_house_objects_save(tmpfile, vnum) == 0) {
     if (rename(tmpfile, buf) == -1) {
-      log("SYSERR: Error saving JSON house file #%d: %s", vnum,
+      mud_log("SYSERR: Error saving JSON house file #%d: %s", vnum,
           strerror(errno));
       remove(tmpfile);
       return;
@@ -152,7 +152,7 @@ void House_crashsave(room_vnum vnum) {
     return;
   }
 
-  log("SYSERR: JSON house save failed for #%d; falling back to legacy house "
+  mud_log("SYSERR: JSON house save failed for #%d; falling back to legacy house "
       "save",
       vnum);
   remove(tmpfile);
@@ -179,13 +179,13 @@ void House_delete_file(room_vnum vnum) {
     return;
   if (!(fl = fopen(filename, "rb"))) {
     if (errno != ENOENT)
-      log("SYSERR: Error deleting house file #%d. (1): %s", vnum,
+      mud_log("SYSERR: Error deleting house file #%d. (1): %s", vnum,
           strerror(errno));
     return;
   }
   fclose(fl);
   if (remove(filename) < 0)
-    log("SYSERR: Error deleting house file #%d. (2): %s", vnum,
+    mud_log("SYSERR: Error deleting house file #%d. (2): %s", vnum,
         strerror(errno));
 }
 
@@ -229,7 +229,7 @@ void House_boot(void) {
 
   if (!(fl = fopen(HCONTROL_FILE, "rb"))) {
     if (errno == ENOENT)
-      log("   No houses to load. File '%s' does not exist.", HCONTROL_FILE);
+      mud_log("   No houses to load. File '%s' does not exist.", HCONTROL_FILE);
     else
       perror("SYSERR: " HCONTROL_FILE);
     return;
@@ -398,13 +398,13 @@ void hcontrol_destroy_house(struct char_data *ch, char *arg) {
     return;
   }
   if ((real_atrium = room_by_id(house_control[i].atrium)) == NULL)
-    log("SYSERR: House %d had invalid atrium %d!", atoi(arg),
+    mud_log("SYSERR: House %d had invalid atrium %d!", atoi(arg),
         house_control[i].atrium);
   else
     room_flag_set(real_atrium, ROOM_ATRIUM, FALSE);
 
   if ((real_house = room_by_id(house_control[i].vnum)) == NULL)
-    log("SYSERR: House %d had invalid vnum %d!", atoi(arg),
+    mud_log("SYSERR: House %d had invalid vnum %d!", atoi(arg),
         house_control[i].vnum);
   else {
     room_flag_set(real_house, ROOM_HOUSE, FALSE);
@@ -723,7 +723,7 @@ int House_load(room_vnum rvnum) {
             break;
           case 'A':
             if (j >= MAX_OBJ_AFFECT) {
-              log("SYSERR: Too many object affectations in loading house file");
+              mud_log("SYSERR: Too many object affectations in loading house file");
               danger = 1;
             }
             get_line(fl, line);
@@ -747,7 +747,7 @@ int House_load(room_vnum rvnum) {
             break;
           case 'S':
             if (j >= SPELLBOOK_SIZE) {
-              log("SYSERR: Too many spells in spellbook loading rent file");
+              mud_log("SYSERR: Too many spells in spellbook loading rent file");
               danger = 1;
             }
             get_line(fl, line);

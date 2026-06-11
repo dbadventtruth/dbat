@@ -386,7 +386,7 @@ int save_shops(struct zone_data *zone) {
   struct shop_data *shop;
 
   if (!zone) {
-    log("SYSERR: GenOLC: save_shops: Invalid zone pointer.");
+    mud_log("SYSERR: GenOLC: save_shops: Invalid zone pointer.");
     return FALSE;
   }
 
@@ -486,7 +486,7 @@ int save_shops(struct zone_data *zone) {
   if (in_save_list(zone->number, SL_SHP)) {
     remove_from_save_list(zone->number, SL_SHP);
     create_world_index(zone->number, "shp");
-    log("GenOLC: save_shops: Saving shops '%s'", oldname);
+    mud_log("GenOLC: save_shops: Saving shops '%s'", oldname);
   }
   return TRUE;
 }

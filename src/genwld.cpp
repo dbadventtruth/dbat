@@ -62,7 +62,7 @@ room_vnum add_room(struct room_data *room) {
     irm->people = tch;
     irm->contents = tobj;
     add_to_save_list(room_zone_vnum_get(room), SL_WLD);
-    log("GenOLC: add_room: Updated existing room #%d.", room->number);
+    mud_log("GenOLC: add_room: Updated existing room #%d.", room->number);
     return room->number;
   }
 
@@ -71,7 +71,7 @@ room_vnum add_room(struct room_data *room) {
   copy_room(new_room, room);
   room_put(room->number, new_room);
 
-  log("GenOLC: add_room: Added room %d.", room->number);
+  mud_log("GenOLC: add_room: Added room %d.", room->number);
 
   add_to_save_list(room_zone_vnum_get(room), SL_WLD);
 
@@ -96,7 +96,7 @@ int delete_room(room_vnum vnum) {
   add_to_save_list(room_zone_vnum_get(room), SL_WLD);
 
   /* This is something you might want to read about in the logs. */
-  log("GenOLC: delete_room: Deleting room #%d (%s).", room->number, room->name);
+  mud_log("GenOLC: delete_room: Deleting room #%d (%s).", room->number, room->name);
 
   /*
    * Dump the contents of this room into the Void.  We could also just
@@ -200,11 +200,11 @@ int save_rooms(struct zone_data *zone) {
   char rbuf3[MAX_STRING_LENGTH], rbuf4[MAX_STRING_LENGTH];
 
   if (!zone) {
-    log("SYSERR: GenOLC: save_rooms: Invalid zone!");
+    mud_log("SYSERR: GenOLC: save_rooms: Invalid zone!");
     return FALSE;
   }
 
-  log("GenOLC: save_rooms: Saving rooms in zone #%d (%d-%d).", zone->number,
+  mud_log("GenOLC: save_rooms: Saving rooms in zone #%d (%d-%d).", zone->number,
       zone->bot, zone->top);
 
   snprintf(filename, sizeof(filename), "%s%d.new", WLD_PREFIX, zone->number);
@@ -321,7 +321,7 @@ int save_rooms(struct zone_data *zone) {
   if (in_save_list(zone->number, SL_WLD)) {
     remove_from_save_list(zone->number, SL_WLD);
     create_world_index(zone->number, "wld");
-    log("GenOLC: save_rooms: Saving rooms '%s'", buf);
+    mud_log("GenOLC: save_rooms: Saving rooms '%s'", buf);
   }
   return TRUE;
 }
@@ -351,7 +351,7 @@ int copy_room_strings(struct room_data *dest, struct room_data *source) {
   int i;
 
   if (dest == NULL || source == NULL) {
-    log("SYSERR: GenOLC: copy_room_strings: NULL values passed.");
+    mud_log("SYSERR: GenOLC: copy_room_strings: NULL values passed.");
     return FALSE;
   }
 

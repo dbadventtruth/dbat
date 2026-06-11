@@ -28,12 +28,12 @@ void customWrite(struct char_data *ch, struct obj_data *obj) {
   FILE *fl, *file;
 
   if (!get_filename(fname, sizeof(fname), CUSTOME_FILE, ch->desc->user)) {
-    log("ERROR: Custom unable to be saved to user file!");
+    mud_log("ERROR: Custom unable to be saved to user file!");
     return;
   }
 
   if (!(file = fopen(fname, "r"))) {
-    log("ERROR: Custom unable to be saved to user file!");
+    mud_log("ERROR: Custom unable to be saved to user file!");
     return;
   }
 
@@ -48,12 +48,12 @@ void customWrite(struct char_data *ch, struct obj_data *obj) {
   fclose(file);
 
   if (!get_filename(fname, sizeof(fname), CUSTOME_FILE, ch->desc->user)) {
-    log("ERROR: Custom unable to be saved to user file!");
+    mud_log("ERROR: Custom unable to be saved to user file!");
     return;
   }
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: Custom unable to be saved to user file!");
+    mud_log("ERROR: Custom unable to be saved to user file!");
     return;
   }
 
@@ -72,12 +72,12 @@ void customRead(struct descriptor_data *d, int type, char *name) {
   if (type == 1) {
 
     if (!get_filename(fname, sizeof(fname), CUSTOME_FILE, name)) {
-      log("ERROR: Custom unable to be read from user file!");
+      mud_log("ERROR: Custom unable to be read from user file!");
       return;
     }
 
     if (!(fl = fopen(fname, "r"))) {
-      log("ERROR: Custom file unable to be read!");
+      mud_log("ERROR: Custom file unable to be read!");
       return;
     }
 
@@ -99,12 +99,12 @@ void customRead(struct descriptor_data *d, int type, char *name) {
   } else {
 
     if (!get_filename(fname, sizeof(fname), CUSTOME_FILE, d->user)) {
-      log("ERROR: Custom unable to be read from user file!");
+      mud_log("ERROR: Custom unable to be read from user file!");
       return;
     }
 
     if (!(fl = fopen(fname, "r"))) {
-      log("ERROR: Custom file unable to be read!");
+      mud_log("ERROR: Custom file unable to be read!");
       return;
     }
 
@@ -139,7 +139,7 @@ void customCreate(struct descriptor_data *d) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not create custom file.");
+    mud_log("ERROR: could not create custom file.");
     return;
   }
 

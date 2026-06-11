@@ -1035,7 +1035,7 @@ void handle_practice(struct char_data *keeper, struct guild_data *guild,
       highest = highest_skill_value(GET_LEVEL(ch), learntype);
       break;
     default:
-      log("Unknown SKLEARN type for skill %d in practice", skill_num);
+      mud_log("Unknown SKLEARN type for skill %d in practice", skill_num);
       send_to_char(ch, "You can't learn that.\r\n");
       return;
     }
@@ -1441,11 +1441,11 @@ void boot_the_guilds(FILE *gm_f, char *filename, int rec_count) {
           } else if (t2 == 2) {
             guild->feats[(int)t1] = 1;
           } else {
-            log("SYSERR: Invalid 2nd arg in guild file!");
+            mud_log("SYSERR: Invalid 2nd arg in guild file!");
             exit(1);
           }
         } else {
-          log("SYSERR: Invalid format in guild file. Expecting 2 args but got "
+          mud_log("SYSERR: Invalid format in guild file. Expecting 2 args but got "
               "%d!",
               rv);
           exit(1);
@@ -1474,7 +1474,7 @@ void boot_the_guilds(FILE *gm_f, char *filename, int rec_count) {
           if (!p || !*p)
             break;
           if (sscanf(p, "%d", &val) != 1) {
-            log("SYSERR: Can't parse GM_WITH_WHO line in %s: '%s'", buf2, buf);
+            mud_log("SYSERR: Can't parse GM_WITH_WHO line in %s: '%s'", buf2, buf);
             break;
           }
           GM_WITH_WHO(guild)

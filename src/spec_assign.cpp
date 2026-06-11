@@ -39,7 +39,7 @@ void ASSIGNMOB(mob_vnum mob, SPECIAL(fname)) {
   if (proto)
     mob_proto_special_set(mob, fname);
   else if (!mini_mud)
-    log("SYSERR: Attempt to assign spec to non-existant mob #%d", mob);
+    mud_log("SYSERR: Attempt to assign spec to non-existant mob #%d", mob);
 }
 
 void ASSIGNOBJ(obj_vnum obj, SPECIAL(fname)) {
@@ -48,7 +48,7 @@ void ASSIGNOBJ(obj_vnum obj, SPECIAL(fname)) {
   if (proto)
     obj_proto_special_set(obj, fname);
   else if (!mini_mud)
-    log("SYSERR: Attempt to assign spec to non-existant obj #%d", obj);
+    mud_log("SYSERR: Attempt to assign spec to non-existant obj #%d", obj);
 }
 
 void ASSIGNROOM(room_vnum room, SPECIAL(fname)) {
@@ -57,7 +57,7 @@ void ASSIGNROOM(room_vnum room, SPECIAL(fname)) {
   if (rm)
     room_func_set(rm, fname);
   else if (!mini_mud)
-    log("SYSERR: Attempt to assign spec to non-existant room #%d", room);
+    mud_log("SYSERR: Attempt to assign spec to non-existant room #%d", room);
 }
 
 /* ********************************************************************

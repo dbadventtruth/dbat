@@ -436,448 +436,186 @@ static void apply_shadow_sitch(struct char_data *ch, struct char_data *vict,
   char_condition_duration_set(vict, "shadow_stitch", 60);
 }
 
+static const char *song_name(int song) {
+  switch (song) {
+  case SONG_SAFETY:        return "Song of Safety";
+  case SONG_SHIELDING:     return "Song of Shielding";
+  case SONG_SHADOW_STITCH: return "Shadow Stitch Minuet";
+  default:                 return "Teleportation Melody";
+  }
+}
+
+struct TeleportDest {
+  int song_id;
+  int room_id;
+  const char *planet;
+};
+
+static constexpr TeleportDest teleport_dests[] = {
+    {SONG_TELEPORT_EARTH,   300,   "Earth"  },
+    {SONG_TELEPORT_KONACK,  8003,  "Konack" },
+    {SONG_TELEPORT_ARLIA,   16087, "Arlia"  },
+    {SONG_TELEPORT_NAMEK,   10182, "Namek"  },
+    {SONG_TELEPORT_VEGETA,  2234,  "Vegeta" },
+    {SONG_TELEPORT_FRIGID,  4047,  "Frigid" },
+    {SONG_TELEPORT_AETHER,  12025, "Aether" },
+    {SONG_TELEPORT_KANASSA, 14910, "Kanassa"},
+};
+
 static void resolve_song(struct char_data *ch) {
-
-  struct char_data *vict = NULL, *next_v = NULL;
-  struct obj_data *obj2 = NULL, *next_obj;
-  int diceroll = axion_dice(0);
-  int skill = GET_SKILL(ch, SKILL_MYSTICMUSIC);
-  int instrument = 0;
-
-  int stopplaying = FALSE;
-  char buf[MAX_INPUT_LENGTH];
-
-  if (GET_SONG(ch) <= 0) {
+  if (GET_SONG(ch) <= 0)
     return;
-  }
 
-  if ((obj2 = dbat::game::search::character_inventory_find_vnum(
-           ch, {8802, 8807})) != nullptr) {
-    instrument = GET_OBJ_VNUM(obj2);
-  }
-
-  if (instrument == 0) {
+  auto *instr_obj =
+      dbat::game::search::character_inventory_find_vnum(ch, {8802, 8807});
+  if (!instr_obj) {
     send_to_char(ch, "You do not have an instrument.\r\n");
     act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
     GET_SONG(ch) = 0;
     return;
   }
 
+  int diceroll = axion_dice(0);
+  int skill    = GET_SKILL(ch, SKILL_MYSTICMUSIC);
+
   if (skill > diceroll) {
+    char buf[MAX_INPUT_LENGTH];
     sprintf(buf, "@c$n@C continues playing @y'@Y%s@y'@C.@n",
-            GET_SONG(ch) == SONG_SAFETY
-                ? "Song of Safety"
-                : (GET_SONG(ch) == SONG_SHIELDING
-                       ? "Song of Shielding"
-                       : (GET_SONG(ch) == SONG_SHADOW_STITCH
-                              ? "Shadow Stitch Minuet"
-                              : "Teleportation Melody")));
+            song_name(GET_SONG(ch)));
     act("@CYou continue playing your song.@n", TRUE, ch, 0, 0, TO_CHAR);
     act(buf, TRUE, ch, 0, 0, TO_ROOM);
   } else {
     act("@CYou mess up a portion of the song, but continue playing.@n", TRUE,
         ch, 0, 0, TO_CHAR);
-    act("@c$n@C messes up a portion of $s song, but continues to play.@n", TRUE,
-        ch, 0, 0, TO_ROOM);
+    act("@c$n@C messes up a portion of $s song, but continues to play.@n",
+        TRUE, ch, 0, 0, TO_ROOM);
     return;
   }
 
-  bool stop_song = false;
-  room_people_iterate(char_room_get(ch), [&](auto vict) {
-    switch (GET_SONG(ch)) {
-    case SONG_SAFETY:
-      if ((ch->master == vict->master || ch == vict->master ||
-           vict == ch->master) ||
-          vict == ch) {
-        if ((char_condition_has(ch, "group") && char_condition_has(vict, "group")) ||
-            vict == ch) {
-          if (ch == vict->master || ch->master == vict ||
-              ch->master == vict->master || vict == ch) {
-            if (skill > diceroll) {
-              int64_t restore =
-                  (10 * skill) + ((GET_MAX_MANA(ch) * 0.0004) * skill);
-              if (vict != ch) {
-                act("@CYour skillfully playing of the Song of Safety has an "
-                    "effect on @c$N@C.@n",
-                    TRUE, ch, 0, vict, TO_CHAR);
-              } else {
-                act("@CYour skillfully playing of the Song of Safety has an "
-                    "effect on your own body@C.@n",
-                    TRUE, ch, 0, vict, TO_CHAR);
-              }
-              incCurHealth(vict, restore);
-              incCurST(vict, restore * .5);
+  /* true when vict is a group ally of ch (excludes ch == vict) */
+  auto is_group_ally = [&](char_data *vict) {
+    return (char_condition_has(ch, "group") && char_condition_has(vict, "group")) &&
+           (ch == vict->master || ch->master == vict || ch->master == vict->master);
+  };
 
-              if (GET_LIMBCOND(vict, 1) < 100) {
-                GET_LIMBCOND(vict, 1) += 1 + (skill * 0.1);
-                if (GET_LIMBCOND(vict, 1) > 100) {
-                  send_to_char(vict,
-                               "Your right arm is no longer broken!@n\r\n");
-                  GET_LIMBCOND(vict, 1) = 100;
-                }
-              }
-              if (GET_LIMBCOND(vict, 2) < 100) {
-                GET_LIMBCOND(vict, 2) += 1 + (skill * 0.1);
-                if (GET_LIMBCOND(vict, 2) > 100) {
-                  send_to_char(vict,
-                               "Your left arm is no longer broken!@n\r\n");
-                  GET_LIMBCOND(vict, 2) = 100;
-                }
-              }
-              if (GET_LIMBCOND(vict, 3) < 100) {
-                GET_LIMBCOND(vict, 3) += 1 + (skill * 0.1);
-                if (GET_LIMBCOND(vict, 3) > 100) {
-                  send_to_char(vict,
-                               "Your right leg is no longer broken!@n\r\n");
-                  GET_LIMBCOND(vict, 3) = 100;
-                }
-              }
-              if (GET_LIMBCOND(vict, 1) < 100) {
-                GET_LIMBCOND(vict, 4) += 1 + (skill * 0.1);
-                if (GET_LIMBCOND(vict, 4) > 100) {
-                  send_to_char(vict,
-                               "Your left leg is no longer broken!@n\r\n");
-                  GET_LIMBCOND(vict, 4) = 100;
-                }
-              }
-              if (vict != ch) {
-                act("@c$n's@C soothing Song of Safety has recovered some of "
-                    "your powerlevel, stamina, and limb condition.",
-                    TRUE, ch, 0, vict, TO_VICT);
-              }
-              act("@c$n@C continues playing $s ocarina!@n", TRUE, ch, 0, vict,
-                  TO_NOTVICT);
-              improve_skill(ch, SKILL_MYSTICMUSIC, 2);
-              decCurKI(ch, (getMaxKI(ch) * .0003) + skill);
-            }
+  /* stop the song because ch ran out of ki; returns true if it happened */
+  auto ki_exhausted = [&]() -> bool {
+    if (getCurKI(ch) > 0) return false;
+    send_to_char(ch, "You no longer have the ki necessary to play your song.\r\n");
+    act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
+    GET_SONG(ch) = 0;
+    return true;
+  };
+
+  const TeleportDest *tdest = nullptr;
+  for (auto &td : teleport_dests)
+    if (td.song_id == GET_SONG(ch)) { tdest = &td; break; }
+
+  bool stop_song = false;
+  room_people_iterate(char_room_get(ch), [&](auto vict) -> bool {
+    if (stop_song) return false;
+
+    /* all teleport songs share the same per-vict logic; only destination differs */
+    if (tdest) {
+      if (vict == ch) return true;
+      if (is_group_ally(vict)) {
+        char buf[MAX_INPUT_LENGTH];
+        snprintf(buf, sizeof(buf),
+                 "@CYour Teleportation Melody has transported @c$N@C to %s in a flash!@n",
+                 tdest->planet);
+        act(buf, TRUE, ch, 0, vict, TO_CHAR);
+        snprintf(buf, sizeof(buf),
+                 "@c$n's@C Teleportation Melody has transported you to %s in a flash!@n",
+                 tdest->planet);
+        act(buf, TRUE, ch, 0, vict, TO_VICT);
+        act("@c$n's@C Teleportation Melody has transported @c$N@C away in a flash!@n",
+            TRUE, ch, 0, vict, TO_NOTVICT);
+        char_from_room(vict);
+        char_to_room(vict, room_by_id(tdest->room_id));
+      }
+      return true;
+    }
+
+    switch (GET_SONG(ch)) {
+    case SONG_SAFETY: {
+      if (vict != ch && !is_group_ally(vict)) return true;
+      int64_t restore = (10 * skill) + (GET_MAX_MANA(ch) * 0.0004 * skill);
+      if (vict != ch) {
+        act("@CYour skillfully playing of the Song of Safety has an effect on @c$N@C.@n",
+            TRUE, ch, 0, vict, TO_CHAR);
+        act("@c$n's@C soothing Song of Safety has recovered some of your "
+            "powerlevel, stamina, and limb condition.",
+            TRUE, ch, 0, vict, TO_VICT);
+      } else {
+        act("@CYour skillfully playing of the Song of Safety has an effect on "
+            "your own body@C.@n",
+            TRUE, ch, 0, vict, TO_CHAR);
+      }
+      act("@c$n@C continues playing $s ocarina!@n", TRUE, ch, 0, vict, TO_NOTVICT);
+      incCurHealth(vict, restore);
+      incCurST(vict, restore * .5);
+      auto heal_limb = [&](int idx, const char *msg) {
+        if (GET_LIMBCOND(vict, idx) < 100) {
+          GET_LIMBCOND(vict, idx) += 1 + (skill * 0.1);
+          if (GET_LIMBCOND(vict, idx) > 100) {
+            send_to_char(vict, "%s", msg);
+            GET_LIMBCOND(vict, idx) = 100;
           }
         }
-      }
-      if ((getCurKI(ch)) <= 0) {
-        send_to_char(
-            ch, "You no longer have the ki necessary to play your song.\r\n");
-        act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
-        GET_SONG(ch) = 0;
-        stop_song = true;
-        return false;
-      }
+      };
+      heal_limb(1, "Your right arm is no longer broken!@n\r\n");
+      heal_limb(2, "Your left arm is no longer broken!@n\r\n");
+      heal_limb(3, "Your right leg is no longer broken!@n\r\n");
+      heal_limb(4, "Your left leg is no longer broken!@n\r\n");
+      improve_skill(ch, SKILL_MYSTICMUSIC, 2);
+      decCurKI(ch, (getMaxKI(ch) * .0003) + skill);
+      if (ki_exhausted()) { stop_song = true; return false; }
       break;
+    }
     case SONG_SHADOW_STITCH:
-      if (ch->master && vict->master) {
-        if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-          if (ch == vict->master || ch->master == vict ||
-              ch->master == vict->master) {
-            return true;
-          } else if (skill > diceroll + 10) {
-            apply_shadow_sitch(ch, vict, skill);
-          }
-        } else if (skill > diceroll + 10) {
-          apply_shadow_sitch(ch, vict, skill);
-        }
-      } else if (skill > diceroll + 10) {
+      /* skip allies; both must have an explicit master for the group check to apply */
+      if (ch->master && vict->master && is_group_ally(vict)) return true;
+      if (skill > diceroll + 10)
         apply_shadow_sitch(ch, vict, skill);
-      }
-      if ((getCurKI(ch)) <= 0) {
-        send_to_char(
-            ch, "You no longer have the ki necessary to play your song.\r\n");
-        act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
-        GET_SONG(ch) = 0;
-        stop_song = true;
-        return false;
-      }
-      break;
-    case SONG_TELEPORT_EARTH:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Earth "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Earth in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(300));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_VEGETA:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Vegeta "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Vegeta "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(2234));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_FRIGID:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Frigid "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Frigid "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(4047));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_KONACK:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Konack "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Konack "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(8003));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_NAMEK:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Namek "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Namek in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(10182));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_ARLIA:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Arlia "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Arlia in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(16087));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_AETHER:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Aether "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Aether "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(12025));
-          }
-        }
-      }
-      break;
-    case SONG_TELEPORT_KANASSA:
-      if (vict == ch)
-        return true;
-      if (char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master) {
-          if (skill > diceroll) {
-            act("@CYour Teleportation Melody has transported @c$N@C to Kanassa "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_CHAR);
-            act("@c$n's@C Teleportation Melody has transported you to Kanassa "
-                "in a flash!@n",
-                TRUE, ch, 0, vict, TO_VICT);
-            act("@c$n's@C Teleportation Melody has transported @c$N@C away in "
-                "a flash!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            char_from_room(vict);
-            char_to_room(vict, room_by_id(14910));
-          }
-        }
-      }
+      if (ki_exhausted()) { stop_song = true; return false; }
       break;
     case SONG_SHIELDING:
-      if (vict == ch ||
-          (char_condition_has(ch, "group") && char_condition_has(vict, "group"))) {
-        if (ch == vict->master || ch->master == vict ||
-            ch->master == vict->master || vict == ch) {
-          if (skill > diceroll) {
-            if (vict != ch) {
-              act("@CYour triumphant and soaring music has powered a barrier "
-                  "around @c$N@C!@n",
-                  TRUE, ch, 0, vict, TO_CHAR);
-              act("@c$n's@C triumphant and soaring music has powered a barrier "
-                  "around you!@n",
-                  TRUE, ch, 0, vict, TO_VICT);
-            } else {
-              act("@CYour triumphant and soaring music has powered a barrier "
-                  "around yourself@C!@n",
-                  TRUE, ch, 0, vict, TO_CHAR);
-            }
-            act("@c$n's@C triumphant and soaring music has powered a barrier "
-                "around @c$N@C!@n",
-                TRUE, ch, 0, vict, TO_NOTVICT);
-            GET_BARRIER(vict) +=
-                ((GET_MAX_MANA(ch) * 0.005) * (skill * 0.25)) + skill;
-            if (GET_BARRIER(vict) >= GET_MAX_MANA(vict) * 0.75) {
-              GET_BARRIER(vict) = GET_MAX_MANA(vict) * 0.75;
-            }
-            if (!AFF_FLAGGED(vict, AFF_SANCTUARY)) {
-              SET_BIT_AR(AFF_FLAGS(vict), AFF_SANCTUARY);
-            }
-            decCurKI(ch, getPercentOfMaxKI(ch, .02) + skill);
-          }
-        }
+      if (vict != ch && !is_group_ally(vict)) return true;
+      if (vict != ch) {
+        act("@CYour triumphant and soaring music has powered a barrier around @c$N@C!@n",
+            TRUE, ch, 0, vict, TO_CHAR);
+        act("@c$n's@C triumphant and soaring music has powered a barrier around you!@n",
+            TRUE, ch, 0, vict, TO_VICT);
+      } else {
+        act("@CYour triumphant and soaring music has powered a barrier around yourself@C!@n",
+            TRUE, ch, 0, vict, TO_CHAR);
       }
-      if ((getCurKI(ch)) <= 0) {
-        send_to_char(
-            ch, "You no longer have the ki necessary to play your song.\r\n");
-        act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
-        GET_SONG(ch) = 0;
-        stop_song = true;
-        return false;
-      }
+      act("@c$n's@C triumphant and soaring music has powered a barrier around @c$N@C!@n",
+          TRUE, ch, 0, vict, TO_NOTVICT);
+      GET_BARRIER(vict) += ((GET_MAX_MANA(ch) * 0.005) * (skill * 0.25)) + skill;
+      if (GET_BARRIER(vict) >= GET_MAX_MANA(vict) * 0.75)
+        GET_BARRIER(vict) = GET_MAX_MANA(vict) * 0.75;
+      if (!AFF_FLAGGED(vict, AFF_SANCTUARY))
+        SET_BIT_AR(AFF_FLAGS(vict), AFF_SANCTUARY);
+      decCurKI(ch, getPercentOfMaxKI(ch, .02) + skill);
+      if (ki_exhausted()) { stop_song = true; return false; }
       break;
     }
     return true;
   });
-  if (stop_song) {
-    return;
-  }
 
-  if (GET_SONG(ch) >= 4 && skill > diceroll) {
-    switch (GET_SONG(ch)) {
-    case SONG_TELEPORT_EARTH:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(300));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Earth and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_VEGETA:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(2234));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Vegeta and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_FRIGID:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(4047));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Frigid and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_NAMEK:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(10182));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Namek and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_KANASSA:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(14910));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Kanassa and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_AETHER:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(12025));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Aether and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_ARLIA:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(16087));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Arlia and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    case SONG_TELEPORT_KONACK:
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(8003));
-      GET_SONG(ch) = 0;
-      act("@CFinally as the last of your comrades has been teleported you "
-          "teleport yourself to Konack and stop your song.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      break;
-    }
+  if (stop_song) return;
+
+  if (tdest) {
+    char buf[MAX_INPUT_LENGTH];
+    snprintf(buf, sizeof(buf),
+             "@CFinally as the last of your comrades has been teleported you "
+             "teleport yourself to %s and stop your song.@n",
+             tdest->planet);
+    char_from_room(ch);
+    char_to_room(ch, room_by_id(tdest->room_id));
+    GET_SONG(ch) = 0;
+    act(buf, TRUE, ch, 0, 0, TO_CHAR);
   }
 }
 
@@ -2103,17 +1841,24 @@ ACMD(do_runic) {
     return;
   }
 
-  if (!*arg || !*arg2) {
+  auto show_help = [&]() {
     send_to_char(ch, "Syntax: runic (target) (skill)\r\n");
     send_to_char(ch, "@D----@GRunic Skills@D----@n\r\n");
     send_to_char(ch, "@Rkenaz\n%s\n%s\n%s\n%s\n%s\n%s@n\n",
-                 skill >= 40 ? "@Galgiz" : "", skill >= 40 ? "@moagaz" : "",
-                 skill >= 50 ? "@CLaguz" : "", skill >= 60 ? "@Ywunjo" : "",
-                 skill >= 80 ? "@rpurisaz" : "", skill >= 100 ? "@mgebo" : "");
+                 skill >= 40  ? "@Galgiz"   : "",
+                 skill >= 40  ? "@moagaz"   : "",
+                 skill >= 50  ? "@CLaguz"   : "",
+                 skill >= 60  ? "@Ywunjo"   : "",
+                 skill >= 80  ? "@rpurisaz" : "",
+                 skill >= 100 ? "@mgebo"    : "");
+  };
+
+  if (!*arg || !*arg2) {
+    show_help();
     return;
   }
 
-  struct obj_data *bottle =
+  auto *bottle =
       dbat::game::search::character_inventory_find(ch, FALSE, [&](auto it) {
         return GET_OBJ_VNUM(it) == 3424 && GET_OBJ_VAL(it, 6) > 0;
       });
@@ -2124,9 +1869,7 @@ ACMD(do_runic) {
   }
   int amount = GET_OBJ_VAL(bottle, 6);
 
-  struct obj_data *brush = char_inventory_search_vnum(ch, 3427, FALSE, 0);
-
-  if (!brush) {
+  if (!char_inventory_search_vnum(ch, 3427, FALSE, 0)) {
     send_to_char(ch, "You do not have a brush!\r\n");
     return;
   }
@@ -2140,11 +1883,10 @@ ACMD(do_runic) {
     inkcost += 2;
 
   struct char_data *vict;
-
   if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
     send_to_char(ch, "You can't seem to find that person.\r\n");
     return;
-  } else if ((getCurKI(ch)) < cost) {
+  } else if (getCurKI(ch) < cost) {
     send_to_char(ch, "You do not have enough ki to write runes.\r\n");
     return;
   } else if (skill + bonus < axion_dice(0) && rand_number(1, 5) == 5) {
@@ -2176,380 +1918,137 @@ ACMD(do_runic) {
       GET_OBJ_VAL(bottle, 6) = 0;
     WAIT_STATE(ch, PULSE_3SEC);
     return;
-  } else if (!strcasecmp(arg2, "kenaz") || !strcasecmp(arg2, "Kenaz")) {
-    inkcost += 1;
+  }
+
+  /* deduct ink and replace bottle with empty when drained */
+  auto spend_ink = [&]() {
+    GET_OBJ_VAL(bottle, 6) -= inkcost;
+    if (GET_OBJ_VAL(bottle, 6) <= 0) {
+      extract_obj(bottle);
+      obj_to_char(read_object(3423, VIRTUAL), ch);
+    }
+  };
+
+  /* returns false and prints error if ink insufficient */
+  auto ink_ok = [&]() -> bool {
+    if (amount < inkcost) {
+      send_to_char(ch,
+                   "You do not have a bottle with enough ink. "
+                   "@D[@bInkcost@D: @R%d@D]@n\r\n",
+                   inkcost);
+      return false;
+    }
+    return true;
+  };
+
+  /* clamp skill * mult to minimum 1 */
+  auto calc_dur = [&](double mult) -> int {
+    int d = (int)(skill * mult);
+    return d < 1 ? 1 : d;
+  };
+
+  /* core rune application: ki drain, act messages (self or other), ink report,
+     vict effect message, condition application, bottle deduction */
+  auto apply_rune = [&](const char *rune_name, const char *condition,
+                         int duration, const char *vict_msg) {
+    decCurKI(ch, cost);
+    char buf[512];
     if (vict == ch) {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CKenaz@D'@B rune "
-          "on your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CKenaz@D'@B "
-          "rune on $s skin.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.16;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou can now see in the dark! @D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_kenaz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_kenaz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
+      snprintf(buf, sizeof(buf),
+               "@BYou dip your brush into the ink and infuse your ki skillfully "
+               "into it. You pull the brush out and paint the @D'@C%s@D'@B rune "
+               "on your skin!@n",
+               rune_name);
+      act(buf, TRUE, ch, 0, 0, TO_CHAR);
+      snprintf(buf, sizeof(buf),
+               "@b$n@B dips $s brush into a bottle of ink and at the same time "
+               "the ink starts to glow. Skillfully $e then writes the "
+               "@D'@C%s@D'@B rune on $s skin.@n",
+               rune_name);
+      act(buf, TRUE, ch, 0, 0, TO_ROOM);
     } else {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CKenaz@D'@B rune "
-          "on @b$N's@B skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CKenaz@D'@B "
-          "rune on @RYOUR@B skin.@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CKenaz@D'@B "
-          "rune on @b$N's@B skin.@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.16;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou can now see in the dark! @D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_kenaz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_kenaz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
+      snprintf(buf, sizeof(buf),
+               "@BYou dip your brush into the ink and infuse your ki skillfully "
+               "into it. You pull the brush out and paint the @D'@C%s@D'@B rune "
+               "on @b$N's@B skin!@n",
+               rune_name);
+      act(buf, TRUE, ch, 0, vict, TO_CHAR);
+      snprintf(buf, sizeof(buf),
+               "@b$n@B dips $s brush into a bottle of ink and at the same time "
+               "the ink starts to glow. Skillfully $e then writes the "
+               "@D'@C%s@D'@B rune on @RYOUR@B skin.@n",
+               rune_name);
+      act(buf, TRUE, ch, 0, vict, TO_VICT);
+      snprintf(buf, sizeof(buf),
+               "@b$n@B dips $s brush into a bottle of ink and at the same time "
+               "the ink starts to glow. Skillfully $e then writes the "
+               "@D'@C%s@D'@B rune on @b$N's@B skin.@n",
+               rune_name);
+      act(buf, TRUE, ch, 0, vict, TO_NOTVICT);
     }
-    improve_skill(ch, SKILL_RUNIC, 1);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (!strcasecmp(arg2, "algiz") || !strcasecmp(arg2, "Algiz")) {
+    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
+    send_to_char(vict, "%s", vict_msg);
+    if (condition && duration > 0) {
+      char_condition_add(vict, condition, "skill", "runic");
+      char_condition_duration_set(vict, condition, duration * SECS_PER_MUD_HOUR);
+    }
+    spend_ink();
+  };
+
+  char vict_msg[256];
+
+  if (!strcasecmp(arg2, "kenaz")) {
+    inkcost += 1;
+    /* kenaz skips the ink_ok check — small cost, always permitted */
+    int dur = calc_dur(0.16);
+    snprintf(vict_msg, sizeof(vict_msg),
+             "@GYou can now see in the dark! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
+    apply_rune("Kenaz", "rune_kenaz", dur, vict_msg);
+  } else if (!strcasecmp(arg2, "algiz")) {
     inkcost += 2;
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. @D[@bInkcost@D: "
-                   "@R%d@D]@n\r\n",
-                   inkcost);
-      return;
-    } else if (vict == ch) {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CAlgiz@D'@B rune "
-          "on your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CAlgiz@D'@B "
-          "rune on $s skin.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.05;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "ethereal_armor", "skill", "runic");
-      char_condition_duration_set(vict, "ethereal_armor", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    } else {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CAlgiz@D'@B rune "
-          "on @b$N's@B skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CAlgiz@D'@B "
-          "rune on @RYOUR@B skin.@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CAlgiz@D'@B "
-          "rune on @b$N's@B skin.@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.05;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "ethereal_armor", "skill", "runic");
-      char_condition_duration_set(vict, "ethereal_armor", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    }
-    improve_skill(ch, SKILL_RUNIC, 1);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (!strcasecmp(arg2, "oagaz") || !strcasecmp(arg2, "Oagaz")) {
+    if (!ink_ok()) return;
+    int dur = calc_dur(0.05);
+    snprintf(vict_msg, sizeof(vict_msg),
+             "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
+    apply_rune("Algiz", "ethereal_armor", dur, vict_msg);
+  } else if (!strcasecmp(arg2, "oagaz")) {
     inkcost += 3;
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. @D[@bInkcost@D: "
-                   "@R%d@D]@n\r\n",
-                   inkcost);
-      return;
-    } else if (vict == ch) {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@COagaz@D'@B rune "
-          "on your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@COagaz@D'@B "
-          "rune on $s skin.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.04;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou now are protected by Ethereal Chains! @D(@WLasts@D: "
-                   "@w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_oagaz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_oagaz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    }
-  } else if (!strcasecmp(arg2, "laguz") || !strcasecmp(arg2, "Laguz")) {
+    if (!ink_ok()) return;
+    int dur = calc_dur(0.04);
+    snprintf(vict_msg, sizeof(vict_msg),
+             "@GYou now are protected by Ethereal Chains! "
+             "@D(@WLasts@D: @w%d@D)@n\r\n", dur);
+    apply_rune("Oagaz", "rune_oagaz", dur, vict_msg);
+  } else if (!strcasecmp(arg2, "laguz")) {
     inkcost += 4;
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. @D[@bInkcost@D: "
-                   "@R%d@D]@n\r\n",
-                   inkcost);
-      return;
-    } else if (vict == ch) {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CLaguz@D'@B rune "
-          "on your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CLaguz@D'@B "
-          "rune on $s skin.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.04;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(
-          vict, "@GYou now have water breathing! @D(@WLasts@D: @w%d@D)@n\r\n",
-          duration);
-      char_condition_add(vict, "rune_laguz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_laguz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    } else {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@COagaz@D'@B rune "
-          "on @b$N's@B skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@COagaz@D'@B "
-          "rune on @RYOUR@B skin.@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@COagaz@D'@B "
-          "rune on @b$N's@B skin.@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.04;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou now are protected by Ethereal Chains! @D(@WLasts@D: "
-                   "@w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_oagaz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_oagaz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    }
-    improve_skill(ch, SKILL_RUNIC, 1);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (!strcasecmp(arg2, "wunjo") || !strcasecmp(arg2, "Wunjo")) {
+    if (!ink_ok()) return;
+    int dur = calc_dur(0.04);
+    snprintf(vict_msg, sizeof(vict_msg),
+             "@GYou now have water breathing! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
+    apply_rune("Laguz", "rune_laguz", dur, vict_msg);
+  } else if (!strcasecmp(arg2, "wunjo")) {
     inkcost += 4;
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. @D[@bInkcost@D: "
-                   "@R%d@D]@n\r\n",
-                   inkcost);
-      return;
-    } else if (vict == ch) {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CWunjo@D'@B rune "
-          "on your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CWunjo@D'@B "
-          "rune on $s skin.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.08;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou are now blessed with a deeper understanding of "
-                   "things you experience! @D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_wunjo", "skill", "runic");
-      char_condition_duration_set(vict, "rune_wunjo", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    } else {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CWunjo@D'@B rune "
-          "on @b$N's@B skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CWunjo@D'@B "
-          "rune on @RYOUR@B skin.@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CWunjo@D'@B "
-          "rune on @b$N's@B skin.@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.08;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou are now blessed with a deeper understanding of "
-                   "things you experience! @D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_wunjo", "skill", "runic");
-      char_condition_duration_set(vict, "rune_wunjo", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    }
-    improve_skill(ch, SKILL_RUNIC, 1);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (!strcasecmp(arg2, "purisaz") || !strcasecmp(arg2, "Purisaz")) {
+    if (!ink_ok()) return;
+    int dur = calc_dur(0.08);
+    snprintf(vict_msg, sizeof(vict_msg),
+             "@GYou are now blessed with a deeper understanding of things you "
+             "experience! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
+    apply_rune("Wunjo", "rune_wunjo", dur, vict_msg);
+  } else if (!strcasecmp(arg2, "purisaz")) {
     inkcost += 4;
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. @D[@bInkcost@D: "
-                   "@R%d@D]@n\r\n",
-                   inkcost);
-      return;
-    } else if (vict == ch) {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CPurisaz@D'@B "
-          "rune on your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CPurisaz@D'@B "
-          "rune on $s skin.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.06;
-      if (duration < 1)
-        duration = 1;
-      send_to_char(vict,
-                   "@GYou feel as if your inner energy is more potent! "
-                   "@D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      char_condition_add(vict, "rune_purisaz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_purisaz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    } else {
-      decCurKI(ch, cost);
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CPurisaz@D'@B "
-          "rune on @b$N's@B skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CPurisaz@D'@B "
-          "rune on @RYOUR@B skin.@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CPUrisaz@D'@B "
-          "rune on @b$N's@B skin.@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      int duration = skill * 0.06;
-      send_to_char(vict,
-                   "@GYou feel as if your inner energy is more potent! "
-                   "@D(@WLasts@D: @w%d@D)@n\r\n",
-                   duration);
-      if (duration < 1)
-        duration = 1;
-      char_condition_add(vict, "rune_purisaz", "skill", "runic");
-      char_condition_duration_set(vict, "rune_purisaz", duration * SECS_PER_MUD_HOUR);
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
-    }
-    improve_skill(ch, SKILL_RUNIC, 1);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (!strcasecmp(arg2, "gebo") || !strcasecmp(arg2, "Gebo")) {
+    if (!ink_ok()) return;
+    int dur = calc_dur(0.06);
+    snprintf(vict_msg, sizeof(vict_msg),
+             "@GYou feel as if your inner energy is more potent! "
+             "@D(@WLasts@D: @w%d@D)@n\r\n", dur);
+    apply_rune("Purisaz", "rune_purisaz", dur, vict_msg);
+  } else if (!strcasecmp(arg2, "gebo")) {
     inkcost += 10;
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. @D[@bInkcost@D: "
-                   "@R%d@D]@n\r\n",
-                   inkcost);
-      return;
-    } else if (vict == ch) {
-      decCurKI(ch, cost);
+    if (!ink_ok()) return;
+    /* gebo is instant: no condition/duration, but unique "flash" flavor in acts */
+    decCurKI(ch, cost);
+    char buf[512];
+    if (vict == ch) {
       act("@BYou dip your brush into the ink and infuse your ki skillfully "
           "into it. You pull the brush out and paint the @D'@CGebo@D'@B rune "
           "on your skin! The rune flashes out of existence immediately!@n",
@@ -2558,57 +2057,33 @@ ACMD(do_runic) {
           "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
           "rune on $s skin. The rune flashes out of existence immediately!@n",
           TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      char_stat_mod(vict, "practices", 125);
-      send_to_char(vict,
-                   "@GYou feel like you've just gained a lot of knowledge. Now "
-                   "if only you could apply it. @D[@m+125 PS@D]@n\r\n");
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
     } else {
-      decCurKI(ch, cost);
       act("@BYou dip your brush into the ink and infuse your ki skillfully "
           "into it. You pull the brush out and paint the @D'@CGebo@D'@B rune "
           "on @b$N's@B skin! The rune flashes out of existence immediately!@n",
           TRUE, ch, 0, vict, TO_CHAR);
       act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
           "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on @RYOUR@B skin. The rune flashes out of existence "
-          "immediately!@n",
+          "rune on @RYOUR@B skin. The rune flashes out of existence immediately!@n",
           TRUE, ch, 0, vict, TO_VICT);
       act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
           "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on @b$N's@B skin. The rune flashes out of existence "
-          "immediately!@n",
+          "rune on @b$N's@B skin. The rune flashes out of existence immediately!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
-      send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-      char_stat_mod(vict, "practices", 125);
-      send_to_char(vict,
-                   "@GYou feel like you've just gained a lot of knowledge. Now "
-                   "if only you could apply it. @D[@m+125 PS@D]@n\r\n");
-      GET_OBJ_VAL(bottle, 6) -= inkcost;
-      if (GET_OBJ_VAL(bottle, 6) <= 0) {
-        extract_obj(bottle);
-        struct obj_data *empty = read_object(3423, VIRTUAL);
-        obj_to_char(empty, ch);
-      }
     }
-    improve_skill(ch, SKILL_RUNIC, 1);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
+    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
+    char_stat_mod(vict, "practices", 125);
+    send_to_char(vict,
+                 "@GYou feel like you've just gained a lot of knowledge. "
+                 "Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
+    spend_ink();
   } else {
-    send_to_char(ch, "Syntax: runic (target) (skill)\r\n");
-    send_to_char(ch, "@D----@GRunic Skills@D----@n\r\n");
-    send_to_char(ch, "@Rkenaz\n%s\n%s\n%s\n%s\n%s@n\n",
-                 skill >= 40 ? "@Galgiz" : "", skill >= 40 ? "@moagaz" : "",
-                 skill >= 60 ? "@Ywunjo" : "", skill >= 80 ? "@rpurisaz" : "",
-                 skill >= 100 ? "@mgebo" : "");
+    show_help();
     return;
   }
+
+  improve_skill(ch, SKILL_RUNIC, 1);
+  WAIT_STATE(ch, PULSE_3SEC);
 }
 
 ACMD(do_scry) {
@@ -3567,7 +3042,7 @@ void rpp_feature(struct char_data *ch, const char *arg) {
       send_to_char(ch, "The immortals have been notified about this change. It "
                        "had better have been for a good reason.\r\n");
     }
-    log("%s RPP Feature: '%s' Check for rule compliance.", GET_USER(ch), buf8);
+    mud_log("%s RPP Feature: '%s' Check for rule compliance.", GET_USER(ch), buf8);
     return;
   }
 }

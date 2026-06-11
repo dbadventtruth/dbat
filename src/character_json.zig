@@ -5,6 +5,7 @@ const bitflags = @import("flags.zig");
 const dgscripts_json = @import("dgscript_json.zig");
 const characters_api = @import("character_api.zig");
 const lua_api = @import("lua_api.zig");
+const intern_mod = @import("intern.zig");
 
 pub const JsonValue = jsonx.JsonValue;
 
@@ -354,9 +355,10 @@ fn serializeConditions(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonVa
     const data: *characters_api.CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var it = data.conditions.iterator();
     while (it.next()) |entry| {
-        const definition = lua_api.conditionDefinition(entry.key_ptr.*) orelse continue;
+        const cname = intern_mod.nameOf(entry.key_ptr.*);
+        const definition = lua_api.conditionDefinition(cname) orelse continue;
         if (!definition.persistent) continue;
-        try jsonx.put(&object, allocator, entry.key_ptr.*, try serializeCondition(allocator, entry.value_ptr));
+        try jsonx.put(&object, allocator, cname, try serializeCondition(allocator, entry.value_ptr));
     }
     return object;
 }
@@ -461,7 +463,7 @@ fn serializeTransformations(allocator: std.mem.Allocator, ch: *cdb.char_data) !J
     if (ch.zigdata == null) return object;
     const data: *characters_api.CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var it = data.transforms.iterator();
-    while (it.next()) |entry| try jsonx.put(&object, allocator, entry.key_ptr.*, try serializeTransformation(allocator, entry.value_ptr));
+    while (it.next()) |entry| try jsonx.put(&object, allocator, intern_mod.nameOf(entry.key_ptr.*), try serializeTransformation(allocator, entry.value_ptr));
     return object;
 }
 

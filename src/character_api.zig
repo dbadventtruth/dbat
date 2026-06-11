@@ -5,6 +5,8 @@ const bitflags = @import("flags.zig");
 const obj_api = @import("object_api.zig");
 const lua_api = @import("lua_api.zig");
 const modifiers_api = @import("modifiers_api.zig");
+const zone_mod = @import("zone.zig");
+const intern_mod = @import("intern.zig");
 
 pub const TransformData = struct {
     id: []const u8,
@@ -119,35 +121,8 @@ const stat_names = [_][]const u8{
     "wisdom",
 };
 
-const derived_names = [_][]const u8{
-    "agility",
-    "armor",
-    "autoskill_bonus",
-    "burden",
-    "constitution",
-    "damage_bonus",
-    "fish_pole_bonus",
-    "height",
-    "intelligence",
-    "ki",
-    "lifeforce",
-    "powerlevel",
-    "powerlevel_effective",
-    "regen_bonus",
-    "speed",
-    "stamina",
-    "strength",
-    "weight",
-    "weight_carried",
-    "weight_carry_capacity",
-    "weight_equipment",
-    "weight_inventory",
-    "weight_total",
-    "wisdom",
-};
-
 const StatId = std.math.IntFittingRange(0, stat_names.len - 1);
-const DerivedId = std.math.IntFittingRange(0, derived_names.len - 1);
+const DerivedId = intern_mod.InternedId;
 
 const StatStorage = struct {
     values: [stat_names.len]i64 = [_]i64{0} ** stat_names.len,
@@ -182,29 +157,31 @@ fn statId(name: []const u8) ?StatId {
 }
 
 const DerivedStorage = struct {
-    values: [derived_names.len]DerivedData = [_]DerivedData{.{ .value = 0 }} ** derived_names.len,
-    present: std.StaticBitSet(derived_names.len) = std.StaticBitSet(derived_names.len).initEmpty(),
+    cache: std.AutoHashMap(DerivedId, DerivedData),
+
+    fn init(alloc: std.mem.Allocator) DerivedStorage {
+        return .{ .cache = std.AutoHashMap(DerivedId, DerivedData).init(alloc) };
+    }
+
+    fn deinit(self: *DerivedStorage) void {
+        self.cache.deinit();
+    }
 
     fn get(self: *const DerivedStorage, id: DerivedId) ?DerivedData {
-        if (!self.present.isSet(id)) return null;
-        return self.values[id];
+        return self.cache.get(id);
     }
 
     fn set(self: *DerivedStorage, id: DerivedId, value: DerivedData) void {
-        self.values[id] = value;
-        self.present.set(id);
+        self.cache.put(id, value) catch {};
     }
 
     fn clear(self: *DerivedStorage) void {
-        self.present = std.StaticBitSet(derived_names.len).initEmpty();
+        self.cache.clearRetainingCapacity();
     }
 };
 
 fn derivedId(name: []const u8) ?DerivedId {
-    inline for (derived_names, 0..) |derived_name, index| {
-        if (std.mem.eql(u8, name, derived_name)) return @intCast(index);
-    }
-    return null;
+    return intern_mod.lookup(name);
 }
 
 pub const CharacterData = struct {
@@ -212,21 +189,23 @@ pub const CharacterData = struct {
     deriveds: DerivedStorage,
     modifiers: modifiers_api.ModifierCache,
     deriveds_dirty: bool,
-    transforms: std.StringHashMap(TransformData),
-    meters: std.StringHashMap(i64),
-    skills: std.StringHashMap(SkillData),
-    conditions: std.StringHashMap(ConditionInstance),
+    modifier_gen: u64,
+    transforms: std.AutoHashMap(intern_mod.InternedId, TransformData),
+    meters: std.AutoHashMap(intern_mod.InternedId, i64),
+    skills: std.AutoHashMap(intern_mod.InternedId, SkillData),
+    conditions: std.AutoHashMap(intern_mod.InternedId, ConditionInstance),
 
     pub fn init(alloc: std.mem.Allocator) CharacterData {
         return CharacterData{
             .stats = .{},
-            .deriveds = .{},
+            .deriveds = DerivedStorage.init(alloc),
             .modifiers = modifiers_api.ModifierCache.init(alloc),
             .deriveds_dirty = true,
-            .transforms = std.StringHashMap(TransformData).init(alloc),
-            .meters = std.StringHashMap(i64).init(alloc),
-            .skills = std.StringHashMap(SkillData).init(alloc),
-            .conditions = std.StringHashMap(ConditionInstance).init(alloc),
+            .modifier_gen = 0,
+            .transforms = std.AutoHashMap(intern_mod.InternedId, TransformData).init(alloc),
+            .meters = std.AutoHashMap(intern_mod.InternedId, i64).init(alloc),
+            .skills = std.AutoHashMap(intern_mod.InternedId, SkillData).init(alloc),
+            .conditions = std.AutoHashMap(intern_mod.InternedId, ConditionInstance).init(alloc),
         };
     }
 
@@ -244,6 +223,7 @@ pub const CharacterData = struct {
             entry.value_ptr.deinit(std.heap.page_allocator);
         }
         self.conditions.deinit();
+        self.deriveds.deinit();
     }
 };
 
@@ -347,7 +327,7 @@ pub export fn mob_proto_stats_copy_to_char(proto: *cdb.mob_proto_data, ch: *cdb.
         data.stats.copyFrom(&proto_data.stats);
     }
     copyMobProtoLegacyStatsToChar(proto, ch);
-    invalidateDeriveds(data);
+    invalidateDeriveds(ch, data);
 }
 
 pub export fn char_stats_copy_to_mob_proto(ch: *cdb.char_data, proto: *cdb.mob_proto_data) void {
@@ -635,7 +615,7 @@ pub export fn char_stat_set(ch: *cdb.char_data, stat: ?[*:0]const u8, value: i64
 
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
     zigdata.stats.set(id, clamped);
-    invalidateDeriveds(zigdata);
+    invalidateDeriveds(ch, zigdata);
     return clamped;
 }
 
@@ -671,6 +651,8 @@ fn charDerGetBaseName(ch: *cdb.char_data, name: []const u8) i64 {
 
 pub export fn char_der_total_get(ch: *cdb.char_data, stat: ?[*:0]const u8) i64 {
     const name = statName(stat) orelse return 0;
+    if (lua_api.callLuaDerTotal(ch, name)) |v| return v;
+    if (lua_api.isInitialized()) return 0;
     return charDerGetTotalName(ch, name);
 }
 
@@ -687,7 +669,6 @@ fn charDerGetTotalName(ch: *cdb.char_data, name: []const u8) i64 {
         zigdata.modifiers.rebuild(ch);
         emitConditionModifiers(ch, zigdata);
     }
-    if (!definition.no_modifiers) addLegacyDerivedModifiers(ch, zigdata, name, definition);
     const total = calculateDerivedTotal(ch, zigdata, name, definition);
     cacheDerived(zigdata, id, total);
     return total;
@@ -695,10 +676,15 @@ fn charDerGetTotalName(ch: *cdb.char_data, name: []const u8) i64 {
 
 pub export fn char_der_invalidate(ch: *cdb.char_data) void {
     const zigdata = char_ensure_zigdata(ch) orelse return;
-    invalidateDeriveds(zigdata);
+    invalidateDeriveds(ch, zigdata);
 }
 
-fn accumulateDerivedModifiers(cache: *modifiers_api.ModifierCache, category: []const u8, id: []const u8, flat: *i64, percent: *i64, multipliers: *std.ArrayListUnmanaged(i64), min_override: *?i64, max_override: *?i64, set_override: *?i64) void {
+pub export fn char_modifier_gen_get(ch: *cdb.char_data) u64 {
+    const zigdata = char_ensure_zigdata(ch) orelse return 0;
+    return zigdata.modifier_gen;
+}
+
+pub fn accumulateDerivedModifiers(cache: *modifiers_api.ModifierCache, category: []const u8, id: []const u8, flat: *i64, percent: *i64, multipliers: *std.ArrayListUnmanaged(i64), min_override: *?i64, max_override: *?i64, set_override: *?i64) void {
     if (cache.modifiersFor(category, id)) |modifiers| {
         for (modifiers) |modifier| {
             switch (modifier.kind) {
@@ -723,6 +709,9 @@ fn calculateDerivedTotal(ch: *cdb.char_data, zigdata: *CharacterData, name: []co
     var set_override: ?i64 = null;
 
     if (!definition.no_modifiers) {
+        for (definition.legacy_modifiers[0..definition.legacy_modifier_count]) |lm| {
+            flat += cdb.char_legacy_modifier(ch, lm.location, lm.specific);
+        }
         accumulateDerivedModifiers(&zigdata.modifiers, "derived", name, &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
         for (definition.modifier_targets[0..definition.modifier_target_count]) |target| {
             accumulateDerivedModifiers(&zigdata.modifiers, target.category[0..target.category_len], target.id[0..target.id_len], &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
@@ -742,12 +731,6 @@ fn calculateDerivedTotal(ch: *cdb.char_data, zigdata: *CharacterData, name: []co
     return value;
 }
 
-fn addLegacyDerivedModifiers(ch: *cdb.char_data, zigdata: *CharacterData, name: []const u8, definition: lua_api.DerivedDefinition) void {
-    for (definition.legacy_modifiers[0..definition.legacy_modifier_count]) |modifier| {
-        modifiers_api.addLegacyDerivedFlat(&zigdata.modifiers, ch, name, modifier.location, modifier.specific);
-    }
-}
-
 fn cacheDerived(zigdata: *CharacterData, id: DerivedId, value: i64) void {
     if (zigdata.deriveds_dirty) {
         clearDerivedCache(zigdata);
@@ -756,13 +739,15 @@ fn cacheDerived(zigdata: *CharacterData, id: DerivedId, value: i64) void {
     zigdata.deriveds.set(id, .{ .value = value });
 }
 
-fn invalidateDeriveds(zigdata: *CharacterData) void {
+fn invalidateDeriveds(ch: *cdb.char_data, zigdata: *CharacterData) void {
+    _ = ch;
     zigdata.deriveds_dirty = true;
     zigdata.modifiers.invalidate();
+    zigdata.modifier_gen +%= 1;
 }
 
-fn conditionChanged(zigdata: *CharacterData) void {
-    invalidateDeriveds(zigdata);
+fn conditionChanged(ch: *cdb.char_data, zigdata: *CharacterData) void {
+    invalidateDeriveds(ch, zigdata);
 }
 
 fn clearDerivedCache(zigdata: *CharacterData) void {
@@ -771,28 +756,31 @@ fn clearDerivedCache(zigdata: *CharacterData) void {
 
 pub export fn char_meter_get(ch: *cdb.char_data, meter: ?[*:0]const u8) i64 {
     const name = statName(meter) orelse return 0;
+    const id = intern_mod.lookup(name) orelse return meter_scale;
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
-    return zigdata.meters.get(name) orelse meter_scale;
+    return zigdata.meters.get(id) orelse meter_scale;
 }
 
 pub export fn char_meter_full(ch: *cdb.char_data, meter: ?[*:0]const u8) bool {
     const name = statName(meter) orelse return false;
+    const id = intern_mod.lookup(name) orelse return false;
     const zigdata = char_ensure_zigdata(ch) orelse return false;
-    if (zigdata.meters.get(name)) |value| return value >= meter_scale;
+    if (zigdata.meters.get(id)) |value| return value >= meter_scale;
     return false;
 }
 
 pub export fn char_meter_set(ch: *cdb.char_data, meter: ?[*:0]const u8, value: i64) i64 {
     const name = statName(meter) orelse return 0;
+    const id = intern_mod.lookup(name) orelse return 0;
     const clamped = clampMeter(value);
 
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
-    if (zigdata.meters.getPtr(name)) |existing| {
+    if (zigdata.meters.getPtr(id)) |existing| {
         existing.* = clamped;
         return clamped;
     }
 
-    zigdata.meters.put(lua_api.internString(name), clamped) catch return 0;
+    zigdata.meters.put(id, clamped) catch return 0;
     return clamped;
 }
 
@@ -826,8 +814,9 @@ pub export fn char_meter_max(ch: *cdb.char_data, meter: ?[*:0]const u8) i64 {
 fn charMeterCurrentName(ch: *cdb.char_data, name: []const u8) i64 {
     const max = charMeterMaxName(ch, name);
     if (max <= 0) return 0;
+    const id = intern_mod.lookup(name) orelse return 0;
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
-    const current = zigdata.meters.get(name) orelse meter_scale;
+    const current = zigdata.meters.get(id) orelse meter_scale;
     return @divTrunc(current * max, meter_scale);
 }
 
@@ -905,17 +894,18 @@ pub export fn char_condition_check_legacy_affect(ch: *cdb.char_data, aff_flag: c
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var it = zigdata.conditions.keyIterator();
-    while (it.next()) |key| {
-        if (lua_api.conditionHasLegacyAffect(key.*, @intCast(aff_flag))) return true;
+    while (it.next()) |id_ptr| {
+        if (lua_api.conditionHasLegacyAffect(intern_mod.nameOf(id_ptr.*), @intCast(aff_flag))) return true;
     }
     return false;
 }
 
 pub export fn char_condition_has(ch: *cdb.char_data, condition: ?[*:0]const u8) bool {
     const name = statName(condition) orelse return false;
+    const id = intern_mod.lookup(name) orelse return false;
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    return zigdata.conditions.contains(name);
+    return zigdata.conditions.contains(id);
 }
 
 pub export fn char_condition_id_has_tag(condition: ?[*:0]const u8, tag: ?[*:0]const u8) bool {
@@ -933,8 +923,9 @@ pub export fn char_condition_active_with_tag(ch: *cdb.char_data, tag: ?[*:0]cons
     if (ch.zigdata == null) return null;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
     var it = zigdata.conditions.keyIterator();
-    while (it.next()) |key| {
-        if (lua_api.conditionHasTag(key.*, tag_name)) return @ptrCast(key.*.ptr);
+    while (it.next()) |id_ptr| {
+        const cname = intern_mod.nameOf(id_ptr.*);
+        if (lua_api.conditionHasTag(cname, tag_name)) return @ptrCast(cname.ptr);
     }
     return null;
 }
@@ -946,27 +937,27 @@ pub export fn char_condition_add(ch: *cdb.char_data, condition: ?[*:0]const u8, 
 pub export fn char_condition_add_with_variables(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, numbers: ?[*]const ConditionNumberArg, number_count: usize, strings: ?[*]const ConditionStringArg, string_count: usize) bool {
     const name = statName(condition) orelse return false;
     const definition = lua_api.conditionDefinition(name) orelse return false;
+    const cond_id = intern_mod.intern(name);
     const zigdata = char_ensure_zigdata(ch) orelse return false;
-    const is_new = !zigdata.conditions.contains(name);
+    const is_new = !zigdata.conditions.contains(cond_id);
 
     if (is_new) {
-        const key = lua_api.internString(name);
         var instance = ConditionInstance.init(std.heap.page_allocator, name) catch {
             return false;
         };
-        zigdata.conditions.put(key, instance) catch {
+        zigdata.conditions.put(cond_id, instance) catch {
             instance.deinit(std.heap.page_allocator);
             return false;
         };
     } else if (definition.stackable) {
-        zigdata.conditions.getPtr(name).?.stacks += 1;
+        zigdata.conditions.getPtr(cond_id).?.stacks += 1;
     }
 
-    if (zigdata.conditions.getPtr(name)) |instance| {
+    if (zigdata.conditions.getPtr(cond_id)) |instance| {
         addConditionVariables(instance, numbers, number_count, strings, string_count) catch return false;
         addConditionSource(instance, source_category, source_id) catch {};
     }
-    conditionChanged(zigdata);
+    conditionChanged(ch, zigdata);
     lua_api.callConditionHook(ch, name, "on_apply", null);
     return true;
 }
@@ -987,10 +978,11 @@ pub export fn char_condition_apply_with_variables(ch: *cdb.char_data, condition:
         }
 
         var it = zigdata.conditions.keyIterator();
-        while (it.next()) |key| {
-            if (std.mem.eql(u8, key.*, name)) continue;
-            if (!lua_api.conditionsConflict(name, key.*)) continue;
-            to_remove.append(std.heap.c_allocator.dupeZ(u8, key.*) catch return false) catch return false;
+        while (it.next()) |id_ptr| {
+            const cname = intern_mod.nameOf(id_ptr.*);
+            if (std.mem.eql(u8, cname, name)) continue;
+            if (!lua_api.conditionsConflict(name, cname)) continue;
+            to_remove.append(std.heap.c_allocator.dupeZ(u8, cname) catch return false) catch return false;
         }
 
         for (to_remove.items) |item| _ = char_condition_remove(ch, item.ptr, "exclusive");
@@ -1016,9 +1008,10 @@ pub export fn char_condition_remove(ch: *cdb.char_data, condition: ?[*:0]const u
 fn char_condition_remove_name(ch: *cdb.char_data, name: []const u8, reason: ?[*:0]const u8) bool {
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    var removed = zigdata.conditions.fetchRemove(name) orelse return false;
+    const cond_id = intern_mod.lookup(name) orelse return false;
+    var removed = zigdata.conditions.fetchRemove(cond_id) orelse return false;
     removed.value.deinit(std.heap.page_allocator);
-    conditionChanged(zigdata);
+    conditionChanged(ch, zigdata);
     const reason_slice: ?[]const u8 = if (reason) |r| r[0..std.mem.len(r)] else null;
     lua_api.callConditionHook(ch, name, "on_remove", reason_slice);
     return true;
@@ -1035,9 +1028,10 @@ pub export fn char_condition_remove_tag(ch: *cdb.char_data, tag: ?[*:0]const u8,
     }
 
     var it = zigdata.conditions.keyIterator();
-    while (it.next()) |key| {
-        if (!lua_api.conditionHasTag(key.*, tag_name)) continue;
-        to_remove.append(std.heap.c_allocator.dupeZ(u8, key.*) catch return 0) catch return 0;
+    while (it.next()) |id_ptr| {
+        const cname = intern_mod.nameOf(id_ptr.*);
+        if (!lua_api.conditionHasTag(cname, tag_name)) continue;
+        to_remove.append(std.heap.c_allocator.dupeZ(u8, cname) catch return 0) catch return 0;
     }
 
     var removed: c_int = 0;
@@ -1070,6 +1064,7 @@ pub export fn char_condition_update_all(kind: ?[*:0]const u8, pulses: i64, secon
     for (condition_update_ids.items) |id| {
         const ch = characters.char_by_id(id) orelse continue;
         if (cdb.char_is_extracted(ch)) continue;
+        if (zone_mod.zone_player_count_get(char_zone_vnum_get(ch)) == 0) continue;
         char_condition_update_context(ch, update_kind, pulses, seconds);
     }
 }
@@ -1085,7 +1080,7 @@ fn char_condition_update_context(ch: *cdb.char_data, kind: []const u8, pulses: i
     }
 
     var it = zigdata.conditions.keyIterator();
-    while (it.next()) |key| names.append(std.heap.c_allocator.dupeZ(u8, key.*) catch return) catch return;
+    while (it.next()) |id_ptr| names.append(std.heap.c_allocator.dupeZ(u8, intern_mod.nameOf(id_ptr.*)) catch return) catch return;
 
     for (names.items) |name_z| {
         const instance = conditionGet(ch, name_z.ptr) orelse continue;
@@ -1098,7 +1093,7 @@ fn char_condition_update_context(ch: *cdb.char_data, kind: []const u8, pulses: i
         const updated = conditionGet(ch, name_z.ptr) orelse continue;
         if (seconds > 0 and updated.duration > 0) {
             updated.duration = @max(0, updated.duration - seconds);
-            conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+            conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
         }
         const after_duration = conditionGet(ch, name_z.ptr) orelse continue;
         if (after_duration.duration == 0) _ = char_condition_remove(ch, name_z.ptr, "expired");
@@ -1113,7 +1108,7 @@ pub export fn char_condition_stacks_get(ch: *cdb.char_data, condition: ?[*:0]con
 pub export fn char_condition_stacks_set(ch: *cdb.char_data, condition: ?[*:0]const u8, value: i64) i64 {
     const instance = conditionGet(ch, condition) orelse return 0;
     instance.stacks = @max(0, value);
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return instance.stacks;
 }
 
@@ -1125,7 +1120,7 @@ pub export fn char_condition_duration_get(ch: *cdb.char_data, condition: ?[*:0]c
 pub export fn char_condition_duration_set(ch: *cdb.char_data, condition: ?[*:0]const u8, value: i64) i64 {
     const instance = conditionGet(ch, condition) orelse return 0;
     instance.duration = value;
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return value;
 }
 
@@ -1139,7 +1134,7 @@ pub export fn char_condition_number_set(ch: *cdb.char_data, condition: ?[*:0]con
     const instance = conditionGet(ch, condition) orelse return 0;
     const name = statName(key) orelse return 0;
     putOwnedNumber(instance, name, value) catch return 0;
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return value;
 }
 
@@ -1160,27 +1155,28 @@ pub export fn char_condition_string_set(ch: *cdb.char_data, condition: ?[*:0]con
     const name = statName(key) orelse return false;
     const text = statName(value) orelse return false;
     putOwnedString(instance, name, text) catch return false;
-    conditionChanged(@ptrCast(@alignCast(ch.zigdata.?)));
+    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
     return true;
 }
 
 pub export fn char_transform_has(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
     const name = statName(transform) orelse return false;
+    const id = intern_mod.lookup(name) orelse return false;
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    return zigdata.transforms.contains(name);
+    return zigdata.transforms.contains(id);
 }
 
 pub export fn char_transform_add(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
     const name = statName(transform) orelse return false;
+    const id = intern_mod.intern(name);
     const zigdata = char_ensure_zigdata(ch) orelse return false;
-    if (zigdata.transforms.contains(name)) return true;
+    if (zigdata.transforms.contains(id)) return true;
 
-    const key = lua_api.internString(name);
     var data = TransformData.init(std.heap.page_allocator, name) catch {
         return false;
     };
-    zigdata.transforms.put(key, data) catch {
+    zigdata.transforms.put(id, data) catch {
         data.deinit(std.heap.page_allocator);
         return false;
     };
@@ -1189,9 +1185,10 @@ pub export fn char_transform_add(ch: *cdb.char_data, transform: ?[*:0]const u8) 
 
 pub export fn char_transform_remove(ch: *cdb.char_data, transform: ?[*:0]const u8) bool {
     const name = statName(transform) orelse return false;
+    const id = intern_mod.lookup(name) orelse return false;
     if (ch.zigdata == null) return false;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    var removed = zigdata.transforms.fetchRemove(name) orelse return false;
+    var removed = zigdata.transforms.fetchRemove(id) orelse return false;
     removed.value.deinit(std.heap.page_allocator);
     return true;
 }
@@ -1253,14 +1250,16 @@ fn conditionGet(ch: *cdb.char_data, condition: ?[*:0]const u8) ?*ConditionInstan
 fn conditionGetName(ch: *cdb.char_data, name: []const u8) ?*ConditionInstance {
     if (ch.zigdata == null) return null;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    return zigdata.conditions.getPtr(name);
+    const id = intern_mod.lookup(name) orelse return null;
+    return zigdata.conditions.getPtr(id);
 }
 
 fn transformGet(ch: *cdb.char_data, transform: ?[*:0]const u8) ?*TransformData {
     const name = statName(transform) orelse return null;
     if (ch.zigdata == null) return null;
     const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-    return zigdata.transforms.getPtr(name);
+    const id = intern_mod.lookup(name) orelse return null;
+    return zigdata.transforms.getPtr(id);
 }
 
 fn addConditionSource(instance: *ConditionInstance, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) !void {
@@ -1374,10 +1373,10 @@ pub export fn char_condition_count(ch: *cdb.char_data) usize {
 pub export fn char_condition_name_at(ch: *cdb.char_data, index: usize) ?[*:0]const u8 {
     const ptr = ch.zigdata orelse return null;
     const data: *CharacterData = @ptrCast(@alignCast(ptr));
-    var it = data.conditions.iterator();
+    var it = data.conditions.keyIterator();
     var i: usize = 0;
-    while (it.next()) |entry| {
-        if (i == index) return @ptrCast(entry.key_ptr.*.ptr);
+    while (it.next()) |id_ptr| {
+        if (i == index) return @ptrCast(intern_mod.nameOf(id_ptr.*).ptr);
         i += 1;
     }
     return null;

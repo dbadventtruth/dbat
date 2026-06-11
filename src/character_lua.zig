@@ -5,6 +5,9 @@ const objects_lua = @import("object_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const zones_lua = @import("zone_lua.zig");
 const lua_meta = @import("lua_meta.zig");
+const character_api = @import("character_api.zig");
+const lua_api = @import("lua_api.zig");
+const modifiers_api = @import("modifiers_api.zig");
 
 const Lua = zlua.Lua;
 const character_metatable = "dbat.Character";
@@ -93,6 +96,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "reftype", luaCharacterRefType);
     addMethod(lua, "is_npc", luaCharacterIsNpc);
     addMethod(lua, "valid", luaCharacterValid);
+    addMethod(lua, "is_extracted", luaCharacterIsExtracted);
     addMethod(lua, "is_same", luaCharacterIsSame);
     addMethod(lua, "update", luaCharacterUpdate);
     addMethod(lua, "send", luaCharacterSend);
@@ -154,6 +158,9 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "der_base", luaCharacterDerivedBase);
     addMethod(lua, "der_total", luaCharacterDerivedTotal);
     addMethod(lua, "der_invalidate", luaCharacterDerivedInvalidate);
+    addMethod(lua, "modifiers_for", luaCharacterModifiersFor);
+    addMethod(lua, "legacy_modifier", luaCharacterLegacyModifier);
+    addMethod(lua, "modifier_gen", luaCharacterModifierGen);
     addMethod(lua, "meter_get", luaCharacterMeterGet);
     addMethod(lua, "meter_set", luaCharacterMeterSet);
     addMethod(lua, "meter_mod", luaCharacterMeterMod);
@@ -298,9 +305,7 @@ pub fn checkCharacterAt(lua: *Lua, index: i32) *cdb.char_data {
 }
 
 fn characterByHandleId(id: i64) ?*cdb.char_data {
-    const ch = cdb.char_by_id(id) orelse return null;
-    if (cdb.char_is_extracted(ch)) return null;
-    return ch;
+    return cdb.char_by_id(id);
 }
 
 fn checkMobProtoHandle(lua: *Lua) *MobProtoHandle {
@@ -420,6 +425,13 @@ fn luaCharacterIsNpc(lua: *Lua) i32 {
 fn luaCharacterValid(lua: *Lua) i32 {
     const handle = checkCharacterHandle(lua);
     lua.pushBoolean(characterByHandleId(handle.id) != null);
+    return 1;
+}
+
+fn luaCharacterIsExtracted(lua: *Lua) i32 {
+    const handle = checkCharacterHandle(lua);
+    const ch = characterByHandleId(handle.id);
+    lua.pushBoolean(ch == null or cdb.char_is_extracted(ch.?));
     return 1;
 }
 
@@ -912,6 +924,67 @@ fn luaCharacterDerivedTotal(lua: *Lua) i32 {
 fn luaCharacterDerivedInvalidate(lua: *Lua) i32 {
     cdb.char_der_invalidate(checkCharacter(lua));
     return 0;
+}
+
+fn luaCharacterModifiersFor(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const category = string(lua, 2);
+    const id = string(lua, 3);
+    const zigdata = character_api.char_ensure_zigdata(ch) orelse {
+        lua.newTable();
+        lua.pushInteger(0); lua.setField(-2, "flat");
+        lua.pushInteger(0); lua.setField(-2, "percent");
+        lua.newTable(); lua.setField(-2, "multipliers");
+        lua.pushNil(); lua.setField(-2, "min");
+        lua.pushNil(); lua.setField(-2, "max");
+        lua.pushNil(); lua.setField(-2, "set");
+        return 1;
+    };
+
+    if (zigdata.modifiers.dirty) {
+        zigdata.modifiers.rebuild(ch);
+        lua_api.emitCharacterModifiers(ch, &zigdata.modifiers);
+    }
+
+    var flat: i64 = 0;
+    var percent: i64 = 0;
+    var multipliers: std.ArrayListUnmanaged(i64) = .empty;
+    defer multipliers.deinit(std.heap.page_allocator);
+    var min_override: ?i64 = null;
+    var max_override: ?i64 = null;
+    var set_override: ?i64 = null;
+
+    character_api.accumulateDerivedModifiers(&zigdata.modifiers, category, id, &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
+
+    lua.newTable();
+    lua.pushInteger(flat); lua.setField(-2, "flat");
+    lua.pushInteger(percent); lua.setField(-2, "percent");
+    lua.newTable();
+    for (multipliers.items, 0..) |m, i| {
+        lua.pushInteger(m);
+        lua.setIndex(-2, @intCast(i + 1));
+    }
+    lua.setField(-2, "multipliers");
+    if (min_override) |v| { lua.pushInteger(v); } else { lua.pushNil(); }
+    lua.setField(-2, "min");
+    if (max_override) |v| { lua.pushInteger(v); } else { lua.pushNil(); }
+    lua.setField(-2, "max");
+    if (set_override) |v| { lua.pushInteger(v); } else { lua.pushNil(); }
+    lua.setField(-2, "set");
+    return 1;
+}
+
+fn luaCharacterLegacyModifier(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const location = @as(c_int, @intCast(integer(lua, 2)));
+    const specific = @as(c_int, @intCast(integer(lua, 3)));
+    lua.pushInteger(cdb.char_legacy_modifier(ch, location, specific));
+    return 1;
+}
+
+fn luaCharacterModifierGen(lua: *Lua) i32 {
+    lua.pushInteger(@intCast(cdb.char_modifier_gen_get(checkCharacter(lua))));
+    return 1;
 }
 
 fn luaCharacterMeterGet(lua: *Lua) i32 {

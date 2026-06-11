@@ -79,7 +79,7 @@ void news_string_cleanup(struct descriptor_data *d, int terminator) {
     act("$n stops editing the news.", TRUE, d->character, 0, 0, TO_ROOM);
     break;
   default:
-    log("SYSERR: news_string_cleanup: Unknown terminator status.");
+    mud_log("SYSERR: news_string_cleanup: Unknown terminator status.");
     break;
   }
 
@@ -144,7 +144,7 @@ void tedit_string_cleanup(struct descriptor_data *d, int terminator) {
     act("$n stops editing some scrolls.", TRUE, d->character, 0, 0, TO_ROOM);
     break;
   default:
-    log("SYSERR: tedit_string_cleanup: Unknown terminator status.");
+    mud_log("SYSERR: tedit_string_cleanup: Unknown terminator status.");
     break;
   }
 

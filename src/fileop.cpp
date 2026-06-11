@@ -52,7 +52,7 @@ int get_filename(char *filename, size_t fbufsize, int mode,
   char name[PATH_MAX], *ptr;
 
   if (orig_name == NULL || *orig_name == '\0' || filename == NULL) {
-    log("SYSERR: NULL pointer or empty string passed to get_filename(), %p or "
+    mud_log("SYSERR: NULL pointer or empty string passed to get_filename(), %p or "
         "%p.",
         orig_name, filename);
     return (0);
@@ -163,7 +163,7 @@ int touch(const char *path) {
   FILE *fl;
 
   if (!(fl = fopen(path, "a"))) {
-    log("SYSERR: %s: %s", path, strerror(errno));
+    mud_log("SYSERR: %s: %s", path, strerror(errno));
     return (-1);
   } else {
     fclose(fl);
@@ -178,10 +178,10 @@ void topLoad() {
 
   /* Read Toplist File */
   if (!get_filename(fname, sizeof(fname), INTRO_FILE, "toplist")) {
-    log("ERROR: Toplist file does not exist.");
+    mud_log("ERROR: Toplist file does not exist.");
     return;
   } else if (!(file = fopen(fname, "r"))) {
-    log("ERROR: Toplist file does not exist.");
+    mud_log("ERROR: Toplist file does not exist.");
     return;
   }
 
@@ -503,7 +503,7 @@ void topWrite(struct char_data *ch) {
       return;
 
     if (!(fl = fopen(fname, "w"))) {
-      log("ERROR: could not save Toplist File, %s.", fname);
+      mud_log("ERROR: could not save Toplist File, %s.", fname);
       return;
     }
     x = 0;

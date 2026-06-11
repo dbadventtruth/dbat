@@ -1005,7 +1005,7 @@ void introCreate(struct char_data *ch) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save user, %s, to filename, %s.", GET_NAME(ch),
+    mud_log("ERROR: could not save user, %s, to filename, %s.", GET_NAME(ch),
         fname);
     return;
   }
@@ -1087,7 +1087,7 @@ void introWrite(struct char_data *ch, struct char_data *vict, char *name) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save intro file, %s, to filename, %s.", GET_NAME(ch),
+    mud_log("ERROR: could not save intro file, %s, to filename, %s.", GET_NAME(ch),
         fname);
     return;
   }
@@ -1614,518 +1614,66 @@ static void bringdesc(struct char_data *ch, struct char_data *tch) {
   }
 }
 
+static char sect_to_map_char(int sect, int geffect, bool sunken) {
+  if (sunken) return '=';
+  if (geffect >= 1) {
+    switch (sect) {
+    case SECT_INSIDE:   return '2';
+    case SECT_FIELD:    return '2';
+    case SECT_DESERT:   return '7';
+    case SECT_CITY:     return '1';
+    case SECT_FOREST:   return '6';
+    case SECT_MOUNTAIN: return '5';
+    case SECT_HILLS:    return '3';
+    default: break;
+    }
+  }
+  switch (sect) {
+  case SECT_INSIDE:       return 'i';
+  case SECT_FIELD:        return 'p';
+  case SECT_DESERT:       return '!';
+  case SECT_CITY:         return '(';
+  case SECT_FOREST:       return 'f';
+  case SECT_MOUNTAIN:     return '^';
+  case SECT_HILLS:        return 'h';
+  case SECT_FLYING:       return 's';
+  case SECT_WATER_NOSWIM: return '`';
+  case SECT_WATER_SWIM:   return '+';
+  case SECT_SHOP:         return '&';
+  case SECT_IMPORTANT:    return '*';
+  default:                return '-';
+  }
+}
+
 static void map_draw_room(char map[9][10], int x, int y, struct room_data *room,
                           struct char_data *ch) {
-  
+  static const struct { int door; int dy; int dx; } dir_offsets[] = {
+    {NORTH,     -1,  0},
+    {EAST,       0, +1},
+    {SOUTH,     +1,  0},
+    {WEST,       0, -1},
+    {NORTHEAST, -1, +1},
+    {NORTHWEST, -1, -1},
+    {SOUTHEAST, +1, +1},
+    {SOUTHWEST, +1, -1},
+  };
+
   room_exits_iterate(room, [&](auto door, auto exit) {
     auto dest = exit_dest_get(exit);
     if (!dest) return true;
 
-        int sect = room_sector_type_get(dest);
-    int geffect = room_geffect_get(dest);
-    bool sunken = room_is_sunken(dest);
-    if ((exit_flagged(exit, EX_CLOSED) && !exit_flagged(exit, EX_SECRET))) {
-      switch (door) {
-      case NORTH:
-        map[y - 1][x] = '8';
-        break;
-      case EAST:
-        map[y][x + 1] = '8';
-        break;
-      case SOUTH:
-        map[y + 1][x] = '8';
-        break;
-      case WEST:
-        map[y][x - 1] = '8';
-        break;
-      case NORTHEAST:
-        map[y - 1][x + 1] = '8';
-        break;
-      case NORTHWEST:
-        map[y - 1][x - 1] = '8';
-        break;
-      case SOUTHEAST:
-        map[y + 1][x + 1] = '8';
-        break;
-      case SOUTHWEST:
-        map[y + 1][x - 1] = '8';
-        break;
-      }
+    int dy = 0, dx = 0;
+    for (auto &e : dir_offsets) {
+      if (e.door == door) { dy = e.dy; dx = e.dx; break; }
+    }
+
+    if (exit_flagged(exit, EX_CLOSED) && !exit_flagged(exit, EX_SECRET)) {
+      map[y + dy][x + dx] = '8';
     } else if (!exit_flagged(exit, EX_CLOSED)) {
-      switch (door) {
-      case NORTH:
-        if (sunken) {
-          map[y - 1][x] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '2';
-          } else {
-            map[y - 1][x] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '2';
-          } else {
-            map[y - 1][x] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '7';
-          } else {
-            map[y - 1][x] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '1';
-          } else {
-            map[y - 1][x] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '6';
-          } else {
-            map[y - 1][x] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '5';
-          } else {
-            map[y - 1][x] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y - 1][x] = '3';
-          } else {
-            map[y - 1][x] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y - 1][x] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y - 1][x] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y - 1][x] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y - 1][x] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y - 1][x] = '*';
-        } else {
-          map[y - 1][x] = '-';
-        }
-        break;
-      case EAST:
-        if (sunken) {
-          map[y][x + 1] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '2';
-          } else {
-            map[y][x + 1] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '2';
-          } else {
-            map[y][x + 1] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '7';
-          } else {
-            map[y][x + 1] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '1';
-          } else {
-            map[y][x + 1] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '6';
-          } else {
-            map[y][x + 1] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '5';
-          } else {
-            map[y][x + 1] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y][x + 1] = '3';
-          } else {
-            map[y][x + 1] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y][x + 1] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y][x + 1] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y][x + 1] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y][x + 1] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y][x + 1] = '*';
-        } else {
-          map[y][x + 1] = '-';
-        }
-        break;
-      case SOUTH:
-        if (sunken) {
-          map[y + 1][x] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '2';
-          } else {
-            map[y + 1][x] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '2';
-          } else {
-            map[y + 1][x] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '7';
-          } else {
-            map[y + 1][x] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '1';
-          } else {
-            map[y + 1][x] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '6';
-          } else {
-            map[y + 1][x] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '5';
-          } else {
-            map[y + 1][x] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y + 1][x] = '3';
-          } else {
-            map[y + 1][x] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y + 1][x] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y + 1][x] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y + 1][x] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y + 1][x] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y + 1][x] = '*';
-        } else {
-          map[y + 1][x] = '-';
-        }
-        break;
-      case WEST:
-        if (sunken) {
-          map[y][x - 1] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '2';
-          } else {
-            map[y][x - 1] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '2';
-          } else {
-            map[y][x - 1] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '7';
-          } else {
-            map[y][x - 1] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '1';
-          } else {
-            map[y][x - 1] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '6';
-          } else {
-            map[y][x - 1] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '5';
-          } else {
-            map[y][x - 1] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y][x - 1] = '3';
-          } else {
-            map[y][x - 1] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y][x - 1] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y][x - 1] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y][x - 1] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y][x - 1] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y][x - 1] = '*';
-        } else {
-          map[y][x - 1] = '-';
-        }
-        break;
-      case NORTHEAST:
-        if (sunken) {
-          map[y - 1][x + 1] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '2';
-          } else {
-            map[y - 1][x + 1] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '2';
-          } else {
-            map[y - 1][x + 1] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '7';
-          } else {
-            map[y - 1][x + 1] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '1';
-          } else {
-            map[y - 1][x + 1] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '6';
-          } else {
-            map[y - 1][x + 1] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '5';
-          } else {
-            map[y - 1][x + 1] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y - 1][x + 1] = '3';
-          } else {
-            map[y - 1][x + 1] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y - 1][x + 1] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y - 1][x + 1] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y - 1][x + 1] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y - 1][x + 1] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y - 1][x + 1] = '*';
-        } else {
-          map[y - 1][x + 1] = '-';
-        }
-        break;
-      case NORTHWEST:
-        if (sunken) {
-          map[y - 1][x - 1] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '2';
-          } else {
-            map[y - 1][x - 1] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '2';
-          } else {
-            map[y - 1][x - 1] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '7';
-          } else {
-            map[y - 1][x - 1] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '1';
-          } else {
-            map[y - 1][x - 1] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '6';
-          } else {
-            map[y - 1][x - 1] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '5';
-          } else {
-            map[y - 1][x - 1] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y - 1][x - 1] = '3';
-          } else {
-            map[y - 1][x - 1] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y - 1][x - 1] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y - 1][x - 1] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y - 1][x - 1] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y - 1][x - 1] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y - 1][x - 1] = '*';
-        } else {
-          map[y - 1][x - 1] = '-';
-        }
-        break;
-      case SOUTHEAST:
-        if (sunken) {
-          map[y + 1][x + 1] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '2';
-          } else {
-            map[y + 1][x + 1] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '2';
-          } else {
-            map[y + 1][x + 1] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '7';
-          } else {
-            map[y + 1][x + 1] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '1';
-          } else {
-            map[y + 1][x + 1] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '6';
-          } else {
-            map[y + 1][x + 1] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '5';
-          } else {
-            map[y + 1][x + 1] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y + 1][x + 1] = '3';
-          } else {
-            map[y + 1][x + 1] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y + 1][x + 1] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y + 1][x + 1] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y + 1][x + 1] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y + 1][x + 1] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y + 1][x + 1] = '*';
-        } else {
-          map[y + 1][x + 1] = '-';
-        }
-        break;
-      case SOUTHWEST:
-        if (sunken) {
-          map[y + 1][x - 1] = '=';
-        } else if (sect == SECT_INSIDE) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '2';
-          } else {
-            map[y + 1][x - 1] = 'i';
-          }
-        } else if (sect == SECT_FIELD) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '2';
-          } else {
-            map[y + 1][x - 1] = 'p';
-          }
-        } else if (sect == SECT_DESERT) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '7';
-          } else {
-            map[y + 1][x - 1] = '!';
-          }
-        } else if (sect == SECT_CITY) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '1';
-          } else {
-            map[y + 1][x - 1] = '(';
-          }
-        } else if (sect == SECT_FOREST) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '6';
-          } else {
-            map[y + 1][x - 1] = 'f';
-          }
-        } else if (sect == SECT_MOUNTAIN) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '5';
-          } else {
-            map[y + 1][x - 1] = '^';
-          }
-        } else if (sect == SECT_HILLS) {
-          if (geffect >= 1) {
-            map[y + 1][x - 1] = '3';
-          } else {
-            map[y + 1][x - 1] = 'h';
-          }
-        } else if (sect == SECT_FLYING) {
-          map[y + 1][x - 1] = 's';
-        } else if (sect == SECT_WATER_NOSWIM) {
-          map[y + 1][x - 1] = '`';
-        } else if (sect == SECT_WATER_SWIM) {
-          map[y + 1][x - 1] = '+';
-        } else if (sect == SECT_SHOP) {
-          map[y + 1][x - 1] = '&';
-        } else if (sect == SECT_IMPORTANT) {
-          map[y + 1][x - 1] = '*';
-        } else {
-          map[y + 1][x - 1] = '-';
-        }
-        break;
-      }
+      map[y + dy][x + dx] = sect_to_map_char(
+          room_sector_type_get(dest),
+          room_geffect_get(dest),
+          room_is_sunken(dest));
     }
     return true;
   });
@@ -2358,7 +1906,7 @@ static void display_scroll(struct char_data *ch, struct obj_data *obj) {
 static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
                              int mode) {
   if (!obj || !ch) {
-    log("SYSERR: NULL pointer in show_obj_to_char(): obj=%p ch=%p", obj, ch);
+    mud_log("SYSERR: NULL pointer in show_obj_to_char(): obj=%p ch=%p", obj, ch);
     /*  SYSERR_DESC:
      *  Somehow a NULL pointer was sent to show_obj_to_char() in either the
      *  'obj' or the 'ch' variable.  The error will indicate which was NULL
@@ -2782,7 +2330,7 @@ static void show_obj_to_char(struct obj_data *obj, struct char_data *ch,
     break;
 
   default:
-    log("SYSERR: Bad display mode (%d) in show_obj_to_char().", mode);
+    mud_log("SYSERR: Bad display mode (%d) in show_obj_to_char().", mode);
     /*  SYSERR_DESC:
      *  show_obj_to_char() has some predefined 'mode's (argument #3) to tell
      *  it what to display to the character when it is called.  If the mode
@@ -3984,7 +3532,7 @@ append_immortal_exit_door_details(char *line, size_t line_size,
   if (!keyword) {
     send_to_char(ch, "@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION %s@n\r\n",
                  dirs[door]);
-    log("ERROR: %s found error direction %s at room %d", GET_NAME(ch),
+    mud_log("ERROR: %s found error direction %s at room %d", GET_NAME(ch),
         dirs[door], char_room_vnum_get(ch));
     return false;
   }
@@ -7482,7 +7030,7 @@ ACMD(do_gen_ps) {
     send_to_char(ch, "%s\r\n", GET_NAME(ch));
     break;
   default:
-    log("SYSERR: Unhandled case in do_gen_ps. (%d)", subcmd);
+    mud_log("SYSERR: Unhandled case in do_gen_ps. (%d)", subcmd);
     /*  SYSERR_DESC:
      *  General page string function for such things as 'credits', 'news',
      *  'wizlist', 'clear', 'version'.  This occurs when a call is made to

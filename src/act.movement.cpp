@@ -158,7 +158,7 @@ void handle_teleport(struct char_data *ch, struct char_data *tar,
       GRAPTYPE(ch) = -1;
     }
   } else { /* Wut... */
-    log("ERROR: handle_teleport called without a destination.");
+    mud_log("ERROR: handle_teleport called without a destination.");
     return;
   }
 }
@@ -1145,18 +1145,6 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
         die(DRAGGING(ch), NULL);
       }
     }
-  }
-
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_TIMED_DT)) &&
-      !ADM_FLAGGED(ch, ADM_WALKANYWHERE))
-    timed_dt(NULL);
-
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_DEATH)) &&
-      !ADM_FLAGGED(ch, ADM_WALKANYWHERE)) {
-    log_death_trap(ch);
-    death_cry(ch);
-    extract_char(ch);
-    return (0);
   }
 
   entry_memory_mtrigger(ch);
@@ -2719,7 +2707,6 @@ ACMD(do_fly) {
       char_condition_remove(ch, "flying", "stop_flying");
       return;
     }
-
     if (char_condition_has(ch, "flying") && sect == SECT_FLYING) {
       act("@WYou begin to plummet to the ground!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@W$n starts to pummet to the ground below!@n", TRUE, ch, 0, 0,
@@ -2738,42 +2725,42 @@ ACMD(do_fly) {
     if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 100 && !IS_ANDROID(ch)) {
       send_to_char(ch, "You do not have the ki to fly.");
       return;
-    } else {
-      reveal_hiding(ch, 0);
-      act("@WYou slowly take off into the sky.@n", TRUE, ch, 0, 0, TO_CHAR);
-      act("@W$n slowly takes off into the sky.@n", TRUE, ch, 0, 0, TO_ROOM);
-      if (SITS(ch)) {
-        SITTING(SITS(ch)) = NULL;
-        SITS(ch) = NULL;
-      }
-      if (GET_POS(ch) < POS_STANDING) {
-        char_position_set(ch, POS_STANDING);
-      }
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 1);
-      decCurKI(ch, getMaxKI(ch) / 100);
     }
+    reveal_hiding(ch, 0);
+    act("@WYou slowly take off into the sky.@n", TRUE, ch, 0, 0, TO_CHAR);
+    act("@W$n slowly takes off into the sky.@n", TRUE, ch, 0, 0, TO_ROOM);
+    if (SITS(ch)) {
+      SITTING(SITS(ch)) = NULL;
+      SITS(ch) = NULL;
+    }
+    if (GET_POS(ch) < POS_STANDING)
+      char_position_set(ch, POS_STANDING);
+    char_condition_add(ch, "flying", "skill", "fly");
+    char_condition_number_set(ch, "flying", "altitude", 1);
+    decCurKI(ch, getMaxKI(ch) / 100);
+    return;
   }
+
   if (!strcasecmp("high", arg)) {
     if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 100 && !IS_ANDROID(ch)) {
       send_to_char(ch, "You do not have the ki to fly.");
       return;
-    } else {
-      reveal_hiding(ch, 0);
-      act("@WYou rocket high into the sky.@n", TRUE, ch, 0, 0, TO_CHAR);
-      act("@W$n rockets high into the sky.@n", TRUE, ch, 0, 0, TO_ROOM);
-      if (SITS(ch)) {
-        SITTING(SITS(ch)) = NULL;
-        SITS(ch) = NULL;
-      }
-      if (GET_POS(ch) < POS_STANDING) {
-        char_position_set(ch, POS_STANDING);
-      }
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      decCurKI(ch, getMaxKI(ch) / 100);
     }
+    reveal_hiding(ch, 0);
+    act("@WYou rocket high into the sky.@n", TRUE, ch, 0, 0, TO_CHAR);
+    act("@W$n rockets high into the sky.@n", TRUE, ch, 0, 0, TO_ROOM);
+    if (SITS(ch)) {
+      SITTING(SITS(ch)) = NULL;
+      SITS(ch) = NULL;
+    }
+    if (GET_POS(ch) < POS_STANDING)
+      char_position_set(ch, POS_STANDING);
+    char_condition_add(ch, "flying", "skill", "fly");
+    char_condition_number_set(ch, "flying", "altitude", 2);
+    decCurKI(ch, getMaxKI(ch) / 100);
+    return;
   }
+
   if (!strcasecmp("space", arg)) {
     if (!OUTSIDE(ch)) {
       send_to_char(ch, "You are not outside!");
@@ -2787,17 +2774,16 @@ ACMD(do_fly) {
       send_to_char(ch, "You are too busy fighting!");
       return;
     }
-    if (room_flagged(room, ROOM_EARTH)) {
+
+    auto blast_off = [&](int dest_id) {
       reveal_hiding(ch, 0);
-      char_condition_number_set(ch, "flying", "altitude", 2);
       char_condition_add(ch, "flying", "skill", "fly");
-      if (!block_calc(ch)) {
+      char_condition_number_set(ch, "flying", "altitude", 2);
+      if (!block_calc(ch))
         return;
-      }
       char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
+      if (auto zone = char_zone_get(ch); zone)
         fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
       send_to_sense(1, "leaving the planet", ch);
       send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
       act("@CYou blast off from the ground and rocket through the air. Your "
@@ -2807,347 +2793,56 @@ ACMD(do_fly) {
           "quickly lose sight of $m as $e continues upward!@n",
           TRUE, ch, 0, 0, TO_ROOM);
       char_from_room(ch);
-      char_to_room(ch, room_by_id(50));
+      char_to_room(ch, room_by_id(dest_id));
       act("@C$n blasts up from the atmosphere below and then comes to a "
           "stop.@n",
           TRUE, ch, 0, 0, TO_ROOM);
       send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
                        "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
+      if (!IS_ANDROID(ch))
         decCurKI(ch, getMaxKI(ch) / 10);
-      }
       WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_CERRIA)) {
-      reveal_hiding(ch, 0);
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      char_condition_add(ch, "flying", "skill", "fly");
-      if (!block_calc(ch)) {
-        return;
-      }
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      char_condition_remove(ch, "flying", "stop_flying");
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(198));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_VEGETA)) {
-      reveal_hiding(ch, 0);
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      char_condition_remove(ch, "flying", "stop_flying");
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(53));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_KANASSA)) {
-      if (char_room_vnum_get(ch) == 14904) {
-        reveal_hiding(ch, 0);
-        char_condition_add(ch, "flying", "skill", "fly");
-        char_condition_number_set(ch, "flying", "altitude", 2);
-        if (!block_calc(ch)) {
-          return;
-        }
-        char_condition_remove(ch, "flying", "stop_flying");
-        if (auto zone = char_zone_get(ch); zone) {
-          fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-        }
-        send_to_sense(1, "leaving the planet", ch);
-        send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-        act("@CYou blast off from the ground and rocket through the air. Your "
-            "speed increases until you manage to reach the brink of space!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@C$n blasts off from the ground and rockets through the air. You "
-            "quickly lose sight of $m as $e continues upward!@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        char_from_room(ch);
-        char_to_room(ch, room_by_id(58));
-        act("@C$n blasts up from the atmosphere below and then comes to a "
-            "stop.@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        send_to_char(ch, "@mOOC: Use the command 'land' to return to the "
-                         "planet from here.@n\r\n");
-        if (!IS_ANDROID(ch)) {
-          decCurKI(ch, getMaxKI(ch) / 10);
-        }
-        WAIT_STATE(ch, PULSE_3SEC);
-      } else {
+    };
+
+    static const struct {
+      int room_flag;
+      int dest_id;
+    } planet_table[] = {
+      {ROOM_EARTH,   50},
+      {ROOM_CERRIA, 198},
+      {ROOM_VEGETA,  53},
+      {ROOM_FRIGID,  51},
+      {ROOM_KONACK,  52},
+      {ROOM_NAMEK,   54},
+      {ROOM_AETHER,  55},
+      {ROOM_YARDRAT, 56},
+      {ROOM_ARLIA,   59},
+    };
+
+    if (room_flagged(room, ROOM_KANASSA)) {
+      if (char_room_vnum_get(ch) != 14904) {
         send_to_char(
             ch,
             "You can only fly off the planet from the launchpad of Aquis.\r\n");
-      }
-      return;
-    } else if ((char_room_get(ch) &&
-                room_flagged(char_room_get(ch), ROOM_FRIGID))) {
-      reveal_hiding(ch, 0);
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
         return;
       }
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(51));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_KONACK)) {
-      reveal_hiding(ch, 0);
-      
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(52));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_NAMEK)) {
-      reveal_hiding(ch, 0);
-      
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(54));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_AETHER)) {
-      reveal_hiding(ch, 0);
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(55));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_YARDRAT)) {
-      reveal_hiding(ch, 0);
-      
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(56));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (room_flagged(room, ROOM_ARLIA)) {
-      reveal_hiding(ch, 0);
-      
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(59));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else if (char_planet_zenith(ch)) {
-      reveal_hiding(ch, 0);
-      
-      char_condition_add(ch, "flying", "skill", "fly");
-      char_condition_number_set(ch, "flying", "altitude", 2);
-      if (!block_calc(ch)) {
-        return;
-      }
-
-      char_condition_remove(ch, "flying", "stop_flying");
-      if (auto zone = char_zone_get(ch); zone) {
-        fly_zone(zone, "can be seen blasting off into space!@n\r\n", ch);
-      }
-      send_to_sense(1, "leaving the planet", ch);
-      send_to_scouter("A powerlevel signal has left the planet", ch, 0, 2);
-      act("@CYou blast off from the ground and rocket through the air. Your "
-          "speed increases until you manage to reach the brink of space!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@C$n blasts off from the ground and rockets through the air. You "
-          "quickly lose sight of $m as $e continues upward!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(57));
-      act("@C$n blasts up from the atmosphere below and then comes to a "
-          "stop.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      send_to_char(ch, "@mOOC: Use the command 'land' to return to the planet "
-                       "from here.@n\r\n");
-      if (!IS_ANDROID(ch)) {
-        decCurKI(ch, getMaxKI(ch) / 10);
-      }
-      WAIT_STATE(ch, PULSE_3SEC);
-      return;
-    } else {
-      send_to_char(ch, "You are not on a planet.\r\n");
+      blast_off(58);
       return;
     }
+
+    for (auto &p : planet_table) {
+      if (room_flagged(room, p.room_flag)) {
+        blast_off(p.dest_id);
+        return;
+      }
+    }
+
+    if (char_planet_zenith(ch)) {
+      blast_off(57);
+      return;
+    }
+
+    send_to_char(ch, "You are not on a planet.\r\n");
   }
 }
 

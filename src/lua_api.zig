@@ -8,6 +8,7 @@ const zones_lua = @import("zone_lua.zig");
 const shops_lua = @import("shop_lua.zig");
 const guilds_lua = @import("guild_lua.zig");
 const modifiers_api = @import("modifiers_api.zig");
+const intern_mod = @import("intern.zig");
 
 const Lua = zlua.Lua;
 
@@ -84,11 +85,16 @@ var allocator: std.mem.Allocator = undefined;
 var io: std.Io = undefined;
 var lua_state: ?*Lua = null;
 var initialized = false;
+
+pub fn isInitialized() bool {
+    return initialized;
+}
+
+pub fn getLuaState() ?*Lua {
+    return lua_state;
+}
 var loaded_entries: usize = 0;
 var active_repl: ?*LuaRepl = null;
-var intern_arena: std.heap.ArenaAllocator = undefined;
-var interned_strings: std.StringHashMap([]const u8) = undefined;
-var interner_initialized = false;
 var definition_cache: DefinitionCache = undefined;
 var definition_cache_initialized = false;
 
@@ -203,9 +209,6 @@ const DefinitionCache = struct {
 pub fn init(alloc: std.mem.Allocator, runtime_io: std.Io) !void {
     allocator = alloc;
     io = runtime_io;
-    intern_arena = std.heap.ArenaAllocator.init(alloc);
-    interned_strings = std.StringHashMap([]const u8).init(alloc);
-    interner_initialized = true;
     definition_cache = DefinitionCache.init(alloc);
     definition_cache_initialized = true;
     lua_state = try Lua.init(alloc);
@@ -226,18 +229,12 @@ pub fn deinit() void {
     loaded_entries = 0;
     definition_cache.deinit();
     definition_cache_initialized = false;
-    interned_strings.deinit();
-    intern_arena.deinit();
-    interner_initialized = false;
 }
 
 pub fn internString(text: []const u8) []const u8 {
-    if (!interner_initialized or text.len == 0) return text;
-    if (interned_strings.get(text)) |existing| return existing;
-    const owned = intern_arena.allocator().dupeZ(u8, text) catch return text;
-    const slice = owned[0..text.len];
-    interned_strings.put(slice, slice) catch return slice;
-    return slice;
+    if (text.len == 0) return text;
+    const id = intern_mod.intern(text);
+    return intern_mod.nameOf(id);
 }
 
 pub export fn lua_reload() bool {
@@ -533,6 +530,37 @@ pub fn derivedDefinition(name: []const u8) ?DerivedDefinition {
     return definition_cache.derived.get(name);
 }
 
+pub fn callLuaDerTotal(ch: *cdb.char_data, name: []const u8) ?i64 {
+    if (!initialized or name.len == 0) return null;
+    const lua = lua_state orelse return null;
+    // Stack: [ch]
+    characters_lua.pushCharacter(lua, ch.id);
+    // Stack: [ch, fn]
+    if (lua.getField(-1, "der_total") != .function) {
+        lua.pop(2);
+        return null;
+    }
+    // Stack: [ch, fn, ch]
+    lua.pushValue(-2);
+    const name_z = std.heap.page_allocator.dupeZ(u8, name) catch {
+        lua.pop(3);
+        return null;
+    };
+    defer std.heap.page_allocator.free(name_z);
+    // Stack: [ch, fn, ch, name] → call(args=2,results=1) → [ch, result]
+    _ = lua.pushString(name_z);
+    lua.protectedCall(.{ .args = 2, .results = 1 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("ch:der_total({s}) failed: {s}", .{ name, message });
+        lua.pop(2);
+        return null;
+    };
+    // Stack: [ch, result]
+    const result = lua.toInteger(-1) catch null;
+    lua.pop(2);
+    return result;
+}
+
 pub fn calculateDerivedBase(ch: *cdb.char_data, name: []const u8) ?i64 {
     if (!initialized or name.len == 0) return null;
     if (!(pushThing("derived", name) catch return null)) return null;
@@ -703,7 +731,6 @@ pub fn emitCharacterModifiers(ch: *cdb.char_data, cache: *modifiers_api.Modifier
     lua.protectedCall(.{ .args = 1, .results = 1 }) catch |err| {
         const message = lua.toString(-1) catch @errorName(err);
         std.log.err("ch:modifiers() failed: {s}", .{message});
-        lua.pop(3);
         return;
     };
     defer lua.pop(1);
@@ -858,10 +885,15 @@ fn readLegacyModifiers(index: i32, definition: *DerivedDefinition) void {
 }
 
 fn cacheReturnedValue(category: []const u8, id: []const u8, index: i32) !void {
+    _ = intern_mod.intern(id);
     if (std.mem.eql(u8, category, "stats")) return cacheStatDefinition(id, index);
     if (std.mem.eql(u8, category, "derived")) return cacheDerivedDefinition(id, index);
     if (std.mem.eql(u8, category, "meters")) return cacheMeterDefinition(id, index);
     if (std.mem.eql(u8, category, "conditions")) return cacheConditionDefinition(id, index);
+}
+
+pub fn derivedCount() usize {
+    return definition_cache.derived.count();
 }
 
 fn cacheStatDefinition(id: []const u8, index: i32) !void {

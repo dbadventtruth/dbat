@@ -45,6 +45,30 @@ void zone_command_sarg1_set(struct reset_com *cmd, const char *value);
 const char *zone_command_sarg2_get(struct reset_com *cmd);
 void zone_command_sarg2_set(struct reset_com *cmd, const char *value);
 
+// Players
+void zone_player_add(zone_vnum vnum, int64_t id);
+void zone_player_remove(zone_vnum vnum, int64_t id);
+size_t zone_player_count(zone_vnum vnum);
+int zone_player_count_get(zone_vnum vnum);
+int64_t *zone_player_ids(zone_vnum vnum, size_t *out_count);
+void zone_player_ids_free(int64_t *ptr);
+
+// Mobs
+void zone_mob_add(zone_vnum vnum, int64_t id);
+void zone_mob_remove(zone_vnum vnum, int64_t id);
+size_t zone_mob_count(zone_vnum vnum);
+int zone_mob_count_get(zone_vnum vnum);
+int64_t *zone_mob_ids(zone_vnum vnum, size_t *out_count);
+void zone_mob_ids_free(int64_t *ptr);
+
+// Objects
+void zone_obj_add(zone_vnum vnum, int64_t id);
+void zone_obj_remove(zone_vnum vnum, int64_t id);
+size_t zone_obj_count(zone_vnum vnum);
+int zone_obj_count_get(zone_vnum vnum);
+int64_t *zone_obj_ids(zone_vnum vnum, size_t *out_count);
+void zone_obj_ids_free(int64_t *ptr);
+
 #ifdef __cplusplus
 }
 #endif

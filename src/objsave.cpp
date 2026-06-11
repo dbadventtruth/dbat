@@ -119,7 +119,7 @@ static bool is_json_file(FILE *fl) {
 
 static void Crash_log_file_error(const char *operation, const char *filename,
                                  const char *file, int line) {
-  basic_mud_log("SYSERR: %s:%d: %s failed for %s: %s", file, line, operation,
+  mud_log("SYSERR: %s:%d: %s failed for %s: %s", file, line, operation,
                 filename, strerror(errno));
 }
 
@@ -129,7 +129,7 @@ static int Crash_build_save_filename(char *dst, size_t dst_size,
   int written = snprintf(dst, dst_size, "%s%s", filename, suffix);
 
   if (written < 0 || (size_t)written >= dst_size) {
-    basic_mud_log("SYSERR: %s:%d: crashsave path too long for %s%s", file, line,
+    mud_log("SYSERR: %s:%d: crashsave path too long for %s%s", file, line,
                   filename, suffix);
     return FALSE;
   }
@@ -166,7 +166,7 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
   FILE *fp;
 
   if (!get_filename(filename, sizeof(filename), NEW_OBJ_FILES, GET_NAME(ch))) {
-    basic_mud_log("SYSERR: %s:%d: get_filename failed for %s of %s", __FILE__,
+    mud_log("SYSERR: %s:%d: get_filename failed for %s of %s", __FILE__,
                   __LINE__, save_type, GET_NAME(ch));
     return FALSE;
   }
@@ -197,7 +197,7 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
     return TRUE;
   }
 
-  basic_mud_log("SYSERR: %s:%d: JSON %s failed for %s; falling back to legacy "
+  mud_log("SYSERR: %s:%d: JSON %s failed for %s; falling back to legacy "
                 "object save",
                 __FILE__, __LINE__, save_type, GET_NAME(ch));
   remove(tmpfile);
@@ -220,7 +220,7 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
     char_equipment_iterate(ch, [&](auto slot, auto eq) {
       if (!Crash_save(eq, fp, slot + 1)) {
         Crash_restore_weight(eq);
-        basic_mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s equipment "
+        mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s equipment "
                       "position %d",
                       __FILE__, __LINE__, save_type, GET_NAME(ch), slot);
         fclose(fp);
@@ -244,7 +244,7 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
 
   if (!Crash_save(ch->carrying, fp, 0)) {
     Crash_restore_weight(ch->carrying);
-    basic_mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s inventory",
+    mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s inventory",
                   __FILE__, __LINE__, save_type, GET_NAME(ch));
     fclose(fp);
     remove(tmpfile);
@@ -300,7 +300,7 @@ void delete_inv_backup(struct char_data *ch) {
   fclose(source);
 
   if (remove(filename) < 0 && errno != ENOENT)
-    log("ERROR: Couldn't delete backup inv.");
+    mud_log("ERROR: Couldn't delete backup inv.");
   /*  SYSERR_DESC:
    *  When an alias file cannot be removed, this error will occur,
    *  and the reason why will be the tail end of the error.
@@ -444,14 +444,14 @@ int Crash_delete_file(char *name) {
 
   if (!(fl = fopen(filename, "rb"))) {
     if (errno != ENOENT) /* if it fails but NOT because of no file */
-      log("SYSERR: deleting crash file %s (1): %s", filename, strerror(errno));
+      mud_log("SYSERR: deleting crash file %s (1): %s", filename, strerror(errno));
     return (0);
   }
   fclose(fl);
 
   /* if it fails, NOT because of no file */
   if (remove(filename) < 0 && errno != ENOENT)
-    log("SYSERR: deleting crash file %s (2): %s", filename, strerror(errno));
+    mud_log("SYSERR: deleting crash file %s (2): %s", filename, strerror(errno));
 
   return (1);
 }
@@ -467,7 +467,7 @@ int Crash_delete_crashfile(struct char_data *ch) {
 
   if (!(fl = fopen(filename, "rb"))) {
     if (errno != ENOENT) /* if it fails, NOT because of no file */
-      log("SYSERR: checking for crash file %s (3): %s", filename,
+      mud_log("SYSERR: checking for crash file %s (3): %s", filename,
           strerror(errno));
     return (0);
   }
@@ -495,7 +495,7 @@ int Crash_clean_file(char *name) {
 
   if (!(fl = fopen(filename, "r+b"))) {
     if (errno != ENOENT) /* if it fails, NOT because of no file */
-      log("SYSERR: OPENING OBJECT FILE %s (4): %s", filename, strerror(errno));
+      mud_log("SYSERR: OPENING OBJECT FILE %s (4): %s", filename, strerror(errno));
     return (0);
   }
 
@@ -525,14 +525,14 @@ int Crash_clean_file(char *name) {
           filetype = "UNKNOWN!";
           break;
         }
-        log("    Deleting %s's %s file.", name, filetype);
+        mud_log("    Deleting %s's %s file.", name, filetype);
         return (1);
       }
       /* Must retrieve rented items w/in 30 days */
     } else if (rentcode == RENT_RENTED)
       if (timed < time(0) - (CONFIG_RENT_TIMEOUT * SECS_PER_REAL_DAY)) {
         Crash_delete_file(name);
-        log("    Deleting %s's rent file.", name);
+        mud_log("    Deleting %s's rent file.", name);
         return (1);
       }
   }
@@ -1285,7 +1285,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
             break;
           case 'A':
             if (j >= MAX_OBJ_AFFECT) {
-              log("SYSERR: Too many object affectations in loading rent file");
+              mud_log("SYSERR: Too many object affectations in loading rent file");
               danger = 1;
             }
             get_line(fl, line);
@@ -1309,7 +1309,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
             break;
           case 'S':
             if (j >= SPELLBOOK_SIZE) {
-              log("SYSERR: Too many spells in spellbook loading rent file");
+              mud_log("SYSERR: Too many spells in spellbook loading rent file");
               danger = 1;
             }
             get_line(fl, line);

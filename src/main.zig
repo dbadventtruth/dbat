@@ -92,19 +92,19 @@ pub fn main(init: std.process.Init) u8 {
 
     cdb.setup_log(cdb.CONFIG_LOGNAME(), cdb.STDERR_FILENO);
 
-    cdb.log("Using %s as data directory.", cdb.CONFIG_CONFFILE());
+    cdb.mud_log("Using %s as data directory.", cdb.CONFIG_CONFFILE());
 
-    cdb.log("Signal trapping.");
+    cdb.mud_log("Signal trapping.");
     cdb.signal_setup();
 
     _ = cdb.touch(cdb.KILLSCRIPT_FILE);
     cdb.circle_srandom(@intCast(cdb.time(0)));
 
-    cdb.log("Finding player limit.");
+    cdb.mud_log("Finding player limit.");
     cdb.max_players = cdb.get_max_players();
 
     if (!cdb.fCopyOver and !cdb.config_info.test_mode) {
-        cdb.log("Opening mother connection on port %d.", cdb.port);
+        cdb.mud_log("Opening mother connection on port %d.", cdb.port);
         const listener_fd = cdb.net_listener_open(cdb.port);
         if (listener_fd < 0) {
             std.process.fatal("failed to open listener on port {d}", .{cdb.port});
@@ -133,12 +133,12 @@ pub fn main(init: std.process.Init) u8 {
         return test_mode.run(init, test_options);
     } else {
         // Running normal gameplay loop.
-        cdb.log("Entering game loop.");
+        cdb.mud_log("Entering game loop.");
         cdb.game_loop();
 
         cdb.Crash_save_all();
 
-        cdb.log("Closing all sockets.");
+        cdb.mud_log("Closing all sockets.");
         while (cdb.descriptor_list != null) {
             cdb.close_socket(cdb.descriptor_list);
         }
@@ -149,16 +149,16 @@ pub fn main(init: std.process.Init) u8 {
             _ = cdb.save_all();
         }
 
-        cdb.log("Saving current MUD time.");
+        cdb.mud_log("Saving current MUD time.");
         cdb.save_mud_time(&cdb.time_info);
 
         if (cdb.circle_reboot != 0) {
-            cdb.log("Rebooting.");
+            cdb.mud_log("Rebooting.");
             return 52;
         }
     }
 
-    cdb.log("Normal termination of game.");
+    cdb.mud_log("Normal termination of game.");
 
     return 0;
 }

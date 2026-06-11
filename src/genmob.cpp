@@ -223,7 +223,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum) {
       }
 
     add_to_save_list(virtual_zone_by_thing(vnum), SL_MOB);
-    log("GenOLC: add_mobile: Updated existing mobile #%d.", vnum);
+    mud_log("GenOLC: add_mobile: Updated existing mobile #%d.", vnum);
     return vnum;
   }
 
@@ -233,7 +233,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum) {
 
   mob_proto_put(vnum, new_proto);
 
-  log("GenOLC: add_mobile: Added mobile %d.", vnum);
+  mud_log("GenOLC: add_mobile: Added mobile %d.", vnum);
 
   add_to_save_list(virtual_zone_by_thing(vnum), SL_MOB);
   return vnum;
@@ -266,7 +266,7 @@ int delete_mobile(mob_vnum refpt) {
   zone_rnum zone;
 
   if (!mob_proto_by_id(refpt)) {
-    log("GenOLC: delete_mobile: Attempted to delete non-existant mobile #%d.",
+    mud_log("GenOLC: delete_mobile: Attempted to delete non-existant mobile #%d.",
         refpt);
     return FALSE;
   }
@@ -405,7 +405,7 @@ int save_mobiles(struct zone_data *zone) {
   char mobfname[64], usedfname[64];
 
   if (!zone) {
-    log("SYSERR: GenOLC: save_mobiles: Invalid zone!");
+    mud_log("SYSERR: GenOLC: save_mobiles: Invalid zone!");
     return FALSE;
   }
 
@@ -421,7 +421,7 @@ int save_mobiles(struct zone_data *zone) {
     if (!proto)
       continue;
     if (write_mobile_record(i, proto, mobfd) < 0)
-      log("SYSERR: GenOLC: Error writing mobile #%d.", i);
+      mud_log("SYSERR: GenOLC: Error writing mobile #%d.", i);
   }
   fputs("$\n", mobfd);
   written = ftell(mobfd);
@@ -433,7 +433,7 @@ int save_mobiles(struct zone_data *zone) {
   if (in_save_list(zone->number, SL_MOB)) {
     remove_from_save_list(zone->number, SL_MOB);
     create_world_index(zone->number, "mob");
-    log("GenOLC: save_mobiles: Saving mobiles '%s'", usedfname);
+    mud_log("GenOLC: save_mobiles: Saving mobiles '%s'", usedfname);
   }
   return written;
 }
@@ -530,13 +530,13 @@ int write_mobile_record(mob_vnum mvnum, struct mob_proto_data *proto,
           GET_DEFAULT_POS(mob), GET_SEX(mob));
 
   if (write_mobile_espec(mvnum, mob, fd) < 0)
-    log("SYSERR: GenOLC: Error writing E-specs for mobile #%d.", mvnum);
+    mud_log("SYSERR: GenOLC: Error writing E-specs for mobile #%d.", mvnum);
 
   mob_proto_script_save_to_disk(fd, proto);
 
 #if CONFIG_GENOLC_MOBPROG
   if (write_mobile_mobprog(mvnum, mob, fd) < 0)
-    log("SYSERR: GenOLC: Error writing MobProgs for mobile #%d.", mvnum);
+    mud_log("SYSERR: GenOLC: Error writing MobProgs for mobile #%d.", mvnum);
 #endif
 
   free_mobile_strings(mob);

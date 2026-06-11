@@ -26,19 +26,19 @@ void log_death_trap(struct char_data *ch) {
          char_room_vnum_get(ch), room_name_get(char_room_get(ch)));
 }
 
-/* New variable argument log() function.  Works the same as the old for
+/* New variable argument mud_log() function.  Works the same as the old for
  * previously written code but is very nice for new code.  */
-void basic_mud_vlog(const char *format, va_list args) {
+void mud_vlog(const char *format, va_list args) {
   time_t ct = time(0);
   char *time_s = asctime(localtime(&ct));
 
   if (logfile == NULL) {
-    puts("SYSERR: Using log() before stream was initialized!");
+    puts("SYSERR: Using mud_log() before stream was initialized!");
     return;
   }
 
   if (format == NULL)
-    format = "SYSERR: log() received a NULL format.";
+    format = "SYSERR: mud_log() received a NULL format.";
 
   time_s[strlen(time_s) - 1] = '\0';
 
@@ -49,11 +49,11 @@ void basic_mud_vlog(const char *format, va_list args) {
 }
 
 /* So mudlog() can use the same function. */
-void basic_mud_log(const char *format, ...) {
+void mud_log(const char *format, ...) {
   va_list args;
 
   va_start(args, format);
-  basic_mud_vlog(format, args);
+  mud_vlog(format, args);
   va_end(args);
 }
 
@@ -69,7 +69,7 @@ void mudlog(int type, int level, int file, const char *str, ...) {
 
   if (file) {
     va_start(args, str);
-    basic_mud_vlog(str, args);
+    mud_vlog(str, args);
     va_end(args);
   }
 
@@ -98,5 +98,5 @@ void mudlog(int type, int level, int file, const char *str, ...) {
 }
 
 void core_dump_real(const char *who, int line) {
-  /* log("SYSERR: Assertion failed at %s:%d!", who, line); */
+  /* mud_log("SYSERR: Assertion failed at %s:%d!", who, line); */
 }

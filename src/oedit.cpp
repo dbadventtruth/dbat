@@ -306,7 +306,7 @@ void oedit_save_internally(struct descriptor_data *d) {
   OLC_OPROTO(d)->vnum = v;
   OLC_OPROTO(d)->proto_script = OLC_SCRIPT(d);
   if ((robj_num = add_object(OLC_OPROTO(d), v)) == NOTHING) {
-    log("oedit_save_internally: add_object failed.");
+    mud_log("oedit_save_internally: add_object failed.");
     return;
   }
 

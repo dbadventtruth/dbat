@@ -455,6 +455,7 @@ int enter_player_game(struct descriptor_data *d) {
   GET_ID(ch) = GET_IDNUM(ch);
   /* find_char helper */
   (void)char_register_id(GET_ID(ch), ch);
+  char_subscribe_add(ch, "player");
   read_saved_vars(ch);
   for (check = character_list; check; check = check->next)
     if (!check->master && IS_NPC(check) &&
@@ -688,7 +689,7 @@ void userLoad(struct descriptor_data *d, char *name) {
   if (!get_filename(fname, sizeof(fname), USER_FILE, name)) {
     return;
   } else if (!(fl = fopen(fname, "r"))) {
-    log("ERROR: could not load user, %s, from filename, %s.", name, fname);
+    mud_log("ERROR: could not load user, %s, from filename, %s.", name, fname);
     return;
   }
   int count = 0;
@@ -792,7 +793,7 @@ void userCreate(struct descriptor_data *d) {
     return;
 
   if (!(fl = fopen(fname, "w"))) {
-    log("ERROR: could not save user, %s, to filename, %s.", d->user, fname);
+    mud_log("ERROR: could not save user, %s, to filename, %s.", d->user, fname);
     return;
   }
 
@@ -938,7 +939,7 @@ void userWrite(struct descriptor_data *d, int setTot, int setRpp, int setRBank,
       return;
 
     if (!(fl = fopen(fname, "w"))) {
-      log("ERROR: could not save user, %s, to filename, %s.", d->user, fname);
+      mud_log("ERROR: could not save user, %s, to filename, %s.", d->user, fname);
       return;
     }
 
@@ -1018,7 +1019,7 @@ void userWrite(struct descriptor_data *d, int setTot, int setRpp, int setRBank,
     if (!get_filename(filename, sizeof(filename), USER_FILE, name)) {
       return;
     } else if (!(file = fopen(filename, "r"))) {
-      log("ERROR: could not load user, %s, from filename, %s.", name, filename);
+      mud_log("ERROR: could not load user, %s, from filename, %s.", name, filename);
       return;
     }
 
@@ -1074,7 +1075,7 @@ void userWrite(struct descriptor_data *d, int setTot, int setRpp, int setRBank,
       return;
 
     if (!(fl = fopen(fname, "w"))) {
-      log("ERROR: could not save user, %s, to filename, %s.", name, fname);
+      mud_log("ERROR: could not save user, %s, to filename, %s.", name, fname);
       return;
     }
     /* User's Account Name */
@@ -2559,7 +2560,7 @@ void nanny(struct descriptor_data *d, char *arg) {
       write_to_output(d, "Password is wrong. Password or Return?\r\n");
       write_to_output(d, "(Return will ask for a different username)\r\n");
       send_to_imm("Username, %s, password failure!", CAP(d->user));
-      log("%s BAD PASSWORD: %s", CAP(d->user), arg);
+      mud_log("%s BAD PASSWORD: %s", CAP(d->user), arg);
       return;
     }
     break;
@@ -5345,7 +5346,7 @@ void nanny(struct descriptor_data *d, char *arg) {
     break;
 
   default:
-    log("SYSERR: Nanny: illegal state of con'ness (%d) for '%s'; closing "
+    mud_log("SYSERR: Nanny: illegal state of con'ness (%d) for '%s'; closing "
         "connection.",
         STATE(d), d->character ? GET_NAME(d->character) : "<unknown>");
     STATE(d) = CON_DISCONNECT; /* Safest to do. */

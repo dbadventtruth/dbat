@@ -158,7 +158,7 @@ ACMD(do_oasis) {
     break;
 
   default:
-    log("SYSERR: (OLC) Invalid subcmd passed to do_oasis, subcmd - (%d)",
+    mud_log("SYSERR: (OLC) Invalid subcmd passed to do_oasis, subcmd - (%d)",
         subcmd);
     return;
   }
@@ -200,7 +200,7 @@ void cleanup_olc(struct descriptor_data *d, int8_t cleanup_type) {
       free_config(OLC_CONFIG(d));
       break;
     default: /* The caller has screwed up. */
-      log("SYSERR: cleanup_olc: Unknown type!");
+      mud_log("SYSERR: cleanup_olc: Unknown type!");
       break;
     }
   }
