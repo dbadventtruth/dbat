@@ -1286,10 +1286,9 @@ ACMD(do_fish) {
       int distance = rand_number(30, 80);
       char_condition_add(ch, "fishing", "command", "fish");
       char_condition_number_set(ch, "fishing", "distance", distance);
-      uint64_t id = event_schedule_c(event_queue_now_ms() + EQ_MS_2SEC, 0,
-                                     ev_fish_tick, EQ_CTX_CHAR_ID,
-                                     GET_ID(ch), 0);
-      char_condition_number_set(ch, "fishing", "event_id", (int64_t)id);
+      event_schedule_c_owned(event_queue_now_ms() + EQ_MS_2SEC, 0,
+                             ev_fish_tick, EQ_CTX_CHAR_ID, GET_ID(ch), 0,
+                             EQ_OWNER_CHAR, GET_ID(ch), "fish_tick");
       send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n", distance);
       return;
     }
@@ -1382,7 +1381,7 @@ ACMD(do_fish) {
           TO_CHAR);
       act("@c$n@C reels in $s fishing line and stops fishing.@n", TRUE, ch, 0,
           0, TO_ROOM);
-      eq_cancel((uint64_t)char_condition_number_get(ch, "fishing", "event_id"));
+      eq_cancel_owner(EQ_OWNER_CHAR, GET_ID(ch), "fish_tick");
       char_condition_remove(ch, "fishing", "fish_stop");
       return;
     }
@@ -1524,9 +1523,9 @@ static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b) {
   if (!handle_fishing(ch))
     return;
 
-  uint64_t id = event_schedule_c(event_queue_now_ms() + EQ_MS_2SEC, 0,
-                                 ev_fish_tick, EQ_CTX_CHAR_ID, ctx_a, 0);
-  char_condition_number_set(ch, "fishing", "event_id", (int64_t)id);
+  event_schedule_c_owned(event_queue_now_ms() + EQ_MS_2SEC, 0,
+                         ev_fish_tick, EQ_CTX_CHAR_ID, ctx_a, 0,
+                         EQ_OWNER_CHAR, ctx_a, "fish_tick");
 }
 
 static void catch_fish(struct char_data *ch, int quality) {

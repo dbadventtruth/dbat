@@ -1,5 +1,6 @@
 const cdb = @import("cdb");
 const std = @import("std");
+const event_queue = @import("event_queue.zig");
 
 const TrigProtoEntry = struct {
     proto: ?*cdb.trig_data = null,
@@ -38,6 +39,7 @@ pub export fn trig_by_id(id: i64) ?*cdb.trig_data {
 }
 
 pub export fn trig_unregister_id(id: i64) void {
+    _ = event_queue.cancelOwner(event_queue.OWNER_TRIG, id, null);
     _ = trigs_by_id.remove(id);
 }
 

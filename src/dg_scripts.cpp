@@ -1769,9 +1769,9 @@ void process_wait(void *go, trig_data *trig, int type, char *cmd,
   trig->data_type = (uint8_t)type;
 
   /* 'when' is in pulses; 1 pulse = 100ms */
-  GET_TRIG_WAIT(trig) =
-      event_schedule_c(event_queue_now_ms() + (int64_t)when * 100LL, 0,
-                       ev_trig_wait, EQ_CTX_PAIR, trig->id, owner_id);
+  GET_TRIG_WAIT(trig) = event_schedule_c_owned(
+      event_queue_now_ms() + (int64_t)when * 100LL, 0, ev_trig_wait,
+      EQ_CTX_PAIR, trig->id, owner_id, EQ_OWNER_TRIG, trig->id, "trig_wait");
   trig->curr_state = cl->next;
 }
 

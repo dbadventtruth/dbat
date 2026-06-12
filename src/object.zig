@@ -1,5 +1,6 @@
 const cdb = @import("cdb");
 const std = @import("std");
+const event_queue = @import("event_queue.zig");
 
 const IdSet = std.AutoHashMap(i64, void);
 const ObjCallback = *const fn (*cdb.obj_data) callconv(.c) void;
@@ -34,8 +35,7 @@ pub export fn obj_by_id(id: i64) ?*cdb.obj_data {
 
 pub export fn obj_register_id(id: i64, obj: ?*cdb.obj_data) c_int {
     const ptr = obj orelse {
-        obj_clear_subscriptions(id);
-        _ = objs_by_id.remove(id);
+        obj_unregister_id(id);
         return 0;
     };
 
@@ -45,6 +45,7 @@ pub export fn obj_register_id(id: i64, obj: ?*cdb.obj_data) c_int {
 
 pub export fn obj_unregister_id(id: i64) void {
     obj_clear_subscriptions(id);
+    _ = event_queue.cancelOwner(event_queue.OWNER_OBJ, id, null);
     _ = objs_by_id.remove(id);
 }
 

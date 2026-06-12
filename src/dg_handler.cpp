@@ -100,12 +100,8 @@ void free_trigger(struct trig_data *trig) {
     free_varlist(trig->var_list);
     trig->var_list = NULL;
   }
-  if (GET_TRIG_WAIT(trig)) {
-    eq_cancel(GET_TRIG_WAIT(trig));
-    GET_TRIG_WAIT(trig) = 0;
-  }
   if (trig->id)
-    trig_unregister_id(trig->id);
+    trig_unregister_id(trig->id); /* also cancels any pending owned events */
 
   free(trig);
 }
