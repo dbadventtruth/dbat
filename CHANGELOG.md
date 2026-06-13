@@ -1,10 +1,19 @@
 # 2.9.4 (latest)
-- (Internal) Object Prototypes, Mobile Prototypes, Rooms, Shops, Guilds, and Zones are now stored in Zig HashMaps. The global arrays and rnum<->vnum mappings are gone. New per-type APIs have been added for handling entity retrieval, iteration, and querying. [Volund]
-- (Internal) Adjusted many functions for shops, guilds, zones, and rooms that used rnum indexes to now use pointers. [Volund]
-- Removed text page system. [Volund]
-- Moved the majority of old status affects to the new Lua Conditions system.
+- Removed text "pages" system. [Volund]
 - Truffle charging speed bonuses should now work. [Volund]
 - Several display and logic bugs with Runic now solved. [Volund]
+
+
+- (Internal) Object Prototypes, Mobile Prototypes, Rooms, Shops, Guilds, and Zones are now stored in Zig HashMaps. The global arrays and rnum<->vnum mappings are gone. New per-type APIs have been added for handling entity retrieval, iteration, and querying. [Volund]
+- (Internal) Adjusted many functions for shops, guilds, zones, and rooms that used rnum indexes to now use pointers. [Volund]
+- (Internal) All character-based Affects have been converted into the new Lua Conditions. [Volund]
+- (Internal) Implemented an event queue using a Priority Queue to handle event timing with millisecond resolution. [Volund]
+- (Internal) Game simulation only advances the state of mobiles and objects in Zones where players are present. [Volund]
+- (Internal) Implemented Argon2 password hashing. Will migrate passwords when users login. [Volund]
+- (Internal) Replaced manual linked list iteration with ID-based arrays and hash sets stored in Zig. [Volund]
+- (Internal) DgScripts now have type-specific IDs instead of all rooms, mobs, and objects sharing an ID space.
+- (Internal) Large set of utility iteration tools now available in `iterate.hpp`
+- (Internal) Main loop game simulation functions have been broken up into individual functions with metric tracking alerts. [Volund]
 
 # 2.9.3
 - Fixing fireshield message to not get all mishmoshed. [Volund]

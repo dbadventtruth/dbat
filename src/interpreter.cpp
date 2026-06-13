@@ -9,6 +9,7 @@
  ************************************************************************ */
 #include "interpreter.h"
 #include "iterate.hpp"
+#include "auth_api.h"
 
 #include "act.informative.h"
 #include "act.wizard.h"
@@ -682,7 +683,7 @@ int lockRead(char *name) {
 }
 
 void userLoad(struct descriptor_data *d, char *name) {
-  char fname[40], filler[100], line[256];
+  char fname[40], filler[256], line[256];
   FILE *fl;
 
   /* Read and Write User Index */
@@ -1132,7 +1133,7 @@ void userWrite(struct descriptor_data *d, int setTot, int setRpp, int setRBank,
 }
 
 void fingerUser(struct char_data *ch, char *name) {
-  char filename[40], uname[100], email[100], pass[100], tmp1[100], tmp2[100],
+  char filename[40], uname[100], email[100], pass[256], tmp1[100], tmp2[100],
       tmp3[100], tmp4[100], tmp5[100], line[256];
   int total = 0, rpp = 0, rbank = 0;
   FILE *file;
@@ -1190,10 +1191,8 @@ void fingerUser(struct char_data *ch, char *name) {
 
   send_to_char(ch, "@D[@gUsername   @D: @w%-30s@D]@n\r\n", uname);
   send_to_char(ch, "@D[@gEmail      @D: @w%-30s@D]@n\r\n", email);
-  if (GET_ADMLEVEL(ch) > 4) {
-    send_to_char(ch, "@D[@gPass       @D: @w%-30s@D]@n\r\n", pass);
-  } else if (GET_ADMLEVEL(ch) > 0) {
-    send_to_char(ch, "@D[@gPass       @D: @w%-30s@D]@n\r\n", "??????????");
+  if (GET_ADMLEVEL(ch) > 0) {
+    send_to_char(ch, "@D[@gPass       @D: @w%-30s@D]@n\r\n", "[hashed]");
   }
   send_to_char(ch, "@D[@gTotal Slots@D: @w%-30d@D]@n\r\n", total);
   send_to_char(ch, "@D[@gRP Points  @D: @w%-30d@D]@n\r\n", rpp);
@@ -2497,22 +2496,24 @@ void nanny(struct descriptor_data *d, char *arg) {
     } else if (readUserIndex(d->user)) {
       write_to_output(
           d, "Your password and user account have been fully saved.\r\n");
-      if (d->pass) {
-        free(d->pass);
-        d->pass = NULL;
+      {
+        char hash_buf[PASSWORD_HASH_LEN];
+        if (d->pass) { free(d->pass); d->pass = NULL; }
+        d->pass = password_hash(arg, hash_buf, sizeof(hash_buf))
+                      ? strdup(hash_buf) : strdup(arg);
       }
-      d->pass = strdup(arg);
       userWrite(d, 0, 0, 0, "index");
       userRead(d);
       STATE(d) = CON_UMENU;
     } else {
       write_to_output(
           d, "Your password and user account have been fully saved.\r\n");
-      if (d->pass) {
-        free(d->pass);
-        d->pass = NULL;
+      {
+        char hash_buf[PASSWORD_HASH_LEN];
+        if (d->pass) { free(d->pass); d->pass = NULL; }
+        d->pass = password_hash(arg, hash_buf, sizeof(hash_buf))
+                      ? strdup(hash_buf) : strdup(arg);
       }
-      d->pass = strdup(arg);
       userCreate(d);
       userRead(d);
       STATE(d) = CON_UMENU;
@@ -2534,7 +2535,21 @@ void nanny(struct descriptor_data *d, char *arg) {
       write_to_output(d, "Username?\r\n");
       STATE(d) = CON_GET_USER;
     }
-    if (!strcasecmp(d->pass, arg)) {
+    bool pw_ok;
+    if (password_is_hashed(d->pass)) {
+      pw_ok = password_verify(d->pass, arg);
+    } else {
+      pw_ok = (strcasecmp(d->pass, arg) == 0);
+      if (pw_ok) {
+        char hash_buf[PASSWORD_HASH_LEN];
+        if (password_hash(arg, hash_buf, sizeof(hash_buf))) {
+          free(d->pass);
+          d->pass = strdup(hash_buf);
+          userWrite(d, 0, 0, 0, "index");
+        }
+      }
+    }
+    if (pw_ok) {
       for (k = descriptor_list; k; k = k->next) {
         if (k == d)
           continue;
