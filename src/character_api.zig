@@ -537,7 +537,14 @@ pub export fn char_plrflag_set(ch: *cdb.char_data, pos: c_int, value: bool) void
 
 pub export fn char_inventory_iterate(ch: *cdb.char_data, recursive: bool, func: ?obj_api.ObjIterFn, ctx: ?*anyopaque) void {
     const callback = func orelse return;
-    _ = obj_api.objContentsListIterate(ch.carrying, recursive, callback, ctx);
+    var count: usize = 0;
+    const ids = characters.char_inventory_ids(ch, &count) orelse return;
+    defer characters.char_inventory_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const obj = cdb.obj_by_id(id) orelse continue;
+        if (!callback(obj, ctx)) return;
+        if (recursive) _ = obj_api.objContentsIterate(obj, true, callback, ctx);
+    }
 }
 
 pub export fn char_equipment_iterate(ch: *cdb.char_data, recursive: bool, func: ?obj_api.ObjIterFn, ctx: ?*anyopaque) void {
@@ -545,16 +552,20 @@ pub export fn char_equipment_iterate(ch: *cdb.char_data, recursive: bool, func: 
     for (ch.equipment) |obj| {
         if (obj == null) continue;
         if (!callback(&obj.*, ctx)) return;
-        if (recursive and !obj_api.objContentsListIterate(obj.*.contains, true, callback, ctx)) return;
+        if (recursive and !obj_api.objContentsIterate(obj, true, callback, ctx)) return;
     }
 }
 
 pub export fn char_inventory_count(ch: *cdb.char_data, recursive: bool) usize {
+    if (!recursive) return characters.char_inventory_count_simple(ch);
     var count: usize = 0;
-    var current = ch.carrying;
-    while (current != null) : (current = current.*.next_content) {
+    var ids_count: usize = 0;
+    const ids = characters.char_inventory_ids(ch, &ids_count) orelse return 0;
+    defer characters.char_inventory_ids_free(ids);
+    for (ids[0..ids_count]) |id| {
         count += 1;
-        if (recursive) count += obj_api.obj_inventory_count(&current.*, true);
+        const obj = cdb.obj_by_id(id) orelse continue;
+        count += obj_api.obj_inventory_count(obj, true);
     }
     return count;
 }
@@ -570,18 +581,7 @@ pub export fn char_equipment_count(ch: *cdb.char_data, recursive: bool) usize {
 }
 
 pub export fn char_inventory_get(ch: *cdb.char_data, count: *usize) ?[*]i64 {
-    const inv_count = char_inventory_count(ch, false);
-    count.* = inv_count;
-    if (inv_count == 0) return null;
-
-    const array = std.heap.c_allocator.alloc(i64, inv_count) catch return null;
-    var current = ch.carrying;
-    var index: usize = 0;
-    while (current != null) : (current = current.*.next_content) {
-        array[index] = current.*.id;
-        index += 1;
-    }
-    return array.ptr;
+    return characters.char_inventory_ids(ch, count);
 }
 
 pub export fn char_equipment_get(ch: *cdb.char_data, pos: usize) [*c]cdb.obj_data {
@@ -1332,11 +1332,13 @@ pub export fn char_is_npc(ch: *cdb.char_data) bool {
 }
 
 pub export fn char_next_in_room_get(ch: *cdb.char_data) [*c]cdb.char_data {
-    return ch.next_in_room;
+    _ = ch;
+    return null;
 }
 
 pub export fn char_carrying_get(ch: *cdb.char_data) [*c]cdb.obj_data {
-    return ch.carrying;
+    _ = ch;
+    return null;
 }
 
 pub export fn char_is_outside(ch: *cdb.char_data) bool {

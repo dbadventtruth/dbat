@@ -51,11 +51,6 @@ struct mob_special_data {
 };
 
 /* Structure used for chars following other chars */
-struct follow_type {
-  struct char_data *follower;
-  struct follow_type *next;
-};
-
 struct skill_data {
   int8_t base;
   int8_t perf;
@@ -135,7 +130,6 @@ struct char_data {
 
   // inventory and equipment
   struct obj_data *equipment[NUM_WEARS];
-  struct obj_data *carrying;
 
   struct descriptor_data *desc; /* NULL for mobiles			*/
   char *loguser;                /* What user was I last saved as?      */
@@ -145,13 +139,6 @@ struct char_data {
   struct script_data *script;   /* script info for the object		*/
   struct script_memory *memory; /* for mob memory triggers		*/
 
-  struct char_data *next_in_room;
-  /* For room->people - list		*/
-  struct char_data *next; /* For either monster or ppl-list	*/
-  /* For fighting list			*/
-  struct char_data *next_affect; /* For affect wearoff			*/
-
-  struct follow_type *followers; /* List of chars followers		*/
   struct char_data *master;      /* Who is char following?		*/
   int32_t master_id;
 

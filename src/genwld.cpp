@@ -45,8 +45,6 @@
  * copies of the description, title, and such.
  */
 room_vnum add_room(struct room_data *room) {
-  struct char_data *tch;
-  struct obj_data *tobj;
   int j, found = FALSE;
   room_rnum i;
 
@@ -56,11 +54,7 @@ room_vnum add_room(struct room_data *room) {
   if (auto irm = room_by_id(room->id)) {
     if (SCRIPT(irm))
       extract_script(irm, WLD_TRIGGER);
-    tch = room_people_get(irm);
-    tobj = room_contents_get(irm);
     copy_room(irm, room);
-    irm->people = tch;
-    irm->contents = tobj;
     add_to_save_list(room_zone_vnum_get(room), SL_WLD);
     mud_log("GenOLC: add_room: Updated existing room #%d.", room->id);
     return room->id;
@@ -330,11 +324,6 @@ int copy_room(struct room_data *to, struct room_data *from) {
   free_room_strings(to);
   *to = *from;
   copy_room_strings(to, from);
-
-  /* Don't put people and objects in two locations.
-     Am thinking this shouldn't be done here... */
-  from->people = NULL;
-  from->contents = NULL;
 
   return TRUE;
 }

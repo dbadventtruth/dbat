@@ -1244,34 +1244,33 @@ void dball_load() {
     struct mob_proto_data *proto = NULL;
 
     WISHTIME = 0;
-    for (k = object_list; k; k = k->next) {
-      if (OBJ_FLAGGED(k, ITEM_FORGED)) {
-        continue;
+    obj_iterate_all([&](struct obj_data *o) {
+      if (OBJ_FLAGGED(o, ITEM_FORGED)) {
+        return true;
       }
-      if (GET_OBJ_VNUM(k) == 20) {
+      if (GET_OBJ_VNUM(o) == 20) {
         found1 = TRUE;
-      } else if (GET_OBJ_VNUM(k) == 21) {
+      } else if (GET_OBJ_VNUM(o) == 21) {
         found2 = TRUE;
-      } else if (GET_OBJ_VNUM(k) == 22) {
+      } else if (GET_OBJ_VNUM(o) == 22) {
         found3 = TRUE;
-      } else if (GET_OBJ_VNUM(k) == 23) {
+      } else if (GET_OBJ_VNUM(o) == 23) {
         found4 = TRUE;
-      } else if (GET_OBJ_VNUM(k) == 24) {
+      } else if (GET_OBJ_VNUM(o) == 24) {
         found5 = TRUE;
-      } else if (GET_OBJ_VNUM(k) == 25) {
+      } else if (GET_OBJ_VNUM(o) == 25) {
         found6 = TRUE;
-      } else if (GET_OBJ_VNUM(k) == 26) {
+      } else if (GET_OBJ_VNUM(o) == 26) {
         found7 = TRUE;
-      } else if (obj_room_get(k) != NULL &&
-                 room_geffect_get(obj_room_get(k)) == 6 &&
-                 !OBJ_FLAGGED(k, ITEM_UNBREAKABLE)) {
-        send_to_room(obj_room_get(k), "@R%s@r melts in the lava!@n\r\n",
-                     k->short_description);
-        extract_obj(k);
-      } else {
-        continue;
+      } else if (obj_room_get(o) != NULL &&
+                 room_geffect_get(obj_room_get(o)) == 6 &&
+                 !OBJ_FLAGGED(o, ITEM_UNBREAKABLE)) {
+        send_to_room(obj_room_get(o), "@R%s@r melts in the lava!@n\r\n",
+                     o->short_description);
+        extract_obj(o);
       }
-    }
+      return true;
+    });
     if (found1 == FALSE) {
       load = FALSE;
       int zone = 0;
@@ -3219,7 +3218,7 @@ ACMD(do_drop) {
     if (dotmode == FIND_ALL) {
       int fail = FALSE;
 
-      if (!ch->carrying)
+      if (!char_inventory_count(ch, false))
         send_to_char(ch, "You don't seem to be carrying anything.\r\n");
       else {
         char_inventory_iterate(ch, [&](auto obj) {
@@ -3492,7 +3491,7 @@ ACMD(do_give) {
         send_to_char(ch, "All of what?\r\n");
         return;
       }
-      if (!ch->carrying)
+      if (!char_inventory_count(ch, false))
         send_to_char(ch, "You don't seem to be holding anything.\r\n");
       else
         char_inventory_iterate(ch, [&](auto obj) {

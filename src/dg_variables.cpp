@@ -28,7 +28,6 @@
 #include "consts/sizes.h"
 #include "consts/triggers.h"
 #include "db.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "dgscript_impl.h"
 #include "flags.h"
@@ -785,11 +784,18 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
           else
             strcpy(str, "0");
         } else if (!strcasecmp(field, "follower")) {
-          if (!c->followers || !c->followers->follower)
+          size_t fol_count;
+          auto fol_ids = char_follower_ids(c, &fol_count);
+          if (fol_count > 0) {
+            auto fol = char_by_id(fol_ids[0]);
+            if (fol)
+              snprintf(str, slen, "%cC%d", UID_CHAR, GET_ID(fol));
+            else
+              *str = '\0';
+          } else {
             *str = '\0';
-          else
-            snprintf(str, slen, "%cC%d", UID_CHAR,
-                     GET_ID(c->followers->follower));
+          }
+          char_follower_ids_free(fol_ids);
         }
         break;
       case 'g':
@@ -865,11 +871,18 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             else
               return;
           } else {         /* no arg given */
-            if (c->carrying) {
-              snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(c->carrying));
+            size_t inv_count;
+            auto inv_ids = char_inventory_ids(c, &inv_count);
+            if (inv_count > 0) {
+              auto first_obj = obj_by_id(inv_ids[0]);
+              if (first_obj)
+                snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(first_obj));
+              else
+                *str = '\0';
             } else {
               *str = '\0';
             }
+            char_inventory_ids_free(inv_ids);
           }
         }
 
@@ -974,8 +987,22 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         if (!strcasecmp(field, "name")) {
           snprintf(str, slen, "%s", GET_NAME(c));
         } else if (!strcasecmp(field, "next_in_room")) {
-          if (c->next_in_room)
-            snprintf(str, slen, "%cC%d", UID_CHAR, GET_ID(c->next_in_room));
+          auto c_room = char_room_get(c);
+          struct char_data *next_ch = nullptr;
+          if (c_room) {
+            size_t count;
+            auto ids = room_person_ids(c_room, &count);
+            int64_t c_id = char_id_get(c);
+            for (size_t i = 0; i + 1 < count; i++) {
+              if (ids[i] == c_id) {
+                next_ch = char_by_id(ids[i + 1]);
+                break;
+              }
+            }
+            room_person_ids_free(ids);
+          }
+          if (next_ch)
+            snprintf(str, slen, "%cC%d", UID_CHAR, GET_ID(next_ch));
           else
             *str = '\0';
         }
@@ -1240,10 +1267,18 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         }
 
         else if (!strcasecmp(field, "contents")) {
-          if (auto first = o->contains)
-            snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(first));
-          else
+          size_t cnt_count;
+          auto cnt_ids = obj_contents_ids(o, &cnt_count);
+          if (cnt_count > 0) {
+            auto first = obj_by_id(cnt_ids[0]);
+            if (first)
+              snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(first));
+            else
+              *str = '\0';
+          } else {
             *str = '\0';
+          }
+          obj_contents_ids_free(cnt_ids);
         }
         /* thanks to Jamie Nelson (Mordecai of 4 Dimensions MUD) */
         else if (!strcasecmp(field, "count")) {
@@ -1326,8 +1361,34 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
             o->name = strdup(blah);
           }
         } else if (!strcasecmp(field, "next_in_list")) {
-          if (o->next_content)
-            snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(o->next_content));
+          struct obj_data *next_obj = nullptr;
+          int64_t o_id = obj_id_get(o);
+          auto find_next = [&](int64_t *ids, size_t count) {
+            for (size_t i = 0; i + 1 < count; i++) {
+              if (ids[i] == o_id) {
+                next_obj = obj_by_id(ids[i + 1]);
+                break;
+              }
+            }
+          };
+          if (o->carried_by) {
+            size_t count;
+            auto ids = char_inventory_ids(o->carried_by, &count);
+            find_next(ids, count);
+            char_inventory_ids_free(ids);
+          } else if (o->in_obj) {
+            size_t count;
+            auto ids = obj_contents_ids(o->in_obj, &count);
+            find_next(ids, count);
+            obj_contents_ids_free(ids);
+          } else if (auto o_room = obj_room(o)) {
+            size_t count;
+            auto ids = room_object_ids(o_room, &count);
+            find_next(ids, count);
+            room_object_ids_free(ids);
+          }
+          if (next_obj)
+            snprintf(str, slen, "%cO%d", UID_CHAR, GET_ID(next_obj));
           else
             *str = '\0';
         }

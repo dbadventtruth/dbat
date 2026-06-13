@@ -9,6 +9,7 @@
  ************************************************************************ */
 
 #include "objsave.h"
+#include <vector>
 #include "character_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
@@ -242,24 +243,25 @@ static int Crash_write_safe_file(struct char_data *ch, int rentcode, int cost,
     if (__failed) return FALSE;
   }
 
-  if (!Crash_save(ch->carrying, fp, 0)) {
-    Crash_restore_weight(ch->carrying);
-    mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s inventory",
-                  __FILE__, __LINE__, save_type, GET_NAME(ch));
-    fclose(fp);
-    remove(tmpfile);
-    return FALSE;
+  {
+    bool inv_failed = false;
+    char_inventory_iterate(ch, [&](struct obj_data *obj) {
+      if (!Crash_save(obj, fp, 0) || ferror(fp)) {
+        Crash_restore_weight(obj);
+        inv_failed = true;
+        return false;
+      }
+      Crash_restore_weight(obj);
+      return true;
+    });
+    if (inv_failed) {
+      mud_log("SYSERR: %s:%d: Crash_save failed for %s of %s inventory",
+              __FILE__, __LINE__, save_type, GET_NAME(ch));
+      fclose(fp);
+      remove(tmpfile);
+      return FALSE;
+    }
   }
-
-  if (ferror(fp)) {
-    Crash_restore_weight(ch->carrying);
-    Crash_log_file_error("write", tmpfile, __FILE__, __LINE__);
-    fclose(fp);
-    remove(tmpfile);
-    return FALSE;
-  }
-
-  Crash_restore_weight(ch->carrying);
 
   if (!Crash_close_save_file(fp, tmpfile, __FILE__, __LINE__)) {
     remove(tmpfile);
@@ -650,31 +652,37 @@ void Crash_listrent(struct char_data *ch, char *name) {
   fclose(fl);
 }
 
+/* Save one object and its nested contents. Returns FALSE on write failure. */
 static int Crash_save(struct obj_data *obj, FILE *fp, int location) {
   struct obj_data *tmp;
-  int result;
 
-  if (obj) {
-    Crash_save(obj->next_content, fp, location);
-    Crash_save(obj->contains, fp, MIN(0, location) - 1);
-    result = Obj_to_store(obj, fp, location);
+  if (!obj) return TRUE;
 
-    for (tmp = obj->in_obj; tmp; tmp = tmp->in_obj)
-      GET_OBJ_WEIGHT(tmp) -= GET_OBJ_WEIGHT(obj);
+  bool ok = true;
+  obj_contents_iterate(obj, [&](struct obj_data *child) {
+    if (!Crash_save(child, fp, MIN(0, location) - 1)) { ok = false; return false; }
+    return true;
+  });
+  if (!ok) return FALSE;
 
-    if (!result)
-      return (FALSE);
-  }
-  return (TRUE);
+  if (!Obj_to_store(obj, fp, location))
+    return FALSE;
+
+  for (tmp = obj->in_obj; tmp; tmp = tmp->in_obj)
+    GET_OBJ_WEIGHT(tmp) -= GET_OBJ_WEIGHT(obj);
+
+  return TRUE;
 }
 
+/* Restore weight of one object and its nested contents. */
 static void Crash_restore_weight(struct obj_data *obj) {
-  if (obj) {
-    Crash_restore_weight(obj->contains);
-    Crash_restore_weight(obj->next_content);
-    if (obj->in_obj)
-      GET_OBJ_WEIGHT(obj->in_obj) += GET_OBJ_WEIGHT(obj);
-  }
+  if (!obj) return;
+  obj_contents_iterate(obj, [](struct obj_data *child) {
+    Crash_restore_weight(child);
+    return true;
+  });
+  if (obj->in_obj)
+    GET_OBJ_WEIGHT(obj->in_obj) += GET_OBJ_WEIGHT(obj);
 }
 
 /*
@@ -692,11 +700,12 @@ void Crash_extract_norent_eq(struct char_data *ch) {
 }
 
 static void Crash_extract_objs(struct obj_data *obj) {
-  if (obj) {
-    Crash_extract_objs(obj->contains);
-    Crash_extract_objs(obj->next_content);
-    extract_obj(obj);
-  }
+  if (!obj) return;
+  obj_contents_iterate(obj, [](struct obj_data *child) {
+    Crash_extract_objs(child);
+    return true;
+  });
+  extract_obj(obj);
 }
 
 static int Crash_is_unrentable(struct obj_data *obj) {
@@ -718,12 +727,13 @@ static int Crash_is_unrentable(struct obj_data *obj) {
 }
 
 static void Crash_extract_norents(struct obj_data *obj) {
-  if (obj) {
-    Crash_extract_norents(obj->contains);
-    Crash_extract_norents(obj->next_content);
-    if (Crash_is_unrentable(obj))
-      extract_obj(obj);
-  }
+  if (!obj) return;
+  obj_contents_iterate(obj, [](struct obj_data *child) {
+    Crash_extract_norents(child);
+    return true;
+  });
+  if (Crash_is_unrentable(obj))
+    extract_obj(obj);
 }
 
 static void Crash_extract_expensive(struct obj_data *obj) {}
@@ -746,11 +756,12 @@ void Crash_idlesave(struct char_data *ch) {
     return;
 
   Crash_extract_norent_eq(ch);
-  Crash_extract_norents(ch->carrying);
+  char_inventory_iterate(ch, [](struct obj_data *obj) {
+    Crash_extract_norents(obj);
+    return true;
+  });
 
   cost = 0;
-  Crash_calculate_rent(ch->carrying, &cost);
-
   cost_eq = 0;
   for (j = 0; j < NUM_WEARS; j++)
     Crash_calculate_rent(GET_EQ(ch, j), &cost_eq);
@@ -768,13 +779,12 @@ void Crash_idlesave(struct char_data *ch) {
       if (cost <= GET_GOLD(ch) + GET_BANK_GOLD(ch)) return false;
       Crash_extract_expensive(obj);
       cost = 0;
-      Crash_calculate_rent(ch->carrying, &cost);
       cost *= 2;
       return true;
     });
   }
 
-  if (ch->carrying == NULL) {
+  if (!char_inventory_count(ch, false)) {
     for (j = 0; j < NUM_WEARS && GET_EQ(ch, j) == NULL; j++) /* Nothing */
       ;
     if (j == NUM_WEARS) { /* No equipment or inventory. */
@@ -791,7 +801,10 @@ void Crash_idlesave(struct char_data *ch) {
     return true;
   });
 
-  Crash_extract_objs(ch->carrying);
+  char_inventory_iterate(ch, [](struct obj_data *obj) {
+    Crash_extract_objs(obj);
+    return true;
+  });
 }
 
 void Crash_rentsave(struct char_data *ch, int cost) {
@@ -799,7 +812,10 @@ void Crash_rentsave(struct char_data *ch, int cost) {
     return;
 
   Crash_extract_norent_eq(ch);
-  Crash_extract_norents(ch->carrying);
+  char_inventory_iterate(ch, [](struct obj_data *obj) {
+    Crash_extract_norents(obj);
+    return true;
+  });
 
   if (!Crash_write_safe_file(ch, RENT_RENTED, cost, "rentsave"))
     return;
@@ -809,7 +825,10 @@ void Crash_rentsave(struct char_data *ch, int cost) {
     return true;
   });
 
-  Crash_extract_objs(ch->carrying);
+  char_inventory_iterate(ch, [](struct obj_data *obj) {
+    Crash_extract_objs(obj);
+    return true;
+  });
 }
 
 static void Crash_cryosave(struct char_data *ch, int cost) {
@@ -817,7 +836,10 @@ static void Crash_cryosave(struct char_data *ch, int cost) {
     return;
 
   Crash_extract_norent_eq(ch);
-  Crash_extract_norents(ch->carrying);
+  char_inventory_iterate(ch, [](struct obj_data *obj) {
+    Crash_extract_norents(obj);
+    return true;
+  });
 
   char_stat_set(ch, "money", MAX(0, GET_GOLD(ch) - cost));
 
@@ -829,7 +851,10 @@ static void Crash_cryosave(struct char_data *ch, int cost) {
     return true;
   });
 
-  Crash_extract_objs(ch->carrying);
+  char_inventory_iterate(ch, [](struct obj_data *obj) {
+    Crash_extract_objs(obj);
+    return true;
+  });
   SET_BIT_AR(PLR_FLAGS(ch), PLR_CRYO);
 }
 
@@ -859,40 +884,39 @@ static int Crash_report_unrentables(struct char_data *ch,
                                     struct obj_data *obj) {
   int has_norents = 0;
 
-  if (obj) {
-    if (Crash_is_unrentable(obj)) {
-      char buf[128];
-
-      has_norents = 1;
-      snprintf(buf, sizeof(buf), "$n tells you, 'You cannot store %s.'",
-               OBJS(obj, ch));
-      act(buf, FALSE, recep, 0, ch, TO_VICT);
-    }
-    has_norents += Crash_report_unrentables(ch, recep, obj->contains);
-    has_norents += Crash_report_unrentables(ch, recep, obj->next_content);
+  if (!obj) return 0;
+  if (Crash_is_unrentable(obj)) {
+    char buf[128];
+    has_norents = 1;
+    snprintf(buf, sizeof(buf), "$n tells you, 'You cannot store %s.'",
+             OBJS(obj, ch));
+    act(buf, FALSE, recep, 0, ch, TO_VICT);
   }
-  return (has_norents);
+  obj_contents_iterate(obj, [&](struct obj_data *child) {
+    has_norents += Crash_report_unrentables(ch, recep, child);
+    return true;
+  });
+  return has_norents;
 }
 
 static void Crash_report_rent(struct char_data *ch, struct char_data *recep,
                               struct obj_data *obj, long *cost, long *nitems,
                               int display, int factor) {
-  if (obj) {
-    if (!Crash_is_unrentable(obj)) {
-      (*nitems)++;
-      *cost += MAX(0, (0 * factor));
-      if (display) {
-        char buf[256];
-
-        snprintf(buf, sizeof(buf), "$n tells you, '%5d zenni for %s..'",
-                 0 * factor, OBJS(obj, ch));
-        act(buf, FALSE, recep, 0, ch, TO_VICT);
-      }
+  if (!obj) return;
+  if (!Crash_is_unrentable(obj)) {
+    (*nitems)++;
+    *cost += MAX(0, (0 * factor));
+    if (display) {
+      char buf[256];
+      snprintf(buf, sizeof(buf), "$n tells you, '%5d zenni for %s..'",
+               0 * factor, OBJS(obj, ch));
+      act(buf, FALSE, recep, 0, ch, TO_VICT);
     }
-    Crash_report_rent(ch, recep, obj->contains, cost, nitems, display, factor);
-    Crash_report_rent(ch, recep, obj->next_content, cost, nitems, display,
-                      factor);
   }
+  obj_contents_iterate(obj, [&](struct obj_data *child) {
+    Crash_report_rent(ch, recep, child, cost, nitems, display, factor);
+    return true;
+  });
 }
 
 static int Crash_offer_rent(struct char_data *ch, struct char_data *recep,
@@ -900,7 +924,10 @@ static int Crash_offer_rent(struct char_data *ch, struct char_data *recep,
   int i;
   long totalcost = 0, numitems = 0, norent;
 
-  norent = Crash_report_unrentables(ch, recep, ch->carrying);
+  char_inventory_iterate(ch, [&](struct obj_data *obj) {
+    norent += Crash_report_unrentables(ch, recep, obj);
+    return true;
+  });
   for (i = 0; i < NUM_WEARS; i++)
     norent += Crash_report_unrentables(ch, recep, GET_EQ(ch, i));
 
@@ -909,8 +936,10 @@ static int Crash_offer_rent(struct char_data *ch, struct char_data *recep,
 
   totalcost = CONFIG_MIN_RENT_COST * factor;
 
-  Crash_report_rent(ch, recep, ch->carrying, &totalcost, &numitems, display,
-                    factor);
+  char_inventory_iterate(ch, [&](struct obj_data *obj) {
+    Crash_report_rent(ch, recep, obj, &totalcost, &numitems, display, factor);
+    return true;
+  });
 
   for (i = 0; i < NUM_WEARS; i++)
     Crash_report_rent(ch, recep, GET_EQ(ch, i), &totalcost, &numitems, display,
@@ -1109,8 +1138,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
   int orig_rent_code;
   struct obj_data *temp;
   int locate = 0, j, nr, k, cost, num_objs = 0;
-  struct obj_data *obj1;
-  struct obj_data *cont_row[MAX_BAG_ROWS];
+  std::vector<struct obj_data *> cont_row[MAX_BAG_ROWS];
   struct extra_descr_data *new_descr;
   int rentcode, timed, netcost, gold, account, nitems;
   char f1[READ_SIZE], f2[READ_SIZE], f3[READ_SIZE], f4[READ_SIZE];
@@ -1155,8 +1183,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
     break;
   }
 
-  for (j = 0; j < MAX_BAG_ROWS; j++)
-    cont_row[j] = NULL; /* empty all cont lists (you never know ...) */
+  /* cont_row is zero-initialized as std::vector */
 
   if (!feof(fl))
     get_line(fl, line);
@@ -1373,57 +1400,45 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
 
       if (locate > 0) { /* item equipped */
         for (j = MAX_BAG_ROWS - 1; j > 0; j--)
-          if (cont_row[j]) { /* no container -> back to ch's inventory */
-            for (; cont_row[j]; cont_row[j] = obj1) {
-              obj1 = cont_row[j]->next_content;
-              obj_to_char(cont_row[j], ch);
-            }
-            cont_row[j] = NULL;
+          if (!cont_row[j].empty()) { /* no container -> back to ch's inventory */
+            for (auto staged : cont_row[j])
+              obj_to_char(staged, ch);
+            cont_row[j].clear();
           }
-        if (cont_row[0]) { /* content list existing */
+        if (!cont_row[0].empty()) { /* content list existing */
           if (GET_OBJ_TYPE(temp) == ITEM_CONTAINER) {
             /* rem item ; fill ; equip again */
             temp = unequip_char(ch, locate - 1);
-            temp->contains = NULL; /* should be empty - but who knows */
-            for (; cont_row[0]; cont_row[0] = obj1) {
-              obj1 = cont_row[0]->next_content;
-              obj_to_obj(cont_row[0], temp);
-            }
+            for (auto staged : cont_row[0])
+              obj_to_obj(staged, temp);
+            cont_row[0].clear();
             equip_char(ch, temp, locate - 1);
           } else { /* object isn't container -> empty content list */
-            for (; cont_row[0]; cont_row[0] = obj1) {
-              obj1 = cont_row[0]->next_content;
-              obj_to_char(cont_row[0], ch);
-            }
-            cont_row[0] = NULL;
+            for (auto staged : cont_row[0])
+              obj_to_char(staged, ch);
+            cont_row[0].clear();
           }
         }
       } else { /* locate <= 0 */
         for (j = MAX_BAG_ROWS - 1; j > -locate; j--)
-          if (cont_row[j]) { /* no container -> back to ch's inventory */
-            for (; cont_row[j]; cont_row[j] = obj1) {
-              obj1 = cont_row[j]->next_content;
-              obj_to_char(cont_row[j], ch);
-            }
-            cont_row[j] = NULL;
+          if (!cont_row[j].empty()) { /* no container -> back to ch's inventory */
+            for (auto staged : cont_row[j])
+              obj_to_char(staged, ch);
+            cont_row[j].clear();
           }
 
-        if (j == -locate && cont_row[j]) { /* content list existing */
+        if (j == -locate && !cont_row[j].empty()) { /* content list existing */
           if (GET_OBJ_TYPE(temp) == ITEM_CONTAINER) {
             /* take item ; fill ; give to char again */
             obj_from_char(temp);
-            temp->contains = NULL;
-            for (; cont_row[j]; cont_row[j] = obj1) {
-              obj1 = cont_row[j]->next_content;
-              obj_to_obj(cont_row[j], temp);
-            }
-            obj_to_char(temp, ch); /* add to inv first ... */
+            for (auto staged : cont_row[j])
+              obj_to_obj(staged, temp);
+            cont_row[j].clear();
+            obj_to_char(temp, ch);
           } else { /* object isn't container -> empty content list */
-            for (; cont_row[j]; cont_row[j] = obj1) {
-              obj1 = cont_row[j]->next_content;
-              obj_to_char(cont_row[j], ch);
-            }
-            cont_row[j] = NULL;
+            for (auto staged : cont_row[j])
+              obj_to_char(staged, ch);
+            cont_row[j].clear();
           }
         }
 
@@ -1432,12 +1447,7 @@ static int Crash_load_file(struct char_data *ch, FILE *fl,
              but put it at the list's end thus having the items
              in the same order as before renting */
           obj_from_char(temp);
-          if ((obj1 = cont_row[-locate - 1])) {
-            while (obj1->next_content)
-              obj1 = obj1->next_content;
-            obj1->next_content = temp;
-          } else
-            cont_row[-locate - 1] = temp;
+          cont_row[-locate - 1].push_back(temp);
         }
       } /* locate less than zero */
     } else {

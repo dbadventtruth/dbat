@@ -62,20 +62,6 @@ struct zone_data {
    */
 };
 
-/* for queueing zones for update   */
-struct reset_q_element {
-  zone_rnum zone_to_reset; /* ref to zone_data */
-  struct reset_q_element *next;
-};
-
-/* structure for the update queue     */
-struct reset_q_type {
-  struct reset_q_element *head;
-  struct reset_q_element *tail;
-};
-
-extern struct reset_q_type reset_q; /* queue of zones to be reset	 */
-
 zone_vnum real_zone(zone_vnum vnum);
 struct zone_data *zone_by_id(zone_vnum vnum);
 struct zone_data *zone_get(zone_vnum vnum);

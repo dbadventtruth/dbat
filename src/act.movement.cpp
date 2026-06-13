@@ -1165,8 +1165,6 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
 int perform_move(struct char_data *ch, int dir, int need_specials_check) {
   struct room_data *was_in_room = NULL;
-  struct follow_type *k, *next;
-
   if (GRAPPLING(ch) || GRAPPLED(ch)) {
     send_to_char(ch, "You are grappling with someone!\r\n");
     return (0);
@@ -1217,55 +1215,46 @@ int perform_move(struct char_data *ch, int dir, int need_specials_check) {
         return (0);
     }
 
-    if (!ch->followers)
+    if (!char_follower_count(ch))
       return (do_simple_move(ch, dir, need_specials_check));
 
     was_in_room = char_room_get(ch);
     if (!do_simple_move(ch, dir, need_specials_check))
       return (0);
 
-    for (k = ch->followers; k; k = next) {
-      next = k->next;
-      if ((char_room_get(k->follower) == was_in_room) &&
-          (GET_POS(k->follower) >= POS_STANDING) &&
+    char_followers_iterate(ch, [&](struct char_data *k) {
+      if ((char_room_get(k) == was_in_room) &&
+          (GET_POS(k) >= POS_STANDING) &&
           (!char_condition_has(ch, "zanzoken") ||
-           (char_condition_has(ch, "group") &&
-            char_condition_has(k->follower, "group")))) {
-        act("You follow $N.\r\n", FALSE, k->follower, 0, ch, TO_CHAR);
-        perform_move(k->follower, dir, 1);
-      } else if ((char_room_get(k->follower) == was_in_room) &&
-                 (GET_POS(k->follower) >= POS_STANDING) &&
-                 (char_condition_has(ch, "zanzoken") &&
-                  char_condition_has(k->follower, "zanzoken")) &&
-                 (!char_condition_has(ch, "group") ||
-                  !char_condition_has(k->follower, "group"))) {
-        act("$N tries to zanzoken and escape, but your zanzoken matches "
-            "$S!\r\n",
-            FALSE, k->follower, 0, ch, TO_CHAR);
-        act("$N tries to zanzoken and escape, but $n's zanzoken matches "
-            "$S!\r\n",
-            FALSE, k->follower, 0, ch, TO_NOTVICT);
-        act("You zanzoken to try and escape, but $n's zanzoken matches "
-            "yours!\r\n",
-            FALSE, k->follower, 0, ch, TO_VICT);
+           (char_condition_has(ch, "group") && char_condition_has(k, "group")))) {
+        act("You follow $N.\r\n", FALSE, k, 0, ch, TO_CHAR);
+        perform_move(k, dir, 1);
+      } else if ((char_room_get(k) == was_in_room) &&
+                 (GET_POS(k) >= POS_STANDING) &&
+                 (char_condition_has(ch, "zanzoken") && char_condition_has(k, "zanzoken")) &&
+                 (!char_condition_has(ch, "group") || !char_condition_has(k, "group"))) {
+        act("$N tries to zanzoken and escape, but your zanzoken matches $S!\r\n",
+            FALSE, k, 0, ch, TO_CHAR);
+        act("$N tries to zanzoken and escape, but $n's zanzoken matches $S!\r\n",
+            FALSE, k, 0, ch, TO_NOTVICT);
+        act("You zanzoken to try and escape, but $n's zanzoken matches yours!\r\n",
+            FALSE, k, 0, ch, TO_VICT);
         char_condition_remove(ch, "zanzoken", "zanzoken_over");
-        char_condition_remove(k->follower, "zanzoken", "zanzoken_over");
-        perform_move(k->follower, dir, 1);
-      } else if ((char_room_get(k->follower) == was_in_room) &&
-                 (GET_POS(k->follower) >= POS_STANDING) &&
-                 (char_condition_has(ch, "zanzoken") &&
-                  !char_condition_has(k->follower, "zanzoken"))) {
-        act("You try to follow $N, but $E disappears in a flash of "
-            "movement!\r\n",
-            FALSE, k->follower, 0, ch, TO_CHAR);
-        act("$n tries to follow $N, but $E disappears in a flash of "
-            "movement!\r\n",
-            FALSE, k->follower, 0, ch, TO_NOTVICT);
+        char_condition_remove(k, "zanzoken", "zanzoken_over");
+        perform_move(k, dir, 1);
+      } else if ((char_room_get(k) == was_in_room) &&
+                 (GET_POS(k) >= POS_STANDING) &&
+                 (char_condition_has(ch, "zanzoken") && !char_condition_has(k, "zanzoken"))) {
+        act("You try to follow $N, but $E disappears in a flash of movement!\r\n",
+            FALSE, k, 0, ch, TO_CHAR);
+        act("$n tries to follow $N, but $E disappears in a flash of movement!\r\n",
+            FALSE, k, 0, ch, TO_NOTVICT);
         act("$n tries to follow you, but you manage to zanzoken away!\r\n",
-            FALSE, k->follower, 0, ch, TO_VICT);
+            FALSE, k, 0, ch, TO_VICT);
         char_condition_remove(ch, "zanzoken", "zanzoken_over");
       }
-    }
+      return true;
+    });
     return (1);
   }
   return (0);
@@ -2255,7 +2244,6 @@ static int perform_enter_obj(struct char_data *ch, struct obj_data *obj,
                              int need_specials_check) {
   struct room_data *was_in_room = char_room_get(ch);
   int could_move = FALSE;
-  struct follow_type *k;
 
   if (GRAPPLING(ch) || GRAPPLED(ch)) {
     send_to_char(ch, "You are grappling with someone!\r\n");
@@ -2283,12 +2271,13 @@ static int perform_enter_obj(struct char_data *ch, struct obj_data *obj,
         }
       }
       if ((could_move = do_simple_enter(ch, obj, need_specials_check)))
-        for (k = ch->followers; k; k = k->next)
-          if ((char_room_get(k->follower) == was_in_room) &&
-              (GET_POS(k->follower) >= POS_STANDING)) {
-            act("You follow $N.\r\n", FALSE, k->follower, 0, ch, TO_CHAR);
-            perform_enter_obj(k->follower, obj, 1);
+        char_followers_iterate(ch, [&](struct char_data *k) {
+          if ((char_room_get(k) == was_in_room) && (GET_POS(k) >= POS_STANDING)) {
+            act("You follow $N.\r\n", FALSE, k, 0, ch, TO_CHAR);
+            perform_enter_obj(k, obj, 1);
           }
+          return true;
+        });
     } else {
       send_to_char(ch,
                    "It doesn't look like you can enter it at the moment.\r\n");
@@ -2530,7 +2519,6 @@ static int perform_leave_obj(struct char_data *ch, struct obj_data *obj,
                              int need_specials_check) {
   struct room_data *was_in_room = char_room_get(ch);
   int could_move = FALSE;
-  struct follow_type *k;
 
   if (GRAPPLING(ch) || GRAPPLED(ch)) {
     send_to_char(ch, "You are grappling with someone!\r\n");
@@ -2542,12 +2530,13 @@ static int perform_leave_obj(struct char_data *ch, struct obj_data *obj,
   } else {
     if (GET_OBJ_VAL(obj, VAL_HATCH_DEST) != NOWHERE)
       if ((could_move = do_simple_leave(ch, obj, need_specials_check)))
-        for (k = ch->followers; k; k = k->next)
-          if ((char_room_get(k->follower) == was_in_room) &&
-              (GET_POS(k->follower) >= POS_STANDING)) {
-            act("You follow $N.\r\n", FALSE, k->follower, 0, ch, TO_CHAR);
-            perform_leave_obj(k->follower, obj, 1);
+        char_followers_iterate(ch, [&](struct char_data *k) {
+          if ((char_room_get(k) == was_in_room) && (GET_POS(k) >= POS_STANDING)) {
+            act("You follow $N.\r\n", FALSE, k, 0, ch, TO_CHAR);
+            perform_leave_obj(k, obj, 1);
           }
+          return true;
+        });
   }
   return could_move;
 }

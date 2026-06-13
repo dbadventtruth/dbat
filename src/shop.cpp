@@ -12,6 +12,7 @@
  * The entire shop rewrite for Circle 3.0 was done by Jeff Fink.  Thanks Jeff!
  ***/
 #include "shop.h"
+#include <vector>
 #include "character_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
@@ -54,6 +55,8 @@
 #include "spells.h"
 
 #include "iterate.hpp"
+#include "character_db.h"
+#include "object_db.h"
 
 #include <cctype>
 #include <cstring>
@@ -91,9 +94,9 @@ static struct obj_data *get_purchase_obj(struct char_data *ch, char *arg,
                                          struct char_data *keeper,
                                          struct shop_data *shop, int msg);
 static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name,
-                                         struct obj_data *list);
+                                         struct char_data *keeper);
 static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name,
-                                          struct obj_data *list);
+                                          struct char_data *keeper);
 static char *customer_string(struct shop_data *shop, int detailed);
 static void list_all_shops(struct char_data *ch);
 static void list_detailed_shop(struct char_data *ch, struct shop_data *shop);
@@ -524,9 +527,10 @@ static char *times_message(struct obj_data *obj, char *name, int num) {
 }
 
 static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name,
-                                          struct obj_data *list) {
-  struct obj_data *i, *last_match = NULL;
-  int j, number;
+                                          struct char_data *keeper) {
+  struct obj_data *result = NULL;
+  struct obj_data *last_match = NULL;
+  int j = 1, number;
   char tmpname[MAX_INPUT_LENGTH];
   char *tmp;
 
@@ -535,20 +539,23 @@ static struct obj_data *get_slide_obj_vis(struct char_data *ch, char *name,
   if (!(number = get_number(&tmp)))
     return (NULL);
 
-  for (i = list, j = 1; i && (j <= number); i = i->next_content)
+  char_inventory_iterate(keeper, [&](struct obj_data *i) {
+    if (result) return false;
     if (isname(tmp, i->name))
       if (CAN_SEE_OBJ(ch, i) && !same_obj(last_match, i)) {
-        if (j == number)
-          return (i);
+        if (j == number) { result = i; return false; }
         last_match = i;
         j++;
       }
-  return (NULL);
+    return true;
+  });
+  return result;
 }
 
 static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name,
-                                         struct obj_data *list) {
-  struct obj_data *loop, *last_obj = NULL;
+                                         struct char_data *keeper) {
+  struct obj_data *result = NULL;
+  struct obj_data *last_obj = NULL;
   int qindex;
 
   if (is_number(name))
@@ -558,14 +565,16 @@ static struct obj_data *get_hash_obj_vis(struct char_data *ch, char *name,
   else
     return (NULL);
 
-  for (loop = list; loop; loop = loop->next_content)
+  char_inventory_iterate(keeper, [&](struct obj_data *loop) {
+    if (result) return false;
     if (CAN_SEE_OBJ(ch, loop) && GET_OBJ_COST(loop) > 0)
       if (!same_obj(last_obj, loop)) {
-        if (--qindex == 0)
-          return (loop);
+        if (--qindex == 0) { result = loop; return false; }
         last_obj = loop;
       }
-  return (NULL);
+    return true;
+  });
+  return result;
 }
 
 static struct obj_data *get_purchase_obj(struct char_data *ch, char *arg,
@@ -577,9 +586,9 @@ static struct obj_data *get_purchase_obj(struct char_data *ch, char *arg,
   one_argument(arg, name);
   do {
     if (*name == '#' || is_number(name))
-      obj = get_hash_obj_vis(ch, name, keeper->carrying);
+      obj = get_hash_obj_vis(ch, name, keeper);
     else
-      obj = get_slide_obj_vis(ch, name, keeper->carrying);
+      obj = get_slide_obj_vis(ch, name, keeper);
     if (!obj) {
       if (msg) {
         char buf[MAX_INPUT_LENGTH];
@@ -622,22 +631,6 @@ static int buy_price(struct obj_data *obj, struct shop_data *shop,
                      struct char_data *keeper, struct char_data *buyer) {
   int cost = (GET_OBJ_COST(obj) * shop->profit_buy);
 
-  /*
-  double adjust = 1.0;
-  struct obj_data *k;
-
-  for (k = object_list; k; k = k->next) {
-   if (GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj)) {
-    adjust -= 0.00025;
-   }
-  }
-  if (adjust < 0.015) {
-   adjust = 0.5;
-  }
-
-  cost = cost * adjust;
-  */
-
   if (!IS_NPC(buyer)) {
     if (GET_BONUS(buyer, BONUS_THRIFTY) > 0) {
       if (IS_ARLIAN(buyer)) {
@@ -668,13 +661,13 @@ static int sell_price(struct obj_data *obj, struct shop_data *shop,
     sell_cost_modifier = buy_cost_modifier;
 
   double adjust = 1.0;
-  struct obj_data *k;
 
-  for (k = object_list; k; k = k->next) {
+  obj_iterate_all([&](struct obj_data *k) {
     if (GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj)) {
       adjust -= 0.00025;
     }
-  }
+    return true;
+  });
   if (adjust < 0.15) {
     adjust = 0.15;
   }
@@ -968,7 +961,7 @@ static void shopping_buy(char *arg, struct char_data *ch,
   if (!ADM_FLAGGED(ch, ADM_MONEY))
     char_stat_mod(keeper, "money", goldamt);
 
-  strlcpy(tempstr, times_message(ch->carrying, 0, bought), sizeof(tempstr));
+  strlcpy(tempstr, times_message(last_obj, 0, bought), sizeof(tempstr));
 
   snprintf(tempbuf, sizeof(tempbuf), "$n buys %s.", tempstr);
   act(tempbuf, FALSE, ch, obj, 0, TO_ROOM);
@@ -1032,62 +1025,45 @@ static struct obj_data *get_selling_obj(struct char_data *ch, char *name,
 static struct obj_data *slide_obj(struct obj_data *obj,
                                   struct char_data *keeper,
                                   struct shop_data *shop)
-/*
-   This function is a slight hack!  To make sure that duplicate items are
-   only listed once on the "list", this function groups "identical"
-   objects together on the shopkeeper's inventory list.  The hack involves
-   knowing how the list is put together, and manipulating the order of
-   the objects on the list.  (But since most of DIKU is not encapsulated,
-   and information hiding is almost never used, it isn't that big a deal) -JF
-*/
 {
-  struct obj_data *loop;
-  int temp;
-
   if (shop->lastsort < IS_CARRYING_N(keeper))
     sort_keeper_objs(keeper, shop);
 
-  /* Extract the object if it is identical to one produced */
   if (shop_producing(obj, shop)) {
-    temp = GET_OBJ_VNUM(obj);
     extract_obj(obj);
     return NULL;
   }
   shop->lastsort++;
-  loop = keeper->carrying;
   obj_to_char(obj, keeper);
-  keeper->carrying = loop;
-  while (loop) {
-    if (same_obj(obj, loop)) {
-      obj->next_content = loop->next_content;
-      loop->next_content = obj;
-      return (obj);
-    }
-    loop = loop->next_content;
-  }
-  keeper->carrying = obj;
-  return (obj);
+
+  struct obj_data *match = nullptr;
+  char_inventory_iterate(keeper, [&](struct obj_data *loop) {
+    if (loop == obj) return true;
+    if (same_obj(obj, loop)) { match = loop; return false; }
+    return true;
+  });
+  char_inventory_move_after(keeper, obj, match);
+  return obj;
 }
 
 static void sort_keeper_objs(struct char_data *keeper, struct shop_data *shop) {
-  struct obj_data *list = NULL, *temp;
-
-  while (shop->lastsort < IS_CARRYING_N(keeper)) {
-    temp = keeper->carrying;
-    obj_from_char(temp);
-    temp->next_content = list;
-    list = temp;
+  size_t count = 0;
+  auto ids = char_inventory_ids(keeper, &count);
+  std::vector<struct obj_data *> unsorted;
+  for (size_t i = (size_t)shop->lastsort; i < count; i++) {
+    auto o = obj_by_id(ids[i]);
+    if (o) unsorted.push_back(o);
   }
-
-  while (list) {
-    temp = list;
-    list = list->next_content;
+  char_inventory_ids_free(ids);
+  for (auto o : unsorted) obj_from_char(o);
+  for (auto temp : unsorted) {
     if (shop_producing(temp, shop) &&
         !get_obj_in_list_num(GET_OBJ_RNUM(temp), inv_for_char(keeper))) {
       obj_to_char(temp, keeper);
       shop->lastsort++;
-    } else
+    } else {
       slide_obj(temp, keeper, shop);
+    }
   }
 }
 

@@ -7,7 +7,6 @@ extern "C" {
 #endif
 
 void game_loop(void);
-void heartbeat(int heart_pulse);
 void game_active_player_enter(void);
 void game_active_player_leave(void);
 int game_active_player_count(void);
@@ -22,7 +21,6 @@ void obj_on_second(struct obj_data *obj);
 void obj_on_mud_hour(struct obj_data *obj);
 void obj_on_heartbeat(struct obj_data *obj, int pulse);
 
-void heartbeat_legacy(int heart_pulse);
 void game_legacy_process_commands(void);
 void game_legacy_send_outputs(void);
 void game_legacy_close_pending(void);

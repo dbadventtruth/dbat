@@ -63,15 +63,11 @@ struct obj_data {
   int16_t worn_on;              /* Worn where?		      */
 
   struct obj_data *in_obj;   /* In what object NULL when none    */
-  struct obj_data *contains; /* Contains objects                 */
 
   int32_t id;        /* used by DG triggers              */
   time_t generation; /* creation time for dupe check     */
 
   struct script_data *script; /* script info for the object       */
-
-  struct obj_data *next_content; /* For 'contains' lists             */
-  struct obj_data *next;         /* For the object list              */
 
   struct char_data *sitting; /* Who is sitting on me? */
 

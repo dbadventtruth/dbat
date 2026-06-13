@@ -487,7 +487,6 @@ void handle_disarm(struct char_data *ch, struct char_data *vict) {
 
 void combine_attacks(struct char_data *ch, struct char_data *vict) {
 
-  struct follow_type *f;
   char chbuf[MAX_INPUT_LENGTH], victbuf[MAX_INPUT_LENGTH],
       rmbuf[MAX_INPUT_LENGTH];
   int64_t bonus = 0;
@@ -791,34 +790,30 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
     GET_CHARGE(ch) = 0;
   }
 
-  for (f = ch->followers; f; f = f->next) {
-    if (!char_condition_has(f->follower, "group")) {
-      continue;
+  char_followers_iterate(ch, [&](struct char_data *fol) {
+    if (!char_condition_has(fol, "group")) return true;
+    if (GET_COMBINE(fol) != GET_COMBINE(ch))
+      same = FALSE;
+    if (GET_CHARGE(fol) >= GET_MAX_MANA(fol) * maxki) {
+      totki += GET_MAX_MANA(fol) * maxki;
+      GET_CHARGE(fol) -= GET_MAX_MANA(fol) * maxki;
     } else {
-      if (GET_COMBINE(f->follower) != GET_COMBINE(ch)) {
-        same = FALSE;
-      }
-      if (GET_CHARGE(f->follower) >= GET_MAX_MANA(f->follower) * maxki) {
-        totki += GET_MAX_MANA(f->follower) * maxki;
-        GET_CHARGE(f->follower) -= GET_MAX_MANA(f->follower) * maxki;
-      } else {
-        totki += GET_CHARGE(f->follower);
-        GET_CHARGE(f->follower) = 0;
-      }
-      totalmem += 1;
-      attavg += GET_SKILL(f->follower, attack_skills[GET_COMBINE(f->follower)]);
-      char folbuf[MAX_INPUT_LENGTH], folbuf2[MAX_INPUT_LENGTH];
-      sprintf(
-          folbuf,
-          "@Y$n@W times and merges $s @B'@R%s@B'@W into the group attack!@n",
-          attack_names_comp[GET_COMBINE(f->follower)]);
-      sprintf(folbuf2,
-              "@WYou time and merge your @B'@R%s@B'@W into the group attack!@n",
-              attack_names_comp[GET_COMBINE(f->follower)]);
-      act(folbuf, TRUE, f->follower, 0, 0, TO_ROOM);
-      act(folbuf2, TRUE, f->follower, 0, 0, TO_CHAR);
+      totki += GET_CHARGE(fol);
+      GET_CHARGE(fol) = 0;
     }
-  }
+    totalmem += 1;
+    attavg += GET_SKILL(fol, attack_skills[GET_COMBINE(fol)]);
+    char folbuf[MAX_INPUT_LENGTH], folbuf2[MAX_INPUT_LENGTH];
+    sprintf(folbuf,
+            "@Y$n@W times and merges $s @B'@R%s@B'@W into the group attack!@n",
+            attack_names_comp[GET_COMBINE(fol)]);
+    sprintf(folbuf2,
+            "@WYou time and merge your @B'@R%s@B'@W into the group attack!@n",
+            attack_names_comp[GET_COMBINE(fol)]);
+    act(folbuf, TRUE, fol, 0, 0, TO_ROOM);
+    act(folbuf2, TRUE, fol, 0, 0, TO_CHAR);
+    return true;
+  });
 
   totki += bonus;
   if (same == TRUE) {
@@ -871,11 +866,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
   }
   hurt(0, 0, ch, vict, NULL, totki, 1);
   if (same == TRUE) {
-    for (f = ch->followers; f; f = f->next) {
-      send_to_char(
-          f->follower,
-          "@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n");
-    }
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      send_to_char(fol, "@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n");
+      return true;
+    });
     send_to_char(ch,
                  "@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n");
   }
@@ -1969,26 +1963,24 @@ void damage_eq(struct char_data *vict, int location) {
 }
 
 /* This is for updating MOB android absorb */
-void update_mob_absorb() {
-  int roll = 0;
-  struct char_data *i, *vict;
+static void update_mob_absorb_one(struct char_data *i) {
+  struct char_data *vict;
+  int roll = axion_dice(0) + (GET_LEVEL(i) * 0.25);
 
-  for (i = character_list; i; i = i->next) {
-    roll = axion_dice(0) + (GET_LEVEL(i) * 0.25);
-
+  {
     if (!IS_NPC(i))
-      continue;
+      return;
 
     if (!IS_ANDROID(i))
-      continue;
+      return;
 
     if (!MOB_FLAGGED(i, MOB_ABSORB))
-      continue;
+      return;
 
     if (ABSORBING(i) == NULL || !ABSORBING(i))
-      continue;
+      return;
     else if (GET_LEVEL(i) < roll)
-      continue;
+      return;
     else if (ABSORBING(i)) {
       vict = ABSORBING(i);
 
@@ -2042,6 +2034,13 @@ void update_mob_absorb() {
       }
     }
   }
+}
+
+void update_mob_absorb() {
+  char_iterate_all([](struct char_data *i) {
+    update_mob_absorb_one(i);
+    return true;
+  });
 }
 
 /* This is for huge attacks that are slowly descending on a room */
@@ -2184,15 +2183,14 @@ static void tick_huge_ki(struct obj_data *k) {
 
 void huge_update() {
   /* clean up expired auction items parked in room 80 */
-  struct obj_data *next_k;
-  for (auto *k = object_list; k; k = next_k) {
-    next_k = k->next;
+  obj_iterate_all([](struct obj_data *k) {
     if (GET_AUCTER(k) > 0 && GET_AUCTIME(k) + 604800 <= time(0) &&
         obj_room_vnum_get(k) == 80) {
       room_flag_set(obj_room_get(k), ROOM_HOUSE_CRASH, FALSE);
       extract_obj(k);
     }
-  }
+    return true;
+  });
   obj_iterate_subscriptions("obj_huge_ki", [](struct obj_data *k) {
     tick_huge_ki(k);
     return true;

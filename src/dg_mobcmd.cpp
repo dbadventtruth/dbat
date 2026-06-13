@@ -1024,13 +1024,9 @@ ACMD(do_mtransform) {
 
     tmpmob.id = ch->id;
     tmpmob.affected = ch->affected;
-    tmpmob.carrying = ch->carrying;
     tmpmob.proto_script = ch->proto_script;
     tmpmob.script = ch->script;
     tmpmob.memory = ch->memory;
-    tmpmob.next_in_room = ch->next_in_room;
-    tmpmob.next = ch->next;
-    tmpmob.followers = ch->followers;
     tmpmob.master = ch->master;
 
     GET_WAS_IN(&tmpmob) = GET_WAS_IN(ch);
@@ -1140,7 +1136,6 @@ ACMD(do_mdoor) {
 ACMD(do_mfollow) {
   char buf[MAX_INPUT_LENGTH];
   struct char_data *leader;
-  struct follow_type *j, *k;
 
   if (!MOB_OR_IMPL(ch)) {
     send_to_char(ch, "Huh?!?\r\n");
@@ -1175,18 +1170,7 @@ ACMD(do_mfollow) {
 
   /* stop following someone else first */
   if (ch->master) {
-    if (ch->master->followers->follower == ch) { /* Head of follower-list? */
-      k = ch->master->followers;
-      ch->master->followers = k->next;
-      free(k);
-    } else { /* locate follower who is not head of list */
-      for (k = ch->master->followers; k->next->follower != ch; k = k->next)
-        ;
-
-      j = k->next;
-      k->next = j->next;
-      free(j);
-    }
+    char_follower_remove(ch->master, ch);
     ch->master = NULL;
   }
 
@@ -1199,12 +1183,7 @@ ACMD(do_mfollow) {
   }
 
   ch->master = leader;
-
-  CREATE(k, struct follow_type, 1);
-
-  k->follower = ch;
-  k->next = leader->followers;
-  leader->followers = k;
+  char_follower_add(leader, ch);
 }
 
 /* prints the message to everyone in the range of numbers */

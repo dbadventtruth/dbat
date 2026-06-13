@@ -44,6 +44,7 @@
 #include "dg_scripts.h"
 #include "genmob.h"
 #include "genolc.h"
+#include "iterate.hpp"
 #include "genshp.h"
 #include "genzon.h"
 #include "handler.h"
@@ -319,9 +320,9 @@ void medit_save_internally(struct descriptor_data *d) {
   struct mob_proto_data *proto = mob_proto_by_id(v);
 
   /* this takes care of the mobs currently in-game */
-  for (mob = character_list; mob; mob = mob->next) {
+  char_iterate_all([&](struct char_data *mob) {
     if (GET_MOB_VNUM(mob) != v)
-      continue;
+      return true;
 
     /* remove any old scripts */
     if (SCRIPT(mob))
@@ -329,7 +330,8 @@ void medit_save_internally(struct descriptor_data *d) {
 
     mob_proto_copy_script_to_mobile(proto, mob);
     assign_triggers(mob, MOB_TRIGGER);
-  }
+    return true;
+  });
   /* end trigger update */
 }
 

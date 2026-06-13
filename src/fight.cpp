@@ -88,59 +88,43 @@ static void mob_attack(struct char_data *ch, char *buf);
 static int pick_n_throw(struct char_data *ch, char *buf);
 
 int group_bonus(struct char_data *ch, int type) {
-  struct follow_type *k, *next;
-
   if (!char_condition_has(ch, "group"))
     return (FALSE);
 
-  if (ch->followers) {
-    for (k = ch->followers; k; k = next) {
-      next = k->next;
-      if (!char_condition_has(k->follower, "group")) {
-        continue;
-      } else {
-        if (type == 0) {
-          incCurLFPercent(k->follower, .25);
-          send_to_char(k->follower, "@CIncensed by the death of your comrade "
-                                    "your life force swells!@n");
-          return (TRUE);
-        } else if (type == 1) {
-          incCurLFPercent(k->follower, .4);
-          send_to_char(k->follower, "@CIncensed by the death of your comrade "
-                                    "your life force swells!@n");
-          return (TRUE);
-        } else if (type == 2) {
-          if (IS_ROSHI(ch)) {
-            return (2);
-          } else if (IS_KRANE(ch)) {
-            return (3);
-          } else if (IS_BARDOCK(ch)) {
-            return (4);
-          } else if (IS_NAIL(ch)) {
-            return (5);
-          } else if (IS_KABITO(ch)) {
-            return (6);
-          } else if (IS_ANDSIX(ch)) {
-            return (7);
-          } else if (IS_TAPION(ch)) {
-            return (8);
-          } else if (IS_FRIEZA(ch)) {
-            return (9);
-          } else if (IS_TSUNA(ch)) {
-            return (10);
-          } else if (IS_PICCOLO(ch)) {
-            return (11);
-          } else if (IS_KURZAK(ch)) {
-            return (12);
-          } else if (IS_JINTO(ch)) {
-            return (13);
-          } else if (IS_DABURA(ch)) {
-            return (14);
-          }
-        }
-        return (FALSE);
+  if (char_follower_count(ch)) {
+    int result = FALSE;
+    bool acted = false;
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      if (!char_condition_has(fol, "group")) return true;
+      acted = true;
+      if (type == 0) {
+        incCurLFPercent(fol, .25);
+        send_to_char(fol, "@CIncensed by the death of your comrade "
+                          "your life force swells!@n");
+        result = TRUE;
+      } else if (type == 1) {
+        incCurLFPercent(fol, .4);
+        send_to_char(fol, "@CIncensed by the death of your comrade "
+                          "your life force swells!@n");
+        result = TRUE;
+      } else if (type == 2) {
+        if (IS_ROSHI(ch)) result = 2;
+        else if (IS_KRANE(ch)) result = 3;
+        else if (IS_BARDOCK(ch)) result = 4;
+        else if (IS_NAIL(ch)) result = 5;
+        else if (IS_KABITO(ch)) result = 6;
+        else if (IS_ANDSIX(ch)) result = 7;
+        else if (IS_TAPION(ch)) result = 8;
+        else if (IS_FRIEZA(ch)) result = 9;
+        else if (IS_TSUNA(ch)) result = 10;
+        else if (IS_PICCOLO(ch)) result = 11;
+        else if (IS_KURZAK(ch)) result = 12;
+        else if (IS_JINTO(ch)) result = 13;
+        else if (IS_DABURA(ch)) result = 14;
       }
-    }
+      return false; // stop on first group member
+    });
+    if (acted) return result;
   } else if (ch->master) {
     if (!char_condition_has(ch->master, "group"))
       return (FALSE);
@@ -1319,49 +1303,52 @@ static void tick_charge(struct char_data *ch) {
     improve_skill(ch, SKILL_CONCENTRATION, 1);
 }
 
+static void fight_stack_one(struct char_data *ch) {
+  reset_fighting_position(ch);
+
+  if (tick_mob_cooldown(ch)) return;
+
+  tick_mob_powerup(ch);
+
+  if (tick_frozen_skip(ch)) return;
+  if (tick_idle_skip(ch)) return;
+
+  tick_fight_room_check(ch);
+  tick_dragging_interrupt(ch);
+  tick_lifeforce_heal(ch);
+  tick_position_advantage(ch);
+  tick_grapple_damage(ch);
+
+  if (GRAPPLED(ch) && rand_number(1, 2) == 2)
+    send_to_char(ch, "@CTry 'escape' to break free from the hold!@n\r\n");
+
+  tick_halfbreed_fury(ch);
+  tick_transformation_drain(ch);
+  tick_wimp_flee(ch);
+
+  if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 6 || GET_GENOME(ch, 1) == 6) &&
+      rand_number(1, 200) >= 175)
+    mutant_limb_regen(ch);
+
+  tick_disguise_slip(ch);
+  tick_mob_blind_recovery(ch);
+  tick_knocked_recovery(ch);
+  tick_linkdead_flee(ch);
+
+  if (tick_mob_grapple_escape(ch)) return;
+  if (tick_mob_combat_ai(ch)) return;
+
+  tick_barrier_skill(ch);
+  tick_player_powerup(ch);
+  tick_charge(ch);
+}
+
 void fight_stack() {
-  for (auto tch = character_list; tch; tch = tch->next) {
-    if (!zone_player_count_get(char_zone_vnum_get(tch))) continue;
-    auto ch = tch;
-
-    reset_fighting_position(ch);
-
-    if (tick_mob_cooldown(ch)) continue;
-
-    tick_mob_powerup(ch);
-
-    if (tick_frozen_skip(ch)) continue;
-    if (tick_idle_skip(ch)) continue;
-
-    tick_fight_room_check(ch);
-    tick_dragging_interrupt(ch);
-    tick_lifeforce_heal(ch);
-    tick_position_advantage(ch);
-    tick_grapple_damage(ch);
-
-    if (GRAPPLED(ch) && rand_number(1, 2) == 2)
-      send_to_char(ch, "@CTry 'escape' to break free from the hold!@n\r\n");
-
-    tick_halfbreed_fury(ch);
-    tick_transformation_drain(ch);
-    tick_wimp_flee(ch);
-
-    if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 6 || GET_GENOME(ch, 1) == 6) &&
-        rand_number(1, 200) >= 175)
-      mutant_limb_regen(ch);
-
-    tick_disguise_slip(ch);
-    tick_mob_blind_recovery(ch);
-    tick_knocked_recovery(ch);
-    tick_linkdead_flee(ch);
-
-    if (tick_mob_grapple_escape(ch)) continue;
-    if (tick_mob_combat_ai(ch)) continue;
-
-    tick_barrier_skill(ch);
-    tick_player_powerup(ch);
-    tick_charge(ch);
-  }
+  char_iterate_all([](struct char_data *tch) {
+    if (zone_player_count_get(char_zone_vnum_get(tch)))
+      fight_stack_one(tch);
+    return true;
+  });
 }
 
 void appear(struct char_data *ch) {
@@ -1605,12 +1592,11 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
       return true;
     });
   } else {
-    corpse->contains = ch->carrying;
-    obj_contents_iterate(corpse, [&](struct obj_data *o) {
-      o->in_obj = corpse;
+    char_inventory_iterate(ch, [&](struct obj_data *o) {
+      obj_from_char(o);
+      obj_to_obj(o, corpse);
       return true;
     });
-    object_list_new_owner(corpse, NULL);
 
     char_equipment_iterate(ch, [&](auto i, auto eq) {
       remove_otrigger(eq, ch);
@@ -1624,8 +1610,6 @@ static void make_corpse(struct char_data *ch, struct char_data *tch) {
         obj_to_obj(create_money(GET_GOLD(ch)), corpse);
       char_stat_set(ch, "money", 0);
     }
-
-    ch->carrying = NULL;
   }
 
   obj_subscribe_add(corpse, "obj_corpse");
@@ -1679,16 +1663,13 @@ static void final_combat_resolve(struct char_data *ch) {
     SITTING(chair) = NULL;
   }
   if (!IS_NPC(ch) && GET_CLONES(ch) > 0) {
-    struct char_data *clone = NULL;
-    for (clone = character_list; clone; clone = clone->next) {
-      if (IS_NPC(clone)) {
-        if (GET_MOB_VNUM(clone) == 25) {
-          if (GET_ORIGINAL(clone) == ch) {
-            handle_multi_merge(clone);
-          }
-        }
+    char_iterate_all([&](struct char_data *clone) {
+      if (IS_NPC(clone) && GET_MOB_VNUM(clone) == 25 &&
+          GET_ORIGINAL(clone) == ch) {
+        handle_multi_merge(clone);
       }
-    }
+      return true;
+    });
   }
   if (CARRYING(ch)) {
     carry_drop(ch, 2);
@@ -2164,28 +2145,25 @@ static void perform_group_gain(struct char_data *ch, int base,
     }
   }
   if (LASTHIT(victim) != 0 && LASTHIT(victim) != GET_IDNUM(ch)) {
-    struct follow_type *f;
     int checkit = FALSE;
-    for (f = ch->followers; f; f = f->next) {
-      if (char_condition_has(f->follower, "group") &&
-          LASTHIT(victim) == GET_IDNUM(f->follower)) {
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      if (char_condition_has(fol, "group") &&
+          LASTHIT(victim) == GET_IDNUM(fol))
         checkit = TRUE;
-      }
-    }
+      return true;
+    });
     if (checkit == FALSE && ch->master != NULL &&
         GET_IDNUM(ch->master) == LASTHIT(victim)) {
       checkit = TRUE;
     }
     if (checkit == FALSE && ch->master != NULL) {
       struct char_data *master = ch->master;
-      for (f = master->followers; f; f = f->next) {
-        if (f->follower != ch) {
-          if (char_condition_has(f->follower, "group") &&
-              LASTHIT(victim) == GET_IDNUM(f->follower)) {
-            checkit = TRUE;
-          }
-        }
-      }
+      char_followers_iterate(master, [&](struct char_data *fol) {
+        if (fol != ch && char_condition_has(fol, "group") &&
+            LASTHIT(victim) == GET_IDNUM(fol))
+          checkit = TRUE;
+        return true;
+      });
     }
     if (checkit == FALSE) {
       send_to_char(ch, "@RYou didn't do most of the work for this kill.@n\r\n");
@@ -2313,7 +2291,6 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   int tot_levels, tot_members;
   int64_t tot_gain, base;
   struct char_data *k;
-  struct follow_type *f;
 
   if (!(k = ch->master))
     k = ch;
@@ -2326,17 +2303,19 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
     tot_members = 0;
   }
 
-  for (f = k->followers; f; f = f->next)
-    if (char_condition_has(f->follower, "group") &&
-        char_room_get(f->follower) == char_room_get(ch)) {
-      if (!IS_WEIGHTED(f->follower)) {
-        tot_levels += GET_LEVEL(f->follower);
+  char_followers_iterate(k, [&](struct char_data *fol) {
+    if (char_condition_has(fol, "group") &&
+        char_room_get(fol) == char_room_get(ch)) {
+      if (!IS_WEIGHTED(fol)) {
+        tot_levels += GET_LEVEL(fol);
         tot_members++;
-      } else if (getMaxPL(f->follower) >= getMaxPL(ch) * 0.5) {
-        tot_levels += GET_LEVEL(f->follower);
+      } else if (getMaxPL(fol) >= getMaxPL(ch) * 0.5) {
+        tot_levels += GET_LEVEL(fol);
         tot_members++;
       }
     }
+    return true;
+  });
 
   /* round up to the next highest tot_members */
   tot_gain = (GET_EXP(victim)) + tot_members - 1;
@@ -2375,11 +2354,12 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
    */
   // perform_group_gain(k, base, victim);
 
-  for (f = k->followers; f; f = f->next) {
-    if (char_condition_has(f->follower, "group") &&
-        char_room_get(f->follower) == char_room_get(ch)) {
-      // if ((getMaxPL(f->follower)()) >= GET_MAX_HIT(ch) * 0.5)
-      // perform_group_gain(f->follower, base, victim);
+  char_followers_iterate(k, [&](struct char_data *fol) {
+    if (char_condition_has(fol, "group") &&
+        char_room_get(fol) == char_room_get(ch)) {
+      // if (getMaxPL(fol) >= GET_MAX_HIT(ch) * 0.5)
+      // perform_group_gain(fol, base, victim);
     }
-  }
+    return true;
+  });
 }

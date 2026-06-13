@@ -15,7 +15,6 @@ void obj_to_room(struct obj_data *object, struct room_data *room);
 void obj_from_room(struct obj_data *object);
 void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to);
 void obj_from_obj(struct obj_data *obj);
-void object_list_new_owner(struct obj_data *list, struct char_data *ch);
 
 void obj_to_char(struct obj_data *object, struct char_data *ch);
 

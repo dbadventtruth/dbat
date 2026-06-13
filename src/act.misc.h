@@ -7,7 +7,6 @@ extern "C" {
 
 void handle_multi_merge(struct char_data *form);
 void handle_songs(void);
-void fish_update(void);
 void disp_rpp_store(struct char_data *ch);
 void handle_rpp_store(struct char_data *ch, int choice);
 void rpp_feature(struct char_data *ch, const char *arg);

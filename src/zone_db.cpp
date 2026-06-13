@@ -1,8 +1,6 @@
 #include "iterate.hpp"
 #include "zone_impl.h"
 
-struct reset_q_type reset_q; /* queue of zones to be reset	 */
-
 /* returns the real number of the zone with given virtual number */
 zone_vnum real_zone(zone_vnum vnum) {
   return zone_by_id(vnum) ? vnum : NOTHING;

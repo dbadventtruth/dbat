@@ -129,9 +129,12 @@ pub export fn obj_weight_get(obj: *cdb.obj_data) i64 {
 
 pub export fn obj_weight_get_contained(obj: *cdb.obj_data) i64 {
     var total: i64 = 0;
-    var current = obj.contains;
-    while (current != null) : (current = current.*.next_content) {
-        total += obj_weight_get_total(&current.*);
+    var count: usize = 0;
+    const ids = obj_contents_ids(obj, &count) orelse return 0;
+    defer obj_contents_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const child = cdb.obj_by_id(id) orelse continue;
+        total += obj_weight_get_total(child);
     }
     return total;
 }
@@ -247,40 +250,41 @@ pub export fn obj_in_obj_set(obj: *cdb.obj_data, in_obj: [*c]cdb.obj_data) void 
     obj.in_obj = in_obj;
 }
 
+extern fn obj_contents_ids(container: *cdb.obj_data, out_count: *usize) ?[*]i64;
+extern fn obj_contents_ids_free(ptr: ?[*]i64) void;
+
 pub export fn obj_inventory_count(obj: *cdb.obj_data, recursive: bool) usize {
-    var count: usize = 0;
-    var current = obj.contains;
-    while (current != null) : (current = current.*.next_content) {
-        count += 1;
-        if (recursive) count += obj_inventory_count(&current.*, true);
+    var ids_count: usize = 0;
+    const ids = obj_contents_ids(obj, &ids_count) orelse return 0;
+    defer obj_contents_ids_free(ids);
+    if (!recursive) return ids_count;
+    var total = ids_count;
+    for (ids[0..ids_count]) |id| {
+        const child = cdb.obj_by_id(id) orelse continue;
+        total += obj_inventory_count(child, true);
     }
-    return count;
+    return total;
 }
 
 pub export fn obj_inventory_get(obj: *cdb.obj_data, count: *usize) ?[*]i64 {
-    const inv_count = obj_inventory_count(obj, false);
-    count.* = inv_count;
-    if (inv_count == 0) return null;
+    return obj_contents_ids(obj, count);
+}
 
-    const array = std.heap.c_allocator.alloc(i64, inv_count) catch return null;
-    var current = obj.contains;
-    var index: usize = 0;
-    while (current != null) : (current = current.*.next_content) {
-        array[index] = current.*.id;
-        index += 1;
+pub fn objContentsIterate(container: *cdb.obj_data, recursive: bool, func: ObjIterFn, ctx: ?*anyopaque) bool {
+    var ids_count: usize = 0;
+    const ids = obj_contents_ids(container, &ids_count) orelse return true;
+    defer obj_contents_ids_free(ids);
+    for (ids[0..ids_count]) |id| {
+        const obj = cdb.obj_by_id(id) orelse continue;
+        if (!func(obj, ctx)) return false;
+        if (recursive and !objContentsIterate(obj, true, func, ctx)) return false;
     }
-    return array.ptr;
+    return true;
 }
 
 pub fn objContentsListIterate(obj: [*c]cdb.obj_data, recursive: bool, func: ObjIterFn, ctx: ?*anyopaque) bool {
-    var current = obj;
-    while (current != null) {
-        const next = current.*.next_content;
-        if (!func(&current.*, ctx)) return false;
-        if (recursive and !objContentsListIterate(current.*.contains, true, func, ctx)) return false;
-        current = next;
-    }
-    return true;
+    if (obj == null) return true;
+    return objContentsIterate(@ptrCast(obj), recursive, func, ctx);
 }
 
 pub export fn obj_contents_list_iterate(obj: [*c]cdb.obj_data, recursive: bool, func: ?ObjIterFn, ctx: ?*anyopaque) void {
@@ -290,15 +294,17 @@ pub export fn obj_contents_list_iterate(obj: [*c]cdb.obj_data, recursive: bool, 
 
 pub export fn obj_inventory_iterate(obj: *cdb.obj_data, recursive: bool, func: ?ObjIterFn, ctx: ?*anyopaque) void {
     const callback = func orelse return;
-    _ = objContentsListIterate(obj.contains, recursive, callback, ctx);
+    _ = objContentsIterate(obj, recursive, callback, ctx);
 }
 
 pub export fn obj_next_content_get(obj: *cdb.obj_data) [*c]cdb.obj_data {
-    return obj.next_content;
+    _ = obj;
+    return null;
 }
 
 pub export fn obj_contains_get(obj: *cdb.obj_data) [*c]cdb.obj_data {
-    return obj.contains;
+    _ = obj;
+    return null;
 }
 
 pub export fn obj_sitting_get(obj: *cdb.obj_data) i64 {

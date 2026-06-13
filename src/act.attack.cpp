@@ -989,7 +989,6 @@ ACMD(do_combine) {
 
   char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
   struct char_data *vict;
-  struct follow_type *f;
   int fire = FALSE, temp = -1, temp2 = -1;
 
   two_arguments(argument, arg, arg2);
@@ -1014,13 +1013,14 @@ ACMD(do_combine) {
                        "@Y%s@C is no longer prepared to combine an attack with "
                        "the group!@n\r\n",
                        get_i_name(ch->master, ch));
-          for (f = ch->master->followers; f; f = f->next) {
-            if (ch != f->follower)
-              send_to_char(f->follower,
+          char_followers_iterate(ch->master, [&](struct char_data *fol) {
+            if (ch != fol)
+              send_to_char(fol,
                            "@Y%s@C is no longer prepared to combine an attack "
                            "with the group!@n\r\n",
-                           get_i_name(f->follower, ch));
-          }
+                           get_i_name(fol, ch));
+            return true;
+          });
           GET_COMBINE(ch) = -1;
           return;
         }
@@ -1080,15 +1080,12 @@ ACMD(do_combine) {
           return;
         }
         GET_COMBINE(ch) = temp;
-        for (f = ch->followers; f; f = f->next) {
-          if (!char_condition_has(f->follower, "group")) {
-            continue;
-          } else if (GET_COMBINE(f->follower) != -1 &&
-                     GET_CHARGE(f->follower) >=
-                         GET_MAX_MANA(f->follower) * 0.05) {
+        char_followers_iterate(ch, [&](struct char_data *fol) {
+          if (char_condition_has(fol, "group") && GET_COMBINE(fol) != -1 &&
+              GET_CHARGE(fol) >= GET_MAX_MANA(fol) * 0.05)
             fire = TRUE;
-          }
-        } /* End follow for statement */
+          return true;
+        });
         if (fire == TRUE) {
           combine_attacks(ch, vict);
           return;
@@ -1107,13 +1104,14 @@ ACMD(do_combine) {
                        "@BCOMBINE@c: @Y%s@C has prepared to combine a "
                        "@c'@G%s@c'@C with the next group attack!@n\r\n",
                        get_i_name(ch->master, ch), attack_names[temp]);
-          for (f = ch->master->followers; f; f = f->next) {
-            if (ch != f->follower)
-              send_to_char(f->follower,
+          char_followers_iterate(ch->master, [&](struct char_data *fol) {
+            if (ch != fol)
+              send_to_char(fol,
                            "@BCOMBINE@c: @Y%s@C has prepared to combine a "
                            "@c'@G%s@c'@C with the next group attack!@n\r\n",
-                           get_i_name(f->follower, ch), attack_names[temp]);
-          }
+                           get_i_name(fol, ch), attack_names[temp]);
+            return true;
+          });
           GET_COMBINE(ch) = temp;
         } else {
           send_to_char(ch, "You do not have the minimum 5%s ki charged.\r\n",

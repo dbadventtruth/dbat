@@ -8,6 +8,7 @@
  *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
  ************************************************************************ */
 #include "interpreter.h"
+#include "iterate.hpp"
 
 #include "act.informative.h"
 #include "act.wizard.h"
@@ -262,35 +263,34 @@ int perform_dupe_check(struct descriptor_data *d) {
    * duplicates, though theoretically none should be able to exist).
    */
 
-  for (ch = character_list; ch; ch = next_ch) {
-    next_ch = ch->next;
-
-    if (IS_NPC(ch))
-      continue;
-    if (GET_IDNUM(ch) != id)
-      continue;
+  char_iterate_all([&](struct char_data *tch) {
+    if (IS_NPC(tch))
+      return true;
+    if (GET_IDNUM(tch) != id)
+      return true;
 
     /* ignore chars with descriptors (already handled by above step) */
-    if (ch->desc)
-      continue;
+    if (tch->desc)
+      return true;
 
     /* don't extract the target char we've found one already */
-    if (ch == target)
-      continue;
+    if (tch == target)
+      return true;
 
     /* we don't already have a target and found a candidate for switching */
     if (!target) {
-      target = ch;
+      target = tch;
       mode = RECON;
-      continue;
+      return true;
     }
 
     /* we've found a duplicate - blow him away, dumping his eq in limbo. */
-    if (char_room_get(ch) != NULL)
-      char_from_room(ch);
-    char_to_room(ch, room_by_id(1));
-    extract_char(ch);
-  }
+    if (char_room_get(tch) != NULL)
+      char_from_room(tch);
+    char_to_room(tch, room_by_id(1));
+    extract_char(tch);
+    return true;
+  });
 
   /* no target for switching into was found - allow login to continue */
   if (!target)
@@ -442,8 +442,6 @@ int enter_player_game(struct descriptor_data *d) {
   if (PLR_FLAGGED(ch, PLR_FROZEN))
     load_room = room_by_id(CONFIG_FROZEN_START);
 
-  ch->next = character_list;
-  character_list = ch;
   game_active_player_enter();
   char_to_room(ch, load_room);
   load_result = Crash_load(ch);
@@ -457,11 +455,13 @@ int enter_player_game(struct descriptor_data *d) {
   (void)char_register_id(GET_ID(ch), ch);
   char_subscribe_add(ch, "player");
   read_saved_vars(ch);
-  for (check = character_list; check; check = check->next)
+  char_iterate_all([&](struct char_data *check) {
     if (!check->master && IS_NPC(check) &&
         check->master_id == GET_IDNUM(ch) &&
         AFF_FLAGGED(check, AFF_CHARM) && !circle_follow(check, ch))
       add_follower(check, ch);
+    return true;
+  });
   save_char(ch);
 
   if (d->customfile != 1) {

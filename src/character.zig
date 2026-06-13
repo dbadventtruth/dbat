@@ -1,7 +1,9 @@
 const cdb = @import("cdb");
 const std = @import("std");
+const event_queue = @import("event_queue.zig");
 
 const IdSet = std.AutoHashMap(i64, void);
+const IdList = std.ArrayListUnmanaged(i64);
 const CharCallback = *const fn (*cdb.char_data) callconv(.c) void;
 const MobProtoEntry = struct {
     proto: ?*cdb.mob_proto_data = null,
@@ -14,18 +16,61 @@ var allocator: std.mem.Allocator = undefined;
 var chars_by_id: std.AutoHashMap(i64, *cdb.char_data) = undefined;
 var subscriptions_by_list: std.StringHashMap(IdSet) = undefined;
 var mob_proto_map: MobProtoMap = undefined;
+var extract_pending: std.array_list.Managed(i64) = undefined;
+var char_inventory_map: std.AutoHashMap(i64, IdList) = undefined;
+var char_followers_map: std.AutoHashMap(i64, IdList) = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     chars_by_id = std.AutoHashMap(i64, *cdb.char_data).init(allocator);
     subscriptions_by_list = std.StringHashMap(IdSet).init(allocator);
     mob_proto_map = MobProtoMap.init(allocator);
+    extract_pending = std.array_list.Managed(i64).init(allocator);
+    char_inventory_map = std.AutoHashMap(i64, IdList).init(allocator);
+    char_followers_map = std.AutoHashMap(i64, IdList).init(allocator);
 }
 
 pub fn deinit() void {
     deinitSubscriptions();
     chars_by_id.deinit();
     mob_proto_map.deinit();
+    extract_pending.deinit();
+    {
+        var it = char_inventory_map.valueIterator();
+        while (it.next()) |list| list.deinit(allocator);
+        char_inventory_map.deinit();
+    }
+    {
+        var it = char_followers_map.valueIterator();
+        while (it.next()) |list| list.deinit(allocator);
+        char_followers_map.deinit();
+    }
+}
+
+// Queue a character id for end-of-tick extraction. Callers guard against
+// double-queueing via the NOTDEADYET flags.
+pub export fn char_extract_pending_add(id: i64) void {
+    extract_pending.append(id) catch {};
+}
+
+// Hand the pending-extraction ids to the caller (malloc'd; free with
+// char_subscribe_ids_free) and clear the queue. Ids queued while the caller
+// drains are picked up by the next call.
+pub export fn char_extract_pending_take(out_count: *usize) ?[*]i64 {
+    const count = extract_pending.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], extract_pending.items);
+    extract_pending.clearRetainingCapacity();
+    out_count.* = count;
+    return ids;
 }
 
 pub export fn char_by_id(id: i64) ?*cdb.char_data {
@@ -34,8 +79,7 @@ pub export fn char_by_id(id: i64) ?*cdb.char_data {
 
 pub export fn char_register_id(id: i64, ch: ?*cdb.char_data) c_int {
     const ptr = ch orelse {
-        char_clear_subscriptions(id);
-        _ = chars_by_id.remove(id);
+        char_unregister_id(id);
         return 0;
     };
 
@@ -45,6 +89,15 @@ pub export fn char_register_id(id: i64, ch: ?*cdb.char_data) c_int {
 
 pub export fn char_unregister_id(id: i64) void {
     char_clear_subscriptions(id);
+    _ = event_queue.cancelOwner(event_queue.OWNER_CHAR, id, null);
+    if (char_inventory_map.fetchRemove(id)) |kv| {
+        var list = kv.value;
+        list.deinit(allocator);
+    }
+    if (char_followers_map.fetchRemove(id)) |kv| {
+        var list = kv.value;
+        list.deinit(allocator);
+    }
     _ = chars_by_id.remove(id);
 }
 
@@ -146,6 +199,37 @@ pub export fn char_subscribe_ids(tag: ?[*:0]const u8, out_count: *usize) ?[*]i64
 
 pub export fn char_subscribe_ids_free(ptr: ?[*]i64) void {
     std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+// Snapshot of every live character id. Free with char_subscribe_ids_free.
+pub export fn char_all_ids(out_count: *usize) ?[*]i64 {
+    const count = chars_by_id.count();
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    var i: usize = 0;
+    var it = chars_by_id.keyIterator();
+    while (it.next()) |id_ptr| {
+        ids[i] = id_ptr.*;
+        i += 1;
+    }
+    out_count.* = count;
+    return ids;
+}
+
+// Same snapshot sorted newest-first (descending id). Ids are assigned
+// monotonically at creation, so this reproduces the old head-inserted
+// character_list ordering exactly.
+pub export fn char_all_ids_newest(out_count: *usize) ?[*]i64 {
+    const ids = char_all_ids(out_count) orelse return null;
+    std.mem.sort(i64, ids[0..out_count.*], {}, std.sort.desc(i64));
+    return ids;
 }
 
 const MobProtoIterator = struct {
@@ -269,6 +353,141 @@ pub export fn mob_proto_count_decrement(vnum: cdb.mob_vnum) void {
     if (entry.count == 0 and (entry.proto == null and entry.special == null)) {
         _ = mob_proto_map.remove(vnum);
     }
+}
+
+// --- Character inventory tracking ---
+
+pub export fn char_inventory_add(ch: *cdb.char_data, obj: *cdb.obj_data) void {
+    const ch_id = cdb.char_id_get(ch);
+    const obj_id = cdb.obj_id_get(obj);
+    const entry = char_inventory_map.getOrPut(ch_id) catch return;
+    if (!entry.found_existing) entry.value_ptr.* = IdList.empty;
+    entry.value_ptr.append(allocator, obj_id) catch {};
+}
+
+pub export fn char_inventory_remove(ch: *cdb.char_data, obj: *cdb.obj_data) void {
+    const ch_id = cdb.char_id_get(ch);
+    const obj_id = cdb.obj_id_get(obj);
+    const list = char_inventory_map.getPtr(ch_id) orelse return;
+    for (list.items, 0..) |item, i| {
+        if (item == obj_id) {
+            _ = list.swapRemove(i);
+            return;
+        }
+    }
+}
+
+pub export fn char_inventory_ids(ch: *cdb.char_data, out_count: *usize) ?[*]i64 {
+    const ch_id = cdb.char_id_get(ch);
+    const list = char_inventory_map.getPtr(ch_id) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = list.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], list.items);
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn char_inventory_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+pub export fn char_inventory_first(ch: *cdb.char_data) ?*cdb.obj_data {
+    const ch_id = cdb.char_id_get(ch);
+    const list = char_inventory_map.getPtr(ch_id) orelse return null;
+    if (list.items.len == 0) return null;
+    return cdb.obj_by_id(list.items[0]);
+}
+
+pub export fn char_inventory_count_simple(ch: *cdb.char_data) usize {
+    const ch_id = cdb.char_id_get(ch);
+    const list = char_inventory_map.getPtr(ch_id) orelse return 0;
+    return list.items.len;
+}
+
+pub export fn char_inventory_move_after(ch: *cdb.char_data, obj: *cdb.obj_data, after: ?*cdb.obj_data) void {
+    const ch_id = cdb.char_id_get(ch);
+    const list = char_inventory_map.getPtr(ch_id) orelse return;
+    const obj_id = cdb.obj_id_get(obj);
+    const obj_idx = for (list.items, 0..) |id, i| {
+        if (id == obj_id) break i;
+    } else return;
+    _ = list.orderedRemove(obj_idx);
+    if (after) |after_obj| {
+        const after_id = cdb.obj_id_get(after_obj);
+        const after_idx = for (list.items, 0..) |id, i| {
+            if (id == after_id) break i;
+        } else {
+            list.insert(allocator, 0, obj_id) catch {};
+            return;
+        };
+        list.insert(allocator, after_idx + 1, obj_id) catch {};
+    } else {
+        list.insert(allocator, 0, obj_id) catch {};
+    }
+}
+
+// --- Follower tracking ---
+
+pub export fn char_follower_add(master: *cdb.char_data, follower: *cdb.char_data) void {
+    const master_id = cdb.char_id_get(master);
+    const follower_id = cdb.char_id_get(follower);
+    const entry = char_followers_map.getOrPut(master_id) catch return;
+    if (!entry.found_existing) entry.value_ptr.* = IdList.empty;
+    entry.value_ptr.append(allocator, follower_id) catch {};
+}
+
+pub export fn char_follower_remove(master: *cdb.char_data, follower: *cdb.char_data) void {
+    const master_id = cdb.char_id_get(master);
+    const follower_id = cdb.char_id_get(follower);
+    const list = char_followers_map.getPtr(master_id) orelse return;
+    for (list.items, 0..) |item, i| {
+        if (item == follower_id) {
+            _ = list.swapRemove(i);
+            return;
+        }
+    }
+}
+
+pub export fn char_follower_ids(master: *cdb.char_data, out_count: *usize) ?[*]i64 {
+    const master_id = cdb.char_id_get(master);
+    const list = char_followers_map.getPtr(master_id) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = list.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], list.items);
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn char_follower_count(master: *cdb.char_data) usize {
+    const master_id = cdb.char_id_get(master);
+    const list = char_followers_map.getPtr(master_id) orelse return 0;
+    return list.items.len;
+}
+
+pub export fn char_follower_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
 }
 
 fn unsubscribe(id: i64, name: []const u8) void {

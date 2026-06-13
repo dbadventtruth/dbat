@@ -1,5 +1,6 @@
 const cdb = @import("cdb");
 const std = @import("std");
+const event_queue = @import("event_queue.zig");
 
 const TrigProtoEntry = struct {
     proto: ?*cdb.trig_data = null,
@@ -10,14 +11,36 @@ const TrigProtoMap = std.AutoHashMap(cdb.trig_vnum, TrigProtoEntry);
 
 var allocator: std.mem.Allocator = undefined;
 var trig_proto_map: TrigProtoMap = undefined;
+var trigs_by_id: std.AutoHashMap(i64, *cdb.trig_data) = undefined;
+var next_trig_id: i64 = 1;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     trig_proto_map = TrigProtoMap.init(allocator);
+    trigs_by_id = std.AutoHashMap(i64, *cdb.trig_data).init(allocator);
 }
 
 pub fn deinit() void {
     trig_proto_map.deinit();
+    trigs_by_id.deinit();
+}
+
+pub export fn trig_assign_id(trig: ?*cdb.trig_data) i64 {
+    const ptr = trig orelse return 0;
+    const id = next_trig_id;
+    next_trig_id += 1;
+    ptr.id = id;
+    trigs_by_id.put(id, ptr) catch return 0;
+    return id;
+}
+
+pub export fn trig_by_id(id: i64) ?*cdb.trig_data {
+    return trigs_by_id.get(id) orelse null;
+}
+
+pub export fn trig_unregister_id(id: i64) void {
+    _ = event_queue.cancelOwner(event_queue.OWNER_TRIG, id, null);
+    _ = trigs_by_id.remove(id);
 }
 
 const TrigProtoIterator = struct {

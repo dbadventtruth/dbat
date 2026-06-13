@@ -35,27 +35,22 @@ room_vnum mapnums[MAP_ROWS + 1][MAP_COLS + 1];
 
 void ping_ship(int vnum, int vnum2) {
 
-  struct char_data *tch, *next_ch;
-  struct obj_data *controls = NULL, *obj = NULL;
+  struct obj_data *controls = NULL;
   int found = FALSE;
 
   if (vnum2 == -1) {
     return;
   }
 
-  for (tch = character_list; tch; tch = next_ch) {
-    next_ch = tch->next;
-    if (found == FALSE) {
-      if (!(obj = find_control(tch))) {
-        continue;
-      } else {
-        if (GET_OBJ_VAL(obj, 0) == vnum && vnum != vnum2) {
-          controls = obj;
-          found = TRUE;
-        }
-      }
+  char_iterate_all([&](struct char_data *tch) {
+    struct obj_data *obj = find_control(tch);
+    if (obj && GET_OBJ_VAL(obj, 0) == vnum && vnum != vnum2) {
+      controls = obj;
+      found = TRUE;
+      return false;
     }
-  }
+    return true;
+  });
 
   if (found == TRUE) {
     send_to_room(

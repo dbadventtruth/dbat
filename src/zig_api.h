@@ -34,7 +34,6 @@
 #include "objsave.h"
 #include "genolc.h"
 #include "dg_comm.h"
-#include "dg_event.h"
 #include "dgscript_impl.h"
 #include "dgscript_db.h"
 #include "extradesc_impl.h"
@@ -63,3 +62,4 @@
 #include "zone_impl.h"
 #include "zone_api.h"
 #include "zone_db.h"
+#include "event_queue_api.h"

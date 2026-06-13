@@ -20,7 +20,6 @@
 #include "consts/skills.h"
 #include "consts/triggers.h"
 #include "db.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "dgscript_impl.h"
 #include "fight.h"
@@ -37,6 +36,7 @@
 
 #include "affect.h"
 #include "extract.h"
+#include "relocate.h"
 
 /* copied from spell_parser.c: */
 #define SINFO spell_info[spellnum]
@@ -150,9 +150,7 @@ void do_dg_cast(void *go, struct script_data *sc, trig_data *trig, int type,
       caster->short_descr = strdup(((struct obj_data *)go)->short_description);
     else if (type == WLD_TRIGGER)
       caster->short_descr = strdup("The gods");
-    caster->next_in_room = room_people_get(caster_room);
-    caster_room->people = caster;
-    IN_ROOM(caster) = room_vnum_get(caster_room);
+    char_to_room(caster, caster_room);
     call_magic(caster, tch, tobj, spellnum, DG_SPELL_LEVEL, CAST_SPELL, t);
     extract_char(caster);
   } else

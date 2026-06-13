@@ -64,6 +64,7 @@
 #include "descriptor_db.h"
 #include "descriptor_impl.h"
 #include "descriptor_macros.h"
+#include "event_queue_api.h"
 #include "fight.h"
 #include "flags.h"
 #include "handler.h"
@@ -90,6 +91,7 @@ static int campfire_cook(int recipe);
 static int valid_recipe(struct char_data *ch, int recipe, int type);
 static int has_pole(struct char_data *ch);
 static void catch_fish(struct char_data *ch, int quality);
+static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b);
 static int valid_silk(struct obj_data *obj);
 
 ACMD(do_spiritcontrol) {
@@ -1284,7 +1286,9 @@ ACMD(do_fish) {
       int distance = rand_number(30, 80);
       char_condition_add(ch, "fishing", "command", "fish");
       char_condition_number_set(ch, "fishing", "distance", distance);
-      char_subscribe_add(ch, "fishing");
+      event_schedule_c_owned(event_queue_now_ms() + EQ_MS_2SEC, 0,
+                             ev_fish_tick, EQ_CTX_CHAR_ID, GET_ID(ch), 0,
+                             EQ_OWNER_CHAR, GET_ID(ch), "fish_tick");
       send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n", distance);
       return;
     }
@@ -1377,7 +1381,8 @@ ACMD(do_fish) {
           TO_CHAR);
       act("@c$n@C reels in $s fishing line and stops fishing.@n", TRUE, ch, 0,
           0, TO_ROOM);
-      char_subscribe_remove(ch, "fishing");
+      eq_cancel_owner(EQ_OWNER_CHAR, GET_ID(ch), "fish_tick");
+      char_condition_remove(ch, "fishing", "fish_stop");
       return;
     }
   } else {
@@ -1398,20 +1403,19 @@ static int has_pole(struct char_data *ch) {
   return (FALSE);
 }
 
+/* Runs one fishing tick. Returns true if ch is still fishing afterwards. */
 static bool handle_fishing(struct char_data *ch) {
   auto end_fishing = [&]() {
     char_condition_remove(ch, "fishing", "end_fishing");
-    char_subscribe_remove(ch, "fishing");
   };
-  
+
   if(!char_condition_has(ch, "fishing")) {
-    end_fishing();
-    return true;
+    return false;
   }
 
   if(!has_pole(ch)) {
     end_fishing();
-    return true;
+    return false;
   }
 
   int quality = 0;
@@ -1431,7 +1435,7 @@ static bool handle_fishing(struct char_data *ch) {
     }
     catch_fish(ch, quality);
     end_fishing();
-    return true;
+    return false;
   }
 
   if(rand_number(1, 5) <= 2) {
@@ -1475,6 +1479,7 @@ static bool handle_fishing(struct char_data *ch) {
       struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
       GET_OBJ_VAL(pole, 0) = 0;
     }
+    return false;
   } else if (state == FISH_HOOKED &&
               rand_number(1, 20) >= 12) {
     act("@CYou feel the line go slack and realize you've lost the "
@@ -1483,6 +1488,7 @@ static bool handle_fishing(struct char_data *ch) {
     act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
         0, 0, TO_ROOM);
     end_fishing();
+    return false;
   } else if (state == FISH_BITE &&
               rand_number(1, 20) >= 12) {
     act("@CYou feel as if the fish has stopped biting...@n", TRUE, ch,
@@ -1502,8 +1508,24 @@ static bool handle_fishing(struct char_data *ch) {
   return true;
 }
 
-void fish_update(void) {
-  char_iterate_subscriptions("fishing", handle_fishing);
+/*
+ * Per-fisher tick: a self-rescheduling one-shot chain started by 'fish cast'.
+ * The character is re-resolved by id, so a stale event after extraction or
+ * logout is a harmless no-op and the chain dies with the fishing condition.
+ */
+static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b) {
+  (void)ctx_type;
+  (void)ctx_b;
+  struct char_data *ch = char_by_id(ctx_a);
+  if (!ch)
+    return;
+
+  if (!handle_fishing(ch))
+    return;
+
+  event_schedule_c_owned(event_queue_now_ms() + EQ_MS_2SEC, 0,
+                         ev_fish_tick, EQ_CTX_CHAR_ID, ctx_a, 0,
+                         EQ_OWNER_CHAR, ctx_a, "fish_tick");
 }
 
 static void catch_fish(struct char_data *ch, int quality) {

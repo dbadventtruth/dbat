@@ -218,16 +218,15 @@ obj_vnum add_object(struct obj_proto_data *newobj, obj_vnum ovnum) {
  * with the new one.
  */
 int update_objects(struct obj_proto_data *refobj) {
-  struct obj_data *obj;
   int count = 0;
 
-  for (obj = object_list; obj; obj = obj->next) {
-    if (obj->proto_id != refobj->id)
-      continue;
-
-    count++;
-    obj_apply_proto_to_instance(obj, refobj);
-  }
+  obj_iterate_all([&](struct obj_data *obj) {
+    if (obj->proto_id == refobj->id) {
+      count++;
+      obj_apply_proto_to_instance(obj, refobj);
+    }
+    return true;
+  });
 
   return count;
 }
@@ -382,25 +381,6 @@ int save_objects(struct zone_data *zone) {
  * Free all, unconditionally.
  */
 void free_object_strings(struct obj_data *obj) {
-#if 0 /* Debugging, do not enable. */
-  extern struct obj_data *object_list;
-  struct obj_data *t;
-  int i = 0;
-
-  for (t = object_list; t; t = t->next) {
-    if (t == obj) {
-      i++;
-      continue;
-    }
-    assert(obj->name != t->name);
-    assert(obj->description != t->description);
-    assert(obj->short_description != t->short_description);
-    assert(obj->action_description != t->action_description);
-    assert(obj->ex_description != t->ex_description);
-  }
-  assert(i <= 1);
-#endif
-
   if (obj->name)
     free(obj->name);
   if (obj->description)
@@ -465,9 +445,9 @@ int delete_object(obj_vnum vnum) {
   mud_log("GenOLC: delete_object: Deleting object #%d (%s).", obj->id,
       obj->short_description);
 
-  for (tmp = object_list; tmp; tmp = tmp->next) {
+  obj_iterate_all([&](struct obj_data *tmp) {
     if (tmp->id != obj->id)
-      continue;
+      return true;
 
     /* extract_obj() will just axe contents. */
     obj_contents_iterate(tmp, [&](struct obj_data *this_content) {
@@ -486,9 +466,10 @@ int delete_object(obj_vnum vnum) {
       }
       return true;
     });
-    /* Remove from object_list, etc. - handles weight changes, and similar. */
+    /* Extraction handles weight changes, unregistration, and similar. */
     extract_obj(tmp);
-  }
+    return true;
+  });
 
   obj_proto_free(obj);
   return vnum;

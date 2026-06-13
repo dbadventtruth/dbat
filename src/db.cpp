@@ -82,7 +82,6 @@
 #include "class.h"
 #include "comm.h"
 #include "config.h"
-#include "dg_event.h"
 #include "dg_scripts.h"
 #include "feats.h"
 #include "genmob.h"
@@ -110,9 +109,17 @@
 #include "mobact.h"
 
 #include <errno.h>
+#include "event_queue_api.h"
+
 #include <linux/limits.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <unordered_map>
+
+// Forward declarations for zone reset event functions (defined later in this file)
+void ev_zone_reset(int, int64_t, int64_t);
+void zone_schedule_reset(struct zone_data *zone);
+void zone_schedule_all_resets(void);
 
 /**************************************************************************
  *  declarations of most of the 'global' variables                         *
@@ -627,24 +634,20 @@ void free_extra_descriptions(struct extra_descr_data *edesc) {
 /* Free the world, in a memory allocation sense. */
 void destroy_db(void) {
   ssize_t cnt, itr;
-  struct char_data *chtmp;
-  struct obj_data *objtmp;
 
-  /* Active Mobiles & Players */
-  while (character_list) {
-    chtmp = character_list;
-    character_list = character_list->next;
+  /* Active Mobiles & Players (snapshot: free_char unregisters as we go) */
+  char_iterate_all([](struct char_data *chtmp) {
     if (chtmp->master)
       stop_follower(chtmp);
     free_char(chtmp);
-  }
+    return true;
+  });
 
   /* Active Objects */
-  while (object_list) {
-    objtmp = object_list;
-    object_list = object_list->next;
+  obj_iterate_all([](struct obj_data *objtmp) {
     free_obj(objtmp);
-  }
+    return true;
+  });
 
   /* Rooms */
   room_iterate([&](auto room) {
@@ -689,16 +692,6 @@ void destroy_db(void) {
   destroy_guilds();
 
   /* Zones */
-  /* zone table reset queue */
-  if (reset_q.head) {
-    struct reset_q_element *ftemp = reset_q.head, *temp;
-    while (ftemp) {
-      temp = ftemp->next;
-      free(ftemp);
-      ftemp = temp;
-    }
-  }
-
   zone_iterate([&](auto zone) {
     if (zone->name)
       free(zone->name);
@@ -721,16 +714,6 @@ void destroy_db(void) {
     return true;
   });
 
-  /* zone table reset queue */
-  if (reset_q.head) {
-    struct reset_q_element *ftemp = reset_q.head, *temp;
-    while (ftemp) {
-      temp = ftemp->next;
-      free(ftemp);
-      ftemp = temp;
-    }
-  }
-
   /* Triggers */
   trig_proto_iterate([&](auto trig) {
     trig_vnum vnum = trig->proto_id;
@@ -751,9 +734,6 @@ void destroy_db(void) {
     free_trigger(trig);
     return true;
   });
-
-  /* Events */
-  event_free_all();
 
   /* context sensitive help system */
   free_context_help();
@@ -986,8 +966,6 @@ void boot_db(void) {
     reset_zone(zone);
     return true;
   });
-
-  reset_q.head = reset_q.tail = NULL;
 
   boot_time = time(0);
 
@@ -2796,8 +2774,6 @@ struct char_data *create_char(void) {
 
   CREATE(ch, struct char_data, 1);
   clear_char(ch);
-  ch->next = character_list;
-  character_list = ch;
   GET_ID(ch) = max_mob_id++;
   /* find_char helper */
   (void)char_register_id(GET_ID(ch), ch);
@@ -2827,9 +2803,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   CREATE(mob, struct char_data, 1);
   clear_char(mob);
   copy_mobile_from_proto(mob, proto);
-  mob->next = character_list;
-  character_list = mob;
-  mob->next_affect = NULL;
 
   if (IS_HOSHIJIN(mob) && GET_SEX(mob) == SEX_MALE) {
     mob->hairl = 0;
@@ -3410,8 +3383,6 @@ struct obj_data *create_obj(void) {
 
   CREATE(obj, struct obj_data, 1);
   clear_object(obj);
-  obj->next = object_list;
-  object_list = obj;
 
   GET_ID(obj) = max_obj_id++;
   /* find_obj helper */
@@ -3443,8 +3414,6 @@ struct obj_data *read_object(obj_vnum nr, int type) /* and obj_rnum */
   CREATE(obj, struct obj_data, 1);
   clear_object(obj);
   obj_proto_to_instance(obj, proto);
-  obj->next = object_list;
-  object_list = obj;
   OBJ_LOADROOM(obj) = NOWHERE;
 
   obj_proto_count_increment(nr);
@@ -3471,75 +3440,40 @@ struct obj_data *read_object(obj_vnum nr, int type) /* and obj_rnum */
 
 struct obj_data *obj_spawn(obj_vnum nr) { return read_object(nr, VIRTUAL); }
 
-#define ZO_DEAD 999
+// Schedule the next auto-reset for a single zone.
+// lifespan is in minutes; we convert to milliseconds.
+void zone_schedule_reset(struct zone_data *zone) {
+  if (!zone || zone->reset_mode == 0) return;
+  const int64_t lifespan_ms = zone->lifespan > 0
+      ? (int64_t)zone->lifespan * 60000LL
+      : 60000LL; // treat lifespan 0 as 1 minute to avoid busy-loop
+  event_schedule_c(event_queue_now_ms() + lifespan_ms, 0, ev_zone_reset,
+                   EQ_CTX_ZONE_ID, (int64_t)zone->id, 0);
+}
 
-/* update zone ages, queue for reset if necessary, and dequeue when possible */
-void zone_update(void) {
-  int i;
-  struct reset_q_element *update_u, *temp;
-  static int timer = 0;
+// Called from main.zig after boot_db() has loaded all zones.
+void zone_schedule_all_resets(void) {
+  zone_iterate([](auto zone) {
+    zone_schedule_reset(zone);
+    return true;
+  });
+}
 
-  /* jelson 10/22/92 */
-  if (((++timer * PULSE_ZONE) / PASSES_PER_SEC) >= 60) {
-    /* one minute has passed */
-    /*
-     * NOT accurate unless PULSE_ZONE is a multiple of PASSES_PER_SEC or a
-     * factor of 60
-     */
+// Event handler: attempt to reset one zone.
+// ctx_a = zone vnum.  If the zone is mode 1 and players are present, retry in 60 s.
+void ev_zone_reset(int /*ctx_type*/, int64_t ctx_a, int64_t /*ctx_b*/) {
+  struct zone_data *zone = zone_by_id((zone_vnum)ctx_a);
+  if (!zone || zone->reset_mode == 0) return;
 
-    timer = 0;
-
-    /* since one minute has passed, increment zone ages */
-    zone_iterate([&](auto zone) {
-      if (zone->age < zone->lifespan && zone->reset_mode)
-        (zone->age)++;
-
-      if (zone->age >= zone->lifespan && zone->age < ZO_DEAD &&
-          zone->reset_mode) {
-        /* enqueue zone */
-
-        CREATE(update_u, struct reset_q_element, 1);
-
-        update_u->zone_to_reset = zone->id;
-        update_u->next = 0;
-
-        if (!reset_q.head)
-          reset_q.head = reset_q.tail = update_u;
-        else {
-          reset_q.tail->next = update_u;
-          reset_q.tail = update_u;
-        }
-
-        zone->age = ZO_DEAD;
-      }
-      return true;
-    }); /* end - one minute has passed */
-
-    /* dequeue zones (if possible) and reset */
-    /* this code is executed every 10 seconds (i.e. PULSE_ZONE) */
-    for (update_u = reset_q.head; update_u; update_u = update_u->next) {
-      struct zone_data *zone = zone_by_id(update_u->zone_to_reset);
-      if (zone->reset_mode == 2 || is_empty(update_u->zone_to_reset)) {
-        reset_zone(zone);
-        mudlog(CMP, ADMLVL_GOD, FALSE, "Auto zone reset: %s (Zone %d)",
-               zone->name, zone->id);
-        /* dequeue */
-        if (update_u == reset_q.head)
-          reset_q.head = reset_q.head->next;
-        else {
-          for (temp = reset_q.head; temp->next != update_u; temp = temp->next)
-            ;
-
-          if (!update_u->next)
-            reset_q.tail = temp;
-
-          temp->next = update_u->next;
-        }
-
-        free(update_u);
-        break;
-      }
-    }
+  if (zone->reset_mode == 2 || is_empty((zone_vnum)ctx_a)) {
+    reset_zone(zone);
+    mudlog(CMP, ADMLVL_GOD, FALSE, "Auto zone reset: %s (Zone %d)",
+           zone->name, zone->id);
+    zone_schedule_reset(zone);
+  } else {
+    // Mode 1 and players are present: check again in 60 seconds.
+    event_schedule_c(event_queue_now_ms() + 60000LL, 0, ev_zone_reset,
+                     EQ_CTX_ZONE_ID, (int64_t)zone->id, 0);
   }
 }
 
@@ -3564,7 +3498,15 @@ struct reset_context {
   struct obj_data *tobj = nullptr;
   bool mob_load = false;
   bool obj_load = false;
+  /* last object loaded per vnum during this reset, by id (ids stay safe if a
+   * load trigger purges the object; re-resolved at use). 'P' commands target
+   * containers loaded earlier in the same reset through this. */
+  std::unordered_map<obj_vnum, int64_t> last_obj;
 };
+
+static void reset_track_obj(struct reset_context *ctx, struct obj_data *obj) {
+  ctx->last_obj[GET_OBJ_VNUM(obj)] = GET_ID(obj);
+}
 
 static bool reset_command_mobile(struct reset_context *ctx, mob_vnum vnum,
                                  room_vnum rv, int max_in_room,
@@ -3599,13 +3541,11 @@ static bool reset_command_mobile(struct reset_context *ctx, mob_vnum vnum,
 
   size_t count_room = 0;
   if (max_in_room > 0)
-    for (auto i = character_list; i; i = i->next) {
-      if (GET_MOB_VNUM(i) == vnum) {
-        if (MOB_LOADROOM(i) == rv) {
-          count_room++;
-        }
-      }
-    }
+    char_iterate_all([&](struct char_data *i) {
+      if (GET_MOB_VNUM(i) == vnum && MOB_LOADROOM(i) == rv)
+        count_room++;
+      return true;
+    });
 
   if (max_in_room > 0 && count_room >= max_in_room) {
     return false;
@@ -3655,19 +3595,19 @@ static bool reset_command_object(struct reset_context *ctx, obj_vnum vnum,
 
   size_t count_room = 0;
   if (max_in_room > 0)
-    for (auto i = object_list; i; i = i->next) {
-      if (GET_OBJ_VNUM(i) == vnum) {
-        if (OBJ_LOADROOM(i) == rv || (i->in_room && i->in_room == rv)) {
-          count_room++;
-        }
-      }
-    }
+    obj_iterate_all([&](struct obj_data *i) {
+      if (GET_OBJ_VNUM(i) == vnum &&
+          (OBJ_LOADROOM(i) == rv || (i->in_room && i->in_room == rv)))
+        count_room++;
+      return true;
+    });
 
   if (max_in_room > 0 && count_room >= max_in_room) {
     return false;
   }
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
   obj_to_room(obj, room);
   OBJ_LOADROOM(obj) = rv;
   load_otrigger(obj);
@@ -3687,7 +3627,13 @@ static bool reset_command_put(struct reset_context *ctx, obj_vnum vnum,
   auto zone = ctx->zone;
   auto cmd_no = ctx->cmd_no;
 
-  auto to = get_obj_num(to_vnum);
+  /* Prefer the container loaded earlier in this reset; fall back to the
+   * newest instance world-wide (the old object_list head semantics). */
+  struct obj_data *to = nullptr;
+  if (auto it = ctx->last_obj.find(to_vnum); it != ctx->last_obj.end())
+    to = obj_by_id(it->second);
+  if (!to)
+    to = get_obj_num(to_vnum);
   if (!to) {
     ZONE_ERROR("invalid to obj vnum");
     ctx->cmd->command = '*'; /* skip command */
@@ -3702,6 +3648,7 @@ static bool reset_command_put(struct reset_context *ctx, obj_vnum vnum,
   }
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
   obj_to_obj(obj, to);
   load_otrigger(obj);
   ctx->obj = obj;
@@ -3737,6 +3684,7 @@ static bool reset_command_give(struct reset_context *ctx, obj_vnum vnum,
   }
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
   obj_to_char(obj, ctx->mob);
   load_otrigger(obj);
   ctx->obj = obj;
@@ -3781,6 +3729,7 @@ static bool reset_command_equip(struct reset_context *ctx, obj_vnum vnum,
   auto room = char_room_get(ctx->mob);
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
 
   obj->in_room = room_vnum_get(room);
   load_otrigger(obj);
@@ -4177,18 +4126,6 @@ char *fread_string(FILE *fl, const char *error) {
   return (strlen(buf) ? strdup(buf) : NULL);
 }
 
-/* Called to free all allocated follow_type structs - Update by Jamie Nelson */
-void free_followers(struct follow_type *k) {
-  if (!k)
-    return;
-
-  if (k->next)
-    free_followers(k->next);
-
-  k->follower = NULL;
-  free(k);
-}
-
 /* release memory allocated for a char struct */
 void char_free_instance(struct char_data *ch) {
   int i;
@@ -4243,9 +4180,6 @@ void char_free_instance(struct char_data *ch) {
   /* free any assigned scripts */
   if (SCRIPT(ch))
     extract_script(ch, MOB_TRIGGER);
-
-  /* new version of free_followers take the followers pointer as arg */
-  free_followers(ch->followers);
 
   if (ch->desc)
     ch->desc->character = NULL;
@@ -4415,12 +4349,8 @@ void reset_char(struct char_data *ch) {
   for (i = 0; i < NUM_WEARS; i++)
     GET_EQ(ch, i) = NULL;
 
-  ch->followers = NULL;
   ch->master = NULL;
   IN_ROOM(ch) = NOWHERE;
-  ch->carrying = NULL;
-  ch->next = NULL;
-  ch->next_in_room = NULL;
   FIGHTING(ch) = NULL;
   ch->mob_specials.default_pos = POS_STANDING;
   ch->time.logon = time(0);

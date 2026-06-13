@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-void affect_update(void);
-
 #ifdef __cplusplus
 }
 #endif

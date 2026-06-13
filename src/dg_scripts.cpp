@@ -25,8 +25,9 @@
 #include "descriptor_db.h"
 #include "descriptor_impl.h"
 #include "descriptor_macros.h"
-#include "dg_event.h"
+#include "dgscript_db.h"
 #include "dgscript_impl.h"
+#include "event_queue_api.h"
 #include "fileop.h"
 #include "flags.h"
 #include "handler.h"
@@ -94,7 +95,7 @@ struct cmdlist_element *find_case(struct trig_data *trig,
                                   struct script_data *sc, int type, char *cond);
 struct cmdlist_element *find_done(struct cmdlist_element *cl);
 int fgetline(FILE *file, char *p);
-EVENTFUNC(trig_wait_event);
+static void ev_trig_wait(int ctx_type, int64_t ctx_a, int64_t ctx_b);
 ACMD(do_attach);
 ACMD(do_detach);
 ACMD(do_vdelete);
@@ -352,9 +353,15 @@ char_data *get_char(char *name) {
     if (i && valid_dg_target(i, DG_ALLOW_GODS))
       return i;
   } else {
-    for (i = character_list; i; i = i->next)
-      if (isname(name, i->name) && valid_dg_target(i, DG_ALLOW_GODS))
-        return i;
+    struct char_data *found = NULL;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (isname(name, tch->name) && valid_dg_target(tch, DG_ALLOW_GODS)) {
+        found = tch;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -469,9 +476,15 @@ obj_data *get_obj(char *name) {
   if (*name == UID_CHAR) {
     return find_obj(name);
   } else {
-    for (obj = object_list; obj; obj = obj->next)
-      if (isname(name, obj->name))
-        return obj;
+    obj_data *found = NULL;
+    obj_iterate_all_newest([&](obj_data *o) {
+      if (isname(name, o->name)) {
+        found = o;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -508,9 +521,15 @@ char_data *get_char_by_obj(obj_data *obj, char *name) {
         valid_dg_target(obj->worn_by, DG_ALLOW_GODS))
       return obj->worn_by;
 
-    for (ch = character_list; ch; ch = ch->next)
-      if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-        return ch;
+    struct char_data *found = NULL;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (isname(name, tch->name) && valid_dg_target(tch, DG_ALLOW_GODS)) {
+        found = tch;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -540,9 +559,15 @@ char_data *get_char_by_room(room_data *room, char *name) {
     if (ch)
       return ch;
 
-    for (ch = character_list; ch; ch = ch->next)
-      if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-        return ch;
+    struct char_data *found = NULL;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (isname(name, tch->name) && valid_dg_target(tch, DG_ALLOW_GODS)) {
+        found = tch;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -628,11 +653,15 @@ obj_data *get_obj_by_room(room_data *room, char *name) {
   });
   if (found) return found;
 
-  for (obj_data *obj = object_list; obj; obj = obj->next)
-    if (isname(name, obj->name))
-      return obj;
+  obj_iterate_all_newest([&](obj_data *o) {
+    if (isname(name, o->name)) {
+      found = o;
+      return false;
+    }
+    return true;
+  });
 
-  return NULL;
+  return found;
 }
 
 /* checks every PULSE_SCRIPT for random triggers */
@@ -643,24 +672,26 @@ void script_trigger_check(void) {
   int nr;
   struct script_data *sc;
 
-  for (ch = character_list; ch; ch = ch->next) {
-    if (!zone_player_count_get(char_zone_vnum_get(ch))) continue;
-    if (SCRIPT(ch)) {
-      sc = SCRIPT(ch);
+  char_iterate_all([&](char_data *tch) {
+    if (!zone_player_count_get(char_zone_vnum_get(tch))) return true;
+    if (SCRIPT(tch)) {
+      sc = SCRIPT(tch);
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM))
-        random_mtrigger(ch);
+        random_mtrigger(tch);
     }
-  }
+    return true;
+  });
 
-  for (obj = object_list; obj; obj = obj->next) {
-    auto obj_rm = obj_room_get(obj);
-    if (!obj_rm || !zone_player_count_get(room_zone_vnum_get(obj_rm))) continue;
-    if (SCRIPT(obj)) {
-      sc = SCRIPT(obj);
+  obj_iterate_all([&](obj_data *tobj) {
+    auto obj_rm = obj_room_get(tobj);
+    if (!obj_rm || !zone_player_count_get(room_zone_vnum_get(obj_rm))) return true;
+    if (SCRIPT(tobj)) {
+      sc = SCRIPT(tobj);
       if (IS_SET(SCRIPT_TYPES(sc), OTRIG_RANDOM))
-        random_otrigger(obj);
+        random_otrigger(tobj);
     }
-  }
+    return true;
+  });
 
   room_iterate([&](auto room) {
     if ((sc = room_script_get(room))) {
@@ -679,25 +710,27 @@ void check_time_triggers(void) {
   int nr;
   struct script_data *sc;
 
-  for (ch = character_list; ch; ch = ch->next) {
-    if (SCRIPT(ch)) {
-      sc = SCRIPT(ch);
+  char_iterate_all([&](char_data *tch) {
+    if (SCRIPT(tch)) {
+      sc = SCRIPT(tch);
 
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_TIME) &&
-          (!is_empty(room_zone_vnum_get(char_room_get(ch))) ||
+          (!is_empty(room_zone_vnum_get(char_room_get(tch))) ||
            IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
-        time_mtrigger(ch);
+        time_mtrigger(tch);
     }
-  }
+    return true;
+  });
 
-  for (obj = object_list; obj; obj = obj->next) {
-    if (SCRIPT(obj)) {
-      sc = SCRIPT(obj);
+  obj_iterate_all([&](obj_data *tobj) {
+    if (SCRIPT(tobj)) {
+      sc = SCRIPT(tobj);
 
       if (IS_SET(SCRIPT_TYPES(sc), OTRIG_TIME))
-        time_otrigger(obj);
+        time_otrigger(tobj);
     }
-  }
+    return true;
+  });
 
   room_iterate([&](auto room) {
     if ((sc = room_script_get(room))) {
@@ -709,23 +742,36 @@ void check_time_triggers(void) {
   });
 }
 
-EVENTFUNC(trig_wait_event) {
-  struct wait_event_data *wait_event_obj = (struct wait_event_data *)event_obj;
-  trig_data *trig;
-  void *go;
-  int type;
+/*
+ * Fires when a script's wait expires. Both the trigger and its owner are
+ * stored by ID and re-resolved here, so an event whose trigger or owner was
+ * extracted in the meantime is a harmless no-op.
+ */
+static void ev_trig_wait(int ctx_type, int64_t ctx_a, int64_t ctx_b) {
+  (void)ctx_type;
+  trig_data *trig = trig_by_id(ctx_a);
+  if (!trig)
+    return;
 
-  trig = wait_event_obj->trigger;
-  go = wait_event_obj->go;
-  type = wait_event_obj->type;
+  GET_TRIG_WAIT(trig) = 0;
 
-  free(wait_event_obj);
-  GET_TRIG_WAIT(trig) = NULL;
+  int type = trig->data_type;
+  void *go = NULL;
+  switch (type) {
+  case MOB_TRIGGER:
+    go = char_by_id(ctx_b);
+    break;
+  case OBJ_TRIGGER:
+    go = obj_by_id(ctx_b);
+    break;
+  case WLD_TRIGGER:
+    go = room_by_id((room_vnum)ctx_b);
+    break;
+  }
+  if (!go)
+    return;
 
   script_driver(&go, trig, type, TRIG_RESTART);
-
-  /* Do not reenqueue*/
-  return 0;
 }
 
 void do_stat_trigger(struct char_data *ch, trig_data *trig) {
@@ -839,8 +885,8 @@ void script_stat(char_data *ch, struct script_data *sc) {
         ((GET_TRIG_ARG(t) && *GET_TRIG_ARG(t)) ? GET_TRIG_ARG(t) : "None"));
 
     if (GET_TRIG_WAIT(t)) {
-      send_to_char(ch, "    Wait: %ld, Current line: %s\r\n",
-                   event_time(GET_TRIG_WAIT(t)),
+      send_to_char(ch, "    Wait: %lldms, Current line: %s\r\n",
+                   (long long)eq_remaining_ms(GET_TRIG_WAIT(t)),
                    t->curr_state ? t->curr_state->cmd : "End of Script");
       send_to_char(ch, "  Variables: %s\r\n", GET_TRIG_VARS(t) ? "" : "None");
 
@@ -908,6 +954,9 @@ void add_trigger(struct script_data *sc, trig_data *t, int loc) {
   }
 
   SCRIPT_TYPES(sc) |= GET_TRIG_TYPE(t);
+
+  if (!t->id)
+    trig_assign_id(t);
 
   t->next_in_world = trigger_list;
   trigger_list = t;
@@ -1690,7 +1739,6 @@ struct cmdlist_element *find_else_end(trig_data *trig,
 void process_wait(void *go, trig_data *trig, int type, char *cmd,
                   struct cmdlist_element *cl) {
   char buf[MAX_INPUT_LENGTH], *arg;
-  struct wait_event_data *wait_event_obj;
   long when, hr, min, ntime;
   char c;
 
@@ -1733,12 +1781,29 @@ void process_wait(void *go, trig_data *trig, int type, char *cmd,
     }
   }
 
-  CREATE(wait_event_obj, struct wait_event_data, 1);
-  wait_event_obj->trigger = trig;
-  wait_event_obj->go = go;
-  wait_event_obj->type = type;
+  if (when < 1) /* make sure its in the future */
+    when = 1;
 
-  GET_TRIG_WAIT(trig) = event_create(trig_wait_event, wait_event_obj, when);
+  int64_t owner_id = 0;
+  switch (type) {
+  case MOB_TRIGGER:
+    owner_id = GET_ID((char_data *)go);
+    break;
+  case OBJ_TRIGGER:
+    owner_id = GET_ID((obj_data *)go);
+    break;
+  case WLD_TRIGGER:
+    owner_id = room_id_get((room_data *)go);
+    break;
+  }
+
+  /* record the owner type so ev_trig_wait can re-resolve the owner by id */
+  trig->data_type = (uint8_t)type;
+
+  /* 'when' is in pulses; 1 pulse = 100ms */
+  GET_TRIG_WAIT(trig) = event_schedule_c_owned(
+      event_queue_now_ms() + (int64_t)when * 100LL, 0, ev_trig_wait,
+      EQ_CTX_PAIR, trig->id, owner_id, EQ_OWNER_TRIG, trig->id, "trig_wait");
   trig->curr_state = cl->next;
 }
 

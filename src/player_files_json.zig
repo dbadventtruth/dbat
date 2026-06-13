@@ -120,7 +120,7 @@ fn writeHouseObjectsJson(path: []const u8, room_vnum: cdb.room_vnum) !void {
     try object.object.put(allocator, "kind", .{ .string = "house_objects" });
     try object.object.put(allocator, "version", .{ .integer = 1 });
     try object.object.put(allocator, "room", .{ .integer = room_vnum });
-    try object.object.put(allocator, "objects", try serializeRoomInventory(allocator, room.*.contents));
+    try object.object.put(allocator, "objects", try serializeRoomInventory(allocator, room.?));
 
     try writeJsonFile(path, object);
 }
@@ -153,17 +153,23 @@ fn serializeEquipment(allocator: std.mem.Allocator, ch: *cdb.char_data) !std.jso
 
 fn serializeInventory(allocator: std.mem.Allocator, ch: *cdb.char_data) !std.json.Value {
     var array = std.json.Array.init(allocator);
-    var obj = ch.carrying;
-    while (obj) |item| : (obj = item.*.next_content) {
+    var count: usize = 0;
+    const ids = cdb.char_inventory_ids(ch, &count) orelse return .{ .array = array };
+    defer cdb.char_inventory_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const item = cdb.obj_by_id(id) orelse continue;
         try array.append(try serializeObjectTree(allocator, item, 0));
     }
     return .{ .array = array };
 }
 
-fn serializeRoomInventory(allocator: std.mem.Allocator, contents: ?*cdb.obj_data) !std.json.Value {
+fn serializeRoomInventory(allocator: std.mem.Allocator, room: *cdb.room_data) !std.json.Value {
     var array = std.json.Array.init(allocator);
-    var obj = contents;
-    while (obj) |item| : (obj = item.*.next_content) {
+    var count: usize = 0;
+    const ids = cdb.room_object_ids(room, &count) orelse return .{ .array = array };
+    defer cdb.room_object_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const item = cdb.obj_by_id(id) orelse continue;
         if (cdb.obj_extra_flagged(item, cdb.ITEM_NORENT)) continue;
         try array.append(try serializeObjectTree(allocator, item, 0));
     }
@@ -179,10 +185,17 @@ fn serializeObjectTree(allocator: std.mem.Allocator, obj: *cdb.obj_data, locatio
     try jsonx.putNonEmpty(&object, allocator, "object_affects", try serializeObjectAffects(allocator, obj));
 
     var contents = std.json.Array.init(allocator);
-    var child = obj.contains;
-    while (child) |item| : (child = item.*.next_content) {
-        if (cdb.obj_extra_flagged(item, cdb.ITEM_NORENT)) continue;
-        try contents.append(try serializeObjectTree(allocator, item, -1));
+    {
+        var child_count: usize = 0;
+        const child_ids = cdb.obj_contents_ids(obj, &child_count);
+        if (child_ids) |ids| {
+            defer cdb.obj_contents_ids_free(ids);
+            for (ids[0..child_count]) |id| {
+                const item = cdb.obj_by_id(id) orelse continue;
+                if (cdb.obj_extra_flagged(item, cdb.ITEM_NORENT)) continue;
+                try contents.append(try serializeObjectTree(allocator, item, -1));
+            }
+        }
     }
     if (contents.items.len > 0) try jsonx.put(&object, allocator, "contains", .{ .array = contents });
     return object;
@@ -190,8 +203,13 @@ fn serializeObjectTree(allocator: std.mem.Allocator, obj: *cdb.obj_data, locatio
 
 fn objectBaseWeight(obj: *cdb.obj_data) i64 {
     var contained: i64 = 0;
-    var child = obj.contains;
-    while (child) |item| : (child = item.*.next_content) contained += item.*.weight;
+    var count: usize = 0;
+    const ids = cdb.obj_contents_ids(obj, &count) orelse return obj.weight;
+    defer cdb.obj_contents_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const item = cdb.obj_by_id(id) orelse continue;
+        contained += item.*.weight;
+    }
     return obj.weight - contained;
 }
 

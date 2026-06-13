@@ -86,10 +86,6 @@ void affect_to_char(struct char_data *ch, struct affected_type *af) {
 
   CREATE(affected_alloc, struct affected_type, 1);
 
-  if (!ch->affected) {
-    ch->next_affect = affect_list;
-    affect_list = ch;
-  }
   *affected_alloc = *af;
   affected_alloc->next = ch->affected;
   ch->affected = affected_alloc;
@@ -119,8 +115,6 @@ void affect_remove(struct char_data *ch, struct affected_type *af) {
   affect_total(ch);
   if (!ch->affected) {
     struct char_data *temp;
-    REMOVE_FROM_LIST(ch, affect_list, next_affect, temp);
-    ch->next_affect = NULL;
   }
 }
 
