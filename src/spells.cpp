@@ -167,43 +167,7 @@ ASPELL(spell_locate_object) {
   char name[MAX_INPUT_LENGTH];
   int j;
 
-  /*
-   * FIXME: This is broken.  The spell parser routines took the argument
-   * the player gave to the spell and located an object with that keyword.
-   * Since we're passed the object and not the keyword we can only guess
-   * at what the player originally meant to search for. -gg
-   */
-  if (!obj) {
-    send_to_char(ch, "You sense nothing.\r\n");
-    return;
-  }
 
-  strlcpy(name, fname(obj->name), sizeof(name));
-  j = level / 2;
-
-  for (i = object_list; i && (j > 0); i = i->next) {
-    if (!isname(name, i->name))
-      continue;
-
-    send_to_char(ch, "%c%s", UPPER(*i->short_description),
-                 (i->short_description) + 1);
-
-    if (i->carried_by)
-      send_to_char(ch, " is being carried by %s.\r\n", PERS(i->carried_by, ch));
-    else if (obj_room_get(i) != NULL)
-      send_to_char(ch, " is in %s.\r\n", room_name_get(obj_room_get(i)));
-    else if (i->in_obj)
-      send_to_char(ch, " is in %s.\r\n", i->in_obj->short_description);
-    else if (i->worn_by)
-      send_to_char(ch, " is being worn by %s.\r\n", PERS(i->worn_by, ch));
-    else
-      send_to_char(ch, "'s location is uncertain.\r\n");
-
-    j--;
-  }
-
-  if (j == level / 2)
-    send_to_char(ch, "You sense nothing.\r\n");
 }
 
 ASPELL(spell_charm) {

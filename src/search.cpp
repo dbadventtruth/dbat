@@ -127,31 +127,40 @@ struct obj_data *get_obj_in_list_num(int num, struct inventory_data list) {
   return result;
 }
 
-/* search the entire world for an object number, and return a pointer  */
+/* search the entire world for an object number, and return a pointer to the
+ * newest instance (preserves the old head-inserted object_list semantics) */
 struct obj_data *get_obj_num(obj_vnum vnum) {
-  struct obj_data *i;
+  struct obj_data *found = NULL;
 
-  for (i = object_list; i; i = i->next)
-    if (GET_OBJ_VNUM(i) == vnum)
-      return (i);
+  obj_iterate_all_newest([&](struct obj_data *i) {
+    if (GET_OBJ_VNUM(i) == vnum) {
+      found = i;
+      return false;
+    }
+    return true;
+  });
 
-  return (NULL);
+  return found;
 }
 
-/* search all over the world for a char num, and return a pointer if found */
+/* search all over the world for a char num, and return a pointer to the
+ * newest instance (preserves the old head-inserted character_list semantics) */
 struct char_data *get_char_num(mob_vnum nr) {
-  struct char_data *i;
+  struct char_data *found = NULL;
 
-  for (i = character_list; i; i = i->next)
-    if (GET_MOB_VNUM(i) == nr)
-      return (i);
+  char_iterate_all_newest([&](struct char_data *i) {
+    if (GET_MOB_VNUM(i) == nr) {
+      found = i;
+      return false;
+    }
+    return true;
+  });
 
-  return (NULL);
+  return found;
 }
 
 struct char_data *get_player_vis(struct char_data *ch, char *name, int *number,
                                  int inroom) {
-  struct char_data *i;
   int num;
 
   if (!number) {
@@ -159,21 +168,22 @@ struct char_data *get_player_vis(struct char_data *ch, char *name, int *number,
     num = get_number(&name);
   }
 
-  for (i = character_list; i; i = i->next) {
+  struct char_data *found = NULL;
+  char_iterate_all_newest([&](struct char_data *i) {
     if (IS_NPC(i))
-      continue;
+      return true;
     if (inroom == FIND_CHAR_ROOM && char_room_get(i) != char_room_get(ch))
-      continue;
+      return true;
     if (GET_ADMLEVEL(ch) < 1 && GET_ADMLEVEL(i) < 1 && !IS_NPC(ch) &&
         !IS_NPC(i)) {
       if (strcasecmp(RACE(i), name) && !strstr(RACE(i), name)) {
         if (readIntro(ch, i) == 1) {
           if (strcasecmp(get_i_name(ch, i), name) &&
               !strstr(get_i_name(ch, i), name)) {
-            continue;
+            return true;
           }
         } else {
-          continue;
+          return true;
         }
       }
     }
@@ -184,22 +194,23 @@ struct char_data *get_player_vis(struct char_data *ch, char *name, int *number,
           if (!IS_NPC(ch) && !IS_NPC(i) && readIntro(ch, i) == 1) {
             if (strcasecmp(get_i_name(ch, i), name) &&
                 !strstr(get_i_name(ch, i), name)) {
-              continue;
+              return true;
             }
           } else {
-            continue;
+            return true;
           }
         }
       }
     }
     if (!CAN_SEE(ch, i))
-      continue;
+      return true;
     if (--(*number) != 0)
-      continue;
-    return (i);
-  }
+      return true;
+    found = i;
+    return false;
+  });
 
-  return (NULL);
+  return found;
 }
 
 struct char_data *get_char_room_vis(struct char_data *ch, char *name,
@@ -271,19 +282,22 @@ struct char_data *get_char_world_vis(struct char_data *ch, char *name,
   if (*number == 0)
     return get_player_vis(ch, name, NULL, 0);
 
-  for (i = character_list; i && *number; i = i->next) {
+  struct char_data *found = NULL;
+  char_iterate_all_newest([&](struct char_data *i) {
+    if (*number == 0)
+      return false;
     if (char_room_get(ch) == char_room_get(i))
-      continue;
+      return true;
     if (GET_ADMLEVEL(ch) < 1 && GET_ADMLEVEL(i) < 1 && !IS_NPC(ch) &&
         !IS_NPC(i)) {
       if (strcasecmp(RACE(i), name) && !strstr(RACE(i), name)) {
         if (readIntro(ch, i) == 1) {
           if (strcasecmp(get_i_name(ch, i), name) &&
               !strstr(get_i_name(ch, i), name)) {
-            continue;
+            return true;
           }
         } else {
-          continue;
+          return true;
         }
       }
     }
@@ -294,22 +308,23 @@ struct char_data *get_char_world_vis(struct char_data *ch, char *name,
           if (!IS_NPC(ch) && !IS_NPC(i) && readIntro(ch, i) == 1) {
             if (strcasecmp(get_i_name(ch, i), name) &&
                 !strstr(get_i_name(ch, i), name)) {
-              continue;
+              return true;
             }
           } else {
-            continue;
+            return true;
           }
         }
       }
     }
     /*if (!CAN_SEE(ch, i))
-      continue;*/
+      return true;*/
     if (--(*number) != 0)
-      continue;
+      return true;
 
-    return (i);
-  }
-  return (NULL);
+    found = i;
+    return false;
+  });
+  return found;
 }
 
 struct char_data *get_char_vis(struct char_data *ch, char *name, int *number,
@@ -375,14 +390,21 @@ struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number) {
                                 inv_for_room(char_room_get(ch)))) != NULL)
     return (i);
 
-  /* ok.. no luck yet. scan the entire obj list   */
-  for (i = object_list; i && *number; i = i->next)
-    if (isname(name, i->name))
-      if (CAN_SEE_OBJ(ch, i))
-        if (--(*number) == 0)
-          return (i);
+  /* ok.. no luck yet. scan every object in the world */
+  struct obj_data *found = NULL;
+  obj_iterate_all_newest([&](struct obj_data *o) {
+    if (*number == 0)
+      return false;
+    if (isname(name, o->name) && CAN_SEE_OBJ(ch, o)) {
+      if (--(*number) == 0) {
+        found = o;
+        return false;
+      }
+    }
+    return true;
+  });
 
-  return (NULL);
+  return found;
 }
 
 struct obj_data *get_obj_in_equip_vis(struct char_data *ch, char *arg,

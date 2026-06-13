@@ -1156,7 +1156,7 @@ ACMD(do_tell) {
 }
 
 ACMD(do_reply) {
-  struct char_data *tch = character_list;
+  struct char_data *tch;
 
   if (IS_NPC(ch))
     return;
@@ -1184,13 +1184,10 @@ ACMD(do_reply) {
      * work if someone logs out and back in again.
      */
 
-    /*
-     * XXX: A descriptor list based search would be faster although
-     *      we could not find link dead people.  Not that they can
-     *      hear tells anyway. :) -gg 2/24/98
-     */
-    while (tch != NULL && (IS_NPC(tch) || GET_IDNUM(tch) != GET_LAST_TELL(ch)))
-      tch = tch->next;
+    /* Players register under their idnum, so this is a direct lookup. */
+    tch = char_by_id(GET_LAST_TELL(ch));
+    if (tch && IS_NPC(tch))
+      tch = NULL;
 
     if (tch == NULL)
       send_to_char(ch, "They are no longer playing.\r\n");

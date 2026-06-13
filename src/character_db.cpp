@@ -8,7 +8,6 @@
 
 #include "iterate.hpp"
 
-struct char_data *character_list;
 struct char_data *affect_list;
 
 long max_mob_id = MOB_ID_BASE;

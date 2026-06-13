@@ -914,15 +914,15 @@ ACMD(do_nickname) {
         char nick[MAX_INPUT_LENGTH];
         sprintf(nick, "%s", CAP(arg2));
         ship2->action_description = strdup(nick);
-        struct obj_data *k;
-        for (k = object_list; k; k = k->next) {
+        obj_iterate_all([&](struct obj_data *k) {
           if (GET_OBJ_VNUM(k) == GET_OBJ_VNUM(ship2) + 1000) {
             extract_obj(k);
             struct room_data *was_in = obj_room_get(ship2);
             obj_from_room(ship2);
             obj_to_room(ship2, was_in);
           }
-        }
+          return true;
+        });
       }
     }
     return;
@@ -7061,17 +7061,20 @@ static void perform_mortal_where(struct char_data *ch, char *arg) {
       send_to_char(ch, "%-20s - %s\r\n", GET_NAME(i), room_name_get(char_room_get(i)));
     }
   } else { /* print only FIRST char, not all. */
-    for (i = character_list; i; i = i->next) {
-      if (char_room_get(i) == NULL || i == ch)
-        continue;
-      if (!CAN_SEE(ch, i) || room_zone_vnum_get(char_room_get(i)) != room_zone_vnum_get(char_room_get(ch)))
-        continue;
-      if (!isname(arg, i->name))
-        continue;
-      send_to_char(ch, "%-25s - %s\r\n", GET_NAME(i), room_name_get(char_room_get(i)));
-      return;
-    }
-    send_to_char(ch, "Nobody around by that name.\r\n");
+    bool found_one = false;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (char_room_get(tch) == NULL || tch == ch)
+        return true;
+      if (!CAN_SEE(ch, tch) || room_zone_vnum_get(char_room_get(tch)) != room_zone_vnum_get(char_room_get(ch)))
+        return true;
+      if (!isname(arg, tch->name))
+        return true;
+      send_to_char(ch, "%-25s - %s\r\n", GET_NAME(tch), room_name_get(char_room_get(tch)));
+      found_one = true;
+      return false;
+    });
+    if (!found_one)
+      send_to_char(ch, "Nobody around by that name.\r\n");
   }
 }
 
@@ -7179,25 +7182,29 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
     mudlog(NRM, MAX(ADMLVL_GRGOD, GET_INVIS_LEV(ch)), TRUE,
            "GODCMD: %s has checked where for the location of %s", GET_NAME(ch),
            arg);
-    for (i = character_list; i; i = i->next) {
-      if (CAN_SEE(ch, i) && char_room_get(i) != NULL && isname(arg, i->name)) {
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (CAN_SEE(ch, tch) && char_room_get(tch) != NULL &&
+          isname(arg, tch->name)) {
         found = 1;
-        send_to_char(ch, "M%3d. %-25s - [%5d] %-25s", ++num, GET_NAME(i),
-                     char_room_vnum_get(i), room_name_get(char_room_get(i)));
-        if (IS_NPC(i) && SCRIPT(i)) {
-          if (!TRIGGERS(SCRIPT(i))->next)
-            send_to_char(ch, "[T%5d] ", GET_TRIG_VNUM(TRIGGERS(SCRIPT(i))));
+        send_to_char(ch, "M%3d. %-25s - [%5d] %-25s", ++num, GET_NAME(tch),
+                     char_room_vnum_get(tch), room_name_get(char_room_get(tch)));
+        if (IS_NPC(tch) && SCRIPT(tch)) {
+          if (!TRIGGERS(SCRIPT(tch))->next)
+            send_to_char(ch, "[T%5d] ", GET_TRIG_VNUM(TRIGGERS(SCRIPT(tch))));
           else
             send_to_char(ch, "[TRIGS] ");
         }
         send_to_char(ch, "\r\n");
       }
-    }
-    for (k = object_list; k; k = k->next)
-      if (CAN_SEE_OBJ(ch, k) && isname(arg, k->name)) {
+      return true;
+    });
+    obj_iterate_all_newest([&](struct obj_data *tobj) {
+      if (CAN_SEE_OBJ(ch, tobj) && isname(arg, tobj->name)) {
         found = 1;
-        print_object_location(++num, k, ch, TRUE);
+        print_object_location(++num, tobj, ch, TRUE);
       }
+      return true;
+    });
     if (!found) {
       send_to_char(ch, "Couldn't find any such thing.\r\n");
     } else {

@@ -149,6 +149,37 @@ pub export fn obj_subscribe_ids_free(ptr: ?[*]i64) void {
     std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
 }
 
+// Snapshot of every live object id. Free with obj_subscribe_ids_free.
+pub export fn obj_all_ids(out_count: *usize) ?[*]i64 {
+    const count = objs_by_id.count();
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    var i: usize = 0;
+    var it = objs_by_id.keyIterator();
+    while (it.next()) |id_ptr| {
+        ids[i] = id_ptr.*;
+        i += 1;
+    }
+    out_count.* = count;
+    return ids;
+}
+
+// Same snapshot sorted newest-first (descending id). Ids are assigned
+// monotonically at creation, so this reproduces the old head-inserted
+// object_list ordering exactly.
+pub export fn obj_all_ids_newest(out_count: *usize) ?[*]i64 {
+    const ids = obj_all_ids(out_count) orelse return null;
+    std.mem.sort(i64, ids[0..out_count.*], {}, std.sort.desc(i64));
+    return ids;
+}
+
 const ObjProtoIterator = struct {
     iter: ObjProtoMap.Iterator,
 };

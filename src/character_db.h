@@ -7,7 +7,6 @@
 extern "C" {
 #endif
 
-extern struct char_data *character_list;
 extern struct char_data *affect_list;
 
 extern long max_mob_id;
@@ -28,6 +27,10 @@ void char_subscribe_remove(struct char_data *ch, const char *tag);
 void char_unsubscribe_all(struct char_data *ch);
 int64_t *char_subscribe_ids(const char *tag, size_t *count);
 void char_subscribe_ids_free(int64_t *ptr);
+int64_t *char_all_ids(size_t *count);
+int64_t *char_all_ids_newest(size_t *count);
+void char_extract_pending_add(int64_t id);
+int64_t *char_extract_pending_take(size_t *count);
 
 void *char_iterator_create();
 struct char_data *char_next(void *iterator);

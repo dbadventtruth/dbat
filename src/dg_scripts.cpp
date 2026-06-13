@@ -353,9 +353,15 @@ char_data *get_char(char *name) {
     if (i && valid_dg_target(i, DG_ALLOW_GODS))
       return i;
   } else {
-    for (i = character_list; i; i = i->next)
-      if (isname(name, i->name) && valid_dg_target(i, DG_ALLOW_GODS))
-        return i;
+    struct char_data *found = NULL;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (isname(name, tch->name) && valid_dg_target(tch, DG_ALLOW_GODS)) {
+        found = tch;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -470,9 +476,15 @@ obj_data *get_obj(char *name) {
   if (*name == UID_CHAR) {
     return find_obj(name);
   } else {
-    for (obj = object_list; obj; obj = obj->next)
-      if (isname(name, obj->name))
-        return obj;
+    obj_data *found = NULL;
+    obj_iterate_all_newest([&](obj_data *o) {
+      if (isname(name, o->name)) {
+        found = o;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -509,9 +521,15 @@ char_data *get_char_by_obj(obj_data *obj, char *name) {
         valid_dg_target(obj->worn_by, DG_ALLOW_GODS))
       return obj->worn_by;
 
-    for (ch = character_list; ch; ch = ch->next)
-      if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-        return ch;
+    struct char_data *found = NULL;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (isname(name, tch->name) && valid_dg_target(tch, DG_ALLOW_GODS)) {
+        found = tch;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -541,9 +559,15 @@ char_data *get_char_by_room(room_data *room, char *name) {
     if (ch)
       return ch;
 
-    for (ch = character_list; ch; ch = ch->next)
-      if (isname(name, ch->name) && valid_dg_target(ch, DG_ALLOW_GODS))
-        return ch;
+    struct char_data *found = NULL;
+    char_iterate_all_newest([&](struct char_data *tch) {
+      if (isname(name, tch->name) && valid_dg_target(tch, DG_ALLOW_GODS)) {
+        found = tch;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   return NULL;
@@ -629,11 +653,15 @@ obj_data *get_obj_by_room(room_data *room, char *name) {
   });
   if (found) return found;
 
-  for (obj_data *obj = object_list; obj; obj = obj->next)
-    if (isname(name, obj->name))
-      return obj;
+  obj_iterate_all_newest([&](obj_data *o) {
+    if (isname(name, o->name)) {
+      found = o;
+      return false;
+    }
+    return true;
+  });
 
-  return NULL;
+  return found;
 }
 
 /* checks every PULSE_SCRIPT for random triggers */
@@ -644,24 +672,26 @@ void script_trigger_check(void) {
   int nr;
   struct script_data *sc;
 
-  for (ch = character_list; ch; ch = ch->next) {
-    if (!zone_player_count_get(char_zone_vnum_get(ch))) continue;
-    if (SCRIPT(ch)) {
-      sc = SCRIPT(ch);
+  char_iterate_all([&](char_data *tch) {
+    if (!zone_player_count_get(char_zone_vnum_get(tch))) return true;
+    if (SCRIPT(tch)) {
+      sc = SCRIPT(tch);
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_RANDOM))
-        random_mtrigger(ch);
+        random_mtrigger(tch);
     }
-  }
+    return true;
+  });
 
-  for (obj = object_list; obj; obj = obj->next) {
-    auto obj_rm = obj_room_get(obj);
-    if (!obj_rm || !zone_player_count_get(room_zone_vnum_get(obj_rm))) continue;
-    if (SCRIPT(obj)) {
-      sc = SCRIPT(obj);
+  obj_iterate_all([&](obj_data *tobj) {
+    auto obj_rm = obj_room_get(tobj);
+    if (!obj_rm || !zone_player_count_get(room_zone_vnum_get(obj_rm))) return true;
+    if (SCRIPT(tobj)) {
+      sc = SCRIPT(tobj);
       if (IS_SET(SCRIPT_TYPES(sc), OTRIG_RANDOM))
-        random_otrigger(obj);
+        random_otrigger(tobj);
     }
-  }
+    return true;
+  });
 
   room_iterate([&](auto room) {
     if ((sc = room_script_get(room))) {
@@ -680,25 +710,27 @@ void check_time_triggers(void) {
   int nr;
   struct script_data *sc;
 
-  for (ch = character_list; ch; ch = ch->next) {
-    if (SCRIPT(ch)) {
-      sc = SCRIPT(ch);
+  char_iterate_all([&](char_data *tch) {
+    if (SCRIPT(tch)) {
+      sc = SCRIPT(tch);
 
       if (IS_SET(SCRIPT_TYPES(sc), WTRIG_TIME) &&
-          (!is_empty(room_zone_vnum_get(char_room_get(ch))) ||
+          (!is_empty(room_zone_vnum_get(char_room_get(tch))) ||
            IS_SET(SCRIPT_TYPES(sc), WTRIG_GLOBAL)))
-        time_mtrigger(ch);
+        time_mtrigger(tch);
     }
-  }
+    return true;
+  });
 
-  for (obj = object_list; obj; obj = obj->next) {
-    if (SCRIPT(obj)) {
-      sc = SCRIPT(obj);
+  obj_iterate_all([&](obj_data *tobj) {
+    if (SCRIPT(tobj)) {
+      sc = SCRIPT(tobj);
 
       if (IS_SET(SCRIPT_TYPES(sc), OTRIG_TIME))
-        time_otrigger(obj);
+        time_otrigger(tobj);
     }
-  }
+    return true;
+  });
 
   room_iterate([&](auto room) {
     if ((sc = room_script_get(room))) {

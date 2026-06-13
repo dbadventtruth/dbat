@@ -1319,49 +1319,52 @@ static void tick_charge(struct char_data *ch) {
     improve_skill(ch, SKILL_CONCENTRATION, 1);
 }
 
+static void fight_stack_one(struct char_data *ch) {
+  reset_fighting_position(ch);
+
+  if (tick_mob_cooldown(ch)) return;
+
+  tick_mob_powerup(ch);
+
+  if (tick_frozen_skip(ch)) return;
+  if (tick_idle_skip(ch)) return;
+
+  tick_fight_room_check(ch);
+  tick_dragging_interrupt(ch);
+  tick_lifeforce_heal(ch);
+  tick_position_advantage(ch);
+  tick_grapple_damage(ch);
+
+  if (GRAPPLED(ch) && rand_number(1, 2) == 2)
+    send_to_char(ch, "@CTry 'escape' to break free from the hold!@n\r\n");
+
+  tick_halfbreed_fury(ch);
+  tick_transformation_drain(ch);
+  tick_wimp_flee(ch);
+
+  if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 6 || GET_GENOME(ch, 1) == 6) &&
+      rand_number(1, 200) >= 175)
+    mutant_limb_regen(ch);
+
+  tick_disguise_slip(ch);
+  tick_mob_blind_recovery(ch);
+  tick_knocked_recovery(ch);
+  tick_linkdead_flee(ch);
+
+  if (tick_mob_grapple_escape(ch)) return;
+  if (tick_mob_combat_ai(ch)) return;
+
+  tick_barrier_skill(ch);
+  tick_player_powerup(ch);
+  tick_charge(ch);
+}
+
 void fight_stack() {
-  for (auto tch = character_list; tch; tch = tch->next) {
-    if (!zone_player_count_get(char_zone_vnum_get(tch))) continue;
-    auto ch = tch;
-
-    reset_fighting_position(ch);
-
-    if (tick_mob_cooldown(ch)) continue;
-
-    tick_mob_powerup(ch);
-
-    if (tick_frozen_skip(ch)) continue;
-    if (tick_idle_skip(ch)) continue;
-
-    tick_fight_room_check(ch);
-    tick_dragging_interrupt(ch);
-    tick_lifeforce_heal(ch);
-    tick_position_advantage(ch);
-    tick_grapple_damage(ch);
-
-    if (GRAPPLED(ch) && rand_number(1, 2) == 2)
-      send_to_char(ch, "@CTry 'escape' to break free from the hold!@n\r\n");
-
-    tick_halfbreed_fury(ch);
-    tick_transformation_drain(ch);
-    tick_wimp_flee(ch);
-
-    if (IS_MUTANT(ch) && (GET_GENOME(ch, 0) == 6 || GET_GENOME(ch, 1) == 6) &&
-        rand_number(1, 200) >= 175)
-      mutant_limb_regen(ch);
-
-    tick_disguise_slip(ch);
-    tick_mob_blind_recovery(ch);
-    tick_knocked_recovery(ch);
-    tick_linkdead_flee(ch);
-
-    if (tick_mob_grapple_escape(ch)) continue;
-    if (tick_mob_combat_ai(ch)) continue;
-
-    tick_barrier_skill(ch);
-    tick_player_powerup(ch);
-    tick_charge(ch);
-  }
+  char_iterate_all([](struct char_data *tch) {
+    if (zone_player_count_get(char_zone_vnum_get(tch)))
+      fight_stack_one(tch);
+    return true;
+  });
 }
 
 void appear(struct char_data *ch) {
@@ -1679,16 +1682,13 @@ static void final_combat_resolve(struct char_data *ch) {
     SITTING(chair) = NULL;
   }
   if (!IS_NPC(ch) && GET_CLONES(ch) > 0) {
-    struct char_data *clone = NULL;
-    for (clone = character_list; clone; clone = clone->next) {
-      if (IS_NPC(clone)) {
-        if (GET_MOB_VNUM(clone) == 25) {
-          if (GET_ORIGINAL(clone) == ch) {
-            handle_multi_merge(clone);
-          }
-        }
+    char_iterate_all([&](struct char_data *clone) {
+      if (IS_NPC(clone) && GET_MOB_VNUM(clone) == 25 &&
+          GET_ORIGINAL(clone) == ch) {
+        handle_multi_merge(clone);
       }
-    }
+      return true;
+    });
   }
   if (CARRYING(ch)) {
     carry_drop(ch, 2);

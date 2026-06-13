@@ -4,7 +4,6 @@
 #include "object_api.h"
 #include "object_impl.h"
 
-struct obj_data *object_list;
 long max_obj_id = OBJ_ID_BASE;
 
 /* returns the real number of the object with given virtual number */

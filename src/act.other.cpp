@@ -653,27 +653,15 @@ ACMD(do_rpp) {
         return;
       } else {
         int found = FALSE;
-        struct obj_data *k = NULL;
-        for (k = object_list; k; k = k->next) {
-          if (OBJ_FLAGGED(k, ITEM_FORGED)) {
-            continue;
+        obj_iterate_all([&](struct obj_data *k) {
+          if (OBJ_FLAGGED(k, ITEM_FORGED))
+            return true;
+          if (GET_OBJ_VNUM(k) >= 20 && GET_OBJ_VNUM(k) <= 26) {
+            found = TRUE;
+            return false;
           }
-          if (GET_OBJ_VNUM(k) == 20) {
-            found = TRUE;
-          } else if (GET_OBJ_VNUM(k) == 21) {
-            found = TRUE;
-          } else if (GET_OBJ_VNUM(k) == 22) {
-            found = TRUE;
-          } else if (GET_OBJ_VNUM(k) == 23) {
-            found = TRUE;
-          } else if (GET_OBJ_VNUM(k) == 24) {
-            found = TRUE;
-          } else if (GET_OBJ_VNUM(k) == 25) {
-            found = TRUE;
-          } else if (GET_OBJ_VNUM(k) == 26) {
-            found = TRUE;
-          }
-        }
+          return true;
+        });
         if (found == FALSE) {
           send_to_char(ch, "You have reduced the Dragon Ball wait by a whole "
                            "real life day!\r\n");

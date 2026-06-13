@@ -622,22 +622,6 @@ static int buy_price(struct obj_data *obj, struct shop_data *shop,
                      struct char_data *keeper, struct char_data *buyer) {
   int cost = (GET_OBJ_COST(obj) * shop->profit_buy);
 
-  /*
-  double adjust = 1.0;
-  struct obj_data *k;
-
-  for (k = object_list; k; k = k->next) {
-   if (GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj)) {
-    adjust -= 0.00025;
-   }
-  }
-  if (adjust < 0.015) {
-   adjust = 0.5;
-  }
-
-  cost = cost * adjust;
-  */
-
   if (!IS_NPC(buyer)) {
     if (GET_BONUS(buyer, BONUS_THRIFTY) > 0) {
       if (IS_ARLIAN(buyer)) {
@@ -668,13 +652,13 @@ static int sell_price(struct obj_data *obj, struct shop_data *shop,
     sell_cost_modifier = buy_cost_modifier;
 
   double adjust = 1.0;
-  struct obj_data *k;
 
-  for (k = object_list; k; k = k->next) {
+  obj_iterate_all([&](struct obj_data *k) {
     if (GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj)) {
       adjust -= 0.00025;
     }
-  }
+    return true;
+  });
   if (adjust < 0.15) {
     adjust = 0.15;
   }

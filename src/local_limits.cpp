@@ -1500,15 +1500,14 @@ static void tick_obj_ice(struct obj_data *j) {
 }
 
 static void point_update_objects(void) {
-  struct obj_data *next_thing;
-  for (auto *j = object_list; j; j = next_thing) {
-    next_thing = j->next;
-    if (IS_CORPSE(j) || OBJ_FLAGGED(j, ITEM_ICE)) continue;
-    if (tick_obj_norent(j)) continue;
+  obj_iterate_all([](struct obj_data *j) {
+    if (IS_CORPSE(j) || OBJ_FLAGGED(j, ITEM_ICE)) return true;
+    if (tick_obj_norent(j)) return true;
     tick_obj_hatch(j);
     tick_obj_healing_tank(j);
-    if (tick_obj_timed(j)) continue;
-  }
+    tick_obj_timed(j);
+    return true;
+  });
   obj_iterate_subscriptions("obj_corpse", [](struct obj_data *j) {
     tick_obj_corpse(j);
     return true;

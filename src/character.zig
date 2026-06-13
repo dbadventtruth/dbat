@@ -15,18 +15,47 @@ var allocator: std.mem.Allocator = undefined;
 var chars_by_id: std.AutoHashMap(i64, *cdb.char_data) = undefined;
 var subscriptions_by_list: std.StringHashMap(IdSet) = undefined;
 var mob_proto_map: MobProtoMap = undefined;
+var extract_pending: std.array_list.Managed(i64) = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     chars_by_id = std.AutoHashMap(i64, *cdb.char_data).init(allocator);
     subscriptions_by_list = std.StringHashMap(IdSet).init(allocator);
     mob_proto_map = MobProtoMap.init(allocator);
+    extract_pending = std.array_list.Managed(i64).init(allocator);
 }
 
 pub fn deinit() void {
     deinitSubscriptions();
     chars_by_id.deinit();
     mob_proto_map.deinit();
+    extract_pending.deinit();
+}
+
+// Queue a character id for end-of-tick extraction. Callers guard against
+// double-queueing via the NOTDEADYET flags.
+pub export fn char_extract_pending_add(id: i64) void {
+    extract_pending.append(id) catch {};
+}
+
+// Hand the pending-extraction ids to the caller (malloc'd; free with
+// char_subscribe_ids_free) and clear the queue. Ids queued while the caller
+// drains are picked up by the next call.
+pub export fn char_extract_pending_take(out_count: *usize) ?[*]i64 {
+    const count = extract_pending.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], extract_pending.items);
+    extract_pending.clearRetainingCapacity();
+    out_count.* = count;
+    return ids;
 }
 
 pub export fn char_by_id(id: i64) ?*cdb.char_data {
@@ -147,6 +176,37 @@ pub export fn char_subscribe_ids(tag: ?[*:0]const u8, out_count: *usize) ?[*]i64
 
 pub export fn char_subscribe_ids_free(ptr: ?[*]i64) void {
     std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+// Snapshot of every live character id. Free with char_subscribe_ids_free.
+pub export fn char_all_ids(out_count: *usize) ?[*]i64 {
+    const count = chars_by_id.count();
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    var i: usize = 0;
+    var it = chars_by_id.keyIterator();
+    while (it.next()) |id_ptr| {
+        ids[i] = id_ptr.*;
+        i += 1;
+    }
+    out_count.* = count;
+    return ids;
+}
+
+// Same snapshot sorted newest-first (descending id). Ids are assigned
+// monotonically at creation, so this reproduces the old head-inserted
+// character_list ordering exactly.
+pub export fn char_all_ids_newest(out_count: *usize) ?[*]i64 {
+    const ids = char_all_ids(out_count) orelse return null;
+    std.mem.sort(i64, ids[0..out_count.*], {}, std.sort.desc(i64));
+    return ids;
 }
 
 const MobProtoIterator = struct {

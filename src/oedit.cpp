@@ -54,6 +54,7 @@
 #include "fight.h"
 #include "genobj.h"
 #include "genolc.h"
+#include "iterate.hpp"
 #include "genzon.h"
 #include "handler.h"
 #include "improved-edit.h"
@@ -313,16 +314,17 @@ void oedit_save_internally(struct descriptor_data *d) {
   proto = obj_proto_by_id(v);
 
   /* this takes care of the objects currently in-game */
-  for (obj = object_list; obj; obj = obj->next) {
+  obj_iterate_all([&](struct obj_data *obj) {
     if (obj->proto_id != v)
-      continue;
+      return true;
     /* remove any old scripts */
     if (SCRIPT(obj))
       extract_script(obj, OBJ_TRIGGER);
 
     obj_proto_copy_script_to_obj(proto, obj);
     assign_triggers(obj, OBJ_TRIGGER);
-  }
+    return true;
+  });
   /* end trigger update */
 
   if (!i) /* If it's not a new object, don't renumber. */

@@ -128,13 +128,15 @@ int num_players_in_room(room_vnum room) {
 }
 
 bool check_mob_in_room(mob_vnum mob, room_vnum room) {
-  struct char_data *i;
   bool found = FALSE;
 
-  for (i = character_list; i; i = i->next)
-    if (GET_MOB_VNUM(i) == mob)
-      if (char_room_vnum_get(i) == room)
-        found = TRUE;
+  char_iterate_all([&](struct char_data *i) {
+    if (GET_MOB_VNUM(i) == mob && char_room_vnum_get(i) == room) {
+      found = TRUE;
+      return false;
+    }
+    return true;
+  });
 
   return found;
 }

@@ -1969,26 +1969,24 @@ void damage_eq(struct char_data *vict, int location) {
 }
 
 /* This is for updating MOB android absorb */
-void update_mob_absorb() {
-  int roll = 0;
-  struct char_data *i, *vict;
+static void update_mob_absorb_one(struct char_data *i) {
+  struct char_data *vict;
+  int roll = axion_dice(0) + (GET_LEVEL(i) * 0.25);
 
-  for (i = character_list; i; i = i->next) {
-    roll = axion_dice(0) + (GET_LEVEL(i) * 0.25);
-
+  {
     if (!IS_NPC(i))
-      continue;
+      return;
 
     if (!IS_ANDROID(i))
-      continue;
+      return;
 
     if (!MOB_FLAGGED(i, MOB_ABSORB))
-      continue;
+      return;
 
     if (ABSORBING(i) == NULL || !ABSORBING(i))
-      continue;
+      return;
     else if (GET_LEVEL(i) < roll)
-      continue;
+      return;
     else if (ABSORBING(i)) {
       vict = ABSORBING(i);
 
@@ -2042,6 +2040,13 @@ void update_mob_absorb() {
       }
     }
   }
+}
+
+void update_mob_absorb() {
+  char_iterate_all([](struct char_data *i) {
+    update_mob_absorb_one(i);
+    return true;
+  });
 }
 
 /* This is for huge attacks that are slowly descending on a room */
@@ -2184,15 +2189,14 @@ static void tick_huge_ki(struct obj_data *k) {
 
 void huge_update() {
   /* clean up expired auction items parked in room 80 */
-  struct obj_data *next_k;
-  for (auto *k = object_list; k; k = next_k) {
-    next_k = k->next;
+  obj_iterate_all([](struct obj_data *k) {
     if (GET_AUCTER(k) > 0 && GET_AUCTIME(k) + 604800 <= time(0) &&
         obj_room_vnum_get(k) == 80) {
       room_flag_set(obj_room_get(k), ROOM_HOUSE_CRASH, FALSE);
       extract_obj(k);
     }
-  }
+    return true;
+  });
   obj_iterate_subscriptions("obj_huge_ki", [](struct obj_data *k) {
     tick_huge_ki(k);
     return true;

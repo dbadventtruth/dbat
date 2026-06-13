@@ -114,6 +114,7 @@
 #include <linux/limits.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <unordered_map>
 
 // Forward declarations for zone reset event functions (defined later in this file)
 void ev_zone_reset(int, int64_t, int64_t);
@@ -633,24 +634,20 @@ void free_extra_descriptions(struct extra_descr_data *edesc) {
 /* Free the world, in a memory allocation sense. */
 void destroy_db(void) {
   ssize_t cnt, itr;
-  struct char_data *chtmp;
-  struct obj_data *objtmp;
 
-  /* Active Mobiles & Players */
-  while (character_list) {
-    chtmp = character_list;
-    character_list = character_list->next;
+  /* Active Mobiles & Players (snapshot: free_char unregisters as we go) */
+  char_iterate_all([](struct char_data *chtmp) {
     if (chtmp->master)
       stop_follower(chtmp);
     free_char(chtmp);
-  }
+    return true;
+  });
 
   /* Active Objects */
-  while (object_list) {
-    objtmp = object_list;
-    object_list = object_list->next;
+  obj_iterate_all([](struct obj_data *objtmp) {
     free_obj(objtmp);
-  }
+    return true;
+  });
 
   /* Rooms */
   room_iterate([&](auto room) {
@@ -2777,8 +2774,6 @@ struct char_data *create_char(void) {
 
   CREATE(ch, struct char_data, 1);
   clear_char(ch);
-  ch->next = character_list;
-  character_list = ch;
   GET_ID(ch) = max_mob_id++;
   /* find_char helper */
   (void)char_register_id(GET_ID(ch), ch);
@@ -2808,8 +2803,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   CREATE(mob, struct char_data, 1);
   clear_char(mob);
   copy_mobile_from_proto(mob, proto);
-  mob->next = character_list;
-  character_list = mob;
   mob->next_affect = NULL;
 
   if (IS_HOSHIJIN(mob) && GET_SEX(mob) == SEX_MALE) {
@@ -3391,8 +3384,6 @@ struct obj_data *create_obj(void) {
 
   CREATE(obj, struct obj_data, 1);
   clear_object(obj);
-  obj->next = object_list;
-  object_list = obj;
 
   GET_ID(obj) = max_obj_id++;
   /* find_obj helper */
@@ -3424,8 +3415,6 @@ struct obj_data *read_object(obj_vnum nr, int type) /* and obj_rnum */
   CREATE(obj, struct obj_data, 1);
   clear_object(obj);
   obj_proto_to_instance(obj, proto);
-  obj->next = object_list;
-  object_list = obj;
   OBJ_LOADROOM(obj) = NOWHERE;
 
   obj_proto_count_increment(nr);
@@ -3510,7 +3499,15 @@ struct reset_context {
   struct obj_data *tobj = nullptr;
   bool mob_load = false;
   bool obj_load = false;
+  /* last object loaded per vnum during this reset, by id (ids stay safe if a
+   * load trigger purges the object; re-resolved at use). 'P' commands target
+   * containers loaded earlier in the same reset through this. */
+  std::unordered_map<obj_vnum, int64_t> last_obj;
 };
+
+static void reset_track_obj(struct reset_context *ctx, struct obj_data *obj) {
+  ctx->last_obj[GET_OBJ_VNUM(obj)] = GET_ID(obj);
+}
 
 static bool reset_command_mobile(struct reset_context *ctx, mob_vnum vnum,
                                  room_vnum rv, int max_in_room,
@@ -3545,13 +3542,11 @@ static bool reset_command_mobile(struct reset_context *ctx, mob_vnum vnum,
 
   size_t count_room = 0;
   if (max_in_room > 0)
-    for (auto i = character_list; i; i = i->next) {
-      if (GET_MOB_VNUM(i) == vnum) {
-        if (MOB_LOADROOM(i) == rv) {
-          count_room++;
-        }
-      }
-    }
+    char_iterate_all([&](struct char_data *i) {
+      if (GET_MOB_VNUM(i) == vnum && MOB_LOADROOM(i) == rv)
+        count_room++;
+      return true;
+    });
 
   if (max_in_room > 0 && count_room >= max_in_room) {
     return false;
@@ -3601,19 +3596,19 @@ static bool reset_command_object(struct reset_context *ctx, obj_vnum vnum,
 
   size_t count_room = 0;
   if (max_in_room > 0)
-    for (auto i = object_list; i; i = i->next) {
-      if (GET_OBJ_VNUM(i) == vnum) {
-        if (OBJ_LOADROOM(i) == rv || (i->in_room && i->in_room == rv)) {
-          count_room++;
-        }
-      }
-    }
+    obj_iterate_all([&](struct obj_data *i) {
+      if (GET_OBJ_VNUM(i) == vnum &&
+          (OBJ_LOADROOM(i) == rv || (i->in_room && i->in_room == rv)))
+        count_room++;
+      return true;
+    });
 
   if (max_in_room > 0 && count_room >= max_in_room) {
     return false;
   }
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
   obj_to_room(obj, room);
   OBJ_LOADROOM(obj) = rv;
   load_otrigger(obj);
@@ -3633,7 +3628,13 @@ static bool reset_command_put(struct reset_context *ctx, obj_vnum vnum,
   auto zone = ctx->zone;
   auto cmd_no = ctx->cmd_no;
 
-  auto to = get_obj_num(to_vnum);
+  /* Prefer the container loaded earlier in this reset; fall back to the
+   * newest instance world-wide (the old object_list head semantics). */
+  struct obj_data *to = nullptr;
+  if (auto it = ctx->last_obj.find(to_vnum); it != ctx->last_obj.end())
+    to = obj_by_id(it->second);
+  if (!to)
+    to = get_obj_num(to_vnum);
   if (!to) {
     ZONE_ERROR("invalid to obj vnum");
     ctx->cmd->command = '*'; /* skip command */
@@ -3648,6 +3649,7 @@ static bool reset_command_put(struct reset_context *ctx, obj_vnum vnum,
   }
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
   obj_to_obj(obj, to);
   load_otrigger(obj);
   ctx->obj = obj;
@@ -3683,6 +3685,7 @@ static bool reset_command_give(struct reset_context *ctx, obj_vnum vnum,
   }
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
   obj_to_char(obj, ctx->mob);
   load_otrigger(obj);
   ctx->obj = obj;
@@ -3727,6 +3730,7 @@ static bool reset_command_equip(struct reset_context *ctx, obj_vnum vnum,
   auto room = char_room_get(ctx->mob);
 
   auto obj = read_object(vnum, VIRTUAL);
+  reset_track_obj(ctx, obj);
 
   obj->in_room = room_vnum_get(room);
   load_otrigger(obj);
@@ -4365,7 +4369,6 @@ void reset_char(struct char_data *ch) {
   ch->master = NULL;
   IN_ROOM(ch) = NOWHERE;
   ch->carrying = NULL;
-  ch->next = NULL;
   ch->next_in_room = NULL;
   FIGHTING(ch) = NULL;
   ch->mob_specials.default_pos = POS_STANDING;

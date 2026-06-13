@@ -71,7 +71,6 @@ struct obj_data {
   struct script_data *script; /* script info for the object       */
 
   struct obj_data *next_content; /* For 'contains' lists             */
-  struct obj_data *next;         /* For the object list              */
 
   struct char_data *sitting; /* Who is sitting on me? */
 

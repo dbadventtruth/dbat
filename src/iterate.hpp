@@ -163,6 +163,38 @@ template <typename Func> inline void char_iterate_subscriptions(const char* subs
   char_subscribe_ids_free(ids);
 }
 
+/* Every live character, unordered. Snapshot-based: safe across extraction. */
+template <typename Func> inline void char_iterate_all(Func &&func) {
+  size_t count;
+  auto ids = char_all_ids(&count);
+  char_iterate_id_list(ids, count, func);
+  char_subscribe_ids_free(ids);
+}
+
+/* Every live character, newest first (matches old character_list order). */
+template <typename Func> inline void char_iterate_all_newest(Func &&func) {
+  size_t count;
+  auto ids = char_all_ids_newest(&count);
+  char_iterate_id_list(ids, count, func);
+  char_subscribe_ids_free(ids);
+}
+
+/* Every live object, unordered. Snapshot-based: safe across extraction. */
+template <typename Func> inline void obj_iterate_all(Func &&func) {
+  size_t count;
+  auto ids = obj_all_ids(&count);
+  obj_iterate_id_list(ids, count, func);
+  obj_subscribe_ids_free(ids);
+}
+
+/* Every live object, newest first (matches old object_list order). */
+template <typename Func> inline void obj_iterate_all_newest(Func &&func) {
+  size_t count;
+  auto ids = obj_all_ids_newest(&count);
+  obj_iterate_id_list(ids, count, func);
+  obj_subscribe_ids_free(ids);
+}
+
 template <typename Func> inline void room_exits_iterate(struct room_data *room, Func &&func) {
   if(!room) return;
 

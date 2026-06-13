@@ -44,7 +44,6 @@
 
 #include <cstdlib>
 
-int extractions_pending = 0;
 
 /* Extract a ch completely from the world, and leave his stuff behind */
 void extract_char_final(struct char_data *ch) {
@@ -117,16 +116,13 @@ void extract_char_final(struct char_data *ch) {
   }
 
   if (!IS_NPC(ch) && GET_CLONES(ch) > 0) {
-    struct char_data *clone = NULL;
-    for (clone = character_list; clone; clone = clone->next) {
-      if (IS_NPC(clone)) {
-        if (GET_MOB_VNUM(clone) == 25) {
-          if (GET_ORIGINAL(clone) == ch) {
-            handle_multi_merge(clone);
-          }
-        }
+    char_iterate_all([&](struct char_data *clone) {
+      if (IS_NPC(clone) && GET_MOB_VNUM(clone) == 25 &&
+          GET_ORIGINAL(clone) == ch) {
+        handle_multi_merge(clone);
       }
-    }
+      return true;
+    });
   }
 
   purge_homing(ch);
@@ -250,17 +246,9 @@ void extract_char_final(struct char_data *ch) {
 }
 
 /*
- * Q: Why do we do this?
- * A: Because trying to iterate over the character
- *    list with 'ch = ch->next' does bad things if
- *    the current character happens to die. The
- *    trivial workaround of 'vict = next_vict'
- *    doesn't work if the _next_ person in the list
- *    gets killed, for example, by an area spell.
- *
- * Q: Why do we leave them on the character_list?
- * A: Because code doing 'vict = vict->next' would
- *    get really confused otherwise.
+ * Extraction is deferred to end-of-tick: the character is flagged NOTDEADYET
+ * and its id queued, so any code still holding the pointer this tick stays
+ * valid. extract_pending_chars() re-resolves each id and finalizes.
  */
 void extract_char(struct char_data *ch) {
   struct follow_type *foll;
@@ -301,7 +289,7 @@ void extract_char(struct char_data *ch) {
     }
   }
 
-  extractions_pending++;
+  char_extract_pending_add(GET_ID(ch));
 }
 
 /* Extract an object from the world */
@@ -351,7 +339,6 @@ void extract_obj(struct obj_data *obj) {
   });
 
   obj_game_deactivate(obj);
-  REMOVE_FROM_LIST(obj, object_list, next, temp);
 
   if (GET_OBJ_VNUM(obj) != NOTHING)
     obj_proto_count_decrement(GET_OBJ_VNUM(obj));
@@ -366,38 +353,25 @@ void extract_obj(struct obj_data *obj) {
 }
 
 void extract_pending_chars(void) {
-  struct char_data *vict, *next_vict, *prev_vict, *temp;
+  struct char_data *temp;
+  size_t count;
+  int64_t *ids = char_extract_pending_take(&count);
 
-  if (extractions_pending < 0)
-    mud_log("SYSERR: Negative (%d) extractions pending.", extractions_pending);
-
-  for (vict = character_list, prev_vict = NULL; vict && extractions_pending;
-       vict = next_vict) {
-    next_vict = vict->next;
+  for (size_t i = 0; i < count; i++) {
+    struct char_data *vict = char_by_id(ids[i]);
+    if (!vict)
+      continue;
 
     if (MOB_FLAGGED(vict, MOB_NOTDEADYET))
       REMOVE_BIT_AR(MOB_FLAGS(vict), MOB_NOTDEADYET);
     else if (PLR_FLAGGED(vict, PLR_NOTDEADYET))
       REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_NOTDEADYET);
-    else {
-      /* Last non-free'd character to continue chain from. */
-      prev_vict = vict;
-      continue;
-    }
+    else
+      continue; /* extraction was rescinded since queueing */
 
     REMOVE_FROM_LIST(vict, affect_list, next_affect, temp);
     extract_char_final(vict);
-    extractions_pending--;
-
-    if (prev_vict)
-      prev_vict->next = next_vict;
-    else
-      character_list = next_vict;
   }
 
-  if (extractions_pending > 0)
-    mud_log("SYSERR: Couldn't find %d extractions as counted.",
-        extractions_pending);
-
-  extractions_pending = 0;
+  char_subscribe_ids_free(ids);
 }

@@ -390,27 +390,31 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle,
 }
 
 struct obj_data *find_vehicle_by_vnum(int vnum) {
-  extern struct obj_data *object_list;
-  struct obj_data *i;
+  struct obj_data *found = NULL;
 
-  for (i = object_list; i; i = i->next)
-    if (GET_OBJ_TYPE(i) == ITEM_VEHICLE)
-      if (GET_OBJ_VNUM(i) == vnum)
-        return i;
+  obj_iterate_all_newest([&](struct obj_data *i) {
+    if (GET_OBJ_TYPE(i) == ITEM_VEHICLE && GET_OBJ_VNUM(i) == vnum) {
+      found = i;
+      return false;
+    }
+    return true;
+  });
 
-  return 0;
+  return found;
 }
 
 struct obj_data *find_hatch_by_vnum(int vnum) {
-  extern struct obj_data *object_list;
-  struct obj_data *i;
+  struct obj_data *found = NULL;
 
-  for (i = object_list; i; i = i->next)
-    if (GET_OBJ_TYPE(i) == ITEM_HATCH)
-      if (GET_OBJ_VNUM(i) == vnum)
-        return i;
+  obj_iterate_all_newest([&](struct obj_data *i) {
+    if (GET_OBJ_TYPE(i) == ITEM_HATCH && GET_OBJ_VNUM(i) == vnum) {
+      found = i;
+      return false;
+    }
+    return true;
+  });
 
-  return 0;
+  return found;
 }
 
 /* Search the given list for an object type, and return a ptr to that obj*/

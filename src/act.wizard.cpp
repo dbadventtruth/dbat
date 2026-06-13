@@ -3623,7 +3623,7 @@ ACMD(do_show) {
     j = 0;
     k = 0;
     con = 0;
-    for (vict = character_list; vict; vict = vict->next) {
+    char_iterate_all([&](struct char_data *vict) {
       if (IS_NPC(vict))
         j++;
       else if (CAN_SEE(ch, vict)) {
@@ -3631,9 +3631,12 @@ ACMD(do_show) {
         if (vict->desc)
           con++;
       }
-    }
-    for (obj = object_list; obj; obj = obj->next)
+      return true;
+    });
+    obj_iterate_all([&](struct obj_data *) {
       k++;
+      return true;
+    });
     send_to_char(ch,
                  "             @D---   @CCore Stats   @D---\r\n"
                  "  @Y%5d@W players in game  @y%5d@W connected\r\n"

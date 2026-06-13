@@ -166,7 +166,6 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from) {
 int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
   int32_t id = to->id;
   struct descriptor_data *desc = to->desc;
-  struct char_data *next = to->next;
   struct char_data *next_affect = to->next_affect;
 
   free_mobile_strings(to);
@@ -178,7 +177,6 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
 
   to->id = id;
   to->desc = desc;
-  to->next = next;
   to->next_affect = next_affect;
 
   to->proto_id = from->id;
@@ -212,7 +210,7 @@ int add_mobile(struct char_data *mob, mob_vnum vnum) {
     copy_mobile_to_proto(proto, mob);
 
     /* Now re-point all existing mobile strings to here. */
-    for (live_mob = character_list; live_mob; live_mob = live_mob->next)
+    char_iterate_all([&](struct char_data *live_mob) {
       if (vnum == live_mob->proto_id) {
         struct char_data temp = {};
         copy_mobile_from_proto(&temp, proto);
@@ -221,6 +219,8 @@ int add_mobile(struct char_data *mob, mob_vnum vnum) {
         if (temp.proto_script)
           free_proto_script(&temp, MOB_TRIGGER);
       }
+      return true;
+    });
 
     add_to_save_list(virtual_zone_by_thing(vnum), SL_MOB);
     mud_log("GenOLC: add_mobile: Updated existing mobile #%d.", vnum);
@@ -250,13 +250,11 @@ int copy_mobile(struct char_data *to, struct char_data *from) {
 }
 
 void extract_mobile_all(mob_vnum vnum) {
-  struct char_data *next, *ch;
-
-  for (ch = character_list; ch; ch = next) {
-    next = ch->next;
+  char_iterate_all([&](struct char_data *ch) {
     if (GET_MOB_VNUM(ch) == vnum)
       extract_char(ch);
-  }
+    return true;
+  });
 }
 
 int delete_mobile(mob_vnum refpt) {
