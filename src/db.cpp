@@ -2803,7 +2803,6 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   CREATE(mob, struct char_data, 1);
   clear_char(mob);
   copy_mobile_from_proto(mob, proto);
-  mob->next_affect = NULL;
 
   if (IS_HOSHIJIN(mob) && GET_SEX(mob) == SEX_MALE) {
     mob->hairl = 0;
@@ -4127,18 +4126,6 @@ char *fread_string(FILE *fl, const char *error) {
   return (strlen(buf) ? strdup(buf) : NULL);
 }
 
-/* Called to free all allocated follow_type structs - Update by Jamie Nelson */
-void free_followers(struct follow_type *k) {
-  if (!k)
-    return;
-
-  if (k->next)
-    free_followers(k->next);
-
-  k->follower = NULL;
-  free(k);
-}
-
 /* release memory allocated for a char struct */
 void char_free_instance(struct char_data *ch) {
   int i;
@@ -4193,9 +4180,6 @@ void char_free_instance(struct char_data *ch) {
   /* free any assigned scripts */
   if (SCRIPT(ch))
     extract_script(ch, MOB_TRIGGER);
-
-  /* new version of free_followers take the followers pointer as arg */
-  free_followers(ch->followers);
 
   if (ch->desc)
     ch->desc->character = NULL;
@@ -4365,11 +4349,8 @@ void reset_char(struct char_data *ch) {
   for (i = 0; i < NUM_WEARS; i++)
     GET_EQ(ch, i) = NULL;
 
-  ch->followers = NULL;
   ch->master = NULL;
   IN_ROOM(ch) = NOWHERE;
-  ch->carrying = NULL;
-  ch->next_in_room = NULL;
   FIGHTING(ch) = NULL;
   ch->mob_specials.default_pos = POS_STANDING;
   ch->time.logon = time(0);

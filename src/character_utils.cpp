@@ -1,5 +1,6 @@
 #include "character_utils.h"
 #include "character_api.h"
+#include "character_db.h"
 #include "character_impl.h"
 #include "character_macros.h"
 #include "object_impl.h"
@@ -990,20 +991,16 @@ void dispel_ash(struct char_data *ch) {
 
 int has_group(struct char_data *ch) {
 
-  struct follow_type *k, *next;
-
   if (!char_condition_has(ch, "group"))
     return (FALSE);
 
-  if (ch->followers) {
-    for (k = ch->followers; k; k = next) {
-      next = k->next;
-      if (!char_condition_has(k->follower, "group")) {
-        continue;
-      } else {
-        return (TRUE);
-      }
-    }
+  if (char_follower_count(ch)) {
+    bool found = false;
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      if (char_condition_has(fol, "group")) { found = true; return false; }
+      return true;
+    });
+    if (found) return (TRUE);
   } else if (ch->master) {
     if (!char_condition_has(ch->master, "group"))
       return (FALSE);
@@ -1017,7 +1014,7 @@ int has_group(struct char_data *ch) {
 const char *report_party_health(struct char_data *ch) {
   if (!char_condition_has(ch, "group"))
     return "";
-  if (!ch->followers && !ch->master)
+  if (!char_follower_count(ch) && !ch->master)
     return "";
 
   static const char *plcol[] = {"@r", "@y", "@Y", "@G", ""};
@@ -1042,17 +1039,23 @@ const char *report_party_health(struct char_data *ch) {
   /* collect up to 4 grouped party members (excluding ch) */
   char_data *party[4] = {};
   int n = 0;
-  bool is_leader = ch->followers != nullptr;
+  bool is_leader = char_follower_count(ch) > 0;
 
   if (is_leader) {
-    for (auto *k = ch->followers; k && n < 4; k = k->next)
-      if (k->follower != ch && char_condition_has(k->follower, "group"))
-        party[n++] = k->follower;
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      if (n >= 4) return false;
+      if (fol != ch && char_condition_has(fol, "group"))
+        party[n++] = fol;
+      return true;
+    });
   } else if (ch->master && char_condition_has(ch->master, "group")) {
     party[n++] = ch->master;
-    for (auto *k = ch->master->followers; k && n < 4; k = k->next)
-      if (k->follower != ch && char_condition_has(k->follower, "group"))
-        party[n++] = k->follower;
+    char_followers_iterate(ch->master, [&](struct char_data *fol) {
+      if (n >= 4) return false;
+      if (fol != ch && char_condition_has(fol, "group"))
+        party[n++] = fol;
+      return true;
+    });
   } else {
     return "";
   }
@@ -1950,23 +1953,20 @@ int roll_pursue(struct char_data *ch, struct char_data *vict) {
     act("@C$n@R pursues after the fleeing @c$N@R!@n", TRUE, ch, 0, vict,
         TO_NOTVICT);
 
-    struct follow_type *k, *next;
-
-    if (ch->followers) {
-      for (k = ch->followers; k; k = next) {
-        next = k->next;
-        if ((char_room_vnum_get(k->follower) == inroom) &&
-            (GET_POS(k->follower) >= POS_STANDING) &&
+    if (char_follower_count(ch)) {
+      char_followers_iterate(ch, [&](struct char_data *fol) {
+        if ((char_room_vnum_get(fol) == inroom) &&
+            (GET_POS(fol) >= POS_STANDING) &&
             (!char_condition_has(ch, "zanzoken") ||
-             (char_condition_has(ch, "group") &&
-              char_condition_has(k->follower, "group")))) {
-          act("You follow $N.", TRUE, k->follower, 0, ch, TO_CHAR);
-          act("$n follows after $N.", TRUE, k->follower, 0, ch, TO_NOTVICT);
-          act("$n follows after you.", TRUE, k->follower, 0, ch, TO_VICT);
-          char_from_room(k->follower);
-          char_to_room(k->follower, char_room_get(ch));
+             (char_condition_has(ch, "group") && char_condition_has(fol, "group")))) {
+          act("You follow $N.", TRUE, fol, 0, ch, TO_CHAR);
+          act("$n follows after $N.", TRUE, fol, 0, ch, TO_NOTVICT);
+          act("$n follows after you.", TRUE, fol, 0, ch, TO_VICT);
+          char_from_room(fol);
+          char_to_room(fol, char_room_get(ch));
         }
-      }
+        return true;
+      });
     }
     REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_PURSUIT);
     return (TRUE);
@@ -3231,8 +3231,6 @@ bool circle_follow(struct char_data *ch, struct char_data *victim) {
 /* Called when stop following persons, or stopping charm */
 /* This will NOT do if a character quits/dies!!          */
 void stop_follower(struct char_data *ch) {
-  struct follow_type *j, *k;
-
   if (ch->master == NULL) {
     core_dump();
     return;
@@ -3244,82 +3242,57 @@ void stop_follower(struct char_data *ch) {
         (ch->master->desc && STATE(ch->master->desc) == CON_MENU)))
     act("$n stops following you.", TRUE, ch, 0, ch->master, TO_VICT);
 
-  if (ch->master->followers->follower == ch) { /* Head of follower-list? */
-    k = ch->master->followers;
-    ch->master->followers = k->next;
-    free(k);
-  } else { /* locate follower who is not head of list */
-    for (k = ch->master->followers; k->next->follower != ch; k = k->next)
-      ;
-
-    j = k->next;
-    k->next = j->next;
-    free(j);
-  }
-
+  char_follower_remove(ch->master, ch);
   ch->master = NULL;
 }
 
 int num_followers_charmed(struct char_data *ch) {
-  struct follow_type *lackey;
   int total = 0;
 
   /* Summoned creatures don't count against total */
-  for (lackey = ch->followers; lackey; lackey = lackey->next)
-    if (AFF_FLAGGED(lackey->follower, AFF_CHARM) &&
-        !AFF_FLAGGED(lackey->follower, AFF_SUMMONED) &&
-        lackey->follower->master == ch)
+  char_followers_iterate(ch, [&](struct char_data *lackey) {
+    if (AFF_FLAGGED(lackey, AFF_CHARM) &&
+        !AFF_FLAGGED(lackey, AFF_SUMMONED) &&
+        lackey->master == ch)
       total++;
+    return true;
+  });
 
   return (total);
 }
 
 void switch_leader(struct char_data *old, struct char_data *new_leader) {
-  struct follow_type *f;
-  struct char_data *tch = NULL;
-
-  for (f = old->followers; f; f = f->next) {
-    if (f->follower == new_leader) {
-      tch = new_leader;
-      stop_follower(tch);
+  char_followers_iterate(old, [&](struct char_data *fol) {
+    if (fol == new_leader) {
+      stop_follower(fol);
+    } else {
+      stop_follower(fol);
+      add_follower(fol, new_leader);
     }
-    if (f->follower != new_leader) {
-      tch = f->follower;
-      stop_follower(tch);
-      add_follower(tch, new_leader);
-    }
-  }
+    return true;
+  });
 }
 /* Called when a character that follows/is followed dies */
 void die_follower(struct char_data *ch) {
-  struct follow_type *j, *k;
-
   if (ch->master)
     stop_follower(ch);
 
-  for (k = ch->followers; k; k = j) {
-    j = k->next;
-    stop_follower(k->follower);
-  }
+  char_followers_iterate(ch, [&](struct char_data *fol) {
+    stop_follower(fol);
+    return true;
+  });
 }
 
 /* Do NOT call this before having checked if a circle of followers */
 /* will arise. CH will follow leader                               */
 void add_follower(struct char_data *ch, struct char_data *leader) {
-  struct follow_type *k;
-
   if (ch->master) {
     core_dump();
     return;
   }
 
   ch->master = leader;
-
-  CREATE(k, struct follow_type, 1);
-
-  k->follower = ch;
-  k->next = leader->followers;
-  leader->followers = k;
+  char_follower_add(leader, ch);
 
   act("You now follow $N.", FALSE, ch, 0, leader, TO_CHAR);
   if (char_room_get(ch) != NULL && char_room_get(leader) != NULL &&

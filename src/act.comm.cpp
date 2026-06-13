@@ -946,7 +946,6 @@ ACMD(do_say) {
 
 ACMD(do_gsay) {
   struct char_data *k;
-  struct follow_type *f;
   char blah[MAX_INPUT_LENGTH];
 
   skip_spaces(&argument);
@@ -984,25 +983,22 @@ ACMD(do_gsay) {
         act(blah, TRUE, ch, 0, k, TO_VICT);
       }
     }
-    for (f = k->followers; f; f = f->next)
-      if (char_condition_has(f->follower, "group") && (f->follower != ch) &&
-          AWAKE(f->follower)) {
-        if (!IS_NPC(ch) && !IS_NPC(f->follower) && CONFIG_ENABLE_LANGUAGES) {
-          garble_text(buf, GET_SKILL(f->follower, SPEAKING(ch)), SPEAKING(ch));
-        } else {
+    char_followers_iterate(k, [&](struct char_data *fol) {
+      if (char_condition_has(fol, "group") && (fol != ch) && AWAKE(fol)) {
+        if (!IS_NPC(ch) && !IS_NPC(fol) && CONFIG_ENABLE_LANGUAGES)
+          garble_text(buf, GET_SKILL(fol, SPEAKING(ch)), SPEAKING(ch));
+        else
           garble_text(buf, 1, MIN_LANGUAGES);
-        }
-        if (CONFIG_ENABLE_LANGUAGES) {
-          send_to_char(f->follower, "%s@W tells the group%s @W'%s@W'@n\r\n",
-                       CAN_SEE(f->follower, ch) ? GET_NAME(ch) : "Someone",
-                       GET_SKILL(f->follower, SPEAKING(ch))
-                           ? ","
-                           : ", in an unfamiliar tongue,",
+        if (CONFIG_ENABLE_LANGUAGES)
+          send_to_char(fol, "%s@W tells the group%s @W'%s@W'@n\r\n",
+                       CAN_SEE(fol, ch) ? GET_NAME(ch) : "Someone",
+                       GET_SKILL(fol, SPEAKING(ch)) ? "," : ", in an unfamiliar tongue,",
                        buf);
-        } else {
-          act(blah, TRUE, ch, 0, f->follower, TO_VICT | TO_SLEEP);
-        }
+        else
+          act(blah, TRUE, ch, 0, fol, TO_VICT | TO_SLEEP);
       }
+      return true;
+    });
 
     if (PRF_FLAGGED(ch, PRF_NOREPEAT))
       send_to_char(ch, "%s", CONFIG_OK);

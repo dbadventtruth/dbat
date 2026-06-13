@@ -142,17 +142,16 @@ bool check_mob_in_room(mob_vnum mob, room_vnum room) {
 }
 
 bool check_obj_in_room(obj_vnum obj, room_vnum room) {
-
-  struct obj_data *i, *list;
   bool found = FALSE;
   struct room_data *r_room = room_by_id(room);
 
-  list = room_contents_get(r_room);
-
-  for (i = list; i; i = i->next_content) {
-    if (GET_OBJ_VNUM(i) == obj)
+  room_contents_iterate(r_room, [&](struct obj_data *i) {
+    if (GET_OBJ_VNUM(i) == obj) {
       found = TRUE;
-  }
+      return false;
+    }
+    return true;
+  });
   return found;
 }
 

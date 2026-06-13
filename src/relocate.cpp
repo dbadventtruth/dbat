@@ -2,6 +2,7 @@
 
 #include "affect.h"
 #include "character_api.h"
+#include "character_db.h"
 #include "character_impl.h"
 #include "character_macros.h"
 #include "character_utils.h"
@@ -18,6 +19,7 @@
 #include "flags.h"
 #include "log.h"
 #include "object_api.h"
+#include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "object_utils.h"
@@ -59,9 +61,8 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
   if (room_vnum_get(rm) == 80) {
     auc_load(object);
   }
-  object->next_content = rm->contents;
-  rm->contents = object;
   IN_ROOM(object) = room_vnum_get(rm);
+  room_object_add(rm, object);
   zone_obj_add(room_zone_vnum_get(rm), obj_id_get(object));
   object->carried_by = NULL;
   GET_LAST_LOAD(object) = time(0);
@@ -178,13 +179,12 @@ void obj_from_room(struct obj_data *object) {
     GET_OBJ_POSTTYPE(object) = 0;
   }
 
-  REMOVE_FROM_LIST(object, rm->contents, next_content, temp);
+  room_object_remove(rm, object);
   zone_obj_remove(room_zone_vnum_get(rm), obj_id_get(object));
 
   if (room_flagged(rm, ROOM_HOUSE))
     room_flag_set(rm, ROOM_HOUSE_CRASH, TRUE);
   IN_ROOM(object) = NOWHERE;
-  object->next_content = NULL;
 }
 
 /* put an object in an object (quaint)  */
@@ -198,9 +198,8 @@ void obj_to_obj(struct obj_data *obj, struct obj_data *obj_to) {
     return;
   }
 
-  obj->next_content = obj_to->contains;
-  obj_to->contains = obj;
   obj->in_obj = obj_to;
+  obj_contents_add(obj_to, obj);
   tmp_obj = obj->in_obj;
 
   /* Only add weight to container, or back to carrier for non-eternal
@@ -231,8 +230,7 @@ void obj_from_obj(struct obj_data *obj) {
     return;
   }
   obj_from = obj->in_obj;
-  temp = obj->in_obj;
-  REMOVE_FROM_LIST(obj, obj_from->contains, next_content, temp);
+  obj_contents_remove(obj_from, obj);
 
   /* Subtract weight from containers container */
   /* Only worry about weight for non-eternal containers
@@ -253,13 +251,10 @@ void obj_from_obj(struct obj_data *obj) {
   }
 
   obj->in_obj = NULL;
-  obj->next_content = NULL;
 }
 
 /* move a player out of a room */
 void char_from_room(struct char_data *ch) {
-  struct char_data *temp;
-
   if (ch == NULL || char_room_get(ch) == NULL) {
     mud_log("SYSERR: NULL character or NOWHERE in %s, char_from_room", __FILE__);
     return;
@@ -284,9 +279,8 @@ void char_from_room(struct char_data *ch) {
   else
     zone_mob_remove(char_zone_vnum_get(ch), char_id_get(ch));
   auto room = char_room_get(ch);
-  REMOVE_FROM_LIST(ch, room->people, next_in_room, temp);
+  room_person_remove(room, ch);
   IN_ROOM(ch) = NOWHERE;
-  ch->next_in_room = NULL;
 }
 
 /* place a character in a room */
@@ -309,9 +303,8 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
     return true;
   });
 
-  ch->next_in_room = rm->people;
-  rm->people = ch;
   IN_ROOM(ch) = room_vnum_get(rm);
+  room_person_add(rm, ch);
   auto zone_vnum = room_zone_vnum_get(rm);
   if (!IS_NPC(ch))
     zone_player_add(zone_vnum, char_id_get(ch));
@@ -345,10 +338,9 @@ void char_to_room(struct char_data *ch, struct room_data *room) {
 /* give an object to a char   */
 void obj_to_char(struct obj_data *object, struct char_data *ch) {
   if (object && ch) {
-    object->next_content = ch->carrying;
-    ch->carrying = object;
     object->carried_by = ch;
     IN_ROOM(object) = NOWHERE;
+    char_inventory_add(ch, object);
     char_der_invalidate(ch);
 
     /* set flag for crash-save system, but not on mobs! */
@@ -367,14 +359,12 @@ void obj_to_char(struct obj_data *object, struct char_data *ch) {
 
 /* take an object from a char */
 void obj_from_char(struct obj_data *object) {
-  struct obj_data *temp;
-
   if (object == NULL) {
     mud_log("SYSERR: NULL object passed to obj_from_char.");
     return;
   }
   auto ch = object->carried_by;
-  REMOVE_FROM_LIST(object, ch->carrying, next_content, temp);
+  char_inventory_remove(ch, object);
 
   /* set flag for crash-save system, but not on mobs! */
   if (!IS_NPC(ch))
@@ -391,7 +381,6 @@ void obj_from_char(struct obj_data *object) {
   }
 
   object->carried_by = NULL;
-  object->next_content = NULL;
 }
 
 /* Return the effect of a piece of armor in position eq_pos */
@@ -519,11 +508,3 @@ struct obj_data *unequip_char(struct char_data *ch, int pos) {
   return (obj);
 }
 
-/* Set all carried_by to point to new owner */
-void object_list_new_owner(struct obj_data *list, struct char_data *ch) {
-  if (list) {
-    object_list_new_owner(list->contains, ch);
-    object_list_new_owner(list->next_content, ch);
-    list->carried_by = ch;
-  }
-}

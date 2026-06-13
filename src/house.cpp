@@ -8,8 +8,10 @@
  *  CircleMUD is based on DikuMUD, Copyright (C) 1990, 1991.               *
  ************************************************************************ */
 #include "house.h"
+#include <vector>
 #include "comm.h"
 #include "db.h"
+#include "iterate.hpp"
 #include "config_db.h"
 #include "handler.h"
 #include "interpreter.h"
@@ -96,37 +98,37 @@ int House_get_filename(room_vnum vnum, char *filename, size_t maxlen) {
   return (1);
 }
 
-/* Save all objects for a house (recursive; initial call must be followed
-   by a call to House_restore_weight)  Assumes file is open already. */
+/* Save one object and its nested contents recursively.
+   Returns 0 on write failure, 1 on success. */
 int House_save(struct obj_data *obj, FILE *fp, int location) {
   struct obj_data *tmp;
-  int result;
-  if (obj) {
-    if (OBJ_FLAGGED(obj, ITEM_NORENT)) {
-      obj = obj->next_content;
-    }
-  }
-  if (obj) {
-    House_save(obj->next_content, fp, location);
-    House_save(obj->contains, fp, MIN(0, location) - 1);
-    result = Obj_to_store(obj, fp, location);
-    if (!result)
-      return (0);
+  if (!obj || OBJ_FLAGGED(obj, ITEM_NORENT))
+    return 1;
 
-    for (tmp = obj->in_obj; tmp; tmp = tmp->in_obj)
-      GET_OBJ_WEIGHT(tmp) -= GET_OBJ_WEIGHT(obj);
-  }
-  return (1);
+  bool ok = true;
+  obj_contents_iterate(obj, [&](struct obj_data *child) {
+    if (!House_save(child, fp, MIN(0, location) - 1)) { ok = false; return false; }
+    return true;
+  });
+  if (!ok) return 0;
+
+  if (!Obj_to_store(obj, fp, location))
+    return 0;
+
+  for (tmp = obj->in_obj; tmp; tmp = tmp->in_obj)
+    GET_OBJ_WEIGHT(tmp) -= GET_OBJ_WEIGHT(obj);
+  return 1;
 }
 
-/* restore weight of containers after House_save has changed them for saving */
+/* Restore weight of containers after House_save has changed them for saving. */
 void House_restore_weight(struct obj_data *obj) {
-  if (obj) {
-    House_restore_weight(obj->contains);
-    House_restore_weight(obj->next_content);
-    if (obj->in_obj)
-      GET_OBJ_WEIGHT(obj->in_obj) += GET_OBJ_WEIGHT(obj);
-  }
+  if (!obj) return;
+  obj_contents_iterate(obj, [](struct obj_data *child) {
+    House_restore_weight(child);
+    return true;
+  });
+  if (obj->in_obj)
+    GET_OBJ_WEIGHT(obj->in_obj) += GET_OBJ_WEIGHT(obj);
 }
 
 /* Save all objects in a house */
@@ -161,12 +163,20 @@ void House_crashsave(room_vnum vnum) {
     perror("SYSERR: Error saving house file");
     return;
   }
-  if (!House_save(room_contents_get(room), fp, 0)) {
+  bool save_ok = true;
+  room_contents_iterate(room, [&](struct obj_data *obj) {
+    if (!House_save(obj, fp, 0)) { save_ok = false; return false; }
+    return true;
+  });
+  if (!save_ok) {
     fclose(fp);
     return;
   }
   fclose(fp);
-  House_restore_weight(room_contents_get(room));
+  room_contents_iterate(room, [](struct obj_data *obj) {
+    House_restore_weight(obj);
+    return true;
+  });
   room_flag_set(room, ROOM_HOUSE_CRASH, FALSE);
 }
 
@@ -579,8 +589,7 @@ int House_load(room_vnum rvnum) {
   int t[21], danger, zwei = 0;
   struct obj_data *temp;
   int locate = 0, j, nr, k, num_objs = 0;
-  struct obj_data *obj1;
-  struct obj_data *cont_row[MAX_BAG_ROWS];
+  std::vector<struct obj_data *> cont_row[MAX_BAG_ROWS];
   struct extra_descr_data *new_descr;
   struct room_data *room = NULL;
 
@@ -603,8 +612,7 @@ int House_load(room_vnum rvnum) {
     return json_house_objects_load(cmfname, rvnum) == 0 ? 1 : 0;
   }
 
-  for (j = 0; j < MAX_BAG_ROWS; j++)
-    cont_row[j] = NULL; /* empty all cont lists (you never know ...) */
+  /* cont_row is zero-initialized as std::vector */
 
   if (!feof(fl))
     get_line(fl, line);
@@ -781,30 +789,24 @@ int House_load(room_vnum rvnum) {
       /*No need to check if its equipped since rooms can't equip things
        * --firebird_223*/
       for (j = MAX_BAG_ROWS - 1; j > -locate; j--)
-        if (cont_row[j]) { /* no container -> back to ch's inventory */
-          for (; cont_row[j]; cont_row[j] = obj1) {
-            obj1 = cont_row[j]->next_content;
-            obj_to_room(cont_row[j], room);
-          }
-          cont_row[j] = NULL;
+        if (!cont_row[j].empty()) { /* no container -> back to room */
+          for (auto staged : cont_row[j])
+            obj_to_room(staged, room);
+          cont_row[j].clear();
         }
 
-      if (j == -locate && cont_row[j]) { /* content list existing */
+      if (j == -locate && !cont_row[j].empty()) { /* content list existing */
         if (GET_OBJ_TYPE(temp) == ITEM_CONTAINER) {
-          /* take item ; fill ; give to char again */
+          /* take item ; fill ; give to room again */
           obj_from_room(temp);
-          temp->contains = NULL;
-          for (; cont_row[j]; cont_row[j] = obj1) {
-            obj1 = cont_row[j]->next_content;
-            obj_to_obj(cont_row[j], temp);
-          }
-          obj_to_room(temp, room); /* add to inv first ... */
+          for (auto staged : cont_row[j])
+            obj_to_obj(staged, temp);
+          cont_row[j].clear();
+          obj_to_room(temp, room);
         } else { /* object isn't container -> empty content list */
-          for (; cont_row[j]; cont_row[j] = obj1) {
-            obj1 = cont_row[j]->next_content;
-            obj_to_room(cont_row[j], room);
-          }
-          cont_row[j] = NULL;
+          for (auto staged : cont_row[j])
+            obj_to_room(staged, room);
+          cont_row[j].clear();
         }
       }
 
@@ -813,12 +815,7 @@ int House_load(room_vnum rvnum) {
            but put it at the list's end thus having the items
            in the same order as before renting */
         obj_from_room(temp);
-        if ((obj1 = cont_row[-locate - 1])) {
-          while (obj1->next_content)
-            obj1 = obj1->next_content;
-          obj1->next_content = temp;
-        } else
-          cont_row[-locate - 1] = temp;
+        cont_row[-locate - 1].push_back(temp);
       }
     } else {
       get_line(fl, line);

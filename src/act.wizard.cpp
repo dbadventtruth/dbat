@@ -82,6 +82,7 @@
 #include "net.h"
 #include "oasis.h"
 #include "object_api.h"
+#include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "objsave.h"
@@ -1440,39 +1441,45 @@ static void do_stat_room(struct char_data *ch) {
 
   send_to_char(ch, "Chars present:");
   column = 14; /* ^^^ strlen ^^^ */
-  room_people_iterate(rm, [&](auto k) {
-    if (!CAN_SEE(ch, k))
-      return true;
-
-    column += send_to_char(ch, "%s @y%s@n(%s)", found++ ? "," : "", GET_NAME(k),
-                           !IS_NPC(k) ? "PC" : (!IS_MOB(k) ? "NPC" : "MOB"));
-    if (column >= 62) {
-      send_to_char(ch, "%s\r\n", k->next_in_room ? "," : "");
-      found = FALSE;
-      column = 0;
-    }
-    return true;
-  });
-
-  if (room_contents_get(rm)) {
-    send_to_char(ch, "Contents:@g");
-    column = 9; /* ^^^ strlen ^^^ */
-
-    found = 0;
-    room_contents_iterate(rm, [&](auto j) {
-      if (!CAN_SEE_OBJ(ch, j))
-        return true;
-
-      column +=
-          send_to_char(ch, "%s %s", found++ ? "," : "", j->short_description);
+  {
+    size_t ppl_count;
+    auto ppl_ids = room_person_ids(rm, &ppl_count);
+    for (size_t pi = 0; pi < ppl_count; pi++) {
+      auto k = char_by_id(ppl_ids[pi]);
+      if (!k || !CAN_SEE(ch, k))
+        continue;
+      column += send_to_char(ch, "%s @y%s@n(%s)", found++ ? "," : "", GET_NAME(k),
+                             !IS_NPC(k) ? "PC" : (!IS_MOB(k) ? "NPC" : "MOB"));
       if (column >= 62) {
-        send_to_char(ch, "%s\r\n", j->next_content ? "," : "");
+        send_to_char(ch, "%s\r\n", pi + 1 < ppl_count ? "," : "");
         found = FALSE;
         column = 0;
       }
-      return true;
-    });
-    send_to_char(ch, "@n");
+    }
+    room_person_ids_free(ppl_ids);
+  }
+
+  {
+    size_t obj_count;
+    auto obj_ids = room_object_ids(rm, &obj_count);
+    if (obj_count) {
+      send_to_char(ch, "Contents:@g");
+      column = 9; /* ^^^ strlen ^^^ */
+      found = 0;
+      for (size_t oi = 0; oi < obj_count; oi++) {
+        auto j = obj_by_id(obj_ids[oi]);
+        if (!j || !CAN_SEE_OBJ(ch, j))
+          continue;
+        column += send_to_char(ch, "%s %s", found++ ? "," : "", j->short_description);
+        if (column >= 62) {
+          send_to_char(ch, "%s\r\n", oi + 1 < obj_count ? "," : "");
+          found = FALSE;
+          column = 0;
+        }
+      }
+      send_to_char(ch, "@n");
+    }
+    room_object_ids_free(obj_ids);
   }
 
   room_exits_iterate(rm, [&](auto i, auto exit) {
@@ -1699,16 +1706,22 @@ static void do_stat_object(struct char_data *ch, struct obj_data *j) {
     column = 9; /* ^^^ strlen ^^^ */
     found = 0;
 
-    obj_contents_iterate(j, [&](struct obj_data *j2) {
-      column +=
-          send_to_char(ch, "%s %s", found++ ? "," : "", j2->short_description);
-      if (column >= 62) {
-        send_to_char(ch, "%s\r\n", obj_next_content_get(j2) ? "," : "");
-        found = FALSE;
-        column = 0;
+    {
+      size_t cnt = 0;
+      auto ids = obj_contents_ids(j, &cnt);
+      for (size_t ci = 0; ci < cnt; ci++) {
+        auto j2 = obj_by_id(ids[ci]);
+        if (!j2) continue;
+        column +=
+            send_to_char(ch, "%s %s", found++ ? "," : "", j2->short_description);
+        if (column >= 62) {
+          send_to_char(ch, "%s\r\n", (ci + 1 < cnt) ? "," : "");
+          found = FALSE;
+          column = 0;
+        }
       }
-      return true;
-    });
+      obj_contents_ids_free(ids);
+    }
     send_to_char(ch, "@n");
   }
 
@@ -1743,7 +1756,6 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
   int i, i2, column, found = FALSE;
   struct obj_data *j;
   struct obj_data *chair;
-  struct follow_type *fol;
   struct affected_type *aff;
 
   if (IS_NPC(k)) {
@@ -1902,20 +1914,26 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
 
   column = send_to_char(ch, "Master is: %s, Followers are:",
                         k->master ? GET_NAME(k->master) : "<none>");
-  if (!k->followers)
-    send_to_char(ch, " <none>\r\n");
-  else {
-    for (fol = k->followers; fol; fol = fol->next) {
-      column += send_to_char(ch, "%s %s", found++ ? "," : "",
-                             PERS(fol->follower, ch));
-      if (column >= 62) {
-        send_to_char(ch, "%s\r\n", fol->next ? "," : "");
-        found = FALSE;
-        column = 0;
+  {
+    size_t fol_count;
+    auto fol_ids = char_follower_ids(k, &fol_count);
+    if (!fol_count) {
+      send_to_char(ch, " <none>\r\n");
+    } else {
+      for (size_t fi = 0; fi < fol_count; fi++) {
+        auto fol = char_by_id(fol_ids[fi]);
+        if (!fol) continue;
+        column += send_to_char(ch, "%s %s", found++ ? "," : "", PERS(fol, ch));
+        if (column >= 62) {
+          send_to_char(ch, "%s\r\n", fi + 1 < fol_count ? "," : "");
+          found = FALSE;
+          column = 0;
+        }
       }
+      if (column != 0)
+        send_to_char(ch, "\r\n");
     }
-    if (column != 0)
-      send_to_char(ch, "\r\n");
+    char_follower_ids_free(fol_ids);
   }
 
   if (SITS(k)) {
@@ -3836,7 +3854,7 @@ ACMD(do_show) {
         j += snprintf(strp + j, k - j, "\r\n");
       }
       if (l == 15)
-        vict = vict->next_affect;
+        vict = NULL;
     } while (low && vict);
     send_to_char(ch, "%s", strp);
     free(strp);

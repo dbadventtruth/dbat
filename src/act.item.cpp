@@ -3218,7 +3218,7 @@ ACMD(do_drop) {
     if (dotmode == FIND_ALL) {
       int fail = FALSE;
 
-      if (!ch->carrying)
+      if (!char_inventory_count(ch, false))
         send_to_char(ch, "You don't seem to be carrying anything.\r\n");
       else {
         char_inventory_iterate(ch, [&](auto obj) {
@@ -3491,7 +3491,7 @@ ACMD(do_give) {
         send_to_char(ch, "All of what?\r\n");
         return;
       }
-      if (!ch->carrying)
+      if (!char_inventory_count(ch, false))
         send_to_char(ch, "You don't seem to be holding anything.\r\n");
       else
         char_inventory_iterate(ch, [&](auto obj) {

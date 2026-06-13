@@ -166,7 +166,6 @@ int copy_mobile_to_proto(struct mob_proto_data *to, struct char_data *from) {
 int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
   int32_t id = to->id;
   struct descriptor_data *desc = to->desc;
-  struct char_data *next_affect = to->next_affect;
 
   free_mobile_strings(to);
   char_zig_free(to);
@@ -177,7 +176,6 @@ int copy_mobile_from_proto(struct char_data *to, struct mob_proto_data *from) {
 
   to->id = id;
   to->desc = desc;
-  to->next_affect = next_affect;
 
   to->proto_id = from->id;
   to->size = from->size;

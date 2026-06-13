@@ -487,7 +487,6 @@ void handle_disarm(struct char_data *ch, struct char_data *vict) {
 
 void combine_attacks(struct char_data *ch, struct char_data *vict) {
 
-  struct follow_type *f;
   char chbuf[MAX_INPUT_LENGTH], victbuf[MAX_INPUT_LENGTH],
       rmbuf[MAX_INPUT_LENGTH];
   int64_t bonus = 0;
@@ -791,34 +790,30 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
     GET_CHARGE(ch) = 0;
   }
 
-  for (f = ch->followers; f; f = f->next) {
-    if (!char_condition_has(f->follower, "group")) {
-      continue;
+  char_followers_iterate(ch, [&](struct char_data *fol) {
+    if (!char_condition_has(fol, "group")) return true;
+    if (GET_COMBINE(fol) != GET_COMBINE(ch))
+      same = FALSE;
+    if (GET_CHARGE(fol) >= GET_MAX_MANA(fol) * maxki) {
+      totki += GET_MAX_MANA(fol) * maxki;
+      GET_CHARGE(fol) -= GET_MAX_MANA(fol) * maxki;
     } else {
-      if (GET_COMBINE(f->follower) != GET_COMBINE(ch)) {
-        same = FALSE;
-      }
-      if (GET_CHARGE(f->follower) >= GET_MAX_MANA(f->follower) * maxki) {
-        totki += GET_MAX_MANA(f->follower) * maxki;
-        GET_CHARGE(f->follower) -= GET_MAX_MANA(f->follower) * maxki;
-      } else {
-        totki += GET_CHARGE(f->follower);
-        GET_CHARGE(f->follower) = 0;
-      }
-      totalmem += 1;
-      attavg += GET_SKILL(f->follower, attack_skills[GET_COMBINE(f->follower)]);
-      char folbuf[MAX_INPUT_LENGTH], folbuf2[MAX_INPUT_LENGTH];
-      sprintf(
-          folbuf,
-          "@Y$n@W times and merges $s @B'@R%s@B'@W into the group attack!@n",
-          attack_names_comp[GET_COMBINE(f->follower)]);
-      sprintf(folbuf2,
-              "@WYou time and merge your @B'@R%s@B'@W into the group attack!@n",
-              attack_names_comp[GET_COMBINE(f->follower)]);
-      act(folbuf, TRUE, f->follower, 0, 0, TO_ROOM);
-      act(folbuf2, TRUE, f->follower, 0, 0, TO_CHAR);
+      totki += GET_CHARGE(fol);
+      GET_CHARGE(fol) = 0;
     }
-  }
+    totalmem += 1;
+    attavg += GET_SKILL(fol, attack_skills[GET_COMBINE(fol)]);
+    char folbuf[MAX_INPUT_LENGTH], folbuf2[MAX_INPUT_LENGTH];
+    sprintf(folbuf,
+            "@Y$n@W times and merges $s @B'@R%s@B'@W into the group attack!@n",
+            attack_names_comp[GET_COMBINE(fol)]);
+    sprintf(folbuf2,
+            "@WYou time and merge your @B'@R%s@B'@W into the group attack!@n",
+            attack_names_comp[GET_COMBINE(fol)]);
+    act(folbuf, TRUE, fol, 0, 0, TO_ROOM);
+    act(folbuf2, TRUE, fol, 0, 0, TO_CHAR);
+    return true;
+  });
 
   totki += bonus;
   if (same == TRUE) {
@@ -871,11 +866,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
   }
   hurt(0, 0, ch, vict, NULL, totki, 1);
   if (same == TRUE) {
-    for (f = ch->followers; f; f = f->next) {
-      send_to_char(
-          f->follower,
-          "@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n");
-    }
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      send_to_char(fol, "@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n");
+      return true;
+    });
     send_to_char(ch,
                  "@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n");
   }

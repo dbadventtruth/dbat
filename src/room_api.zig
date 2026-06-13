@@ -150,8 +150,10 @@ pub export fn room_dir_option_get(room: *cdb.room_data, dir: c_int) [*c]cdb.room
     return room.dir_option[index];
 }
 
+extern fn room_person_first(room: *cdb.room_data) ?*cdb.char_data;
+
 pub export fn room_people_get(room: *cdb.room_data) [*c]cdb.char_data {
-    return room.people;
+    return room_person_first(room);
 }
 
 pub export fn room_ex_description_get(room: *cdb.room_data) [*c]cdb.extra_descr_data {
@@ -177,27 +179,15 @@ pub export fn room_script_set(room: *cdb.room_data, script: ?*cdb.script_data) v
     room.script = script;
 }
 
+extern fn room_object_first(room: *cdb.room_data) ?*cdb.obj_data;
+extern fn room_object_ids(room: *cdb.room_data, out_count: *usize) ?[*]i64;
+
 pub export fn room_contents_get(room: *cdb.room_data) [*c]cdb.obj_data {
-    return room.contents;
+    return room_object_first(room);
 }
 
 pub export fn room_objects_get(room: *cdb.room_data, count: *usize) ?[*]i64 {
-    var obj_count: usize = 0;
-    var current = room.contents;
-    while (current != null) : (current = current.*.next_content) {
-        obj_count += 1;
-    }
-    count.* = obj_count;
-    if (obj_count == 0) return null;
-
-    const array = std.heap.c_allocator.alloc(i64, obj_count) catch return null;
-    current = room.contents;
-    var index: usize = 0;
-    while (current != null) : (current = current.*.next_content) {
-        array[index] = current.*.id;
-        index += 1;
-    }
-    return array.ptr;
+    return room_object_ids(room, count);
 }
 
 fn replaceString(field: *[*c]u8, value: ?[*:0]const u8) void {
@@ -206,23 +196,29 @@ fn replaceString(field: *[*c]u8, value: ?[*:0]const u8) void {
     field.* = new_value;
 }
 
+extern fn room_person_ids(room: *cdb.room_data, out_count: *usize) ?[*]i64;
+extern fn room_person_ids_free(ptr: ?[*]i64) void;
+extern fn room_object_ids_free(ptr: ?[*]i64) void;
+
 pub export fn room_contents_iterate(room: *cdb.room_data, recursive: bool, func: ?obj_api.ObjIterFn, ctx: ?*anyopaque) void {
     const callback = func orelse return;
-    var current = room.contents;
-    while (current != null) {
-        const next = current.*.next_content;
-        if (!callback(&current.*, ctx)) return;
-        if (recursive and !obj_api.objContentsListIterate(current.*.contains, true, callback, ctx)) return;
-        current = next;
+    var count: usize = 0;
+    const ids = room_object_ids(room, &count) orelse return;
+    defer room_object_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const obj = cdb.obj_by_id(id) orelse continue;
+        if (!callback(obj, ctx)) return;
+        if (recursive and !obj_api.objContentsIterate(obj, true, callback, ctx)) return;
     }
 }
 
 pub export fn room_people_iterate(room: *cdb.room_data, func: cdb.char_iter_fn, ctx: ?*anyopaque) void {
     const callback = func orelse return;
-    var current = room.people;
-    while (current != null) {
-        const next = current.*.next_in_room;
-        if (!callback(&current.*, ctx)) return;
-        current = next;
+    var count: usize = 0;
+    const ids = room_person_ids(room, &count) orelse return;
+    defer room_person_ids_free(ids);
+    for (ids[0..count]) |id| {
+        const ch = cdb.char_by_id(id) orelse continue;
+        if (!callback(ch, ctx)) return;
     }
 }

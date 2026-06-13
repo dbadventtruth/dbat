@@ -65,33 +65,6 @@ int mag_materials(struct char_data *ch, int item0, int item1, int item2,
 void perform_mag_groups(int level, struct char_data *ch, struct char_data *tch,
                         int spellnum);
 
-/* affect_update: called from comm.c (causes spells to wear off) */
-void affect_update(void) {
-  struct affected_type *af, *next;
-  struct char_data *i;
-
-  for (i = affect_list; i; i = i->next_affect) {
-    if (!zone_player_count_get(char_zone_vnum_get(i))) continue;
-    for (af = i->affected; af; af = next) {
-      next = af->next;
-      if (af->duration >= 1)
-        af->duration--;
-      else if (af->duration == 0) {
-        if (af->type > 0)
-          if (!af->next || (af->next->type != af->type) ||
-              (af->next->duration > 0)) {
-            if (spell_info[af->type].wear_off_msg)
-              send_to_char(i, "%s\r\n", spell_info[af->type].wear_off_msg);
-            if (GET_SPEEDBOOST(i) > 0 && af->type == SPELL_HAYASA) {
-              GET_SPEEDBOOST(i) = 0;
-            }
-          }
-        affect_remove(i, af);
-      }
-    }
-  }
-}
-
 /*
  *  mag_materials:
  *  Checks for up to 3 vnums (spell reagents) in the player's inventory.
@@ -462,8 +435,7 @@ void perform_mag_groups(int level, struct char_data *ch, struct char_data *tch,
  * mag_groups -- just add a new case to perform_mag_groups.
  */
 void mag_groups(int level, struct char_data *ch, int spellnum) {
-  struct char_data *tch, *k;
-  struct follow_type *f, *f_next;
+  struct char_data *k;
 
   if (ch == NULL)
     return;
@@ -474,17 +446,16 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
     k = ch->master;
   else
     k = ch;
-  for (f = k->followers; f; f = f_next) {
-    f_next = f->next;
-    tch = f->follower;
+  char_followers_iterate(k, [&](struct char_data *tch) {
     if (char_room_get(tch) != char_room_get(ch))
-      continue;
+      return true;
     if (!char_condition_has(tch, "group"))
-      continue;
+      return true;
     if (ch == tch)
-      continue;
+      return true;
     perform_mag_groups(level, ch, tch, spellnum);
-  }
+    return true;
+  });
 
   if ((k != ch) && char_condition_has(k, "group"))
     perform_mag_groups(level, ch, k, spellnum);

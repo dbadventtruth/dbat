@@ -42,6 +42,12 @@ void obj_subscribe_ids_free(int64_t *ptr);
 int64_t *obj_all_ids(size_t *count);
 int64_t *obj_all_ids_newest(size_t *count);
 
+void obj_contents_add(struct obj_data *container, struct obj_data *obj);
+void obj_contents_remove(struct obj_data *container, struct obj_data *obj);
+int64_t *obj_contents_ids(struct obj_data *container, size_t *out_count);
+void obj_contents_ids_free(int64_t *ptr);
+size_t obj_contents_count(struct obj_data *container);
+
 void *obj_iterator_create();
 struct obj_data *obj_next(void *iterator);
 void obj_iterator_free(void *iterator);

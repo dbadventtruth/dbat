@@ -337,12 +337,17 @@ fn luaRoomPeopleGet(lua: *Lua) i32 {
     const room = checkRoom(lua);
     lua.newTable();
 
-    var current = cdb.room_people_get(room);
+    var count: usize = 0;
+    const ids = cdb.room_person_ids(room, &count);
     var index: usize = 1;
-    while (current != null) : (current = current.*.next_in_room) {
-        characters_lua.pushCharacter(lua, cdb.char_id_get(current));
-        lua.setIndex(-2, @intCast(index));
-        index += 1;
+    if (ids) |id_list| {
+        defer cdb.room_person_ids_free(id_list);
+        for (id_list[0..count]) |id| {
+            const ch = cdb.char_by_id(id) orelse continue;
+            characters_lua.pushCharacter(lua, cdb.char_id_get(ch));
+            lua.setIndex(-2, @intCast(index));
+            index += 1;
+        }
     }
 
     return valueIterator(lua);

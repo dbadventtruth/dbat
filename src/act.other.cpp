@@ -9714,7 +9714,7 @@ ACMD(do_quit) {
     mudlog(NRM, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE,
            "%s has quit the game.", GET_NAME(ch));
     send_to_char(ch, "Goodbye, friend.. Come back soon!\r\n");
-    if (ch->followers || ch->master)
+    if (char_follower_count(ch) || ch->master)
       die_follower(ch);
     if (ch == ch_selling)
       stop_auction(AUC_QUIT_CANCEL, NULL);
@@ -10217,7 +10217,6 @@ static int perform_group(struct char_data *ch, struct char_data *vict,
 
 static void print_group(struct char_data *ch) {
   struct char_data *k;
-  struct follow_type *f;
 
   if (!char_condition_has(ch, "group"))
     send_to_char(ch, "But you are not the member of a group!\r\n");
@@ -10249,34 +10248,28 @@ static void print_group(struct char_data *ch) {
       act(buf, FALSE, ch, 0, k, TO_CHAR);
     }
 
-    for (f = k->followers; f; f = f->next) {
-      if (!char_condition_has(f->follower, "group"))
-        continue;
+    char_followers_iterate(k, [&](struct char_data *fol) {
+      if (!char_condition_has(fol, "group")) return true;
       send_to_char(ch, "@D----------------@n\r\n");
-      if (GET_HIT(f->follower) >
-          (GET_MAX_HIT(f->follower) - (getCurCarriedWeight(f->follower))) /
-              10) {
+      if (GET_HIT(fol) > (GET_MAX_HIT(fol) - (getCurCarriedWeight(fol))) / 10) {
         snprintf(buf, sizeof(buf),
                  "@gF@D: @w$N @W- @D[@RPL@Y: @c%s @CKi@Y: @c%s @GST@Y: @c%s@D] "
                  "[@w%2d %s %s@D]",
-                 add_commas(GET_HIT(f->follower)),
-                 add_commas((getCurKI(f->follower))),
-                 add_commas((getCurST(f->follower))), GET_LEVEL(f->follower),
-                 CLASS_ABBR(f->follower), RACE_ABBR(f->follower));
+                 add_commas(GET_HIT(fol)), add_commas((getCurKI(fol))),
+                 add_commas((getCurST(fol))), GET_LEVEL(fol),
+                 CLASS_ABBR(fol), RACE_ABBR(fol));
       }
-      if (GET_HIT(f->follower) <=
-          (GET_MAX_HIT(f->follower) - (getCurCarriedWeight(f->follower))) /
-              10) {
+      if (GET_HIT(fol) <= (GET_MAX_HIT(fol) - (getCurCarriedWeight(fol))) / 10) {
         snprintf(buf, sizeof(buf),
                  "@gF@D: @w$N @W- @D[@RPL@Y: @r%s @CKi@Y: @c%s @GST@Y: @c%s@D] "
                  "[@w%2d %s %s@D]",
-                 add_commas(GET_HIT(f->follower)),
-                 add_commas((getCurKI(f->follower))),
-                 add_commas((getCurST(f->follower))), GET_LEVEL(f->follower),
-                 CLASS_ABBR(f->follower), RACE_ABBR(f->follower));
+                 add_commas(GET_HIT(fol)), add_commas((getCurKI(fol))),
+                 add_commas((getCurST(fol))), GET_LEVEL(fol),
+                 CLASS_ABBR(fol), RACE_ABBR(fol));
       }
-      act(buf, FALSE, ch, 0, f->follower, TO_CHAR);
-    }
+      act(buf, FALSE, ch, 0, fol, TO_CHAR);
+      return true;
+    });
     send_to_char(ch, "@D----------------@n\r\n");
   }
 }
@@ -10284,7 +10277,6 @@ static void print_group(struct char_data *ch) {
 ACMD(do_group) {
   char buf[MAX_STRING_LENGTH];
   struct char_data *vict;
-  struct follow_type *f;
   int found, highlvl = 0, lowlvl = 0;
   int64_t highpl = 0, lowpl = 0;
 
@@ -10311,31 +10303,28 @@ ACMD(do_group) {
   highpl = getMaxPL(ch);
   lowpl = getMaxPL(ch);
 
-  for (found = 0, f = ch->followers; f; f = f->next) {
-    if (char_condition_has(f->follower, "group")) {
-      if (GET_LEVEL(f->follower) > highlvl) {
-        highlvl = GET_LEVEL(f->follower);
-      }
-      if (GET_LEVEL(f->follower) < lowlvl) {
-        lowlvl = GET_LEVEL(f->follower);
-      }
+  char_followers_iterate(ch, [&](struct char_data *fol) {
+    if (char_condition_has(fol, "group")) {
+      if (GET_LEVEL(fol) > highlvl) highlvl = GET_LEVEL(fol);
+      if (GET_LEVEL(fol) < lowlvl)  lowlvl  = GET_LEVEL(fol);
     }
-  }
+    return true;
+  });
 
   int foundwas = 0;
 
   if (!strcasecmp(buf, "all")) {
     perform_group(ch, ch, GET_LEVEL(ch), GET_LEVEL(ch), highpl, lowpl);
-    for (found = 0, f = ch->followers; f; f = f->next) {
+    found = 0;
+    char_followers_iterate(ch, [&](struct char_data *fol) {
       foundwas = found;
-      found += perform_group(ch, f->follower, highlvl, lowlvl, highpl, lowpl);
+      found += perform_group(ch, fol, highlvl, lowlvl, highpl, lowpl);
       if (found > foundwas) {
-        if (GET_LEVEL(f->follower) > highlvl)
-          highlvl = GET_LEVEL(f->follower);
-        else if (GET_LEVEL(f->follower) < lowlvl)
-          lowlvl = GET_LEVEL(f->follower);
+        if (GET_LEVEL(fol) > highlvl) highlvl = GET_LEVEL(fol);
+        else if (GET_LEVEL(fol) < lowlvl) lowlvl = GET_LEVEL(fol);
       }
-    }
+      return true;
+    });
     if (!found)
       send_to_char(ch, "Everyone following you is already in your group.\r\n");
     return;
@@ -10367,7 +10356,6 @@ ACMD(do_group) {
 
 ACMD(do_ungroup) {
   char buf[MAX_INPUT_LENGTH];
-  struct follow_type *f, *next_fol;
   struct char_data *tch;
 
   one_argument(argument, buf);
@@ -10378,16 +10366,15 @@ ACMD(do_ungroup) {
       return;
     }
 
-    for (f = ch->followers; f; f = next_fol) {
-      next_fol = f->next;
-      if (char_condition_has(f->follower, "group")) {
-        char_condition_remove(f->follower, "group", "leave_group");
-        act("$N has disbanded the group.", TRUE, f->follower, NULL, ch,
-            TO_CHAR);
-        if (!AFF_FLAGGED(f->follower, AFF_CHARM))
-          stop_follower(f->follower);
+    char_followers_iterate(ch, [&](struct char_data *fol) {
+      if (char_condition_has(fol, "group")) {
+        char_condition_remove(fol, "group", "leave_group");
+        act("$N has disbanded the group.", TRUE, fol, NULL, ch, TO_CHAR);
+        if (!AFF_FLAGGED(fol, AFF_CHARM))
+          stop_follower(fol);
       }
-    }
+      return true;
+    });
 
     char_condition_remove(ch, "group", "leave_group");
     send_to_char(ch, "You disband the group.\r\n");
@@ -10420,7 +10407,6 @@ ACMD(do_ungroup) {
 ACMD(do_report) {
   char buf[MAX_STRING_LENGTH];
   struct char_data *k;
-  struct follow_type *f;
 
   if (!char_condition_has(ch, "group")) {
     send_to_char(ch, "But you are not a member of any group!\r\n");
@@ -10435,9 +10421,11 @@ ACMD(do_report) {
 
   k = (ch->master ? ch->master : ch);
 
-  for (f = k->followers; f; f = f->next)
-    if (char_condition_has(f->follower, "group") && f->follower != ch)
-      act(buf, TRUE, ch, NULL, f->follower, TO_VICT);
+  char_followers_iterate(k, [&](struct char_data *fol) {
+    if (char_condition_has(fol, "group") && fol != ch)
+      act(buf, TRUE, ch, NULL, fol, TO_VICT);
+    return true;
+  });
 
   if (k != ch)
     act(buf, TRUE, ch, NULL, k, TO_VICT);
@@ -10450,7 +10438,6 @@ ACMD(do_split) {
   int amount, num, share, rest;
   size_t len;
   struct char_data *k;
-  struct follow_type *f;
 
   if (IS_NPC(ch))
     return;
@@ -10475,11 +10462,12 @@ ACMD(do_split) {
     else
       num = 0;
 
-    for (f = k->followers; f; f = f->next)
-      if (char_condition_has(f->follower, "group") && (!IS_NPC(f->follower)) &&
-          f->follower != ch &&
-          (char_room_get(f->follower) == char_room_get(ch)))
+    char_followers_iterate(k, [&](struct char_data *fol) {
+      if (char_condition_has(fol, "group") && !IS_NPC(fol) &&
+          fol != ch && (char_room_get(fol) == char_room_get(ch)))
         num++;
+      return true;
+    });
 
     if (num > 0 && char_condition_has(ch, "group")) {
       share = amount / num;
@@ -10505,15 +10493,14 @@ ACMD(do_split) {
       send_to_char(k, "%s", buf);
     }
 
-    for (f = k->followers; f; f = f->next) {
-      if (char_condition_has(f->follower, "group") && (!IS_NPC(f->follower)) &&
-          (char_room_get(f->follower) == char_room_get(ch)) &&
-          f->follower != ch) {
-
-        char_stat_mod(f->follower, "money", share);
-        send_to_char(f->follower, "%s", buf);
+    char_followers_iterate(k, [&](struct char_data *fol) {
+      if (char_condition_has(fol, "group") && !IS_NPC(fol) &&
+          (char_room_get(fol) == char_room_get(ch)) && fol != ch) {
+        char_stat_mod(fol, "money", share);
+        send_to_char(fol, "%s", buf);
       }
-    }
+      return true;
+    });
     send_to_char(ch,
                  "You split %d zenni among %d members -- %d zenni each.\r\n",
                  amount, num, share);

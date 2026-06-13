@@ -94,6 +94,7 @@
 #include "screen.h"
 
 #include "iterate.hpp"
+#include <vector>
 
 /* local functions */
 static void gen_map(struct char_data *ch, int num);
@@ -2436,33 +2437,41 @@ static int show_obj_modifiers(struct obj_data *obj, struct char_data *ch) {
 
 static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
                              int mode, bool show) {
-  struct obj_data *i, *j, *d;
   bool found = FALSE;
-  int num;
-  struct obj_data *obj_list = NULL;
 
+  /* Build a snapshot of the object list from Zig maps */
+  std::vector<struct obj_data *> objs;
   switch (list.entity_type) {
   case ENT_CHAR:
-    obj_list = char_carrying_get(list.entity.ch);
+    char_inventory_iterate(list.entity.ch, [&](struct obj_data *o) {
+      objs.push_back(o); return true;
+    });
     break;
   case ENT_OBJ:
-    obj_list = list.entity.obj->contains;
+    obj_contents_iterate(list.entity.obj, [&](struct obj_data *o) {
+      objs.push_back(o); return true;
+    });
     break;
   case ENT_ROOM:
-    obj_list = room_contents_get(list.entity.room);
+    room_contents_iterate(list.entity.room, [&](struct obj_data *o) {
+      objs.push_back(o); return true;
+    });
     break;
   }
 
-  /* Loop through all objects in the list */
-  for (i = obj_list; i; i = i->next_content) {
+  for (size_t ii = 0; ii < objs.size(); ii++) {
+    auto i = objs[ii];
     if (i->description == NULL)
       continue;
     if (strcasecmp(i->description, "undefined") == 0)
       continue;
-    num = 0;
-    d = i;
+    int num = 0;
+    struct obj_data *d = i;
     if (CONFIG_STACK_OBJS) {
-      for (j = obj_list; j != i; j = j->next_content)
+      /* Check if any earlier object in the snapshot matches i */
+      size_t jj;
+      for (jj = 0; jj < ii; jj++) {
+        auto j = objs[jj];
         if ((!strcasecmp(j->short_description, i->short_description) &&
              !strcasecmp(j->description, i->description)) &&
             (j->proto_id == i->proto_id) &&
@@ -2488,9 +2497,12 @@ static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
                            GET_OBJ_VNUM(j) == 255 && GET_OBJ_VNUM(i) == 255) ||
                           (GET_OBJ_VNUM(j) != 255 && GET_OBJ_VNUM(i) != 255))
                         break;
-      if (j != i)
+      }
+      if (jj < ii)  /* Earlier match found — this obj was already counted */
         continue;
-      for (d = j = i; j; j = j->next_content)
+      /* Count matching objects from position ii forward */
+      for (size_t kk = ii; kk < objs.size(); kk++) {
+        auto j = objs[kk];
         if ((!strcasecmp(j->short_description, i->short_description) &&
              !strcasecmp(j->description, i->description)) &&
             (j->proto_id == i->proto_id) &&
@@ -2520,6 +2532,7 @@ static void list_obj_to_char(struct inventory_data list, struct char_data *ch,
                           if (d == i && !CAN_SEE_OBJ(ch, d))
                             d = j;
                         }
+      }
     }
     if ((CAN_SEE_OBJ(ch, d) &&
          ((*d->description != '.' && *d->short_description != '.') ||
@@ -3433,26 +3446,31 @@ static void list_char_to_char(struct room_data *room, struct char_data *ch) {
     return true;
   });
 
-  room_people_iterate(room, [&](auto i) {
+  std::vector<struct char_data *> people;
+  room_people_iterate(room, [&](auto p) { people.push_back(p); return true; });
+
+  for (size_t ii = 0; ii < people.size(); ii++) {
+    auto i = people[ii];
     /* hide npcs whose description starts with a '.' from non-holylighted people
     - Idea from Elaseth of TBA */
     if ((ch == i) || (!IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_HOLYLIGHT) &&
                       IS_NPC(i) && i->long_descr && *i->long_descr == '.'))
-      return true;
+      continue;
 
     for (tmphide = hideinfo; tmphide; tmphide = tmphide->next)
       if (tmphide->hidden == i)
         break;
     if (tmphide)
-      return true;
+      continue;
 
-    struct char_data *j;
     int num;
     if (CAN_SEE(ch, i)) {
       num = 0;
       if (CONFIG_STACK_MOBS) {
-        /* How many other occurences of this mob are there? */
-        for (j = room_people_get(room); j != i; j = j->next_in_room)
+        /* How many other occurrences of this mob are there? */
+        size_t jj;
+        for (jj = 0; jj < ii; jj++) {
+          auto j = people[jj];
           if ((i->proto_id == j->proto_id) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
               (AFF_FLAGS(i)[1] == AFF_FLAGS(j)[1]) &&
@@ -3467,13 +3485,15 @@ static void list_char_to_char(struct room_data *room, struct char_data *ch) {
             if (!tmphide)
               break;
           }
-        if (j != i)
+        }
+        if (jj < ii)
           /* This will be true where we have already found this
            * mob for an earlier "i".  The continue pops us out of
            * the main "i" for loop.
            */
-          return true;
-        for (j = i; j; j = j->next_in_room)
+          continue;
+        for (size_t kk = ii; kk < people.size(); kk++) {
+          auto j = people[kk];
           if ((i->proto_id == j->proto_id) && (GET_POS(i) == GET_POS(j)) &&
               (AFF_FLAGS(i)[0] == AFF_FLAGS(j)[0]) &&
               (AFF_FLAGS(i)[1] == AFF_FLAGS(j)[1]) &&
@@ -3488,6 +3508,7 @@ static void list_char_to_char(struct room_data *room, struct char_data *ch) {
             if (!tmphide)
               num++;
           }
+        }
       }
       /* Now show this mob's name and other stuff */
       send_to_char(ch, "@w");
@@ -3500,8 +3521,7 @@ static void list_char_to_char(struct room_data *room, struct char_data *ch) {
              AFF_FLAGGED(i, AFF_INFRAVISION))
       send_to_char(
           ch, "@wYou see a pair of glowing red eyes looking your way.@n\r\n");
-    return true;
-  }); /* loop through all characters in room */
+  } /* loop through all characters in room */
 }
 
 static void capitalize_direction(char *out, size_t out_size, int door) {
@@ -6712,7 +6732,7 @@ ACMD(do_who) {
         continue;
       if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
         continue;
-      if (showleader && (!tch->followers || !char_condition_has(tch, "group")))
+      if (showleader && (!char_follower_count(tch) || !char_condition_has(tch, "group")))
         continue;
 
       if (short_list) {

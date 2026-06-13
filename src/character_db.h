@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+struct obj_data;
+
 extern struct char_data *affect_list;
 
 extern long max_mob_id;
@@ -31,6 +33,18 @@ int64_t *char_all_ids(size_t *count);
 int64_t *char_all_ids_newest(size_t *count);
 void char_extract_pending_add(int64_t id);
 int64_t *char_extract_pending_take(size_t *count);
+
+void char_inventory_add(struct char_data *ch, struct obj_data *obj);
+void char_inventory_remove(struct char_data *ch, struct obj_data *obj);
+int64_t *char_inventory_ids(struct char_data *ch, size_t *out_count);
+void char_inventory_ids_free(int64_t *ptr);
+void char_inventory_move_after(struct char_data *ch, struct obj_data *obj, struct obj_data *after);
+
+void char_follower_add(struct char_data *master, struct char_data *follower);
+void char_follower_remove(struct char_data *master, struct char_data *follower);
+int64_t *char_follower_ids(struct char_data *master, size_t *out_count);
+void char_follower_ids_free(int64_t *ptr);
+size_t char_follower_count(struct char_data *master);
 
 void *char_iterator_create();
 struct char_data *char_next(void *iterator);

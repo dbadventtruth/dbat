@@ -43,8 +43,6 @@ struct room_data {
   uint16_t light; /* Number of lightsources in room     */
   SpecialFunc func;
 
-  struct obj_data *contents; /* List of items in room              */
-  struct char_data *people;  /* List of NPC / PC in room           */
 
   int timed;   /* For timed Dt's                     */
   int dmg;     /* How damaged the room is            */

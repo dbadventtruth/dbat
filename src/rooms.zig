@@ -3,21 +3,36 @@ const std = @import("std");
 
 const RoomMap = std.AutoHashMap(cdb.room_vnum, *cdb.room_data);
 const RoomIdSet = std.AutoHashMap(cdb.room_vnum, void);
+const IdList = std.ArrayListUnmanaged(i64);
 
 var allocator: std.mem.Allocator = undefined;
 var room_map: RoomMap = undefined;
 var subscriptions_by_tag: std.StringHashMap(RoomIdSet) = undefined;
+var room_people_map: std.AutoHashMap(cdb.room_vnum, IdList) = undefined;
+var room_objects_map: std.AutoHashMap(cdb.room_vnum, IdList) = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     room_map = RoomMap.init(allocator);
     subscriptions_by_tag = std.StringHashMap(RoomIdSet).init(allocator);
+    room_people_map = std.AutoHashMap(cdb.room_vnum, IdList).init(allocator);
+    room_objects_map = std.AutoHashMap(cdb.room_vnum, IdList).init(allocator);
 }
 
 pub fn deinit() void {
     deinitSubscriptions();
     room_map.deinit();
     subscriptions_by_tag.deinit();
+    {
+        var it = room_people_map.valueIterator();
+        while (it.next()) |list| list.deinit(allocator);
+        room_people_map.deinit();
+    }
+    {
+        var it = room_objects_map.valueIterator();
+        while (it.next()) |list| list.deinit(allocator);
+        room_objects_map.deinit();
+    }
 }
 
 const RoomIterator = struct {
@@ -46,13 +61,132 @@ pub export fn room_put(vnum: cdb.room_vnum, room: ?*cdb.room_data) void {
         room_map.put(vnum, ptr) catch return;
     } else {
         room_clear_subscriptions(vnum);
+        cleanupRoomContainment(vnum);
         _ = room_map.remove(vnum);
     }
 }
 
 pub export fn room_delete(vnum: cdb.room_vnum) void {
     room_clear_subscriptions(vnum);
+    cleanupRoomContainment(vnum);
     _ = room_map.remove(vnum);
+}
+
+fn cleanupRoomContainment(vnum: cdb.room_vnum) void {
+    if (room_people_map.fetchRemove(vnum)) |kv| {
+        var list = kv.value;
+        list.deinit(allocator);
+    }
+    if (room_objects_map.fetchRemove(vnum)) |kv| {
+        var list = kv.value;
+        list.deinit(allocator);
+    }
+}
+
+// --- Room containment ID tracking ---
+
+pub export fn room_person_add(room: *cdb.room_data, ch: *cdb.char_data) void {
+    const vnum = cdb.room_vnum_get(room);
+    const id = cdb.char_id_get(ch);
+    const entry = room_people_map.getOrPut(vnum) catch return;
+    if (!entry.found_existing) entry.value_ptr.* = IdList.empty;
+    entry.value_ptr.append(allocator, id) catch {};
+}
+
+pub export fn room_person_remove(room: *cdb.room_data, ch: *cdb.char_data) void {
+    const vnum = cdb.room_vnum_get(room);
+    const id = cdb.char_id_get(ch);
+    const list = room_people_map.getPtr(vnum) orelse return;
+    for (list.items, 0..) |item, i| {
+        if (item == id) {
+            _ = list.swapRemove(i);
+            return;
+        }
+    }
+}
+
+pub export fn room_person_ids(room: *cdb.room_data, out_count: *usize) ?[*]i64 {
+    const vnum = cdb.room_vnum_get(room);
+    const list = room_people_map.getPtr(vnum) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = list.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], list.items);
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn room_person_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+pub export fn room_object_add(room: *cdb.room_data, obj: *cdb.obj_data) void {
+    const vnum = cdb.room_vnum_get(room);
+    const id = cdb.obj_id_get(obj);
+    const entry = room_objects_map.getOrPut(vnum) catch return;
+    if (!entry.found_existing) entry.value_ptr.* = IdList.empty;
+    entry.value_ptr.append(allocator, id) catch {};
+}
+
+pub export fn room_object_remove(room: *cdb.room_data, obj: *cdb.obj_data) void {
+    const vnum = cdb.room_vnum_get(room);
+    const id = cdb.obj_id_get(obj);
+    const list = room_objects_map.getPtr(vnum) orelse return;
+    for (list.items, 0..) |item, i| {
+        if (item == id) {
+            _ = list.swapRemove(i);
+            return;
+        }
+    }
+}
+
+pub export fn room_object_ids(room: *cdb.room_data, out_count: *usize) ?[*]i64 {
+    const vnum = cdb.room_vnum_get(room);
+    const list = room_objects_map.getPtr(vnum) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = list.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], list.items);
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn room_object_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+pub export fn room_person_first(room: *cdb.room_data) ?*cdb.char_data {
+    const vnum = cdb.room_vnum_get(room);
+    const list = room_people_map.getPtr(vnum) orelse return null;
+    if (list.items.len == 0) return null;
+    return cdb.char_by_id(list.items[0]);
+}
+
+pub export fn room_object_first(room: *cdb.room_data) ?*cdb.obj_data {
+    const vnum = cdb.room_vnum_get(room);
+    const list = room_objects_map.getPtr(vnum) orelse return null;
+    if (list.items.len == 0) return null;
+    return cdb.obj_by_id(list.items[0]);
 }
 
 pub export fn room_count() usize {

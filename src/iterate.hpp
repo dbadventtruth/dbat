@@ -207,52 +207,47 @@ template <typename Func> inline void room_exits_iterate(struct room_data *room, 
   }
 }
 
+/* Snapshot-based room/obj/char containment iterators — safe across extraction
+   and modification of the list during iteration. */
+
 template <typename Func> inline void room_people_iterate(struct room_data *room, Func &&func) {
   if(!room) return;
-
-  struct char_data *next = nullptr;
-  for (auto c = room_people_get(room); c; c = next) {
-    next = char_next_in_room_get(c);
-    if (!func(c)) {
-      break;
-    }
-  }
+  size_t count;
+  auto ids = room_person_ids(room, &count);
+  char_iterate_id_list(ids, count, func);
+  room_person_ids_free(ids);
 }
 
 template <typename Func> inline void room_contents_iterate(struct room_data *room, Func &&func) {
   if(!room) return;
-
-  struct obj_data *next = nullptr;
-  for (auto o = room_contents_get(room); o; o = next) {
-    next = obj_next_content_get(o);
-    if (!func(o)) {
-      break;
-    }
-  }
+  size_t count;
+  auto ids = room_object_ids(room, &count);
+  obj_iterate_id_list(ids, count, func);
+  room_object_ids_free(ids);
 }
 
 template <typename Func> inline void obj_contents_iterate(struct obj_data *obj, Func &&func) {
   if(!obj) return;
-
-  struct obj_data *next = nullptr;
-  for (auto o = obj_contains_get(obj); o; o = next) {
-    next = obj_next_content_get(o);
-    if (!func(o)) {
-      break;
-    }
-  }
+  size_t count;
+  auto ids = obj_contents_ids(obj, &count);
+  obj_iterate_id_list(ids, count, func);
+  obj_contents_ids_free(ids);
 }
 
 template <typename Func> inline void char_inventory_iterate(struct char_data *ch, Func &&func) {
   if(!ch) return;
+  size_t count;
+  auto ids = char_inventory_ids(ch, &count);
+  obj_iterate_id_list(ids, count, func);
+  char_inventory_ids_free(ids);
+}
 
-  struct obj_data *next = nullptr;
-  for (auto o = char_carrying_get(ch); o; o = next) {
-    next = obj_next_content_get(o);
-    if (!func(o)) {
-      break;
-    }
-  }
+template <typename Func> inline void char_followers_iterate(struct char_data *ch, Func &&func) {
+  if(!ch) return;
+  size_t count;
+  auto ids = char_follower_ids(ch, &count);
+  char_iterate_id_list(ids, count, func);
+  char_follower_ids_free(ids);
 }
 
 template <typename Func> inline void char_equipment_iterate(struct char_data *ch, Func &&func) {

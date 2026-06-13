@@ -3,6 +3,7 @@ const std = @import("std");
 const event_queue = @import("event_queue.zig");
 
 const IdSet = std.AutoHashMap(i64, void);
+const IdList = std.ArrayListUnmanaged(i64);
 const ObjCallback = *const fn (*cdb.obj_data) callconv(.c) void;
 const ObjProtoEntry = struct {
     proto: ?*cdb.obj_proto_data = null,
@@ -15,18 +16,25 @@ var allocator: std.mem.Allocator = undefined;
 var objs_by_id: std.AutoHashMap(i64, *cdb.obj_data) = undefined;
 var subscriptions_by_list: std.StringHashMap(IdSet) = undefined;
 var obj_proto_map: ObjProtoMap = undefined;
+var obj_contents_map: std.AutoHashMap(i64, IdList) = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
     objs_by_id = std.AutoHashMap(i64, *cdb.obj_data).init(allocator);
     subscriptions_by_list = std.StringHashMap(IdSet).init(allocator);
     obj_proto_map = ObjProtoMap.init(allocator);
+    obj_contents_map = std.AutoHashMap(i64, IdList).init(allocator);
 }
 
 pub fn deinit() void {
     deinitSubscriptions();
     objs_by_id.deinit();
     obj_proto_map.deinit();
+    {
+        var it = obj_contents_map.valueIterator();
+        while (it.next()) |list| list.deinit(allocator);
+        obj_contents_map.deinit();
+    }
 }
 
 pub export fn obj_by_id(id: i64) ?*cdb.obj_data {
@@ -46,6 +54,10 @@ pub export fn obj_register_id(id: i64, obj: ?*cdb.obj_data) c_int {
 pub export fn obj_unregister_id(id: i64) void {
     obj_clear_subscriptions(id);
     _ = event_queue.cancelOwner(event_queue.OWNER_OBJ, id, null);
+    if (obj_contents_map.fetchRemove(id)) |kv| {
+        var list = kv.value;
+        list.deinit(allocator);
+    }
     _ = objs_by_id.remove(id);
 }
 
@@ -301,6 +313,66 @@ pub export fn obj_proto_count_decrement(vnum: cdb.obj_vnum) void {
     if (entry.count == 0 and entry.proto == null and entry.special == null) {
         _ = obj_proto_map.remove(vnum);
     }
+}
+
+// --- Object contents tracking ---
+
+pub export fn obj_contents_add(container: *cdb.obj_data, obj: *cdb.obj_data) void {
+    const container_id = cdb.obj_id_get(container);
+    const obj_id = cdb.obj_id_get(obj);
+    const entry = obj_contents_map.getOrPut(container_id) catch return;
+    if (!entry.found_existing) entry.value_ptr.* = IdList.empty;
+    entry.value_ptr.append(allocator, obj_id) catch {};
+}
+
+pub export fn obj_contents_remove(container: *cdb.obj_data, obj: *cdb.obj_data) void {
+    const container_id = cdb.obj_id_get(container);
+    const obj_id = cdb.obj_id_get(obj);
+    const list = obj_contents_map.getPtr(container_id) orelse return;
+    for (list.items, 0..) |item, i| {
+        if (item == obj_id) {
+            _ = list.swapRemove(i);
+            return;
+        }
+    }
+}
+
+pub export fn obj_contents_ids(container: *cdb.obj_data, out_count: *usize) ?[*]i64 {
+    const container_id = cdb.obj_id_get(container);
+    const list = obj_contents_map.getPtr(container_id) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const count = list.items.len;
+    if (count == 0) {
+        out_count.* = 0;
+        return null;
+    }
+    const mem = std.c.malloc(count * @sizeOf(i64)) orelse {
+        out_count.* = 0;
+        return null;
+    };
+    const ids: [*]i64 = @ptrCast(@alignCast(mem));
+    @memcpy(ids[0..count], list.items);
+    out_count.* = count;
+    return ids;
+}
+
+pub export fn obj_contents_ids_free(ptr: ?[*]i64) void {
+    std.c.free(@as(?*anyopaque, @ptrCast(ptr)));
+}
+
+pub export fn obj_contents_count(container: *cdb.obj_data) usize {
+    const container_id = cdb.obj_id_get(container);
+    const list = obj_contents_map.getPtr(container_id) orelse return 0;
+    return list.items.len;
+}
+
+pub export fn obj_contents_first(container: *cdb.obj_data) ?*cdb.obj_data {
+    const container_id = cdb.obj_id_get(container);
+    const list = obj_contents_map.getPtr(container_id) orelse return null;
+    if (list.items.len == 0) return null;
+    return cdb.obj_by_id(list.items[0]);
 }
 
 fn unsubscribe(id: i64, name: []const u8) void {

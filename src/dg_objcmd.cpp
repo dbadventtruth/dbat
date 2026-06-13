@@ -324,11 +324,9 @@ OCMD(do_otransform) {
     tmpobj.worn_by = obj->worn_by;
     tmpobj.worn_on = obj->worn_on;
     tmpobj.in_obj = obj->in_obj;
-    tmpobj.contains = obj->contains;
     tmpobj.id = obj->id;
     tmpobj.proto_script = obj->proto_script;
     tmpobj.script = obj->script;
-    tmpobj.next_content = obj->next_content;
     memcpy(obj, &tmpobj, sizeof(*obj));
 
     if (wearer) {

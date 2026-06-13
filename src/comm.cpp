@@ -453,7 +453,6 @@ static void ev_point_update(int, int64_t, int64_t) { point_update(); }
 static void ev_weather_time_affects(int, int64_t, int64_t) {
   weather_and_time(1);
   check_time_triggers();
-  affect_update();
 }
 
 static void ev_autosave(int, int64_t, int64_t) {
@@ -2470,20 +2469,20 @@ void send_to_planet(int type, int planet, const char *messg, ...) {
 }
 
 void send_to_room(struct room_data *room, const char *messg, ...) {
-  struct char_data *i;
-  va_list args;
-
   if (messg == NULL)
     return;
 
-  for (i = room_people_get(room); i; i = i->next_in_room) {
-    if (!i->desc)
-      continue;
+  char buf[MAX_STRING_LENGTH];
+  va_list args;
+  va_start(args, messg);
+  vsnprintf(buf, sizeof(buf), messg, args);
+  va_end(args);
 
-    va_start(args, messg);
-    vwrite_to_output(i->desc, messg, args);
-    va_end(args);
-  }
+  room_people_iterate(room, [&](struct char_data *i) {
+    if (i->desc)
+      write_to_output(i->desc, "%s", buf);
+    return true;
+  });
 
   struct descriptor_data *d;
 
@@ -2655,6 +2654,7 @@ void perform_act(const char *orig, struct char_data *ch, struct obj_data *obj,
 char *act(const char *str, int hide_invisible, struct char_data *ch,
           struct obj_data *obj, const void *vict_obj, int type) {
   struct char_data *to;
+  struct room_data *act_room = nullptr;
   int to_sleeping, res_sneak, res_hide, dcval = 0, resskill = 0;
 
   if (!str || !*str)
@@ -2738,9 +2738,9 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
   /* ASSUMPTION: at this point we know type must be TO_NOTVICT or TO_ROOM */
 
   if (ch && char_room_get(ch) != NULL)
-    to = room_people_get(char_room_get(ch));
+    act_room = char_room_get(ch);
   else if (obj && obj_room_get(obj) != NULL)
-    to = room_people_get(obj_room_get(obj));
+    act_room = obj_room_get(obj);
   else {
     return NULL;
   }
@@ -2794,17 +2794,14 @@ char *act(const char *str, int hide_invisible, struct char_data *ch,
     }
   }
 
-  for (; to; to = to->next_in_room) {
-    if (!SENDOK(to) || (to == ch))
-      continue;
-    if (hide_invisible && ch && !CAN_SEE(to, ch))
-      continue;
-    if (type != TO_ROOM && to == vict_obj)
-      continue;
-    if (resskill && roll_skill(to, resskill) < dcval)
-      continue;
-    perform_act(str, ch, obj, vict_obj, to);
-  }
+  room_people_iterate(act_room, [&](struct char_data *rp) {
+    if (!SENDOK(rp) || (rp == ch)) return true;
+    if (hide_invisible && ch && !CAN_SEE(rp, ch)) return true;
+    if (type != TO_ROOM && rp == vict_obj) return true;
+    if (resskill && roll_skill(rp, resskill) < dcval) return true;
+    perform_act(str, ch, obj, vict_obj, rp);
+    return true;
+  });
   return last_act_message;
 }
 /* Prefer the file over the descriptor. */
@@ -2902,8 +2899,6 @@ void show_help(struct descriptor_data *t, const char *entry) {
 
 /* Thx to Jamie Nelson of 4D for this contribution */
 void send_to_range(room_vnum start, room_vnum finish, const char *messg, ...) {
-  struct char_data *i;
-  va_list args;
   int j;
 
   if (start > finish) {
@@ -2913,18 +2908,20 @@ void send_to_range(room_vnum start, room_vnum finish, const char *messg, ...) {
   if (messg == NULL)
     return;
 
+  char buf[MAX_STRING_LENGTH];
+  va_list args;
+  va_start(args, messg);
+  vsnprintf(buf, sizeof(buf), messg, args);
+  va_end(args);
+
   for (j = start; j <= finish; j++) {
     auto room = room_by_id(j);
-    if (!room)
-      continue;
-    for (i = room_people_get(room); i; i = i->next_in_room) {
-      if (!i->desc)
-        continue;
-
-      va_start(args, messg);
-      vwrite_to_output(i->desc, messg, args);
-      va_end(args);
-    }
+    if (!room) continue;
+    room_people_iterate(room, [&](struct char_data *i) {
+      if (i->desc)
+        write_to_output(i->desc, "%s", buf);
+      return true;
+    });
   }
 }
 

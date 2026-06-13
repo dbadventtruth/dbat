@@ -101,7 +101,7 @@ void extract_char_final(struct char_data *ch) {
   }
   /* On with the character's assets... */
 
-  if (ch->followers || ch->master)
+  if (char_follower_count(ch) || ch->master)
     die_follower(ch);
 
   if (auto chair = SITS(ch)) {
@@ -251,7 +251,6 @@ void extract_char_final(struct char_data *ch) {
  * valid. extract_pending_chars() re-resolves each id and finalizes.
  */
 void extract_char(struct char_data *ch) {
-  struct follow_type *foll;
   struct obj_data *obj;
 
   if (IS_NPC(ch)) {
@@ -267,27 +266,28 @@ void extract_char(struct char_data *ch) {
     game_active_player_leave();
   }
 
-  for (foll = ch->followers; foll; foll = foll->next) {
-    if (IS_NPC(foll->follower) && AFF_FLAGGED(foll->follower, AFF_CHARM) &&
-        (char_room_get(foll->follower) == char_room_get(ch) ||
+  char_followers_iterate(ch, [&](struct char_data *foll) {
+    if (IS_NPC(foll) && AFF_FLAGGED(foll, AFF_CHARM) &&
+        (char_room_get(foll) == char_room_get(ch) ||
          char_room_vnum_get(ch) == 1)) {
       /* transfer objects to char, if any */
-      char_inventory_iterate(foll->follower, [&](auto obj) {
-        obj_from_char(obj);
-        obj_to_char(obj, ch);
+      char_inventory_iterate(foll, [&](auto o) {
+        obj_from_char(o);
+        obj_to_char(o, ch);
         return true;
       });
 
       /* transfer equipment to char, if any */
-      char_equipment_iterate(foll->follower, [&](auto i, auto eq) {
-        obj = unequip_char(foll->follower, i);
+      char_equipment_iterate(foll, [&](auto i, auto eq) {
+        obj = unequip_char(foll, i);
         obj_to_char(obj, ch);
         return true;
       });
 
-      extract_char(foll->follower);
+      extract_char(foll);
     }
-  }
+    return true;
+  });
 
   char_extract_pending_add(GET_ID(ch));
 }
@@ -369,7 +369,6 @@ void extract_pending_chars(void) {
     else
       continue; /* extraction was rescinded since queueing */
 
-    REMOVE_FROM_LIST(vict, affect_list, next_affect, temp);
     extract_char_final(vict);
   }
 
