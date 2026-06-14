@@ -13,6 +13,13 @@ struct obj_data *find_vehicle_by_vnum(int vnum);
 struct obj_data *find_hatch_by_vnum(int vnum);
 struct obj_data *get_obj_in_list_type(int type, struct inventory_data list);
 
+// Hatch-vehicle ID cache: two int val slots pack one int64_t vehicle ID.
+// Set by obj_to_room when hatch is placed; read at movement time.
+int64_t hatch_vehicle_id_get(struct obj_data *hatch);
+void    hatch_vehicle_id_set(struct obj_data *hatch, int64_t id);
+// Returns the vehicle this hatch leads to; uses stored ID, falls back to scan.
+struct obj_data *hatch_get_vehicle(struct obj_data *hatch);
+
 // commands
 ACMD(do_warp);
 ACMD(do_drive);

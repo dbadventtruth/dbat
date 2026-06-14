@@ -1352,13 +1352,6 @@ static bool tick_obj_norent(struct obj_data *j) {
   return false;
 }
 
-static void tick_obj_hatch(struct obj_data *j) {
-  if (GET_OBJ_TYPE(j) != ITEM_HATCH) return;
-  struct obj_data *vehicle;
-  if ((vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(j, VAL_HATCH_DEST))))
-    GET_OBJ_VAL(j, 3) = obj_room_vnum_get(vehicle);
-}
-
 static void tick_obj_healing_tank(struct obj_data *j) {
   if (GET_OBJ_VNUM(j) != 65) return;
   if (HCHARGE(j) < 20 && !SITTING(j))
@@ -1500,22 +1493,22 @@ static void tick_obj_ice(struct obj_data *j) {
 }
 
 static void point_update_objects(void) {
-  obj_iterate_all([](struct obj_data *j) {
-    if (IS_CORPSE(j) || OBJ_FLAGGED(j, ITEM_ICE)) return true;
-    if (tick_obj_norent(j)) return true;
-    tick_obj_hatch(j);
-    tick_obj_healing_tank(j);
-    tick_obj_timed(j);
-    return true;
-  });
-  obj_iterate_subscriptions("obj_corpse", [](struct obj_data *j) {
-    tick_obj_corpse(j);
-    return true;
-  });
-  obj_iterate_subscriptions("obj_ice", [](struct obj_data *j) {
-    tick_obj_ice(j);
-    return true;
-  });
+  auto msnow = []() -> double {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000.0 + ts.tv_nsec / 1.0e6;
+  };
+#define TIMED_SUBS(tag, fn) do { \
+  double _t0 = msnow(); \
+  obj_iterate_subscriptions(tag, [](struct obj_data *j) { fn(j); return true; }); \
+  double _ms = msnow() - _t0; \
+  if (_ms > 1.0) mud_log("point_update_objects: %s=%.1fms", tag, _ms); \
+} while(0)
+  TIMED_SUBS("obj_norent",      tick_obj_norent);
+  TIMED_SUBS("obj_healing_tank",tick_obj_healing_tank);
+  TIMED_SUBS("obj_timed",       tick_obj_timed);
+  TIMED_SUBS("obj_corpse",      tick_obj_corpse);
+  TIMED_SUBS("obj_ice",         tick_obj_ice);
+#undef TIMED_SUBS
 }
 
 void point_update(void) {

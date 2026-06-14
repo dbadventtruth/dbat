@@ -23,6 +23,7 @@
 #include "interpreter.h"
 #include "log.h"
 #include "object_api.h"
+#include "object_db.h"
 #include "object_impl.h"
 #include "object_macros.h"
 #include "room_api.h"
@@ -285,8 +286,11 @@ OCMD(do_otimer) {
     obj_log(obj, "otimer: missing argument");
   else if (!isdigit(*arg))
     obj_log(obj, "otimer: bad argument");
-  else
+  else {
     GET_OBJ_TIMER(obj) = atoi(arg);
+    if (GET_OBJ_TIMER(obj) > 0)
+      obj_subscribe_add(obj, "obj_timed");
+  }
 }
 
 /* transform into a different object */

@@ -17,7 +17,7 @@ local position_mult = {
     [POS_RESTING] = 15000,
     [POS_SITTING] = 12500,
     [POS_FIGHTING] = -7500,
-    [POS_STANDING] = -7500,
+    [POS_STANDING] = 0,
 }
 
 return {
