@@ -196,6 +196,12 @@ void obj_game_activate(struct obj_data *obj) {
     obj_subscribe_add(obj, "obj_corpse");
   if (OBJ_FLAGGED(obj, ITEM_ICE))
     obj_subscribe_add(obj, "obj_ice");
+  if (GET_OBJ_VNUM(obj) == 65)
+    obj_subscribe_add(obj, "obj_healing_tank");
+  if (OBJ_FLAGGED(obj, ITEM_NORENT))
+    obj_subscribe_add(obj, "obj_norent");
+  if (GET_OBJ_TYPE(obj) == ITEM_PORTAL || GET_OBJ_VNUM(obj) == 1306)
+    obj_subscribe_add(obj, "obj_timed");
 }
 
 void obj_game_deactivate(struct obj_data *obj) {

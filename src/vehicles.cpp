@@ -54,6 +54,7 @@
 #include "iterate.hpp"
 
 #include <strings.h>
+#include <unordered_map>
 
 static int ship_land_location(struct char_data *ch, struct obj_data *vehicle,
                               char *arg);
@@ -390,8 +391,17 @@ static int ship_land_location(struct char_data *ch, struct obj_data *vehicle,
 }
 
 struct obj_data *find_vehicle_by_vnum(int vnum) {
-  struct obj_data *found = NULL;
+  static std::unordered_map<int, int64_t> cache;
 
+  auto it = cache.find(vnum);
+  if (it != cache.end()) {
+    auto obj = obj_by_id(it->second);
+    if (obj && GET_OBJ_TYPE(obj) == ITEM_VEHICLE && GET_OBJ_VNUM(obj) == vnum)
+      return obj;
+    cache.erase(it);
+  }
+
+  struct obj_data *found = NULL;
   obj_iterate_all_newest([&](struct obj_data *i) {
     if (GET_OBJ_TYPE(i) == ITEM_VEHICLE && GET_OBJ_VNUM(i) == vnum) {
       found = i;
@@ -400,6 +410,7 @@ struct obj_data *find_vehicle_by_vnum(int vnum) {
     return true;
   });
 
+  if (found) cache[vnum] = obj_id_get(found);
   return found;
 }
 
@@ -415,6 +426,27 @@ struct obj_data *find_hatch_by_vnum(int vnum) {
   });
 
   return found;
+}
+
+int64_t hatch_vehicle_id_get(struct obj_data *hatch) {
+  return ((int64_t)(uint32_t)GET_OBJ_VAL(hatch, VAL_HATCH_VEHICLE_ID_HI) << 32)
+       | (uint32_t)GET_OBJ_VAL(hatch, VAL_HATCH_VEHICLE_ID_LO);
+}
+
+void hatch_vehicle_id_set(struct obj_data *hatch, int64_t id) {
+  GET_OBJ_VAL(hatch, VAL_HATCH_VEHICLE_ID_HI) = (int)(uint32_t)((uint64_t)id >> 32);
+  GET_OBJ_VAL(hatch, VAL_HATCH_VEHICLE_ID_LO) = (int)(uint32_t)((uint64_t)id & 0xFFFFFFFFu);
+}
+
+struct obj_data *hatch_get_vehicle(struct obj_data *hatch) {
+  int64_t id = hatch_vehicle_id_get(hatch);
+  if (id) {
+    struct obj_data *v = obj_by_id(id);
+    if (v) return v;
+  }
+  struct obj_data *v = find_vehicle_by_vnum(GET_OBJ_VAL(hatch, VAL_HATCH_DEST));
+  if (v) hatch_vehicle_id_set(hatch, obj_id_get(v));
+  return v;
 }
 
 /* Search the given list for an object type, and return a ptr to that obj*/
@@ -508,7 +540,7 @@ static void drive_outof_vehicle(struct char_data *ch,
   if (!(hatch = get_obj_in_list_type(ITEM_HATCH,
                                      inv_for_room(obj_room_get(vehicle))))) {
     send_to_char(ch, "@wNowhere to pilot out of.\r\n");
-  } else if (!(vehicle_in_out = find_vehicle_by_vnum(GET_OBJ_VAL(hatch, 0)))) {
+  } else if (!(vehicle_in_out = hatch_get_vehicle(hatch))) {
     send_to_char(ch, "@wYou can't pilot out anywhere!\r\n");
   } else {
     sprintf(buf, "%s @wexits %s.\r\n", vehicle->short_description,
@@ -589,13 +621,6 @@ void drive_in_direction(struct char_data *ch, struct obj_data *vehicle,
         }
       }
     }
-
-    room_contents_iterate(room_by_id(GET_OBJ_VAL(vehicle, 0)), [&](auto hatch) {
-      if (GET_OBJ_TYPE(hatch) == ITEM_HATCH) {
-        GET_OBJ_VAL(hatch, 3) = obj_room_vnum_get(vehicle);
-      }
-      return true;
-    });
 
     is_in = obj_room_get(vehicle);
 

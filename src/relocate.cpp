@@ -119,6 +119,8 @@ void obj_to_room(struct obj_data *object, struct room_data *room) {
             GET_OBJ_VNUM(object));
       }
     }
+    if (vehicle)
+      hatch_vehicle_id_set(object, obj_id_get(vehicle));
   }
   int osect = room_sector_type_get(obj_room_get(object));
   struct room_direction_data *down = obj_exit_dir(object, 5);

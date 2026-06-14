@@ -1710,7 +1710,7 @@ static void do_doorcmd(struct char_data *ch, struct obj_data *obj, int door,
   struct obj_data *hatch = NULL, *obj2 = NULL, *next_obj, *vehicle = NULL;
 
   if ((obj) && GET_OBJ_TYPE(obj) == ITEM_HATCH) {
-    vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(obj, VAL_HATCH_DEST));
+    vehicle = hatch_get_vehicle(obj);
   } else if ((obj) && GET_OBJ_TYPE(obj) == ITEM_VEHICLE) {
     if (room_by_id(GET_OBJ_VAL(obj, VAL_PORTAL_DEST))) {
       num = char_room_get(ch);
@@ -2355,7 +2355,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
   struct obj_data *vehicle = NULL;
 
   if (GET_OBJ_TYPE(obj) != ITEM_PORTAL) {
-    vehicle = find_vehicle_by_vnum(GET_OBJ_VAL(obj, VAL_HATCH_DEST));
+    vehicle = hatch_get_vehicle(obj);
   }
 
   if (vehicle == NULL && GET_OBJ_TYPE(obj) != ITEM_PORTAL) {
