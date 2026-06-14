@@ -63,3 +63,6 @@
 #include "zone_api.h"
 #include "zone_db.h"
 #include "event_queue_api.h"
+#include "http_olc_bridge.h"
+#include "http_user_auth.h"
+#include "http_meta.h"

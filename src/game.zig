@@ -1,6 +1,7 @@
 const std = @import("std");
 const cdb = @import("cdb");
 const lua_api = @import("lua_api.zig");
+const http_server = @import("http_server.zig");
 const characters_lua = @import("character_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const objects_lua = @import("object_lua.zig");
@@ -45,8 +46,11 @@ pub export fn game_loop() void {
         }
 
         _ = cdb.net_accept_all_pending();
+        http_server.acceptPending();
         _ = cdb.net_read_all_pending();
+        http_server.readPending();
         cdb.game_legacy_process_commands();
+        http_server.processRequests();
 
         cdb.extract_pending_chars();
 
@@ -66,6 +70,8 @@ pub export fn game_loop() void {
 
         cdb.game_legacy_send_outputs();
         _ = cdb.net_flush_all_outputs();
+        http_server.flushOutputs();
+        http_server.closeCompleted();
         cdb.game_legacy_close_pending();
 
         cdb.game_legacy_post_tick();
