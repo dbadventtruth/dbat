@@ -1,4 +1,6 @@
 #include "http_meta.h"
+#include "shop.h"
+#include "consts/zoneflags.h"
 #include "consts/roomflags.h"
 #include "consts/sectortypes.h"
 #include "consts/mobflags.h"
@@ -70,10 +72,10 @@ const char *http_meta_race_name(int id) {
 int http_meta_race_count(void) { return NUM_RACES; }
 
 const char *http_meta_sensei_name(int id) {
-    if (id < 0 || id >= MAX_SENSEI) return NULL;
-    return sensei_style[id]; /* no sentinel in this array */
+    if (id < 0 || id >= NUM_CLASSES) return NULL;
+    return sentinel_or_null(pc_class_types[id]);
 }
-int http_meta_sensei_count(void) { return MAX_SENSEI; }
+int http_meta_sensei_count(void) { return NUM_CLASSES; }
 
 static const char *dgscript_attach_names[] = {"mob", "obj", "room"};
 const char *http_meta_dgscript_attach_type_name(int id) {
@@ -95,3 +97,15 @@ const char *http_meta_room_trig_name(int bit) {
     return sentinel_or_null(wtrig_types[bit]);
 }
 int http_meta_trig_type_count(void) { return NUM_MTRIG_TYPES; }
+
+const char *http_meta_zone_flag_name(int bit) {
+    if (bit < 0 || bit >= NUM_ZONE_FLAGS) return NULL;
+    return sentinel_or_null(zone_bits[bit]);
+}
+int http_meta_zone_flag_count(void) { return NUM_ZONE_FLAGS; }
+
+const char *http_meta_trade_flag_name(int bit) {
+    if (bit < 0 || bit >= NUM_TRADERS) return NULL;
+    return sentinel_or_null(trade_letters[bit]);
+}
+int http_meta_trade_flag_count(void) { return NUM_TRADERS; }

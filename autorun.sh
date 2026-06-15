@@ -39,6 +39,13 @@ if [ -r .env ]; then
   set +a
 fi
 
+# Load local overrides from .env if present (e.g., PORT=4000).
+if [ -r .env.secrets ]; then
+  set -a
+  . ./.env.secrets
+  set +a
+fi
+
 #############################################################################
 
 while ( : ) do

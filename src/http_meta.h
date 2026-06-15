@@ -60,6 +60,14 @@ const char *http_meta_obj_trig_name(int bit);
 const char *http_meta_room_trig_name(int bit);
 int         http_meta_trig_type_count(void); /* same for all three: NUM_MTRIG_TYPES=20 */
 
+/* Zone flags (zone_bits, NUM_ZONE_FLAGS=36) */
+const char *http_meta_zone_flag_name(int bit);
+int         http_meta_zone_flag_count(void);
+
+/* Trade restriction flags for shops/guilds (trade_letters, NUM_TRADERS=78) */
+const char *http_meta_trade_flag_name(int bit);
+int         http_meta_trade_flag_count(void);
+
 #ifdef __cplusplus
 }
 #endif

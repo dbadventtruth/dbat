@@ -97,12 +97,10 @@ pub fn main(init: std.process.Init) u8 {
     var test_options = test_mode.Options{};
     parseRuntimeOptions(init, &test_options, &http_port);
 
-    if (init.environ_map.get("DBAT_API_KEY")) |key| {
-        db.http_api.setApiKey(key);
-    }
     if (init.environ_map.get("DBAT_JWT_SECRET")) |secret| {
         db.http_api.setJwtSecret(secret);
     }
+    
     if (init.environ_map.get("DBAT_WEBUI_DIR")) |dir| {
         db.http_server.setWebDir(dir);
     }
@@ -150,8 +148,7 @@ pub fn main(init: std.process.Init) u8 {
     } else {
         if (http_port != 0) {
             db.http_server.openListener(http_port) catch |err| {
-                cdb.mud_log("HTTP: failed to open listener on port %d (%s), continuing without HTTP API",
-                    @as(c_int, http_port), @errorName(err).ptr);
+                cdb.mud_log("HTTP: failed to open listener on port %d (%s), continuing without HTTP API", @as(c_int, http_port), @errorName(err).ptr);
             };
         }
         // Running normal gameplay loop.

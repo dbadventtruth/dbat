@@ -209,6 +209,33 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .toast.info { border-color: var(--accent); }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* Reset command list */
+.reset-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.zone-cmd {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  cursor: default;
+}
+.zone-cmd.drag-over { border-color: var(--accent); }
+.drag-handle { cursor: grab; color: var(--muted); font-size: 1.1rem; user-select: none; }
+.cmd-arg-group { display: flex; flex-direction: column; }
+.cmd-arg-group label { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.1rem; }
+.cmd-arg-group input { width: 90px; }
+.cmd-sarg-group { display: flex; flex-direction: column; }
+.cmd-sarg-group label { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.1rem; }
+.cmd-sarg-group input { width: 140px; }
+
+/* Vnum list (proto_script, shop producing, etc.) */
+.vnum-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.vnum-list-row { display: flex; gap: 0.4rem; align-items: center; }
+.vnum-list-row input { width: 120px; }
+
 /* Status pane */
 .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; }

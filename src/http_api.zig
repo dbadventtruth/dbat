@@ -319,6 +319,10 @@ fn handleMeta(alloc: Allocator, request: *const ParsedRequest, key: []const u8) 
         return jsonResponse(alloc, 200, try metaTrigArray(alloc, cdb.http_meta_obj_trig_name));
     if (std.mem.eql(u8, key, "dgscript-room-triggers"))
         return jsonResponse(alloc, 200, try metaTrigArray(alloc, cdb.http_meta_room_trig_name));
+    if (std.mem.eql(u8, key, "zone-flags"))
+        return jsonResponse(alloc, 200, try metaFlagArray(alloc, cdb.http_meta_zone_flag_count, cdb.http_meta_zone_flag_name));
+    if (std.mem.eql(u8, key, "trade-flags"))
+        return jsonResponse(alloc, 200, try metaFlagArray(alloc, cdb.http_meta_trade_flag_count, cdb.http_meta_trade_flag_name));
     return .{ .status = 404, .status_text = "Not Found", .body = "{\"error\":\"unknown meta key\"}" };
 }
 
