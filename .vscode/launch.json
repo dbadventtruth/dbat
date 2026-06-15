@@ -9,7 +9,10 @@
             "envFile": "${workspaceFolder}/.env",
             "cwd": "${workspaceFolder}",
             "terminal": "integrated",
-            "breakpointMode": "file"
+            "breakpointMode": "file",
+            "postRunCommands": [
+                "process handle SIGVTALRM -n false -p true -s false"
+            ]
         }
     ]
 }
