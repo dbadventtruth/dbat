@@ -1,5 +1,6 @@
 const std = @import("std");
 const cdb = @import("cdb");
+const http_server = @import("http_server.zig");
 
 const Allocator = std.mem.Allocator;
 const ionet = std.Io.net;
@@ -289,6 +290,9 @@ pub export fn net_wait(timeout_ms: c_int) c_int {
         fds.append(.{ .fd = @intCast(conn.fd), .events = events, .revents = 0 }) catch return -1;
     }
 
+    const http_start = fds.items.len;
+    http_server.appendFds(&fds) catch return -1;
+
     if (fds.items.len == 0) return 0;
     const ready = posix.poll(fds.items, timeout_ms) catch return -1;
     var fd_index: usize = 0;
@@ -303,6 +307,7 @@ pub export fn net_wait(timeout_ms: c_int) c_int {
         if ((revents & (std.os.linux.POLL.ERR | std.os.linux.POLL.HUP | std.os.linux.POLL.NVAL)) != 0) conn.close_requested = true;
         fd_index += 1;
     }
+    http_server.handleRevents(fds.items[http_start..]);
     return @intCast(ready);
 }
 

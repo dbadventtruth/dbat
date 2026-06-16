@@ -1,6 +1,7 @@
 const std = @import("std");
 const cdb = @import("cdb");
 const lua_api = @import("lua_api.zig");
+const http_server = @import("http_server.zig");
 const characters_lua = @import("character_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const objects_lua = @import("object_lua.zig");
@@ -24,6 +25,12 @@ pub fn deinit() void {
     has_io = false;
 }
 
+fn logSlow(comptime phase: [:0]const u8, start_ns: i96) void {
+    const elapsed_ms: i64 = @intCast(@min(@divTrunc(nowNs() - start_ns, std.time.ns_per_ms), 999_999));
+    if (elapsed_ms >= 200)
+        cdb.mud_log("PERF: game_loop/" ++ phase ++ " took %dms", @as(c_int, @intCast(elapsed_ms)));
+}
+
 pub export fn game_loop() void {
     var next_tick_ns = nowNs() + tick.nanoseconds;
     while (cdb.circle_shutdown == 0) {
@@ -31,7 +38,9 @@ pub export fn game_loop() void {
         const now_ms = nowMs();
 
         // Drain any events that are due before waiting for I/O.
+        const t_eq = nowNs();
         event_queue.process(now_ms);
+        logSlow("event_queue", t_eq);
 
         // Sleep until the earlier of: next 100ms tick, or next queued event.
         const tick_wait_ms = waitUntilMs(before_wait_ns, next_tick_ns);
@@ -45,8 +54,13 @@ pub export fn game_loop() void {
         }
 
         _ = cdb.net_accept_all_pending();
+        http_server.acceptPending();
         _ = cdb.net_read_all_pending();
+        http_server.readPending();
+        const t_cmd = nowNs();
         cdb.game_legacy_process_commands();
+        logSlow("process_commands", t_cmd);
+        http_server.processRequests();
 
         cdb.extract_pending_chars();
 
@@ -66,6 +80,8 @@ pub export fn game_loop() void {
 
         cdb.game_legacy_send_outputs();
         _ = cdb.net_flush_all_outputs();
+        http_server.flushOutputs();
+        http_server.closeCompleted();
         cdb.game_legacy_close_pending();
 
         cdb.game_legacy_post_tick();

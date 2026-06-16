@@ -3,7 +3,7 @@ const db = @import("db");
 const cdb = @import("cdb");
 const test_mode = @import("test_mode.zig");
 
-fn parseRuntimeOptions(init: std.process.Init, test_options: *test_mode.Options) void {
+fn parseRuntimeOptions(init: std.process.Init, test_options: *test_mode.Options, http_port: *u16) void {
     if (init.environ_map.get("DBAT_TEST_MODE")) |value| {
         if (std.mem.eql(u8, value, "1")) cdb.config_info.test_mode = true;
     }
@@ -32,6 +32,12 @@ fn parseRuntimeOptions(init: std.process.Init, test_options: *test_mode.Options)
     if (init.environ_map.get("DBAT_TELNET_PORT")) |value| {
         cdb.port = std.fmt.parseInt(@TypeOf(cdb.port), value, 10) catch {
             std.process.fatal("invalid DBAT_TELNET_PORT: {s}", .{value});
+        };
+    }
+
+    if (init.environ_map.get("DBAT_HTTP_PORT")) |value| {
+        http_port.* = std.fmt.parseInt(u16, value, 10) catch {
+            std.process.fatal("invalid DBAT_HTTP_PORT: {s}", .{value});
         };
     }
 
@@ -87,8 +93,17 @@ pub fn main(init: std.process.Init) u8 {
     cdb.load_config();
 
     cdb.port = cdb.CONFIG_DFLT_PORT();
+    var http_port: u16 = 0;
     var test_options = test_mode.Options{};
-    parseRuntimeOptions(init, &test_options);
+    parseRuntimeOptions(init, &test_options, &http_port);
+
+    if (init.environ_map.get("DBAT_JWT_SECRET")) |secret| {
+        db.http_api.setJwtSecret(secret);
+    }
+    
+    if (init.environ_map.get("DBAT_WEBUI_DIR")) |dir| {
+        db.http_server.setWebDir(dir);
+    }
 
     cdb.setup_log(cdb.CONFIG_LOGNAME(), cdb.STDERR_FILENO);
 
@@ -131,6 +146,11 @@ pub fn main(init: std.process.Init) u8 {
         // Running game in test mode.
         return test_mode.run(init, test_options);
     } else {
+        if (http_port != 0) {
+            db.http_server.openListener(http_port) catch |err| {
+                cdb.mud_log("HTTP: failed to open listener on port %d (%s), continuing without HTTP API", @as(c_int, http_port), @errorName(err).ptr);
+            };
+        }
         // Running normal gameplay loop.
         cdb.mud_log("Entering game loop.");
         cdb.game_loop();

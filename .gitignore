@@ -82,6 +82,7 @@ coredumps
 __pycache__
 *.pyc
 .env
+.env.secrets
 /.vs
 copyover.dat
 

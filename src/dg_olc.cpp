@@ -561,22 +561,24 @@ void trigedit_save(struct descriptor_data *d) {
     trig_proto_put(OLC_NUM(d), proto);
   }
 
-  /* now write the trigger out to disk, along with the rest of the  */
-  /* triggers for this zone, of course                              */
-  /* note: we write this to disk NOW instead of letting the builder */
-  /* have control because if we lose this after having assigned a   */
-  /* new trigger to an item, we will get SYSERR's upton reboot that */
-  /* could make things hard to debug.                               */
+  trigedit_save_zone(zone_by_id(OLC_ZNUM(d)));
+  write_to_output(d, "Trigger saved to disk.\r\n");
+}
 
-  struct zone_data *zn = zone_by_id(OLC_ZNUM(d));
-  zone = zn->id;
-  top = zn->top;
+void trigedit_save_zone(struct zone_data *zn) {
+  int i;
+  int zone = zn->id;
+  int top = zn->top;
+  struct cmdlist_element *cmd;
+  FILE *trig_file;
+  char buf[MAX_CMD_LENGTH];
+  char bitBuf[MAX_INPUT_LENGTH];
+  char fname[MAX_INPUT_LENGTH];
 
   snprintf(fname, sizeof(fname), "%s/%i.new", TRG_PREFIX, zone);
 
   if (!(trig_file = fopen(fname, "w"))) {
-    mudlog(BRF, MAX(ADMLVL_GOD, GET_INVIS_LEV(d->character)), TRUE,
-           "SYSERR: OLC: Can't open trig file \"%s\"", fname);
+    mud_log("SYSERR: trigedit_save_zone: Can't open trig file \"%s\"", fname);
     return;
   }
 
@@ -584,8 +586,7 @@ void trigedit_save(struct descriptor_data *d) {
     if (auto trig = trig_proto_by_id(i); trig) {
 
       if (fprintf(trig_file, "#%d\n", i) < 0) {
-        mudlog(BRF, MAX(ADMLVL_GOD, GET_INVIS_LEV(d->character)), TRUE,
-               "SYSERR: OLC: Can't write trig file!");
+        mud_log("SYSERR: trigedit_save_zone: Can't write trig file!");
         fclose(trig_file);
         return;
       }
@@ -599,8 +600,7 @@ void trigedit_save(struct descriptor_data *d) {
               GET_TRIG_NARG(trig), GET_TRIG_ARG(trig) ? GET_TRIG_ARG(trig) : "",
               STRING_TERMINATOR);
 
-      /* Build the text for the script */
-      strcpy(buf, ""); /* strcpy OK for MAX_CMD_LENGTH > 0*/
+      strcpy(buf, "");
       for (cmd = trig->cmdlist; cmd; cmd = cmd->next) {
         strcat(buf, cmd->cmd);
         strcat(buf, "\n");
@@ -618,11 +618,8 @@ void trigedit_save(struct descriptor_data *d) {
   fclose(trig_file);
 
   snprintf(buf, sizeof(buf), "%s%d.trg", TRG_PREFIX, zone);
-
   remove(buf);
   rename(fname, buf);
-
-  write_to_output(d, "Trigger saved to disk.\r\n");
   create_world_index(zone, "trg");
 }
 

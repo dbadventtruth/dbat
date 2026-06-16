@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBAT World Editor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- Login overlay -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h1>DBAT World Editor</h1>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-account">Account Name</label>
+        <input type="text" id="login-account" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="primary" style="width:100%">Sign In</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Header -->
+<div id="header">
+  <h1>DBAT World Editor</h1>
+  <span id="user-info"></span>
+  <button id="logout-btn">Sign Out</button>
+</div>
+
+<!-- Tab nav -->
+<div id="tabs">
+  <button class="tab-btn active" data-tab="status">Status</button>
+  <button class="tab-btn" data-tab="zones">Zones</button>
+  <button class="tab-btn" data-tab="rooms">Rooms</button>
+  <button class="tab-btn" data-tab="objects">Objects</button>
+  <button class="tab-btn" data-tab="mobs">Mobs</button>
+  <button class="tab-btn" data-tab="shops">Shops</button>
+  <button class="tab-btn" data-tab="guilds">Guilds</button>
+  <button class="tab-btn" data-tab="triggers">Triggers</button>
+</div>
+
+<!-- Content -->
+<div id="content">
+
+  <!-- Status -->
+  <div id="pane-status" class="pane active">
+    <div class="section-title">Server Status</div>
+    <div id="status-content">Loading...</div>
+  </div>
+
+  <!-- Zones -->
+  <div id="pane-zones" class="pane">
+    <div class="section-title">Zone Editor</div>
+    <div class="vnum-bar">
+      <label>Zone Vnum</label>
+      <input type="number" id="zone-vnum-input" placeholder="e.g. 30">
+      <button id="zone-load-btn">Load</button>
+      <button id="zone-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+      <div class="form-group"><label>Name</label><input type="text" id="zone-name"></div>
+      <div class="form-group"><label>Builders</label><input type="text" id="zone-builders"></div>
+      <div class="form-group"><label>Bottom Room</label><input type="number" id="zone-bottom"></div>
+      <div class="form-group"><label>Top Room</label><input type="number" id="zone-top"></div>
+      <div class="form-group"><label>Lifespan (min)</label><input type="number" id="zone-lifespan"></div>
+      <div class="form-group">
+        <label>Reset Mode</label>
+        <select id="zone-reset-mode">
+          <option value="0">0 — No Reset</option>
+          <option value="1">1 — Reset if Empty</option>
+          <option value="2">2 — Always Reset</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Min Level</label><input type="number" id="zone-min-level"></div>
+      <div class="form-group"><label>Max Level</label><input type="number" id="zone-max-level"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Zone Flags</div>
+      <div class="flag-grid" id="zone-flags-grid"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Reset Commands</div>
+      <ol id="zone-reset-list" class="reset-list"></ol>
+      <button id="zone-add-cmd" style="margin-top:0.5rem">+ Add Command</button>
+    </div>
+  </div>
+
+  <!-- Rooms -->
+  <div id="pane-rooms" class="pane">
+    <div class="section-title">Room Editor</div>
+    <div class="vnum-bar">
+      <label>Room Vnum</label>
+      <input type="number" id="room-vnum-input" placeholder="e.g. 3001">
+      <button id="room-load-btn">Load</button>
+      <button id="room-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div class="form-group"><label>Name</label><input type="text" id="room-name"></div>
+    <div class="form-group"><label>Description</label><textarea id="room-description" rows="5"></textarea></div>
+    <div class="form-group"><label>Sector Type</label><select id="room-sector"></select></div>
+    <div class="subsection">
+      <div class="section-title">Room Flags</div>
+      <div class="flag-grid" id="room-flags-grid"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Exits</div>
+      <table class="exit-table">
+        <thead>
+          <tr><th>Direction</th><th>To Room</th><th>Keyword</th><th>Description</th></tr>
+        </thead>
+        <tbody id="room-exits-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Extra Descriptions</div>
+      <div id="room-extra-descs"></div>
+      <button id="room-add-extradesc" style="margin-top:0.5rem">+ Add Description</button>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">DG Scripts</div>
+      <div class="vnum-list" id="room-proto-script"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.4rem">
+        <input type="number" id="room-proto-script-input" placeholder="Trigger vnum" style="width:160px">
+        <button id="room-add-script">+ Add</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button id="room-save-bottom" class="primary" onclick="document.getElementById('room-save-btn').click()">Save Room</button>
+    </div>
+  </div>
+
+  <!-- Objects -->
+  <div id="pane-objects" class="pane">
+    <div class="section-title">Object Editor</div>
+    <div class="vnum-bar">
+      <label>Object Vnum</label>
+      <input type="number" id="object-vnum-input" placeholder="e.g. 1200">
+      <button id="object-load-btn">Load</button>
+      <button id="object-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div class="form-group"><label>Name (keywords)</label><input type="text" id="obj-name"></div>
+    <div class="form-group"><label>Short Description</label><input type="text" id="obj-short-desc"></div>
+    <div class="form-group"><label>Long Description (floor)</label><input type="text" id="obj-long-desc"></div>
+    <div class="form-group"><label>Action Description</label><textarea id="obj-action-desc" rows="3"></textarea></div>
+    <div class="form-group"><label>Object Type</label><select id="obj-type"></select></div>
+
+    <div class="subsection">
+      <div class="section-title">Values</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem" id="obj-values-grid">
+        <div class="form-group"><label id="obj-val0-label">Value 0</label><input type="number" id="obj-val0" value="0"></div>
+        <div class="form-group"><label id="obj-val1-label">Value 1</label><input type="number" id="obj-val1" value="0"></div>
+        <div class="form-group"><label id="obj-val2-label">Value 2</label><input type="number" id="obj-val2" value="0"></div>
+        <div class="form-group"><label id="obj-val3-label">Value 3</label><input type="number" id="obj-val3" value="0"></div>
+        <div class="form-group"><label id="obj-val4-label">Health</label><input type="number" id="obj-val4" value="0"></div>
+        <div class="form-group"><label id="obj-val5-label">Max Health</label><input type="number" id="obj-val5" value="0"></div>
+        <div class="form-group"><label id="obj-val6-label">Value 6</label><input type="number" id="obj-val6" value="0"></div>
+        <div class="form-group"><label id="obj-val7-label">Material</label><input type="number" id="obj-val7" value="0"></div>
+        <div class="form-group"><label id="obj-val8-label">Value 8</label><input type="number" id="obj-val8" value="0"></div>
+        <div class="form-group"><label id="obj-val9-label">Value 9</label><input type="number" id="obj-val9" value="0"></div>
+        <div class="form-group"><label id="obj-val10-label">Value 10</label><input type="number" id="obj-val10" value="0"></div>
+        <div class="form-group"><label id="obj-val11-label">Value 11</label><input type="number" id="obj-val11" value="0"></div>
+        <div class="form-group"><label id="obj-val12-label">Value 12</label><input type="number" id="obj-val12" value="0"></div>
+        <div class="form-group"><label id="obj-val13-label">Value 13</label><input type="number" id="obj-val13" value="0"></div>
+        <div class="form-group"><label id="obj-val14-label">Value 14</label><input type="number" id="obj-val14" value="0"></div>
+        <div class="form-group"><label id="obj-val15-label">Value 15</label><input type="number" id="obj-val15" value="0"></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem">
+      <div class="form-group"><label>Weight</label><input type="number" id="obj-weight" value="0"></div>
+      <div class="form-group"><label>Cost</label><input type="number" id="obj-cost" value="0"></div>
+      <div class="form-group"><label>Level</label><input type="number" id="obj-level" value="0"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Extra Flags</div>
+      <div class="flag-grid" id="obj-extra-flags-grid"></div>
+    </div>
+    <div class="subsection">
+      <div class="section-title">Wear Flags</div>
+      <div class="flag-grid" id="obj-wear-flags-grid"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">DG Scripts</div>
+      <div class="vnum-list" id="obj-proto-script"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.4rem">
+        <input type="number" id="obj-proto-script-input" placeholder="Trigger vnum" style="width:160px">
+        <button id="obj-add-script">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobs -->
+  <div id="pane-mobs" class="pane">
+    <div class="section-title">Mob Editor</div>
+    <div class="vnum-bar">
+      <label>Mob Vnum</label>
+      <input type="number" id="mob-vnum-input" placeholder="e.g. 100">
+      <button id="mob-load-btn">Load</button>
+      <button id="mob-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div class="form-group"><label>Name (keywords)</label><input type="text" id="mob-name"></div>
+    <div class="form-group"><label>Short Description</label><input type="text" id="mob-short-desc"></div>
+    <div class="form-group"><label>Description (look)</label><textarea id="mob-description" rows="5"></textarea></div>
+    <div class="form-group"><label>Long Description (room)</label><textarea id="mob-long-desc" rows="3"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+      <div class="form-group"><label>Race</label><select id="mob-race"></select></div>
+      <div class="form-group"><label>Sensei/Class</label><select id="mob-sensei"></select></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Stats</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem">
+        <div class="form-group"><label>Level</label><input type="number" id="mob-level" value="0"></div>
+        <div class="form-group"><label>Power Level</label><input type="number" id="mob-powerlevel" value="0"></div>
+        <div class="form-group"><label>Ki</label><input type="number" id="mob-ki" value="0"></div>
+        <div class="form-group"><label>Alignment</label><input type="number" id="mob-alignment" value="0"></div>
+        <div class="form-group"><label>Strength</label><input type="number" id="mob-strength" value="0"></div>
+        <div class="form-group"><label>Intelligence</label><input type="number" id="mob-intelligence" value="0"></div>
+        <div class="form-group"><label>Wisdom</label><input type="number" id="mob-wisdom" value="0"></div>
+        <div class="form-group"><label>Constitution</label><input type="number" id="mob-constitution" value="0"></div>
+        <div class="form-group"><label>Speed</label><input type="number" id="mob-speed" value="0"></div>
+        <div class="form-group"><label>Agility</label><input type="number" id="mob-agility" value="0"></div>
+        <div class="form-group"><label>Armor</label><input type="number" id="mob-armor" value="0"></div>
+        <div class="form-group"><label>Experience</label><input type="number" id="mob-experience" value="0"></div>
+        <div class="form-group"><label>Money</label><input type="number" id="mob-money" value="0"></div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Act Flags</div>
+      <div class="flag-grid" id="mob-flags-grid"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">DG Scripts</div>
+      <div class="vnum-list" id="mob-proto-script"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.4rem">
+        <input type="number" id="mob-proto-script-input" placeholder="Trigger vnum" style="width:160px">
+        <button id="mob-add-script">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shops -->
+  <div id="pane-shops" class="pane">
+    <div class="section-title">Shop Editor</div>
+    <div class="vnum-bar">
+      <label>Shop Vnum</label>
+      <input type="number" id="shop-vnum-input" placeholder="e.g. 50">
+      <button id="shop-load-btn">Load</button>
+      <button id="shop-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem">
+      <div class="form-group"><label>Keeper (mob vnum)</label><input type="number" id="shop-keeper" value="0"></div>
+      <div class="form-group"><label>Profit Buy</label><input type="number" id="shop-profit-buy" value="1" step="0.01"></div>
+      <div class="form-group"><label>Profit Sell</label><input type="number" id="shop-profit-sell" value="1" step="0.01"></div>
+      <div class="form-group"><label>Bank</label><input type="number" id="shop-bank" value="0"></div>
+      <div class="form-group"><label>Temper</label><input type="number" id="shop-temper" value="0"></div>
+      <div class="form-group"><label>Bitvector</label><input type="number" id="shop-bitvector" value="0"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem">
+      <div class="form-group"><label>Open 1</label><input type="number" id="shop-open1" value="0"></div>
+      <div class="form-group"><label>Close 1</label><input type="number" id="shop-close1" value="0"></div>
+      <div class="form-group"><label>Open 2</label><input type="number" id="shop-open2" value="0"></div>
+      <div class="form-group"><label>Close 2</label><input type="number" id="shop-close2" value="0"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Messages</div>
+      <div class="form-group"><label>No Such Item (1)</label><input type="text" id="shop-no-such-item1"></div>
+      <div class="form-group"><label>No Such Item (2)</label><input type="text" id="shop-no-such-item2"></div>
+      <div class="form-group"><label>Missing Cash (1)</label><input type="text" id="shop-missing-cash1"></div>
+      <div class="form-group"><label>Missing Cash (2)</label><input type="text" id="shop-missing-cash2"></div>
+      <div class="form-group"><label>Do Not Buy</label><input type="text" id="shop-do-not-buy"></div>
+      <div class="form-group"><label>Message Buy</label><input type="text" id="shop-message-buy"></div>
+      <div class="form-group"><label>Message Sell</label><input type="text" id="shop-message-sell"></div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">Producing (Object Vnums)</div>
+      <div class="vnum-list" id="shop-producing"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.4rem">
+        <input type="number" id="shop-producing-input" placeholder="Object vnum" style="width:160px">
+        <button id="shop-add-producing">+ Add</button>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">In Room (Room Vnums)</div>
+      <div class="vnum-list" id="shop-in-room"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.4rem">
+        <input type="number" id="shop-in-room-input" placeholder="Room vnum" style="width:160px">
+        <button id="shop-add-in-room">+ Add</button>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="section-title">With Who (trade restrictions)</div>
+      <div class="flag-grid" id="shop-with-who-grid"></div>
+    </div>
+  </div>
+
+  <!-- Guilds -->
+  <div id="pane-guilds" class="pane">
+    <div class="section-title">Guild Editor</div>
+    <div class="vnum-bar">
+      <label>Guild Vnum</label>
+      <input type="number" id="guild-vnum-input" placeholder="e.g. 40">
+      <button id="guild-load-btn">Load</button>
+      <button id="guild-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem">
+      <div class="form-group"><label>Guildmaster (mob vnum)</label><input type="number" id="guild-master" value="0"></div>
+      <div class="form-group"><label>Charge</label><input type="number" id="guild-charge" value="1" step="0.01"></div>
+      <div class="form-group"><label>Min Level</label><input type="number" id="guild-min-level" value="0"></div>
+      <div class="form-group"><label>Open</label><input type="number" id="guild-open" value="0"></div>
+      <div class="form-group"><label>Close</label><input type="number" id="guild-close" value="0"></div>
+    </div>
+
+    <div class="form-group"><label>No Such Skill</label><input type="text" id="guild-no-such-skill"></div>
+    <div class="form-group"><label>Not Enough Gold</label><input type="text" id="guild-not-enough-gold"></div>
+
+    <div class="subsection">
+      <div class="section-title">Skills (enabled indexes, comma-separated)</div>
+      <input type="text" id="guild-skills" placeholder="e.g. 5,12,30">
+    </div>
+    <div class="subsection">
+      <div class="section-title">Feats (enabled indexes, comma-separated)</div>
+      <input type="text" id="guild-feats" placeholder="e.g. 1,4">
+    </div>
+    <div class="subsection">
+      <div class="section-title">With Who (trade restrictions)</div>
+      <div class="flag-grid" id="guild-with-who-grid"></div>
+    </div>
+  </div>
+
+  <!-- Triggers -->
+  <div id="pane-triggers" class="pane">
+    <div class="section-title">DG Script Trigger Editor</div>
+    <div class="vnum-bar">
+      <label>Trigger Vnum</label>
+      <input type="number" id="trig-vnum-input" placeholder="e.g. 200">
+      <button id="trig-load-btn">Load</button>
+      <button id="trig-save-btn" class="primary" disabled>Save</button>
+    </div>
+
+    <div class="form-group"><label>Name</label><input type="text" id="trig-name"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+      <div class="form-group"><label>Attach Type</label><select id="trig-attach-type"></select></div>
+      <div class="form-group"><label>Narg</label><input type="number" id="trig-narg" value="0"></div>
+    </div>
+    <div class="form-group"><label>Argument List</label><input type="text" id="trig-argument"></div>
+    <div class="subsection">
+      <div class="section-title">Trigger Type Flags</div>
+      <div class="flag-grid" id="trig-type-grid"></div>
+    </div>
+    <div class="form-group subsection">
+      <div class="section-title">Script Code</div>
+      <textarea id="trig-code" class="code" rows="20"></textarea>
+    </div>
+  </div>
+
+</div><!-- #content -->
+
+<div id="toast-container"></div>
+<script src="/app.js"></script>
+</body>
+</html>

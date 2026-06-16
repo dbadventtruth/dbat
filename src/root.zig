@@ -36,6 +36,8 @@ pub const net = @import("net.zig");
 pub const game = @import("game.zig");
 pub const event_queue = @import("event_queue.zig");
 pub const auth = @import("auth.zig");
+pub const http_server = @import("http_server.zig");
+pub const http_api = @import("http_api.zig");
 
 // This stupid comptime and its function ensures that the C API functions aren't optimized out because Zig doesn't call them directly. They are called from C, so we have to force them to be included in the final binary.
 comptime {
@@ -59,6 +61,8 @@ comptime {
     forceApiExports(game);
     forceApiExports(event_queue);
     forceApiExports(auth);
+    forceApiExports(http_server);
+    std.testing.refAllDecls(http_api);
     std.testing.refAllDecls(flags_json);
     std.testing.refAllDecls(extradesc_json);
     std.testing.refAllDecls(dgscripts_json);
@@ -88,6 +92,7 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !void {
     dgscripts.init(allocator);
     intern.init(allocator);
     net.init(allocator, io);
+    http_server.init(allocator, io);
     game.init(io);
     event_queue.init(allocator, io);
     auth.init(allocator, io);
@@ -105,6 +110,7 @@ pub fn deinit() void {
     intern.deinit();
     event_queue.deinit();
     game.deinit();
+    http_server.deinit();
     net.deinit();
     dgscripts.deinit();
     zones.deinit();

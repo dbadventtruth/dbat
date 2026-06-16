@@ -51,6 +51,7 @@ void dg_script_menu(struct descriptor_data *d);
 int dg_script_edit_parse(struct descriptor_data *d, char *arg);
 void trigedit_string_cleanup(struct descriptor_data *d, int terminator);
 void trigedit_save(struct descriptor_data *d);
+void trigedit_save_zone(struct zone_data *zone);
 int format_script(struct descriptor_data *d);
 
 ACMD(do_oasis_trigedit);

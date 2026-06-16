@@ -3452,9 +3452,29 @@ void zone_schedule_reset(struct zone_data *zone) {
 }
 
 // Called from main.zig after boot_db() has loaded all zones.
+// Zones are staggered evenly across their lifespan so they don't all fire
+// simultaneously every cycle.
 void zone_schedule_all_resets(void) {
-  zone_iterate([](auto zone) {
-    zone_schedule_reset(zone);
+  // First pass: count active zones so we can compute even spacing.
+  int total = 0;
+  zone_iterate([&](auto zone) {
+    if (zone && zone->reset_mode != 0) total++;
+    return true;
+  });
+  if (total == 0) return;
+
+  const int64_t now = event_queue_now_ms();
+  int idx = 0;
+  zone_iterate([&](auto zone) {
+    if (!zone || zone->reset_mode == 0) return true;
+    const int64_t lifespan_ms = zone->lifespan > 0
+        ? (int64_t)zone->lifespan * 60000LL
+        : 60000LL;
+    // Spread initial deadlines evenly across the lifespan window.
+    const int64_t offset_ms = (lifespan_ms * idx) / total;
+    event_schedule_c(now + offset_ms, 0, ev_zone_reset,
+                     EQ_CTX_ZONE_ID, (int64_t)zone->id, 0);
+    idx++;
     return true;
   });
 }
@@ -3466,7 +3486,12 @@ void ev_zone_reset(int /*ctx_type*/, int64_t ctx_a, int64_t /*ctx_b*/) {
   if (!zone || zone->reset_mode == 0) return;
 
   if (zone->reset_mode == 2 || is_empty((zone_vnum)ctx_a)) {
+    const int64_t t0 = event_queue_now_ms();
     reset_zone(zone);
+    const int64_t elapsed = event_queue_now_ms() - t0;
+    if (elapsed >= 100)
+      mud_log("PERF: zone reset '%s' (zone %d) took %ldms",
+              zone->name, zone->id, (long)elapsed);
     mudlog(CMP, ADMLVL_GOD, FALSE, "Auto zone reset: %s (Zone %d)",
            zone->name, zone->id);
     zone_schedule_reset(zone);

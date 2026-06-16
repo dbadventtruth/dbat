@@ -180,7 +180,10 @@ pub fn process(now_ms: i64) void {
         // which is no longer pending and must no-op).
         dropMeta(e.id);
 
+        const t0 = nowMs();
         fireEvent(e);
+        const elapsed_ms: c_int = @intCast(@min(nowMs() - t0, 999_999));
+        if (elapsed_ms >= 500) logSlowEvent(e.handler, elapsed_ms);
 
         if (e.interval > 0) {
             var next = e;
@@ -191,6 +194,25 @@ pub fn process(now_ms: i64) void {
         } else {
             releaseContext(e.context);
         }
+    }
+}
+
+fn logSlowEvent(handler: EventHandler, elapsed_ms: c_int) void {
+    switch (handler) {
+        .c_fn => |f| cdb.mud_log(
+            "PERF: event [c_fn 0x%lx] took %dms",
+            @as(c_ulong, @intCast(@intFromPtr(f))),
+            elapsed_ms,
+        ),
+        .lua_named => |id| {
+            const name = intern_mod.nameOf(id);
+            cdb.mud_log(
+                "PERF: event '%.*s' took %dms",
+                @as(c_int, @intCast(name.len)),
+                name.ptr,
+                elapsed_ms,
+            );
+        },
     }
 }
 
