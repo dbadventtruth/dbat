@@ -183,7 +183,7 @@ pub fn process(now_ms: i64) void {
         const t0 = nowMs();
         fireEvent(e);
         const elapsed_ms: c_int = @intCast(@min(nowMs() - t0, 999_999));
-        if (elapsed_ms >= 200) logSlowEvent(e.handler, elapsed_ms);
+        if (elapsed_ms >= 500) logSlowEvent(e.handler, elapsed_ms);
 
         if (e.interval > 0) {
             var next = e;

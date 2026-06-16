@@ -32,14 +32,14 @@
 #
 ulimit -c unlimited
 
-# Load local overrides from .env if present (e.g., PORT=4000).
+# Load local overrides from .env if present (e.g., DBAT_TELNET_PORT=4000).
 if [ -r .env ]; then
   set -a
   . ./.env
   set +a
 fi
 
-# Load local overrides from .env if present (e.g., PORT=4000).
+# Load local overrides from .env.secrets if present (e.g., DBAT_JWT_SECRET=ReplaceMePlease).
 if [ -r .env.secrets ]; then
   set -a
   . ./.env.secrets
