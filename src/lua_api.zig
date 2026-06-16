@@ -19,68 +19,21 @@ const LuaRepl = struct {
 };
 
 const lua_root = "lua";
-const categories = [_][]const u8{
-    "commands",
-    "conditions",
-    "derived",
-    "modifiers",
-    "meters",
-    "ocommands",
-    "races",
-    "senseis",
-    "skills",
-    "stats",
-    "transformations",
-};
 
-const bootstrap: [:0]const u8 =
-    \\local dbat = require("dbat")
-    \\dbat.registry = dbat.registry or {}
-    \\dbat.lib = require("lua.lib")
-    \\
-    \\function dbat._register(category, slug, path, value)
-    \\  if value == nil then
-    \\    error(path .. " returned nil")
-    \\  end
-    \\
-    \\  local bucket = dbat.registry[category]
-    \\  if bucket == nil then
-    \\    bucket = {}
-    \\    dbat.registry[category] = bucket
-    \\  end
-    \\
-    \\  if type(value) == "table" then
-    \\    value.id = value.id or slug
-    \\    value._path = value._path or path
-    \\    value._category = value._category or category
-    \\  end
-    \\
-    \\  if bucket[slug] ~= nil then
-    \\    error("duplicate lua entry: " .. category .. "/" .. slug)
-    \\  end
-    \\
-    \\  bucket[slug] = value
-    \\  return value
-    \\end
-    \\
-    \\function dbat.get(category, slug)
-    \\  local bucket = dbat.registry[category]
-    \\  if bucket == nil then return nil end
-    \\  return bucket[slug]
-    \\end
-    \\
-    \\function dbat.category(category)
-    \\  return dbat.registry[category] or {}
-    \\end
-    \\
-    \\function dbat._values(list)
-    \\  local index = 0
-    \\  return function()
-    \\    index = index + 1
-    \\    return list[index]
-    \\  end
-    \\end
-;
+const Category = struct { namespace: []const u8, name: []const u8, dir: []const u8 };
+const categories = [_]Category{
+    .{ .namespace = "characters", .name = "commands",        .dir = "characters/commands" },
+    .{ .namespace = "characters", .name = "conditions",      .dir = "characters/conditions" },
+    .{ .namespace = "characters", .name = "derived",         .dir = "characters/derived" },
+    .{ .namespace = "characters", .name = "modifiers",       .dir = "characters/modifiers" },
+    .{ .namespace = "characters", .name = "meters",          .dir = "characters/meters" },
+    .{ .namespace = "characters", .name = "ocommands",       .dir = "characters/ocommands" },
+    .{ .namespace = "characters", .name = "races",           .dir = "characters/races" },
+    .{ .namespace = "characters", .name = "senseis",         .dir = "characters/senseis" },
+    .{ .namespace = "characters", .name = "skills",          .dir = "characters/skills" },
+    .{ .namespace = "characters", .name = "stats",           .dir = "characters/stats" },
+    .{ .namespace = "characters", .name = "transformations", .dir = "characters/transformations" },
+};
 
 var allocator: std.mem.Allocator = undefined;
 var io: std.Io = undefined;
@@ -219,7 +172,7 @@ pub fn init(alloc: std.mem.Allocator, runtime_io: std.Io) !void {
     configureStandardLibraries(lua);
     registerReplPrint(lua);
     registerDbatModule(lua);
-    try lua.doString(bootstrap);
+    try lua.doFile(lua_root ++ "/bootstrap.lua");
 }
 
 pub fn deinit() void {
@@ -246,7 +199,7 @@ pub export fn lua_reload() bool {
     configureStandardLibraries(lua);
     registerReplPrint(lua);
     registerDbatModule(lua);
-    lua.doString(bootstrap) catch return false;
+    lua.doFile(lua_root ++ "/bootstrap.lua") catch return false;
     load_lua() catch return false;
     return true;
 }
@@ -258,9 +211,9 @@ pub fn state() *Lua {
 pub fn load_lua() !void {
     loaded_entries = 0;
     definition_cache.clear();
-    inline for (categories) |category| {
-        std.log.info("loading Lua category: {s}", .{category});
-        try loadCategory(category);
+    inline for (categories) |cat| {
+        std.log.info("loading Lua category: {s}/{s}", .{ cat.namespace, cat.name });
+        try loadCategory(cat.namespace, cat.name, cat.dir);
     }
     std.log.info("loaded {} Lua entries", .{loaded_entries});
 }
@@ -301,24 +254,21 @@ pub fn pushThing(category: []const u8, slug: []const u8) !bool {
         lua.setTop(top);
         return false;
     }
-    if (lua.getField(-1, "registry") != .table) {
+    if (lua.getField(-1, "get") != .function) {
         lua.setTop(top);
         return false;
     }
+    lua.remove(-2); // dbat table (get is a closure, doesn't need it on stack)
     _ = lua.pushString(category);
-    if (lua.getTable(-2) != .table) {
-        lua.setTop(top);
-        return false;
-    }
     _ = lua.pushString(slug);
-    if (lua.getTable(-2) == .nil) {
+    lua.protectedCall(.{ .args = 2, .results = 1 }) catch {
+        lua.setTop(top);
+        return false;
+    };
+    if (lua.isNil(-1)) {
         lua.setTop(top);
         return false;
     }
-
-    lua.remove(-2); // category table
-    lua.remove(-2); // registry table
-    lua.remove(-2); // dbat table
     return true;
 }
 
@@ -1055,9 +1005,6 @@ fn registerDbatModule(lua: *Lua) void {
 fn openDbat(lua: *Lua) i32 {
     lua.newTable();
 
-    lua.newTable();
-    lua.setField(-2, "registry");
-
     characters_lua.register(lua);
     objects_lua.register(lua);
     rooms_lua.register(lua);
@@ -1215,17 +1162,17 @@ fn logPrintArguments(lua: *Lua) void {
     }
 }
 
-fn loadCategory(comptime category: []const u8) !void {
-    const dir_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lua_root, category });
+fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, comptime dir: []const u8) !void {
+    const dir_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lua_root, dir });
     defer allocator.free(dir_path);
 
-    var dir = std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| switch (err) {
+    var d = std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound => return,
         else => return err,
     };
-    defer dir.close(io);
+    defer d.close(io);
 
-    var iter = dir.iterate();
+    var iter = d.iterate();
     while (try iter.next(io)) |entry| {
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.name, ".lua")) continue;
@@ -1234,11 +1181,11 @@ fn loadCategory(comptime category: []const u8) !void {
         const path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
         defer allocator.free(path);
 
-        try loadThing(category, slug, path);
+        try loadThing(namespace, name, slug, path);
     }
 }
 
-fn loadThing(category: []const u8, slug: []const u8, path: []const u8) !void {
+fn loadThing(namespace: []const u8, category: []const u8, slug: []const u8, path: []const u8) !void {
     const lua = lua_state.?;
     lua.setTop(0);
     errdefer lua.setTop(0);
@@ -1256,15 +1203,17 @@ fn loadThing(category: []const u8, slug: []const u8, path: []const u8) !void {
         return err;
     };
 
-    try registerReturnedValue(category, slug, path);
+    try registerReturnedValue(namespace, category, slug, path);
     loaded_entries += 1;
     lua.setTop(0);
 }
 
-fn registerReturnedValue(category: []const u8, slug: []const u8, path: []const u8) !void {
+fn registerReturnedValue(namespace: []const u8, category: []const u8, slug: []const u8, path: []const u8) !void {
     const lua = lua_state.?;
     try cacheReturnedValue(category, slug, 1);
 
+    const namespace_z = try allocator.dupeZ(u8, namespace);
+    defer allocator.free(namespace_z);
     const category_z = try allocator.dupeZ(u8, category);
     defer allocator.free(category_z);
     const slug_z = try allocator.dupeZ(u8, slug);
@@ -1275,12 +1224,13 @@ fn registerReturnedValue(category: []const u8, slug: []const u8, path: []const u
     _ = lua.getGlobal("dbat");
     _ = lua.getField(-1, "_register");
     lua.remove(-2);
+    _ = lua.pushString(namespace_z);
     _ = lua.pushString(category_z);
     _ = lua.pushString(slug_z);
     _ = lua.pushString(path_z);
     lua.pushValue(1);
 
-    lua.protectedCall(.{ .args = 4, .results = 0 }) catch |err| {
+    lua.protectedCall(.{ .args = 5, .results = 0 }) catch |err| {
         reportLuaError(path, err);
         return err;
     };

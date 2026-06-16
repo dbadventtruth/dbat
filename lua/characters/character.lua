@@ -17,7 +17,7 @@ local function der_total(ch, name)
     der_caches[id] = cache
   end
 
-  local def = dbat.registry.derived[name]
+  local def = dbat.characters.registry.derived[name]
   if not def then return 0 end
 
   -- Base value
@@ -149,7 +149,7 @@ local function keywords_for(ch, viewer)
 end
 
 local function find_in_registry(category, legacy_id)
-  local registry = dbat.registry[category]
+  local registry = dbat.characters.registry[category]
   if not registry then return nil end
   for _, entry in pairs(registry) do
     if entry.legacy_id == legacy_id then
@@ -189,7 +189,7 @@ local function modifiers(ch)
   -- Conditions
   for _, cond_id in ipairs(ch:conditions()) do
     local cond = ch:condition(cond_id)
-    local cond_def = dbat.registry.conditions[cond_id]
+    local cond_def = dbat.characters.registry.conditions[cond_id]
     if cond_def and cond_def.modifiers then
       append_mods(all, cond_def.modifiers(ch, cond))
     end

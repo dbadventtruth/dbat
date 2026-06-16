@@ -213,7 +213,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "sits_set", luaCharacterSitsSet);
     addMethod(lua, "conditions", luaCharacterConditions);
 
-    lua_meta.mergeMethods(lua, "lua.meta.character");
+    lua_meta.mergeMethods(lua, "lua.characters.character");
 
     lua.pop(1);
 }

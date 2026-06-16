@@ -114,7 +114,7 @@ fn registerRoomMetatable(lua: *Lua) void {
     lua.pushFunction(zlua.wrap(luaRoomPeopleGet));
     lua.setField(-2, "people");
 
-    lua_meta.mergeMethods(lua, "lua.meta.room");
+    lua_meta.mergeMethods(lua, "lua.rooms.room");
 
     lua.pop(1);
 }

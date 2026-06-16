@@ -14,6 +14,7 @@
 - (Internal) DgScripts now have type-specific IDs instead of all rooms, mobs, and objects sharing an ID space.
 - (Internal) Large set of utility iteration tools now available in `iterate.hpp`
 - (Internal) Main loop game simulation functions have been broken up into individual functions with metric tracking alerts. [Volund]
+- (Internal) Added experimental HTTP API with JWT authentication. [Volund]
 
 # 2.9.3
 - Fixing fireshield message to not get all mishmoshed. [Volund]
