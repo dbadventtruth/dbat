@@ -1,6 +1,18 @@
 local dbat = require("dbat")
 dbat.lib = require("lua.lib")
 dbat._category_to_namespace = {}
+dbat._category_classes = {}
+
+local function get_category_class(namespace, category)
+  local key = namespace .. "/" .. category
+  local cached = dbat._category_classes[key]
+  if cached ~= nil then return cached end
+  local mod_path = "lua." .. namespace .. "." .. category
+  local ok, result = pcall(require, mod_path)
+  local cls = (ok and type(result) == "table" and type(result.wrap) == "function") and result or false
+  dbat._category_classes[key] = cls
+  return cls
+end
 
 function dbat._register(namespace, category, slug, path, value)
   if value == nil then
@@ -33,6 +45,9 @@ function dbat._register(namespace, category, slug, path, value)
   if bucket[slug] ~= nil then
     error("duplicate lua entry: " .. namespace .. "/" .. category .. "/" .. slug)
   end
+
+  local cls = get_category_class(namespace, category)
+  if cls then value = cls.wrap(value) or value end
 
   bucket[slug] = value
   return value

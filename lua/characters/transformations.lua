@@ -170,4 +170,12 @@ function M.resolve(ch, input)
     return nil
 end
 
+function M.wrap(def)
+  def.alias = def.alias or {}
+  if type(def.alias) == "string" then def.alias = {def.alias} end
+  def.races = def.races or {}
+  def.drain = def.drain or 0.0
+  return def
+end
+
 return M
