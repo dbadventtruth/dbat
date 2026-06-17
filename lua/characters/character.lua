@@ -315,6 +315,16 @@ local function visible_commands(ch, cmd_class)
     return visible
 end
 
+local function send_around(ch, msg)
+  local room = ch:room_get()
+  if not room then return end
+  for other in room:people() do
+    if other:id_get() ~= ch:id_get() then
+      other:send(msg)
+    end
+  end
+end
+
 return {
   can_see = can_see,
   keywords_for = keywords_for,
@@ -330,4 +340,5 @@ return {
   der_total = der_total,
   execute_command = execute_command,
   visible_commands = visible_commands,
+  send_around = send_around,
 }

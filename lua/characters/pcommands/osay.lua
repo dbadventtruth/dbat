@@ -24,7 +24,7 @@ return {
         else
             display_name = ch:user_get() or ch:name_get()
         end
-        ch:act_self(string.format("@WYou @D[@mOSAY@D] @W'@w%s@W'@n", msg), {})
-        ch:act_around(string.format("@W%s @D[@mOSAY@D] @W'@w%s@W'@n", display_name, msg), {})
+        ch:send(string.format("@WYou @D[@mOSAY@D] @W'@w%s@W'@n\r\n", msg))
+        ch:send_around(string.format("@W%s @D[@mOSAY@D] @W'@w%s@W'@n\r\n", display_name, msg))
     end,
 }
