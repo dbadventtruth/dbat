@@ -139,6 +139,8 @@ void extract_char_final(struct char_data *ch) {
         TO_ROOM);
     GRAPTYPE(GRAPPLING(ch)) = -1;
     GRAPPLED(GRAPPLING(ch)) = NULL;
+    char_condition_remove(ch, "grappling", "grapple_end");
+    char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
     GRAPPLING(ch) = NULL;
     GRAPTYPE(ch) = -1;
   }
@@ -149,6 +151,8 @@ void extract_char_final(struct char_data *ch) {
         GRAPPLED(ch), TO_ROOM);
     GRAPTYPE(GRAPPLED(ch)) = -1;
     GRAPPLING(GRAPPLED(ch)) = NULL;
+    char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
+    char_condition_remove(ch, "grappled", "grapple_end");
     GRAPPLED(ch) = NULL;
     GRAPTYPE(ch) = -1;
   }

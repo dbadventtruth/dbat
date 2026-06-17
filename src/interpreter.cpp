@@ -456,6 +456,7 @@ int enter_player_game(struct descriptor_data *d) {
   (void)char_register_id(GET_ID(ch), ch);
   char_subscribe_add(ch, "player");
   read_saved_vars(ch);
+  char_apply_entry_conditions(ch);
   char_iterate_all([&](struct char_data *check) {
     if (!check->master && IS_NPC(check) &&
         check->master_id == GET_IDNUM(ch) &&
@@ -512,11 +513,6 @@ int enter_player_game(struct descriptor_data *d) {
   GET_SPAM(ch) = 0;
   GET_RMETER(ch) = 0;
 
-  if (AFF_FLAGGED(ch, AFF_HAYASA)) {
-    GET_SPEEDBOOST(ch) = GET_SPEEDCALC(ch) * 0.5;
-  } else {
-    GET_SPEEDBOOST(ch) = 0;
-  }
   if (GET_TRP(ch) < GET_RP(ch)) {
     GET_TRP(ch) = GET_RP(ch);
   }

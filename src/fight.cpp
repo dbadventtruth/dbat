@@ -861,6 +861,8 @@ static void tick_grapple_damage(struct char_data *ch) {
       char_position_set(GRAPPLING(ch), POS_SLEEPING);
       GRAPTYPE(GRAPPLING(ch)) = -1;
       GRAPPLED(GRAPPLING(ch)) = NULL;
+      char_condition_remove(ch, "grappling", "grapple_end");
+      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
       GRAPPLING(ch) = NULL;
       GRAPTYPE(ch) = -1;
     }
@@ -1688,12 +1690,16 @@ static void final_combat_resolve(struct char_data *ch) {
   if (GRAPPLING(ch)) {
     GRAPTYPE(GRAPPLING(ch)) = -1;
     GRAPPLED(GRAPPLING(ch)) = NULL;
+    char_condition_remove(ch, "grappling", "grapple_end");
+    char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
     GRAPPLING(ch) = NULL;
     GRAPTYPE(ch) = -1;
   }
   if (GRAPPLED(ch)) {
     GRAPTYPE(GRAPPLED(ch)) = -1;
     GRAPPLING(GRAPPLED(ch)) = NULL;
+    char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
+    char_condition_remove(ch, "grappled", "grapple_end");
     GRAPPLED(ch) = NULL;
     GRAPTYPE(ch) = -1;
   }

@@ -148,12 +148,16 @@ void handle_teleport(struct char_data *ch, struct char_data *tar,
     if (GRAPPLING(ch) && IS_NPC(GRAPPLING(ch))) {
       GRAPTYPE(GRAPPLING(ch)) = -1;
       GRAPPLED(GRAPPLING(ch)) = NULL;
+      char_condition_remove(ch, "grappling", "grapple_end");
+      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
       GRAPPLING(ch) = NULL;
       GRAPTYPE(ch) = -1;
     }
     if (GRAPPLED(ch) && IS_NPC(GRAPPLED(ch))) {
       GRAPTYPE(GRAPPLED(ch)) = -1;
       GRAPPLING(GRAPPLED(ch)) = NULL;
+      char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
+      char_condition_remove(ch, "grappled", "grapple_end");
       GRAPPLED(ch) = NULL;
       GRAPTYPE(ch) = -1;
     }

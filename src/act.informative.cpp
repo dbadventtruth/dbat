@@ -5041,26 +5041,12 @@ ACMD(do_score) {
       } else if (PLR_FLAGGED(ch, PLR_SENSEM)) {
         sprintf(model, "@RSensor Equiped");
       }
-      if (PLR_FLAGGED(ch, PLR_TRANS1)) {
-        sprintf(version, "Beta 1.0");
-      } else if (PLR_FLAGGED(ch, PLR_TRANS2)) {
-        sprintf(version, "ANS 2.0");
-      } else if (PLR_FLAGGED(ch, PLR_TRANS3)) {
-        sprintf(version, "ANS 3.0");
-      } else if (PLR_FLAGGED(ch, PLR_TRANS4)) {
-        sprintf(version, "ANS 4.0");
-      } else if (PLR_FLAGGED(ch, PLR_TRANS5)) {
-        sprintf(version, "ANS 5.0");
-      } else if (PLR_FLAGGED(ch, PLR_TRANS6)) {
-        sprintf(version, "ANS 6.0");
-      } else {
-        sprintf(version, "Alpha 0.5");
-      }
+
       send_to_char(ch,
                    "  @D| @CModel@D: %15s@D,    @CUGP@D: @G%15s@D,  "
                    "@CVersion@D: @r%-12s@D|@n\n",
                    model, absorb > 0 ? "@RN/A" : add_commas(GET_UP(ch)),
-                   version);
+                   "???");
     }
     if (GET_CLAN(ch) != NULL) {
       send_to_char(ch, "  @D|  @CClan@D: @W%-64s@D|@n\n", GET_CLAN(ch));
@@ -5538,46 +5524,48 @@ ACMD(do_status) {
     send_to_char(
         ch, "         "
             "@D-----------------@YHunger@D/@yThirst@D-----------------@n\r\n");
-    if (char_stat_get(ch, "hunger") >= 48) {
+    auto hunger = char_stat_get(ch, "hunger");
+    if (hunger >= 48) {
       send_to_char(ch, "         You are full.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 40) {
+    } else if (hunger >= 40) {
       send_to_char(ch, "         You are nearly full.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 30) {
+    } else if (hunger >= 30) {
       send_to_char(ch, "         You are not hungry.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 21) {
+    } else if (hunger >= 21) {
       send_to_char(ch, "         You wouldn't mind a snack.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 15) {
+    } else if (hunger >= 15) {
       send_to_char(ch, "         You are slightly hungry.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 10) {
+    } else if (hunger >= 10) {
       send_to_char(ch, "         You are partially hungry.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 5) {
+    } else if (hunger >= 5) {
       send_to_char(ch, "         You are really hungry.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 2) {
+    } else if (hunger >= 2) {
       send_to_char(ch, "         You are extremely hungry.\r\n");
-    } else if (char_stat_get(ch, "hunger") >= 0) {
+    } else if (hunger >= 0) {
       send_to_char(ch, "         You are starving!\r\n");
-    } else if (char_stat_get(ch, "hunger") < 0) {
+    } else if (hunger < 0) {
       send_to_char(ch, "         You need not eat.\r\n");
     }
-    if (char_stat_get(ch, "thirst") >= 48) {
+    auto thirst = char_stat_get(ch, "thirst");
+    if (thirst >= 48) {
       send_to_char(ch, "         You are not thirsty.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 40) {
+    } else if (thirst >= 40) {
       send_to_char(ch, "         You are nearly quenched.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 30) {
+    } else if (thirst >= 30) {
       send_to_char(ch, "         You are not thirsty.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 21) {
+    } else if (thirst >= 21) {
       send_to_char(ch, "         You wouldn't mind a drink.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 15) {
+    } else if (thirst >= 15) {
       send_to_char(ch, "         You are slightly thirsty.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 10) {
+    } else if (thirst >= 10) {
       send_to_char(ch, "         You are partially thirsty.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 5) {
+    } else if (thirst >= 5) {
       send_to_char(ch, "         You are really thirsty.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 2) {
+    } else if (thirst >= 2) {
       send_to_char(ch, "         You are extremely thirsty.\r\n");
-    } else if (char_stat_get(ch, "thirst") >= 0) {
+    } else if (thirst >= 0) {
       send_to_char(ch, "         You are dehydrated!\r\n");
-    } else if (char_stat_get(ch, "thirst") < 0) {
+    } else if (thirst < 0) {
       send_to_char(ch, "         You need not drink.\r\n");
     }
     send_to_char(

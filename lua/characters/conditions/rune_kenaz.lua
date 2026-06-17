@@ -5,9 +5,9 @@ local function modifiers(ch, cond)
 end
 
 return {
-    id = "rune_laguz",
-    name = "Laguz Rune",
-    tags = { "rune_laguz" },
+    id = "rune_kenaz",
+    name = "Kenaz Rune",
+    tags = { "rune_kenaz" },
     persistent = true,
     modifiers = modifiers,
 }

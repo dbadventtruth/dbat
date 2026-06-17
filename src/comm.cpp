@@ -225,7 +225,7 @@ void copyover_recover_descriptor(socklen_t desc, const char *name,
     d->connected = CON_PLAYING;
     look_at_room(char_room_get(d->character), d->character, 0);
     if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
-      GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
+      char_condition_apply(d->character, "hayasa", "entry", "copyover_sync");
     }
   }
 }

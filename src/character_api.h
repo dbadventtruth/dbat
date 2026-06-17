@@ -226,6 +226,8 @@ void char_sits_set(struct char_data *ch, struct obj_data *obj);
 int64_t char_position_get(struct char_data *ch);
 void char_position_set(struct char_data *ch, int64_t value);
 
+void char_apply_entry_conditions(struct char_data *ch);
+
 #ifdef __cplusplus
 }
 #endif

@@ -950,6 +950,8 @@ ACMD(do_grapple) {
         TO_NOTVICT);
     GRAPTYPE(GRAPPLING(ch)) = -1;
     GRAPPLED(GRAPPLING(ch)) = NULL;
+    char_condition_remove(ch, "grappling", "grapple_end");
+    char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
     GRAPPLING(ch) = NULL;
     GRAPTYPE(ch) = -1;
     return;
@@ -1134,6 +1136,8 @@ ACMD(do_grapple) {
       GRAPTYPE(ch) = 1;
       GRAPPLED(vict) = ch;
       GRAPTYPE(vict) = 1;
+      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
+      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
       /* Let's grapple! */
 
       decCurST(ch, cost);
@@ -1157,6 +1161,8 @@ ACMD(do_grapple) {
       GRAPTYPE(ch) = 2;
       GRAPPLED(vict) = ch;
       GRAPTYPE(vict) = 2;
+      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
+      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
       /* Let's grapple! */
 
       decCurST(ch, cost);
@@ -1187,6 +1193,8 @@ ACMD(do_grapple) {
       GRAPTYPE(ch) = 4;
       GRAPPLED(vict) = ch;
       GRAPTYPE(vict) = 4;
+      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
+      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
       /* Let's grapple! */
 
       decCurST(ch, cost);
@@ -1207,6 +1215,8 @@ ACMD(do_grapple) {
       GRAPTYPE(ch) = 3;
       GRAPPLED(vict) = ch;
       GRAPTYPE(vict) = 3;
+      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
+      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
       /* Let's grapple! */
 
       if (!PLR_FLAGGED(vict, PLR_THANDW)) {
@@ -5028,6 +5038,8 @@ ACMD(do_escape) {
       }
       GRAPTYPE(GRAPPLED(ch)) = -1;
       GRAPPLING(GRAPPLED(ch)) = NULL;
+      char_condition_remove(ch, "grappling", "grapple_end");
+      char_condition_remove(GRAPPLED(ch), "grappled", "grapple_end");
       GRAPPLED(ch) = NULL;
       GRAPTYPE(ch) = -1;
     } else {
@@ -5049,6 +5061,8 @@ ACMD(do_escape) {
               GRAPPLED(ch), 0, ch, TO_CHAR);
           GRAPTYPE(GRAPPLED(ch)) = -1;
           GRAPPLING(GRAPPLED(ch)) = NULL;
+          char_condition_remove(ch, "grappling", "grapple_end");
+          char_condition_remove(GRAPPLED(ch), "grappled", "grapple_end");
           GRAPPLED(ch) = NULL;
           GRAPTYPE(ch) = -1;
         }

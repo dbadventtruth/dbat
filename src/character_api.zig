@@ -1404,3 +1404,87 @@ pub export fn char_condition_name_at(ch: *cdb.char_data, index: usize) ?[*:0]con
     }
     return null;
 }
+
+pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
+    const race: c_int = cdb.char_race_get(ch);
+
+    // Mutant mutations (genome[] values 1-10)
+    if (race == cdb.RACE_MUTANT) {
+        const mutation_map = [_]?[*:0]const u8{
+            null,                         // 0 = none
+            "mutation_extreme_speed",     // 1
+            "mutation_cell_regen",        // 2
+            "mutation_extreme_reflexes",  // 3
+            "mutation_infravision",       // 4
+            "mutation_natural_camo",      // 5
+            "mutation_limb_regen",        // 6
+            "mutation_poisonous",         // 7
+            "mutation_rubbery_body",      // 8
+            "mutation_innate_telepathy",  // 9
+            "mutation_natural_energy",    // 10
+        };
+        for (ch.genome) |g| {
+            if (g > 0) {
+                const idx: usize = @intCast(g);
+                if (idx < mutation_map.len) {
+                    if (mutation_map[idx]) |cid|
+                        _ = cdb.char_condition_apply(ch, cid, "entry", "genome");
+                }
+            }
+        }
+    }
+
+    // Bio-Android genomes (genome[] values 1-8)
+    if (race == cdb.RACE_BIO) {
+        const genome_map = [_]?[*:0]const u8{
+            null,             // 0 = none
+            "genome_human",   // 1
+            "genome_saiyan",  // 2
+            "genome_namek",   // 3
+            "genome_icer",    // 4
+            "genome_truffle", // 5
+            "genome_arlian",  // 6
+            "genome_kai",     // 7
+            "genome_konatsu", // 8
+        };
+        for (ch.genome) |g| {
+            if (g > 0) {
+                const idx: usize = @intCast(g);
+                if (idx < genome_map.len) {
+                    if (genome_map[idx]) |cid|
+                        _ = cdb.char_condition_apply(ch, cid, "entry", "genome");
+                }
+            }
+        }
+    }
+
+    // Bonuses (0-28) and Flaws (29-51)
+    const bonus_map = [_][*:0]const u8{
+        "bonus_thrifty", "bonus_prodigy", "bonus_quick_study", "bonus_diehard",
+        "bonus_brawler", "bonus_destroyer", "bonus_hardworker", "bonus_healer",
+        "bonus_loyal", "bonus_brawny", "bonus_scholarly", "bonus_sage",
+        "bonus_agile", "bonus_quick", "bonus_sturdy", "bonus_thickskin",
+        "bonus_recipe", "bonus_fireproof", "bonus_powerhit", "bonus_healthy",
+        "bonus_insomniac", "bonus_evasive", "bonus_wall", "bonus_accurate",
+        "bonus_leech", "bonus_gmemory", "bonus_soft", "bonus_late", "bonus_impulse",
+        "flaw_sickly", "flaw_punchingbag", "flaw_pushover", "flaw_poordepth",
+        "flaw_thinskin", "flaw_fireprone", "flaw_intolerant", "flaw_coward",
+        "flaw_arrogant", "flaw_unfocused", "flaw_slacker", "flaw_slow_learner",
+        "flaw_masochistic", "flaw_mute", "flaw_wimp", "flaw_dull",
+        "flaw_foolish", "flaw_clumsy", "flaw_slow", "flaw_frail",
+        "flaw_sadistic", "flaw_loner", "flaw_bmemory",
+    };
+    for (ch.bonuses, 0..) |val, i| {
+        if (val != 0 and i < bonus_map.len) {
+            _ = cdb.char_condition_apply(ch, bonus_map[i], "entry", "bonus");
+        }
+    }
+
+    // Arlian shell sync (AFF_SHELL = 72)
+    if (bitflags.get(ch.affected_by[0..], cdb.AFF_SHELL))
+        _ = cdb.char_condition_apply(ch, "arlian_shell", "entry", "shell_sync");
+
+    // Hayasa sync (AFF_HAYASA = 57)
+    if (bitflags.get(ch.affected_by[0..], cdb.AFF_HAYASA))
+        _ = cdb.char_condition_apply(ch, "hayasa", "entry", "hayasa_sync");
+}

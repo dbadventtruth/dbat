@@ -1203,10 +1203,7 @@ fn logPrintArguments(lua: *Lua) void {
     }
 }
 
-fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, comptime dir: []const u8) !void {
-    const dir_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lua_root, dir });
-    defer allocator.free(dir_path);
-
+fn loadCategoryDir(namespace: []const u8, name: []const u8, dir_path: []const u8) !void {
     var d = std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound => return,
         else => return err,
@@ -1215,15 +1212,24 @@ fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, compt
 
     var iter = d.iterate();
     while (try iter.next(io)) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.name, ".lua")) continue;
-
-        const slug = entry.name[0 .. entry.name.len - ".lua".len];
-        const path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
-        defer allocator.free(path);
-
-        try loadThing(namespace, name, slug, path);
+        if (entry.kind == .directory) {
+            const sub = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
+            defer allocator.free(sub);
+            try loadCategoryDir(namespace, name, sub);
+        } else if (entry.kind == .file) {
+            if (!std.mem.endsWith(u8, entry.name, ".lua")) continue;
+            const slug = entry.name[0 .. entry.name.len - ".lua".len];
+            const path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
+            defer allocator.free(path);
+            try loadThing(namespace, name, slug, path);
+        }
     }
+}
+
+fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, comptime dir: []const u8) !void {
+    const dir_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lua_root, dir });
+    defer allocator.free(dir_path);
+    try loadCategoryDir(namespace, name, dir_path);
 }
 
 fn loadThing(namespace: []const u8, category: []const u8, slug: []const u8, path: []const u8) !void {
@@ -1244,7 +1250,21 @@ fn loadThing(namespace: []const u8, category: []const u8, slug: []const u8, path
         return err;
     };
 
-    try registerReturnedValue(namespace, category, slug, path);
+    // Use the `id` field from the returned table as the registry key if present,
+    // so that subdirectory files with id != filename slug don't collide.
+    const effective_slug = blk: {
+        if (lua.getField(1, "id") == .string) {
+            const id_str = try lua.toString(-1);
+            const owned = try allocator.dupe(u8, id_str);
+            lua.pop(1);
+            break :blk owned;
+        }
+        lua.pop(1);
+        break :blk try allocator.dupe(u8, slug);
+    };
+    defer allocator.free(effective_slug);
+
+    try registerReturnedValue(namespace, category, effective_slug, path);
     loaded_entries += 1;
     lua.setTop(0);
 }

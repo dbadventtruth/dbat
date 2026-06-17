@@ -112,9 +112,8 @@ extern "C" {
                                   0.3                                          \
                             : 0)                                               \
        : 0)
-#define GET_SPEEDI(ch)                                                         \
-  (GET_SPEEDCALC(ch) + GET_SPEEDBONUS(ch) + GET_SPEEDBOOST(ch) +               \
-   GET_MUTBOOST(ch))
+       
+#define GET_SPEEDI(ch) char_der_total_get((ch), "speed_index")
 #define GET_SPEEDCALC(ch)                                                      \
   (IS_GRAP(ch) ? GET_CHA(ch)                                                   \
                : (IS_INFERIOR(ch) ? (char_condition_has(ch, "flying")               \
@@ -132,16 +131,17 @@ extern "C" {
 #define GET_SPEEDVAR(ch)                                                       \
   (GET_SPEEDVEM(ch) > GET_CHA(ch) ? GET_SPEEDVEM(ch) : GET_CHA(ch))
 #define GET_SPEEDVEM(ch) (GET_SPEEDINT(ch) - (GET_SPEEDINT(ch) * speednar(ch)))
-#define IS_GRAP(ch) (GRAPPLING(ch) || GRAPPLED(ch))
+
 #define GET_SPEEDINT(ch)                                                       \
   (IS_BIO(ch)                                                                  \
        ? ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1200) / 1200) +     \
              (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100))                           \
        : ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1000) / 1000) +     \
              (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100)))
+
 #define IS_INFERIOR(ch) (IS_KONATSU(ch) || IS_DEMON(ch))
 #define IS_WEIGHTED(ch) (getMaxPL(ch) < GET_MAX_HIT(ch))
-
+#define IS_GRAP(ch) (GRAPPLING(ch) || GRAPPLED(ch))
 #define GET_EXP(ch) char_stat_get((ch), "experience")
 /*
  * Changed GET_AC to GET_ARMOR so that code with GET_AC will need to be

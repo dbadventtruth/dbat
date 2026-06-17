@@ -944,7 +944,7 @@ ACMD(do_shell) {
         TRUE, ch, 0, 0, TO_CHAR);
     act("@M$n's@m armored carapce retreats back to its original size.@n", TRUE,
         ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SHELL);
+    char_condition_remove(ch, "arlian_shell", "retract");
     return;
   }
 
@@ -973,7 +973,7 @@ ACMD(do_shell) {
         "of $s body!@n",
         TRUE, ch, 0, 0, TO_ROOM);
     decCurSTPercent(ch, .2);
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_SHELL);
+    char_condition_apply(ch, "arlian_shell", "shell", "activate");
     return;
   }
 }
@@ -1026,10 +1026,14 @@ ACMD(do_liquefy) {
   if (!strcasecmp(arg, "hide")) {
     if (GRAPPLED(ch)) {
       GRAPPLING(GRAPPLED(ch)) = NULL;
+      char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
+      char_condition_remove(ch, "grappled", "grapple_end");
       GRAPPLED(ch) = NULL;
     }
     if (GRAPPLING(ch)) {
       GRAPPLED(GRAPPLING(ch)) = NULL;
+      char_condition_remove(ch, "grappling", "grapple_end");
+      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
       GRAPPLING(ch) = NULL;
     }
     if (DRAGGING(ch)) {
@@ -1062,10 +1066,14 @@ ACMD(do_liquefy) {
     struct char_data *vict;
     if (GRAPPLED(ch)) {
       GRAPPLING(GRAPPLED(ch)) = NULL;
+      char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
+      char_condition_remove(ch, "grappled", "grapple_end");
       GRAPPLED(ch) = NULL;
     }
     if (GRAPPLING(ch)) {
       GRAPPLED(GRAPPLING(ch)) = NULL;
+      char_condition_remove(ch, "grappling", "grapple_end");
+      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
       GRAPPLING(ch) = NULL;
     }
     if (DRAGGING(ch)) {
@@ -3248,7 +3256,7 @@ ACMD(do_hayasa) {
     af.location = APPLY_NONE;
     af.bitvector = AFF_HAYASA;
     affect_join(ch, &af, FALSE, FALSE, FALSE, FALSE);
-    GET_SPEEDBOOST(ch) = GET_SPEEDCALC(ch) * 0.5;
+    char_condition_apply(ch, "hayasa", "hayasa", "activate");
     reveal_hiding(ch, 0);
     act("@CYou close your eyes for a brief moment and focus your ki around "
         "your body as a soft blue glow. All your movements are faster now!@n",
