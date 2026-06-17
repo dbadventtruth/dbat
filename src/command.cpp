@@ -236,7 +236,6 @@ const struct command_info cmd_info[] = {
      SCMD_OASIS_GLIST},
     {"give", "giv", POS_RESTING, do_give, 0, ADMLVL_NONE, 0},
     {"goto", "go", POS_SLEEPING, do_goto, 0, ADMLVL_IMMORT, 0},
-    {"gold", "gol", POS_RESTING, do_gold, 0, ADMLVL_NONE, 0},
     {"group", "gro", POS_RESTING, do_group, 1, ADMLVL_NONE, 0},
     {"grab", "grab", POS_RESTING, do_grab, 0, ADMLVL_NONE, 0},
     {"grand", "gran", POS_RESTING, do_not_here, 0, ADMLVL_NONE, 0},

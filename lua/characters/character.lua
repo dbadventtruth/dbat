@@ -210,13 +210,19 @@ local function modifiers(ch)
   return all
 end
 
-local function on_mud_hour(ch)
-end
+local function on_update(ch, kind)
+  local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
+  event_name = (event_name and event_name ~= "") and event_name or "tick"
 
-local function on_second(ch)
-end
-
-local function on_heartbeat(ch, hb)
+  if subsystem == "condition" then
+    if not ch:condition_has(id) then return end
+    local def = dbat.get("conditions", id)
+    if def and def.on_event then
+      def.on_event(ch, ch:condition(id), event_name)
+    end
+  elseif subsystem == "transformation" then
+    -- future: route to transformation registry
+  end
 end
 
 local function act_self(ch, msg, ctx)
@@ -315,12 +321,35 @@ local function visible_commands(ch, cmd_class)
     return visible
 end
 
+local function send_text(ch, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  ch:send_raw(text)
+end
+
 local function send_around(ch, msg)
   local room = ch:room_get()
   if not room then return end
   for other in room:people() do
     if other:id_get() ~= ch:id_get() then
       other:send(msg)
+    end
+  end
+end
+
+local function send_line(ch, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  if not text:match("\r\n$") then text = text .. "\r\n" end
+  ch:send_raw(text)
+end
+
+local function send_line_around(ch, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  if not text:match("\r\n$") then text = text .. "\r\n" end
+  local room = ch:room_get()
+  if not room then return end
+  for other in room:people() do
+    if other:id_get() ~= ch:id_get() then
+      other:send_raw(text)
     end
   end
 end
@@ -332,13 +361,14 @@ return {
   apparent_sex = apparent_sex,
   apparent_race = apparent_race,
   display_name_for = display_name_for,
-  on_mud_hour = on_mud_hour,
-  on_second = on_second,
-  on_heartbeat = on_heartbeat,
+  on_update = on_update,
   act_self = act_self,
   act_around = act_around,
   der_total = der_total,
   execute_command = execute_command,
   visible_commands = visible_commands,
+  send_text = send_text,
   send_around = send_around,
+  send_line = send_line,
+  send_line_around = send_line_around,
 }

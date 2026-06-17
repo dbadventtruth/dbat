@@ -36,19 +36,34 @@ local function modifiers(room)
   return mods
 end
 
-local function on_mud_hour(room)
+local function send_text(room, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  for ch in room:people() do
+    ch:send_raw(text)
+  end
 end
 
-local function on_second(room)
+local function send_line(room, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  if not text:match("\r\n$") then text = text .. "\r\n" end
+  for ch in room:people() do
+    ch:send_raw(text)
+  end
 end
 
-local function on_heartbeat(room, hb)
+local function on_update(room, kind)
+  local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
+  event_name = (event_name and event_name ~= "") and event_name or "tick"
+  _ = subsystem
+  _ = id
+  _ = event_name
+  -- future: route to room-based subsystems
 end
 
 return {
   refs = refs,
   modifiers = modifiers,
-  on_mud_hour = on_mud_hour,
-  on_second = on_second,
-  on_heartbeat = on_heartbeat,
+  send_text = send_text,
+  send_line = send_line,
+  on_update = on_update,
 }

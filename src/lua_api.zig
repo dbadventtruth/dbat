@@ -1240,10 +1240,14 @@ fn loadThing(namespace: []const u8, category: []const u8, slug: []const u8, path
     const path_z = try allocator.dupeZ(u8, path);
     defer allocator.free(path_z);
 
-    switch (zlua.lang) {
-        .lua51, .luajit => try lua.loadFile(path_z),
-        else => try lua.loadFile(path_z, .text),
-    }
+    const load_result = switch (zlua.lang) {
+        .lua51, .luajit => lua.loadFile(path_z),
+        else => lua.loadFile(path_z, .text),
+    };
+    load_result catch |err| {
+        reportLuaError(path, err);
+        return err;
+    };
 
     lua.protectedCall(.{ .results = 1 }) catch |err| {
         reportLuaError(path, err);

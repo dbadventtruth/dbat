@@ -33,7 +33,6 @@ int search_help(const char *argument, int level);
 // commands
 ACMD(do_look);
 ACMD(do_examine);
-ACMD(do_gold);
 ACMD(do_score);
 ACMD(do_status);
 ACMD(do_inventory);

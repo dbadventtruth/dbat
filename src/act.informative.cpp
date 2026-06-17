@@ -4989,14 +4989,6 @@ ACMD(do_examine) {
   }
 }
 
-ACMD(do_gold) {
-  if (GET_GOLD(ch) == 0)
-    send_to_char(ch, "You're broke!\r\n");
-  else if (GET_GOLD(ch) == 1)
-    send_to_char(ch, "You have one little zenni.\r\n");
-  else
-    send_to_char(ch, "You have %d zenni.\r\n", GET_GOLD(ch));
-}
 
 ACMD(do_score) {
 

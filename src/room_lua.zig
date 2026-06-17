@@ -8,6 +8,12 @@ const lua_meta = @import("lua_meta.zig");
 const Lua = zlua.Lua;
 const room_metatable = "dbat.Room";
 
+extern fn event_schedule_lua_room_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, room_id: cdb.room_vnum) u64;
+extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_count(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn event_queue_now_ms() i64;
+
 const RoomHandle = extern struct {
     vnum: cdb.room_vnum,
 };
@@ -113,6 +119,14 @@ fn registerRoomMetatable(lua: *Lua) void {
     lua.setField(-2, "people_get");
     lua.pushFunction(zlua.wrap(luaRoomPeopleGet));
     lua.setField(-2, "people");
+    lua.pushFunction(zlua.wrap(luaRoomEventSchedule));
+    lua.setField(-2, "event_schedule");
+    lua.pushFunction(zlua.wrap(luaRoomEventCancel));
+    lua.setField(-2, "event_cancel");
+    lua.pushFunction(zlua.wrap(luaRoomEventCount));
+    lua.setField(-2, "event_count");
+    lua.pushFunction(zlua.wrap(luaRoomEventRemainingMs));
+    lua.setField(-2, "event_remaining_ms");
 
     lua_meta.mergeMethods(lua, "lua.rooms.room");
 
@@ -359,5 +373,46 @@ fn valueIterator(lua: *Lua) i32 {
     lua.remove(-2);
     lua.insert(-2);
     lua.protectedCall(.{ .args = 1, .results = 1 }) catch lua.raiseErrorStr("failed to create value iterator", .{});
+    return 1;
+}
+
+fn luaRoomEventSchedule(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const kind = lua.toString(2) catch lua.typeError(2, "string");
+    const delay_ms = lua.toInteger(3) catch lua.typeError(3, "integer");
+    const interval_ms: i64 = if (lua.typeOf(4) == .number) @intCast(lua.toInteger(4) catch 0) else 0;
+    const vnum = cdb.room_vnum_get(room);
+    const now = event_queue_now_ms();
+    const id = event_schedule_lua_room_update(now + delay_ms, interval_ms, kind.ptr, vnum);
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaRoomEventCancel(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const kind = lua.toString(2) catch lua.typeError(2, "string");
+    const vnum = cdb.room_vnum_get(room);
+    const n = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_ROOM), @as(i64, vnum), kind.ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaRoomEventCount(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const kind: ?[:0]const u8 = if (lua.typeOf(2) == .string) (lua.toString(2) catch null) else null;
+    const ptr: ?[*:0]const u8 = if (kind) |k| k.ptr else null;
+    const vnum = cdb.room_vnum_get(room);
+    const n = eq_owner_count(@as(c_int, cdb.EQ_OWNER_ROOM), @as(i64, vnum), ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaRoomEventRemainingMs(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const kind: ?[:0]const u8 = if (lua.typeOf(2) == .string) (lua.toString(2) catch null) else null;
+    const ptr: ?[*:0]const u8 = if (kind) |k| k.ptr else null;
+    const vnum = cdb.room_vnum_get(room);
+    const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_ROOM), @as(i64, vnum), ptr);
+    lua.pushInteger(ms);
     return 1;
 }

@@ -29,7 +29,16 @@ pub const EventContext = union(enum) {
 pub const EventHandler = union(enum) {
     c_fn: *const fn (c_int, i64, i64) callconv(.c) void,
     lua_named: intern_mod.InternedId, // interned dotted path, e.g. "dbat.events.point_update"
+    lua_entity_update: intern_mod.InternedId, // interned kind string; fires entity:on_update(kind)
 };
+
+// Registered by game.zig at startup. Receives (kind, ctx_type, entity_id).
+// Kept as a plain function pointer to avoid circular imports between event_queue ↔ entity lua modules.
+var entity_update_fn: ?*const fn ([]const u8, c_int, i64) void = null;
+
+pub fn setEntityUpdateFn(f: *const fn ([]const u8, c_int, i64) void) void {
+    entity_update_fn = f;
+}
 
 // Owner kinds — mirrored in event_queue_api.h
 pub const OWNER_NONE: u8 = 0;
@@ -213,6 +222,15 @@ fn logSlowEvent(handler: EventHandler, elapsed_ms: c_int) void {
                 elapsed_ms,
             );
         },
+        .lua_entity_update => |id| {
+            const name = intern_mod.nameOf(id);
+            cdb.mud_log(
+                "PERF: on_update '%.*s' took %dms",
+                @as(c_int, @intCast(name.len)),
+                name.ptr,
+                elapsed_ms,
+            );
+        },
     }
 }
 
@@ -258,6 +276,19 @@ fn fireEvent(e: Event) void {
     switch (e.handler) {
         .c_fn => |f| f(ctype, ca, cb),
         .lua_named => |id| fireLuaNamed(id, ctype, ca, cb),
+        .lua_entity_update => |kind_id| fireLuaEntityUpdate(kind_id, e.context),
+    }
+}
+
+fn fireLuaEntityUpdate(kind_id: intern_mod.InternedId, ctx: EventContext) void {
+    const f = entity_update_fn orelse return;
+    const kind = intern_mod.nameOf(kind_id);
+    switch (ctx) {
+        .char_id  => |id| f(kind, CTX_CHAR_ID,  id),
+        .room_id  => |id| f(kind, CTX_ROOM_ID,  @as(i64, id)),
+        .obj_id   => |id| f(kind, CTX_OBJ_ID,   id),
+        .zone_id  => |id| f(kind, CTX_ZONE_ID,  @as(i64, id)),
+        else      => {},
     }
 }
 
@@ -493,4 +524,39 @@ pub export fn eq_remaining_ms(id: u64) i64 {
 
 pub export fn event_queue_now_ms() i64 {
     return nowMs();
+}
+
+// Schedule a lua_entity_update event for a character.
+// kind is the colon-separated routing string, e.g. "condition:bonus_healthy:tick".
+// It is also used as the owner-index tag for cancellation.
+pub export fn event_schedule_lua_char_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, char_id: i64) u64 {
+    const k = kind orelse return 0;
+    const kind_span = std.mem.span(k);
+    const kind_id = intern_mod.intern(kind_span);
+    const owner = OwnerKey{ .kind = OWNER_CHAR, .id = char_id };
+    return schedule(fire_at, interval, .{ .lua_entity_update = kind_id }, .{ .char_id = char_id }, owner, kind_id);
+}
+
+pub export fn event_schedule_lua_room_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, room_id: cdb.room_vnum) u64 {
+    const k = kind orelse return 0;
+    const kind_span = std.mem.span(k);
+    const kind_id = intern_mod.intern(kind_span);
+    const owner = OwnerKey{ .kind = OWNER_ROOM, .id = @as(i64, room_id) };
+    return schedule(fire_at, interval, .{ .lua_entity_update = kind_id }, .{ .room_id = room_id }, owner, kind_id);
+}
+
+pub export fn event_schedule_lua_obj_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, obj_id: i64) u64 {
+    const k = kind orelse return 0;
+    const kind_span = std.mem.span(k);
+    const kind_id = intern_mod.intern(kind_span);
+    const owner = OwnerKey{ .kind = OWNER_OBJ, .id = obj_id };
+    return schedule(fire_at, interval, .{ .lua_entity_update = kind_id }, .{ .obj_id = obj_id }, owner, kind_id);
+}
+
+pub export fn event_schedule_lua_zone_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, zone_id: cdb.zone_vnum) u64 {
+    const k = kind orelse return 0;
+    const kind_span = std.mem.span(k);
+    const kind_id = intern_mod.intern(kind_span);
+    const owner = OwnerKey{ .kind = OWNER_ZONE, .id = @as(i64, zone_id) };
+    return schedule(fire_at, interval, .{ .lua_entity_update = kind_id }, .{ .zone_id = zone_id }, owner, kind_id);
 }

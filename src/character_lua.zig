@@ -14,6 +14,11 @@ const character_metatable = "dbat.Character";
 
 extern fn char_condition_count(ch: *cdb.char_data) usize;
 extern fn char_condition_name_at(ch: *cdb.char_data, index: usize) ?[*:0]const u8;
+extern fn event_schedule_lua_char_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, char_id: i64) u64;
+extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_count(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn event_queue_now_ms() i64;
 const mob_proto_metatable = "dbat.MobPrototype";
 const condition_metatable = "dbat.Condition";
 
@@ -100,7 +105,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "is_same", luaCharacterIsSame);
     addMethod(lua, "update", luaCharacterUpdate);
     addMethod(lua, "send", luaCharacterSend);
-    addMethod(lua, "send_text", luaCharacterSendText);
+    addMethod(lua, "send_raw", luaCharacterSendText);
     addMethod(lua, "extract", luaCharacterExtract);
     addMethod(lua, "can_see_in_dark", luaCharacterCanSeeInDark);
     addMethod(lua, "can_see_char", luaCharacterCanSeeChar);
@@ -217,6 +222,10 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "sits_set", luaCharacterSitsSet);
     addMethod(lua, "conditions", luaCharacterConditions);
     addMethod(lua, "command_queue_clear", luaCharacterCommandQueueClear);
+    addMethod(lua, "event_schedule", luaCharacterEventSchedule);
+    addMethod(lua, "event_cancel", luaCharacterEventCancel);
+    addMethod(lua, "event_count", luaCharacterEventCount);
+    addMethod(lua, "event_remaining_ms", luaCharacterEventRemainingMs);
 
     lua_meta.mergeMethods(lua, "lua.characters.character");
 
@@ -1437,4 +1446,43 @@ fn pairsIterator(lua: *Lua) i32 {
 fn luaCharacterCommandQueueClear(lua: *Lua) i32 {
     cdb.char_command_clear(checkCharacter(lua));
     return 0;
+}
+
+// entity:event_schedule(kind, delay_ms [, interval_ms]) → event_id
+fn luaCharacterEventSchedule(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const kind = string(lua, 2);
+    const delay_ms = integer(lua, 3);
+    const interval_ms: i64 = if (lua.typeOf(4) == .number) @intCast(integer(lua, 4)) else 0;
+    const now = event_queue_now_ms();
+    const id = event_schedule_lua_char_update(now + delay_ms, interval_ms, kind.ptr, cdb.char_id_get(ch));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+// entity:event_cancel(kind) → count cancelled
+fn luaCharacterEventCancel(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const kind = string(lua, 2);
+    const n = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_CHAR), cdb.char_id_get(ch), kind.ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+// entity:event_count([kind]) → integer
+fn luaCharacterEventCount(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
+    const n = eq_owner_count(@as(c_int, cdb.EQ_OWNER_CHAR), cdb.char_id_get(ch), kind);
+    lua.pushInteger(n);
+    return 1;
+}
+
+// entity:event_remaining_ms([kind]) → integer or -1
+fn luaCharacterEventRemainingMs(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
+    const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_CHAR), cdb.char_id_get(ch), kind);
+    lua.pushInteger(ms);
+    return 1;
 }

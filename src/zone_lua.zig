@@ -5,6 +5,12 @@ const cdb = @import("cdb");
 const Lua = zlua.Lua;
 const zone_metatable = "dbat.Zone";
 
+extern fn event_schedule_lua_zone_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, zone_id: cdb.zone_vnum) u64;
+extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_count(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn event_queue_now_ms() i64;
+
 const ZoneHandle = extern struct {
     vnum: cdb.zone_vnum,
 };
@@ -34,6 +40,10 @@ fn registerZoneMetatable(lua: *Lua) void {
     addMethod(lua, "vnum_get", luaZoneIdGet);
     addMethod(lua, "name_get", luaZoneNameGet);
     addMethod(lua, "send_text", luaZoneSendText);
+    addMethod(lua, "event_schedule", luaZoneEventSchedule);
+    addMethod(lua, "event_cancel", luaZoneEventCancel);
+    addMethod(lua, "event_count", luaZoneEventCount);
+    addMethod(lua, "event_remaining_ms", luaZoneEventRemainingMs);
 
     lua.pop(1);
 }
@@ -126,4 +136,45 @@ fn luaZoneSendText(lua: *Lua) i32 {
     const text = lua.toString(2) catch lua.typeError(2, "string");
     cdb.send_to_zone(@constCast(text.ptr), zone);
     return 0;
+}
+
+fn luaZoneEventSchedule(lua: *Lua) i32 {
+    const zone = checkZone(lua);
+    const kind = lua.toString(2) catch lua.typeError(2, "string");
+    const delay_ms = lua.toInteger(3) catch lua.typeError(3, "integer");
+    const interval_ms: i64 = if (lua.typeOf(4) == .number) @intCast(lua.toInteger(4) catch 0) else 0;
+    const vnum = cdb.zone_id_get(zone);
+    const now = event_queue_now_ms();
+    const id = event_schedule_lua_zone_update(now + delay_ms, interval_ms, kind.ptr, @intCast(vnum));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaZoneEventCancel(lua: *Lua) i32 {
+    const zone = checkZone(lua);
+    const kind = lua.toString(2) catch lua.typeError(2, "string");
+    const vnum = cdb.zone_id_get(zone);
+    const n = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_ZONE), vnum, kind.ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaZoneEventCount(lua: *Lua) i32 {
+    const zone = checkZone(lua);
+    const kind: ?[:0]const u8 = if (lua.typeOf(2) == .string) (lua.toString(2) catch null) else null;
+    const ptr: ?[*:0]const u8 = if (kind) |k| k.ptr else null;
+    const vnum = cdb.zone_id_get(zone);
+    const n = eq_owner_count(@as(c_int, cdb.EQ_OWNER_ZONE), vnum, ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaZoneEventRemainingMs(lua: *Lua) i32 {
+    const zone = checkZone(lua);
+    const kind: ?[:0]const u8 = if (lua.typeOf(2) == .string) (lua.toString(2) catch null) else null;
+    const ptr: ?[*:0]const u8 = if (kind) |k| k.ptr else null;
+    const vnum = cdb.zone_id_get(zone);
+    const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_ZONE), vnum, ptr);
+    lua.pushInteger(ms);
+    return 1;
 }

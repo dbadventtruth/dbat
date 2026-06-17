@@ -9,6 +9,12 @@ const Lua = zlua.Lua;
 const object_metatable = "dbat.Object";
 const obj_proto_metatable = "dbat.ObjectPrototype";
 
+extern fn event_schedule_lua_obj_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, obj_id: i64) u64;
+extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_count(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn event_queue_now_ms() i64;
+
 const ObjectHandle = extern struct {
     id: i64,
 };
@@ -140,6 +146,10 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "inventory_count", luaObjectInventoryCount);
     addMethod(lua, "inventory_get", luaObjectInventoryGet);
     addMethod(lua, "inventory", luaObjectInventoryGet);
+    addMethod(lua, "event_schedule", luaObjectEventSchedule);
+    addMethod(lua, "event_cancel", luaObjectEventCancel);
+    addMethod(lua, "event_count", luaObjectEventCount);
+    addMethod(lua, "event_remaining_ms", luaObjectEventRemainingMs);
 
     lua_meta.mergeMethods(lua, "lua.objects.object");
 
@@ -708,5 +718,40 @@ fn valueIterator(lua: *Lua) i32 {
     lua.remove(-2);
     lua.insert(-2);
     lua.protectedCall(.{ .args = 1, .results = 1 }) catch lua.raiseErrorStr("failed to create value iterator", .{});
+    return 1;
+}
+
+fn luaObjectEventSchedule(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind = string(lua, 2);
+    const delay_ms = integer(lua, 3);
+    const interval_ms: i64 = if (lua.typeOf(4) == .number) @intCast(integer(lua, 4)) else 0;
+    const now = event_queue_now_ms();
+    const id = event_schedule_lua_obj_update(now + delay_ms, interval_ms, kind.ptr, cdb.obj_id_get(obj));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaObjectEventCancel(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind = string(lua, 2);
+    const n = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaObjectEventCount(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
+    const n = eq_owner_count(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaObjectEventRemainingMs(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
+    const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind);
+    lua.pushInteger(ms);
     return 1;
 }
