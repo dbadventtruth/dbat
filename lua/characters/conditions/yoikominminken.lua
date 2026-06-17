@@ -10,5 +10,5 @@ return {
     tags = { "status" },
     persistent = true,
     modifiers = modifiers,
-    legacy_affects = {15,},
+    legacy_affects = {dbat.consts.aff_flags.SLEEP,},
 }

@@ -22,7 +22,7 @@ tags           = { "tag1", "tag2" },      -- default: {}
 exclusive_tags = { "exclusive_tag" },     -- conditions with any of these tags conflict
 persistent     = false,                   -- survive logout/extract (default: false)
 stackable      = false,                   -- allow multiple stacks (default: false)
-legacy_affects = { AFF_FLAG_NUM, … },     -- maps to old bitvector flags
+legacy_affects = { dbat.consts.aff_flags.FLAG, … },     -- maps to old bitvector flags
 modifiers      = function(ch, instance)   -- returns modifier list (see below)
                      return { … }
                  end,
