@@ -535,6 +535,24 @@ pub export fn char_plrflag_set(ch: *cdb.char_data, pos: c_int, value: bool) void
     bitflags.set(ch.act[0..], pos, value);
 }
 
+pub export fn char_prfflagged(ch: *cdb.char_data, pos: c_int) bool {
+    return bitflags.get(ch.pref[0..], pos);
+}
+
+pub export fn char_prfflag_toggle(ch: *cdb.char_data, pos: c_int) bool {
+    return bitflags.toggle(ch.pref[0..], pos);
+}
+
+pub export fn char_prfflag_set(ch: *cdb.char_data, pos: c_int, value: bool) void {
+    bitflags.set(ch.pref[0..], pos, value);
+}
+
+pub export fn char_user_get(ch: *cdb.char_data) [*c]const u8 {
+    const desc = ch.desc;
+    if (desc == null) return null;
+    return desc.*.user;
+}
+
 pub export fn char_inventory_iterate(ch: *cdb.char_data, recursive: bool, func: ?obj_api.ObjIterFn, ctx: ?*anyopaque) void {
     const callback = func orelse return;
     var count: usize = 0;

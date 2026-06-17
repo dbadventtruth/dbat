@@ -152,6 +152,10 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "player_flagged", luaCharacterPlayerFlagged);
     addMethod(lua, "player_flag_set", luaCharacterPlayerFlagSet);
     addMethod(lua, "player_flag_toggle", luaCharacterPlayerFlagToggle);
+    addMethod(lua, "pref_flagged", luaCharacterPrefFlagged);
+    addMethod(lua, "pref_flag_set", luaCharacterPrefFlagSet);
+    addMethod(lua, "pref_flag_toggle", luaCharacterPrefFlagToggle);
+    addMethod(lua, "user_get", luaCharacterUserGet);
     addMethod(lua, "stat_get", luaCharacterStatGet);
     addMethod(lua, "stat_set", luaCharacterStatSet);
     addMethod(lua, "stat_mod", luaCharacterStatMod);
@@ -896,6 +900,31 @@ fn luaCharacterPlayerFlagSet(lua: *Lua) i32 {
 
 fn luaCharacterPlayerFlagToggle(lua: *Lua) i32 {
     lua.pushBoolean(cdb.char_plrflag_toggle(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "player flag")));
+    return 1;
+}
+
+fn luaCharacterPrefFlagged(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_prfflagged(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "pref flag")));
+    return 1;
+}
+
+fn luaCharacterPrefFlagSet(lua: *Lua) i32 {
+    cdb.char_prfflag_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "pref flag"), boolean(lua, 3));
+    return 0;
+}
+
+fn luaCharacterPrefFlagToggle(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_prfflag_toggle(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "pref flag")));
+    return 1;
+}
+
+fn luaCharacterUserGet(lua: *Lua) i32 {
+    const result = cdb.char_user_get(checkCharacter(lua));
+    if (result == null) {
+        lua.pushNil();
+    } else {
+        _ = lua.pushString(std.mem.sliceTo(result, 0));
+    }
     return 1;
 }
 

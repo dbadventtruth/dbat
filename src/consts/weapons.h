@@ -5,18 +5,22 @@ extern "C" {
 #endif
 
 /* Character Creation Styles */
-#define WIELD_NONE 0
-#define WIELD_LIGHT 1
-#define WIELD_ONEHAND 2
-#define WIELD_TWOHAND 3
+typedef enum {
+    WIELD_NONE    = 0,
+    WIELD_LIGHT   = 1,
+    WIELD_ONEHAND = 2,
+    WIELD_TWOHAND = 3,
+} WieldType;
 
 /* Number of weapon types */
 #define MAX_WEAPON_TYPES 26
 
 /* Critical hit types */
-#define CRIT_X2 0
-#define CRIT_X3 1
-#define CRIT_X4 2
+typedef enum {
+    CRIT_X2 = 0,
+    CRIT_X3 = 1,
+    CRIT_X4 = 2,
+} CritType;
 
 #define MAX_CRIT_TYPE CRIT_X4
 #define NUM_CRIT_TYPES 3

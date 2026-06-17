@@ -50,6 +50,10 @@ void char_admflag_set(struct char_data *ch, int pos, bool value);
 bool char_plrflagged(struct char_data *ch, int pos);
 bool char_plrflag_toggle(struct char_data *ch, int pos);
 void char_plrflag_set(struct char_data *ch, int pos, bool value);
+bool char_prfflagged(struct char_data *ch, int pos);
+bool char_prfflag_toggle(struct char_data *ch, int pos);
+void char_prfflag_set(struct char_data *ch, int pos, bool value);
+const char *char_user_get(struct char_data *ch); /* returns desc->user or NULL */
 
 void char_inventory_iterate(struct char_data *ch, bool recursive,
                             obj_iter_fn func, void *ctx);

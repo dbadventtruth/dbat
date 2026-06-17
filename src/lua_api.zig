@@ -8,6 +8,7 @@ const zones_lua = @import("zone_lua.zig");
 const shops_lua = @import("shop_lua.zig");
 const guilds_lua = @import("guild_lua.zig");
 const dgscripts_lua = @import("dgscript_lua.zig");
+const consts_lua = @import("consts_lua.zig");
 const modifiers_api = @import("modifiers_api.zig");
 const intern_mod = @import("intern.zig");
 
@@ -1051,6 +1052,7 @@ fn openDbat(lua: *Lua) i32 {
     shops_lua.register(lua);
     guilds_lua.register(lua);
     dgscripts_lua.register(lua);
+    consts_lua.register(lua);
 
     lua.pushFunction(zlua.wrap(luaLog));
     lua.setField(-2, "log");

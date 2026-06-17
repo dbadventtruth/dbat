@@ -5,72 +5,76 @@ extern "C" {
 #endif
 
 /* Some different kind of liquids for use in values of drink containers */
-#define LIQ_WATER 0
-#define LIQ_BEER 1
-#define LIQ_WINE 2
-#define LIQ_ALE 3
-#define LIQ_DARKALE 4
-#define LIQ_WHISKY 5
-#define LIQ_LEMONADE 6
-#define LIQ_FIREBRT 7
-#define LIQ_LOCALSPC 8
-#define LIQ_SLIME 9
-#define LIQ_MILK 10
-#define LIQ_TEA 11
-#define LIQ_COFFE 12
-#define LIQ_BLOOD 13
-#define LIQ_SALTWATER 14
-#define LIQ_CLEARWATER 15
+typedef enum {
+    LIQ_WATER      = 0,
+    LIQ_BEER       = 1,
+    LIQ_WINE       = 2,
+    LIQ_ALE        = 3,
+    LIQ_DARKALE    = 4,
+    LIQ_WHISKY     = 5,
+    LIQ_LEMONADE   = 6,
+    LIQ_FIREBRT    = 7,
+    LIQ_LOCALSPC   = 8,
+    LIQ_SLIME      = 9,
+    LIQ_MILK       = 10,
+    LIQ_TEA        = 11,
+    LIQ_COFFE      = 12,
+    LIQ_BLOOD      = 13,
+    LIQ_SALTWATER  = 14,
+    LIQ_CLEARWATER = 15,
+} LiquidType;
 
 #define NUM_LIQ_TYPES 16
 
-#define MATERIAL_BONE 0
-#define MATERIAL_CERAMIC 1
-#define MATERIAL_COPPER 2
-#define MATERIAL_DIAMOND 3
-#define MATERIAL_GOLD 4
-#define MATERIAL_IRON 5
-#define MATERIAL_LEATHER 6
-#define MATERIAL_MITHRIL 7
-#define MATERIAL_OBSIDIAN 8
-#define MATERIAL_STEEL 9
-#define MATERIAL_STONE 10
-#define MATERIAL_SILVER 11
-#define MATERIAL_WOOD 12
-#define MATERIAL_GLASS 13
-#define MATERIAL_ORGANIC 14
-#define MATERIAL_CURRENCY 15
-#define MATERIAL_PAPER 16
-#define MATERIAL_COTTON 17
-#define MATERIAL_SATIN 18
-#define MATERIAL_SILK 19
-#define MATERIAL_BURLAP 20
-#define MATERIAL_VELVET 21
-#define MATERIAL_PLATINUM 22
-#define MATERIAL_ADAMANTINE 23
-#define MATERIAL_WOOL 24
-#define MATERIAL_ONYX 25
-#define MATERIAL_IVORY 26
-#define MATERIAL_BRASS 27
-#define MATERIAL_MARBLE 28
-#define MATERIAL_BRONZE 29
-#define MATERIAL_KACHIN 30
-#define MATERIAL_RUBY 31
-#define MATERIAL_SAPPHIRE 32
-#define MATERIAL_EMERALD 33
-#define MATERIAL_GEMSTONE 34
-#define MATERIAL_GRANITE 35
-#define MATERIAL_ENERGY 36
-#define MATERIAL_HEMP 37
-#define MATERIAL_CRYSTAL 38
-#define MATERIAL_EARTH 39
-#define MATERIAL_LIQUID 40
-#define MATERIAL_CLOTH 41
-#define MATERIAL_METAL 42
-#define MATERIAL_WAX 43
-#define MATERIAL_OTHER 44
-#define MATERIAL_FOOD 45
-#define MATERIAL_OIL 46
+typedef enum {
+    MATERIAL_BONE       = 0,
+    MATERIAL_CERAMIC    = 1,
+    MATERIAL_COPPER     = 2,
+    MATERIAL_DIAMOND    = 3,
+    MATERIAL_GOLD       = 4,
+    MATERIAL_IRON       = 5,
+    MATERIAL_LEATHER    = 6,
+    MATERIAL_MITHRIL    = 7,
+    MATERIAL_OBSIDIAN   = 8,
+    MATERIAL_STEEL      = 9,
+    MATERIAL_STONE      = 10,
+    MATERIAL_SILVER     = 11,
+    MATERIAL_WOOD       = 12,
+    MATERIAL_GLASS      = 13,
+    MATERIAL_ORGANIC    = 14,
+    MATERIAL_CURRENCY   = 15,
+    MATERIAL_PAPER      = 16,
+    MATERIAL_COTTON     = 17,
+    MATERIAL_SATIN      = 18,
+    MATERIAL_SILK       = 19,
+    MATERIAL_BURLAP     = 20,
+    MATERIAL_VELVET     = 21,
+    MATERIAL_PLATINUM   = 22,
+    MATERIAL_ADAMANTINE = 23,
+    MATERIAL_WOOL       = 24,
+    MATERIAL_ONYX       = 25,
+    MATERIAL_IVORY      = 26,
+    MATERIAL_BRASS      = 27,
+    MATERIAL_MARBLE     = 28,
+    MATERIAL_BRONZE     = 29,
+    MATERIAL_KACHIN     = 30,
+    MATERIAL_RUBY       = 31,
+    MATERIAL_SAPPHIRE   = 32,
+    MATERIAL_EMERALD    = 33,
+    MATERIAL_GEMSTONE   = 34,
+    MATERIAL_GRANITE    = 35,
+    MATERIAL_ENERGY     = 36,
+    MATERIAL_HEMP       = 37,
+    MATERIAL_CRYSTAL    = 38,
+    MATERIAL_EARTH      = 39,
+    MATERIAL_LIQUID     = 40,
+    MATERIAL_CLOTH      = 41,
+    MATERIAL_METAL      = 42,
+    MATERIAL_WAX        = 43,
+    MATERIAL_OTHER      = 44,
+    MATERIAL_FOOD       = 45,
+    MATERIAL_OIL        = 46,
+} Material;
 
 #define NUM_MATERIALS 47
 

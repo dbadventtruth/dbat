@@ -5,31 +5,33 @@ extern "C" {
 #endif
 
 /* Races */
-#define RACE_UNDEFINED -1
-#define RACE_HUMAN 0
-#define RACE_SAIYAN 1
-#define RACE_ICER 2
-#define RACE_KONATSU 3
-#define RACE_NAMEK 4
-#define RACE_MUTANT 5
-#define RACE_KANASSAN 6
-#define RACE_HALFBREED 7
-#define RACE_BIO 8
-#define RACE_ANDROID 9
-#define RACE_DEMON 10
-#define RACE_MAJIN 11
-#define RACE_KAI 12
-#define RACE_TRUFFLE 13
-#define RACE_HOSHIJIN 14
-#define RACE_ANIMAL 15
-#define RACE_SAIBA 16
-#define RACE_SERPENT 17
-#define RACE_OGRE 18
-#define RACE_YARDRATIAN 19
-#define RACE_ARLIAN 20
-#define RACE_DRAGON 21
-#define RACE_MECHANICAL 22
-#define RACE_SPIRIT 23
+typedef enum {
+    RACE_UNDEFINED = -1,
+    RACE_HUMAN     = 0,
+    RACE_SAIYAN    = 1,
+    RACE_ICER      = 2,
+    RACE_KONATSU   = 3,
+    RACE_NAMEK     = 4,
+    RACE_MUTANT    = 5,
+    RACE_KANASSAN  = 6,
+    RACE_HALFBREED = 7,
+    RACE_BIO       = 8,
+    RACE_ANDROID   = 9,
+    RACE_DEMON     = 10,
+    RACE_MAJIN     = 11,
+    RACE_KAI       = 12,
+    RACE_TRUFFLE   = 13,
+    RACE_HOSHIJIN  = 14,
+    RACE_ANIMAL    = 15,
+    RACE_SAIBA     = 16,
+    RACE_SERPENT   = 17,
+    RACE_OGRE      = 18,
+    RACE_YARDRATIAN = 19,
+    RACE_ARLIAN    = 20,
+    RACE_DRAGON    = 21,
+    RACE_MECHANICAL = 22,
+    RACE_SPIRIT    = 23,
+} Race;
 
 #define NUM_RACES 24
 
