@@ -105,39 +105,8 @@ extern "C" {
 #define GET_CON(ch) char_der_total_get((ch), "constitution")
 #define GET_CHA(ch) char_der_total_get((ch), "speed")
 
-#define GET_MUTBOOST(ch)                                                       \
-  (IS_MUTANT(ch)                                                               \
-       ? (HAS_GENOME(ch, 1) ? (GET_SPEEDCALC(ch) + GET_SPEEDBONUS(ch) +        \
-                               GET_SPEEDBOOST(ch)) *                           \
-                                  0.3                                          \
-                            : 0)                                               \
-       : 0)
-       
 #define GET_SPEEDI(ch) char_der_total_get((ch), "speed_index")
-#define GET_SPEEDCALC(ch)                                                      \
-  (IS_GRAP(ch) ? GET_CHA(ch)                                                   \
-               : (IS_INFERIOR(ch) ? (char_condition_has(ch, "flying")               \
-                                         ? (GET_SPEEDVAR(ch) * 1.25)           \
-                                         : GET_SPEEDVAR(ch))                   \
-                                  : GET_SPEEDVAR(ch)))
-#define GET_SPEEDBONUS(ch)                                                     \
-  (IS_ARLIAN(ch) ? AFF_FLAGGED(ch, AFF_SHELL)                                  \
-                       ? GET_SPEEDVAR(ch) * -0.5                               \
-                       : (IS_MALE(ch) ? (char_condition_has(ch, "flying")           \
-                                             ? (GET_SPEEDVAR(ch) * 0.5)        \
-                                             : 0)                              \
-                                      : 0)                                     \
-                 : 0)
-#define GET_SPEEDVAR(ch)                                                       \
-  (GET_SPEEDVEM(ch) > GET_CHA(ch) ? GET_SPEEDVEM(ch) : GET_CHA(ch))
-#define GET_SPEEDVEM(ch) (GET_SPEEDINT(ch) - (GET_SPEEDINT(ch) * speednar(ch)))
 
-#define GET_SPEEDINT(ch)                                                       \
-  (IS_BIO(ch)                                                                  \
-       ? ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1200) / 1200) +     \
-             (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100))                           \
-       : ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1000) / 1000) +     \
-             (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100)))
 
 #define IS_INFERIOR(ch) (IS_KONATSU(ch) || IS_DEMON(ch))
 #define IS_WEIGHTED(ch) (getMaxPL(ch) < GET_MAX_HIT(ch))

@@ -19,6 +19,12 @@ return {
             mods[#mods + 1] = { target = { "derived", "ki_regen" }, kind = "percent", value = 40000, label = "Arlian Female"}
         end
 
+        if ch:sex_get() == "male" and ch:condition_has("flying") and
+           not ch:condition_has("arlian_shell") and
+           not (ch:condition_has("grappling") or ch:condition_has("grappled")) then
+            mods[#mods + 1] = { target = { "derived", "speed_index" }, kind = "percent", value = 5000, label = "Arlian Flight" }
+        end
+
         return mods
     end,
 }
