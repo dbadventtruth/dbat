@@ -27,7 +27,7 @@ const categories = [_]Category{
     .{ .namespace = "characters", .name = "derived",         .dir = "characters/derived" },
     .{ .namespace = "characters", .name = "modifiers",       .dir = "characters/modifiers" },
     .{ .namespace = "characters", .name = "meters",          .dir = "characters/meters" },
-    .{ .namespace = "characters", .name = "ocommands",       .dir = "characters/ocommands" },
+    .{ .namespace = "characters", .name = "pcommands",       .dir = "characters/pcommands" },
     .{ .namespace = "characters", .name = "races",           .dir = "characters/races" },
     .{ .namespace = "characters", .name = "senseis",         .dir = "characters/senseis" },
     .{ .namespace = "characters", .name = "skills",          .dir = "characters/skills" },
@@ -315,6 +315,45 @@ pub export fn char_cmd_execute(ch: *cdb.char_data, command: ?[*:0]const u8, argu
     defer lua.pop(1);
     if (lua.isBoolean(-1) and !lua.toBoolean(-1)) return false;
     return true;
+}
+
+// Call dbat.characters.pcommand_try(ch, full_input) — returns true if handled.
+pub export fn char_pcommand_try(ch: *cdb.char_data, full_input: [*:0]const u8) bool {
+    return callCharacterDispatch(ch, "pcommand_try", full_input, null);
+}
+
+// Call dbat.characters.command_fallback(ch, cmd_word, arguments) — returns true if handled.
+pub export fn char_command_fallback(ch: *cdb.char_data, cmd_word: [*:0]const u8, arguments: [*:0]const u8) bool {
+    return callCharacterDispatch(ch, "command_fallback", cmd_word, arguments);
+}
+
+fn callCharacterDispatch(ch: *cdb.char_data, comptime fn_name: [:0]const u8, first_arg: [*:0]const u8, second_arg: ?[*:0]const u8) bool {
+    if (!initialized) return false;
+    const lua = lua_state orelse return false;
+    const top = lua.getTop();
+
+    if (lua.getGlobal("dbat") != .table) { lua.setTop(top); return false; }
+    if (lua.getField(-1, "characters") != .table) { lua.setTop(top); return false; }
+    if (lua.getField(-1, fn_name) != .function) { lua.setTop(top); return false; }
+    lua.remove(-2); // characters table
+    lua.remove(-2); // dbat table
+
+    characters_lua.pushCharacter(lua, ch.id);
+    _ = lua.pushString(std.mem.span(first_arg));
+    const nargs: u8 = if (second_arg) |s| blk: {
+        _ = lua.pushString(std.mem.span(s));
+        break :blk 3;
+    } else 2;
+
+    lua.protectedCall(.{ .args = nargs, .results = 1 }) catch {
+        const msg = lua.toString(-1) catch "unknown error";
+        std.log.err("callCharacterDispatch({s}): {s}", .{ fn_name, msg });
+        lua.setTop(top);
+        return false;
+    };
+    const result = if (lua.isBoolean(-1)) lua.toBoolean(-1) else !lua.isNoneOrNil(-1);
+    lua.setTop(top);
+    return result;
 }
 
 fn spanNonEmpty(value: ?[*:0]const u8) ?[]const u8 {

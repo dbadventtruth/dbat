@@ -19,6 +19,7 @@ var mob_proto_map: MobProtoMap = undefined;
 var extract_pending: std.array_list.Managed(i64) = undefined;
 var char_inventory_map: std.AutoHashMap(i64, IdList) = undefined;
 var char_followers_map: std.AutoHashMap(i64, IdList) = undefined;
+var command_queues: std.AutoHashMap(i64, std.ArrayListUnmanaged([]u8)) = undefined;
 
 pub fn init(init_allocator: std.mem.Allocator) void {
     allocator = init_allocator;
@@ -28,6 +29,7 @@ pub fn init(init_allocator: std.mem.Allocator) void {
     extract_pending = std.array_list.Managed(i64).init(allocator);
     char_inventory_map = std.AutoHashMap(i64, IdList).init(allocator);
     char_followers_map = std.AutoHashMap(i64, IdList).init(allocator);
+    command_queues = std.AutoHashMap(i64, std.ArrayListUnmanaged([]u8)).init(allocator);
 }
 
 pub fn deinit() void {
@@ -44,6 +46,14 @@ pub fn deinit() void {
         var it = char_followers_map.valueIterator();
         while (it.next()) |list| list.deinit(allocator);
         char_followers_map.deinit();
+    }
+    {
+        var it = command_queues.valueIterator();
+        while (it.next()) |q| {
+            for (q.items) |s| allocator.free(s);
+            q.deinit(allocator);
+        }
+        command_queues.deinit();
     }
 }
 
@@ -97,6 +107,11 @@ pub export fn char_unregister_id(id: i64) void {
     if (char_followers_map.fetchRemove(id)) |kv| {
         var list = kv.value;
         list.deinit(allocator);
+    }
+    if (command_queues.fetchRemove(id)) |kv| {
+        var q = kv.value;
+        for (q.items) |s| allocator.free(s);
+        q.deinit(allocator);
     }
     _ = chars_by_id.remove(id);
 }
@@ -518,4 +533,48 @@ fn deinitSubscriptions() void {
 fn listNameSlice(list_name: ?[*:0]const u8) ?[]const u8 {
     const ptr = list_name orelse return null;
     return std.mem.span(ptr);
+}
+
+// --- Per-character command queue ---
+
+pub export fn char_command_enqueue(ch: *cdb.char_data, cmd: [*:0]const u8) void {
+    const id = cdb.char_id_get(ch);
+    const text = std.mem.span(cmd);
+    const owned = allocator.dupe(u8, text) catch return;
+    const q = command_queues.getPtr(id) orelse blk: {
+        command_queues.put(id, std.ArrayListUnmanaged([]u8).empty) catch {
+            allocator.free(owned);
+            return;
+        };
+        break :blk command_queues.getPtr(id).?;
+    };
+    q.append(allocator, owned) catch {
+        allocator.free(owned);
+    };
+}
+
+pub export fn char_command_dequeue(ch: *cdb.char_data) ?[*:0]u8 {
+    const id = cdb.char_id_get(ch);
+    const q = command_queues.getPtr(id) orelse return null;
+    if (q.items.len == 0) return null;
+    const slice = q.orderedRemove(0);
+    defer allocator.free(slice);
+    // Return a malloc-allocated sentinel-terminated copy the caller must free.
+    const mem: [*:0]u8 = @ptrCast(std.c.malloc(slice.len + 1) orelse return null);
+    @memcpy(mem[0..slice.len], slice);
+    mem[slice.len] = 0;
+    return mem;
+}
+
+pub export fn char_command_has_pending(ch: *cdb.char_data) bool {
+    const id = cdb.char_id_get(ch);
+    const q = command_queues.getPtr(id) orelse return false;
+    return q.items.len > 0;
+}
+
+pub export fn char_command_clear(ch: *cdb.char_data) void {
+    const id = cdb.char_id_get(ch);
+    const q = command_queues.getPtr(id) orelse return;
+    for (q.items) |s| allocator.free(s);
+    q.clearRetainingCapacity();
 }

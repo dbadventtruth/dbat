@@ -556,7 +556,6 @@ const struct command_info cmd_info[] = {
      SCMD_TRACK},
     {"train", "train", POS_STANDING, do_train, 0, ADMLVL_NONE, 0},
     {"transfer", "transfer", POS_SLEEPING, do_trans, 0, ADMLVL_IMMORT, 0},
-    {"transform", "transform", POS_FIGHTING, do_transform, 0, ADMLVL_NONE, 0},
     {"transo", "trans", POS_STANDING, do_transobj, 0, 5, 0},
     {"tribeam", "tribe", POS_FIGHTING, do_tribeam, 0, ADMLVL_NONE, 0},
     {"trigedit", "trigedit", POS_DEAD, do_oasis, 0, ADMLVL_IMMORT,
@@ -840,7 +839,8 @@ void command_interpreter(struct char_data *ch, char *argument) {
     ch->throws = rand_number(1, 3);
 
   if (*complete_cmd_info[cmd].command == '\n') {
-    send_to_char(ch, "Huh!?!\r\n");
+    if (!char_command_fallback(ch, arg, line))
+      send_to_char(ch, "Huh!?!\r\n");
     return;
   }
 
