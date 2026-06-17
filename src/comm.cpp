@@ -356,14 +356,20 @@ static void connections_handle_commands() {
       act("$n has returned.", TRUE, ch, 0, 0, TO_ROOM);
     }
 
-    /* Consume one regular command and enqueue it for event processing. */
     get_from_q(&d->input, comm, &aliased);
-    d->has_prompt = FALSE;
 
     if (!aliased && perform_alias(d, comm, sizeof(comm)))
       get_from_q(&d->input, comm, &aliased);
 
-    char_command_enqueue(ch, comm);
+    if (GET_WAIT_STATE(ch) == 0 && !char_command_has_pending(ch)) {
+      /* Fast path: no wait, nothing queued — execute this tick, no delay. */
+      d->has_prompt = FALSE;
+      command_interpreter(ch, comm);
+    } else {
+      /* Deferred: wait_state active or prior commands queued. Don't touch
+         has_prompt — nothing has executed yet so no prompt should fire. */
+      char_command_enqueue(ch, comm);
+    }
   }
 }
 
@@ -478,6 +484,7 @@ static void ev_process_character_commands(int, int64_t, int64_t) {
     if (GET_WAIT_STATE(ch) == 0 && char_command_has_pending(ch)) {
       char *cmd = char_command_dequeue(ch);
       if (cmd) {
+        if (ch->desc) ch->desc->has_prompt = FALSE;
         command_interpreter(ch, cmd);
         free(cmd);
       }
