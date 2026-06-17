@@ -201,33 +201,6 @@ static void garble_text(char *string, int known, int lang) {
   }
 }
 
-ACMD(do_osay) {
-
-  skip_spaces(&argument);
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!*argument) {
-    send_to_char(ch, "Yes, but WHAT do you want to osay?\r\n");
-    return;
-  } else {
-    char buf[MAX_INPUT_LENGTH];
-    char buf2[MAX_INPUT_LENGTH];
-
-    sprintf(buf, "@WYou @D[@mOSAY@D] @W'@w%s@W'@n", argument);
-    if (!PRF_FLAGGED(ch, PRF_HIDE)) {
-      sprintf(buf2, "@W%s @D[@mOSAY@D] @W'@w%s@W'@n",
-              GET_ADMLEVEL(ch) > 0 ? GET_NAME(ch) : ch->desc->user, argument);
-    }
-    if (PRF_FLAGGED(ch, PRF_HIDE)) {
-      sprintf(buf2, "@WAnonymous @D[@mOSAY@D] @W'@w%s@W'@n", argument);
-    }
-    act(buf, FALSE, ch, 0, 0, TO_CHAR);
-    act(buf2, FALSE, ch, 0, 0, TO_ROOM);
-  }
-}
-
 ACMD(do_say) {
   struct descriptor_data *d;
   struct char_data *wch = NULL, *wch2 = NULL, *wch3 = NULL, *tch = NULL,

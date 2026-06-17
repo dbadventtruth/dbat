@@ -386,8 +386,6 @@ const struct command_info cmd_info[] = {
     {"olc", "olc", POS_DEAD, do_show_save_list, 0, ADMLVL_IMMORT, 0},
     {"olist", "olist", POS_DEAD, do_oasis, 0, ADMLVL_IMMORT, SCMD_OASIS_OLIST},
     {"oedit", "oedit", POS_DEAD, do_oasis, 0, ADMLVL_IMMORT, SCMD_OASIS_OEDIT},
-    {"osay", "osay", POS_RESTING, do_osay, 0, ADMLVL_NONE, 0},
-
     {"pack", "pac", POS_STANDING, do_pack, 0, 0, 0},
     {"page", "pag", POS_DEAD, do_page, 0, ADMLVL_BUILDER, 0},
     {"paralyze", "paralyz", POS_FIGHTING, do_paralyze, 0, ADMLVL_NONE, 0},

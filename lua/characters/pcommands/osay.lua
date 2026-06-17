@@ -2,7 +2,7 @@ local dbat = require("dbat")
 
 return {
     id       = "osay",
-    priority = 100,
+    priority = 0,
     aliases  = { { "osay", 1 } },
     can_execute = function(ch)
         if ch:is_npc() then return false, "NPCs cannot osay." end
