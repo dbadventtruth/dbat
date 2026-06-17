@@ -22,12 +22,28 @@ local function reason(value)
     return false, value
 end
 
+-- Resolve an integer legacy race id or a string race id to the canonical string id.
+local race_id_cache = nil
+local function resolve_race_id(race_id)
+    if type(race_id) == "string" then return race_id end
+    if not race_id_cache then
+        race_id_cache = {}
+        local dbat = require("dbat")
+        for id, race_def in pairs(dbat.category("races")) do
+            if race_def.legacy_id ~= nil then
+                race_id_cache[race_def.legacy_id] = id
+            end
+        end
+    end
+    return race_id_cache[race_id]
+end
+
 local function available(def, ch)
-    if def.races ~= nil then
+    if def.races ~= nil and #def.races > 0 then
         local race = ch:race_get()
         local allowed = false
         for _, race_id in ipairs(def.races) do
-            if race == race_id then
+            if resolve_race_id(race_id) == race then
                 allowed = true
                 break
             end
@@ -168,6 +184,15 @@ function M.resolve(ch, input)
     end
 
     return nil
+end
+
+function M.wrap(def)
+  def.alias = def.alias or {}
+  if type(def.alias) == "string" then def.alias = {def.alias} end
+  def.races = def.races or {}
+  def.drain = def.drain or 0.0
+  race_id_cache = nil  -- invalidate on each registration (handles lua reload)
+  return def
 end
 
 return M

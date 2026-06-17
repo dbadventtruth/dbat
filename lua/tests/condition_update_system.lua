@@ -5,7 +5,7 @@ local function mob()
   return dbat.mob_protos.by_id(1):spawn(dbat.rooms.by_id(1))
 end
 
-dbat.registry.conditions.test_update_hook = {
+dbat.characters.registry.conditions.test_update_hook = {
   id = "test_update_hook",
   on_update = function(ch, condition, ctx)
     condition:number_mod("ticks", 1)
@@ -14,7 +14,7 @@ dbat.registry.conditions.test_update_hook = {
   end,
 }
 
-dbat.registry.conditions.test_update_remove_self = {
+dbat.characters.registry.conditions.test_update_remove_self = {
   id = "test_update_remove_self",
   on_update = function(ch)
     ch:condition_remove("test_update_remove_self")

@@ -141,7 +141,7 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "inventory_get", luaObjectInventoryGet);
     addMethod(lua, "inventory", luaObjectInventoryGet);
 
-    lua_meta.mergeMethods(lua, "lua.meta.object");
+    lua_meta.mergeMethods(lua, "lua.objects.object");
 
     lua.pop(1);
 }

@@ -912,7 +912,7 @@ static void tick_transformation_drain(struct char_data *ch) {
           TRUE, ch, 0, 0, TO_ROOM);
       if (GET_KAIOKEN(ch) < 1)
         do_kaioken(ch, "0", 0, 0);
-      do_transform(ch, "revert", 0, 0);
+      char_cmd_execute(ch, "transform", "revert");
       return;
     }
     // FPSSJ tier 1: suppresses forced revert at low ST, but drain still applies

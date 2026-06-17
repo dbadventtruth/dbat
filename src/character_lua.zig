@@ -212,8 +212,9 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "sits_get", luaCharacterSitsGet);
     addMethod(lua, "sits_set", luaCharacterSitsSet);
     addMethod(lua, "conditions", luaCharacterConditions);
+    addMethod(lua, "command_queue_clear", luaCharacterCommandQueueClear);
 
-    lua_meta.mergeMethods(lua, "lua.meta.character");
+    lua_meta.mergeMethods(lua, "lua.characters.character");
 
     lua.pop(1);
 }
@@ -365,6 +366,7 @@ fn legacyForDefinitionId(lua: *Lua, comptime category: [:0]const u8, id: [:0]con
     defer lua.setTop(top);
 
     if (lua.getGlobal("dbat") != .table) return null;
+    if (lua.getField(-1, "characters") != .table) return null;
     if (lua.getField(-1, "registry") != .table) return null;
     if (lua.getField(-1, category) != .table) return null;
     if (lua.getField(-1, id) != .table) return null;
@@ -380,6 +382,7 @@ fn pushDefinitionIdForLegacy(lua: *Lua, comptime category: [:0]const u8, legacy_
     var found = false;
 
     if (lua.getGlobal("dbat") == .table and
+        lua.getField(-1, "characters") == .table and
         lua.getField(-1, "registry") == .table and
         lua.getField(-1, category) == .table)
     {
@@ -1400,4 +1403,9 @@ fn pairsIterator(lua: *Lua) i32 {
     lua.insert(-2);
     lua.protectedCall(.{ .args = 1, .results = 3 }) catch lua.raiseErrorStr("failed to create pairs iterator", .{});
     return 3;
+}
+
+fn luaCharacterCommandQueueClear(lua: *Lua) i32 {
+    cdb.char_command_clear(checkCharacter(lua));
+    return 0;
 }

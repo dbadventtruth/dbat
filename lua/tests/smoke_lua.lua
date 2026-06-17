@@ -2,7 +2,7 @@ local test = require("lua.test").new()
 local dbat = require("dbat")
 
 test:case("lua registry loaded", function(t)
-  t:assert(dbat.registry ~= nil, "registry table should exist")
+  t:assert(dbat.characters ~= nil, "characters namespace should exist")
   t:assert(dbat.test.loaded_lua_entries() > 0, "expected normal Lua entries to be loaded")
 end)
 

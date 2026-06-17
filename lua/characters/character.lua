@@ -17,7 +17,7 @@ local function der_total(ch, name)
     der_caches[id] = cache
   end
 
-  local def = dbat.registry.derived[name]
+  local def = dbat.characters.registry.derived[name]
   if not def then return 0 end
 
   -- Base value
@@ -149,7 +149,7 @@ local function keywords_for(ch, viewer)
 end
 
 local function find_in_registry(category, legacy_id)
-  local registry = dbat.registry[category]
+  local registry = dbat.characters.registry[category]
   if not registry then return nil end
   for _, entry in pairs(registry) do
     if entry.legacy_id == legacy_id then
@@ -189,7 +189,7 @@ local function modifiers(ch)
   -- Conditions
   for _, cond_id in ipairs(ch:conditions()) do
     local cond = ch:condition(cond_id)
-    local cond_def = dbat.registry.conditions[cond_id]
+    local cond_def = dbat.characters.registry.conditions[cond_id]
     if cond_def and cond_def.modifiers then
       append_mods(all, cond_def.modifiers(ch, cond))
     end
@@ -232,6 +232,89 @@ local function act_around(ch, msg, ctx)
   dbat.lib.act.around(ch, msg, context)
 end
 
+-- Build the argparams table — mirrors lua_api.zig:pushArgParams/pushTokens.
+local function build_argparams(arguments)
+    local function tokenize(s)
+        local t = {}
+        for tok in string.gmatch(s, "%S+") do t[#t + 1] = tok end
+        return t
+    end
+    local params = { raw = arguments }
+    local eq = string.find(arguments, "=", 1, true)
+    if eq then
+        params.equals      = true
+        params.lsargs      = string.sub(arguments, 1, eq - 1)
+        params.rsargs      = string.sub(arguments, eq + 1)
+        params.left_tokens  = tokenize(params.lsargs)
+        params.right_tokens = tokenize(params.rsargs)
+    else
+        params.equals      = false
+        params.lsargs      = arguments
+        params.rsargs      = ""
+        params.left_tokens  = tokenize(arguments)
+        params.right_tokens = {}
+    end
+    params.tokens = tokenize(arguments)
+    return params
+end
+
+-- Alias matching — mirrors lua_api.zig:aliasMatches().
+-- alias format: {pattern, min_len, sensitive?} or {name=..., min=..., sensitive=...}
+local function alias_matches_word(aliases, word)
+    for _, alias in ipairs(aliases or {}) do
+        local pattern   = alias[1] or alias.name
+        local min_len   = alias[2] or alias.min or (pattern and #pattern)
+        local sensitive = alias[3] or alias.sensitive or false
+        if not pattern then goto continue end
+        if #word >= min_len and #word <= #pattern then
+            local prefix = string.sub(pattern, 1, #word)
+            local matched = sensitive and (word == prefix)
+                                       or (string.lower(word) == string.lower(prefix))
+            if matched then return true end
+        end
+        ::continue::
+    end
+    return false
+end
+
+-- Try to dispatch `input` against the commands in cmd_class (must have sorted_list()).
+-- Returns true if a command was matched (even if can_execute blocked it).
+-- Used by: pcommand_try (bypass wait), command_fallback (after C++ miss).
+local function execute_command(ch, input, cmd_class)
+    local word = (input or ""):match("^(%S+)") or ""
+    local rest = (input or ""):match("^%S+%s*(.-)$") or ""
+    for _, def in ipairs(cmd_class.sorted_list()) do
+        if alias_matches_word(def.aliases, word) then
+            if def.can_see and not def.can_see(ch) then goto next end
+            if def.can_execute then
+                local ok, reason = def.can_execute(ch)
+                if not ok then
+                    ch:send((reason or "You cannot do that.") .. "\r\n")
+                    return true
+                end
+            end
+            def.execute({ ch = ch, actor = ch,
+                          command = def.id or word, alias = word,
+                          arguments = rest, argparams = build_argparams(rest) })
+            return true
+        end
+        ::next::
+    end
+    return false
+end
+
+-- Return sorted list of commands from cmd_class visible to ch.
+-- Useful for help displays, score sheets, etc.
+local function visible_commands(ch, cmd_class)
+    local visible = {}
+    for _, def in ipairs(cmd_class.sorted_list()) do
+        if not def.can_see or def.can_see(ch) then
+            visible[#visible + 1] = def
+        end
+    end
+    return visible
+end
+
 return {
   can_see = can_see,
   keywords_for = keywords_for,
@@ -245,4 +328,6 @@ return {
   act_self = act_self,
   act_around = act_around,
   der_total = der_total,
+  execute_command = execute_command,
+  visible_commands = visible_commands,
 }

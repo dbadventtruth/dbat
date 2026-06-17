@@ -70,6 +70,17 @@ void char_send_textf(struct char_data *ch, const char *format, ...);
 bool char_cmd_execute(struct char_data *ch, const char *command,
                       const char *arguments);
 
+// Per-character command queue (managed by Zig).
+void char_command_enqueue(struct char_data *ch, const char *cmd);
+char *char_command_dequeue(struct char_data *ch);  // caller must free(); NULL if empty
+bool char_command_has_pending(struct char_data *ch);
+void char_command_clear(struct char_data *ch);
+
+// Lua command dispatch.
+bool char_pcommand_try(struct char_data *ch, const char *full_input);
+bool char_command_fallback(struct char_data *ch, const char *cmd_word,
+                           const char *arguments);
+
 // Character API stuff that makes use of the new Lua API.
 void char_zig_free(struct char_data *ch);
 int64_t char_stat_get(struct char_data *ch, const char *stat);

@@ -315,55 +315,62 @@ static void connections_handle_commands() {
   int aliased;
 
   struct descriptor_data *d, *next_d;
-      for (d = descriptor_list; d; d = next_d) {
-      next_d = d->next;
+  for (d = descriptor_list; d; d = next_d) {
+    next_d = d->next;
 
-      /*
-       * Not combined to retain --(d->wait) behavior. -gg 2/20/98
-       * If no wait state, no subtraction.  If there is a wait
-       * state then 1 is subtracted. Therefore we don't go less
-       * than 0 ever and don't require an 'if' bracket. -gg 2/27/99
-       */
+    if (!d->input.head)
+      continue;
 
-      if (d->character) {
-        GET_WAIT_STATE(d->character) -= (GET_WAIT_STATE(d->character) > 0);
+    struct char_data *ch = d->character;
 
-        if (GET_WAIT_STATE(d->character)) {
-          continue;
-        }
-      }
-
-      if (!get_from_q(&d->input, comm, &aliased))
-        continue;
-
-      if (d->character) {
-        /* Reset the idle timer & pull char back from void if necessary */
-        d->character->timer = 0;
-        if (STATE(d) == CON_PLAYING && GET_WAS_IN(d->character) != NOWHERE) {
-          if (char_room_get(d->character) != NULL)
-            char_from_room(d->character);
-          char_to_room(d->character, room_by_id(GET_WAS_IN(d->character)));
-          GET_WAS_IN(d->character) = NOWHERE;
-          act("$n has returned.", TRUE, d->character, 0, 0, TO_ROOM);
-        }
-        GET_WAIT_STATE(d->character) = 1;
-      }
-      d->has_prompt = FALSE;
-
-      if (d->str) /* Writing boards, mail, etc. */
-        string_add(d, comm);
-      else if (STATE(d) != CON_PLAYING) /* In menus, etc. */
-        nanny(d, comm);
-      else {                    /* else: we're playing normally. */
-        if (aliased)            /* To prevent recursive aliases. */
-          d->has_prompt = TRUE; /* To get newline before next cmd output. */
-        else if (perform_alias(
-                     d, comm,
-                     sizeof(comm))) /* Run it through aliasing system */
-          get_from_q(&d->input, comm, &aliased);
-        command_interpreter(d->character, comm); /* Send it to interpreter */
-      }
+    if (d->str) { /* Writing boards, mail, etc. */
+      get_from_q(&d->input, comm, &aliased);
+      string_add(d, comm);
+      continue;
     }
+
+    if (STATE(d) != CON_PLAYING) { /* In menus, login screens, etc. */
+      get_from_q(&d->input, comm, &aliased);
+      nanny(d, comm);
+      continue;
+    }
+
+    if (!ch)
+      continue;
+
+    /* TRY LUA PCOMMANDS — bypass wait state entirely */
+    if (char_pcommand_try(ch, d->input.head->text)) {
+      get_from_q(&d->input, comm, &aliased); /* consume */
+      d->has_prompt = FALSE;
+      continue;
+    }
+
+    /* Player is actively sending a regular command: reset idle timer and
+       pull character back from the void if needed. */
+    ch->timer = 0;
+    if (GET_WAS_IN(ch) != NOWHERE) {
+      if (char_room_get(ch) != NULL)
+        char_from_room(ch);
+      char_to_room(ch, room_by_id(GET_WAS_IN(ch)));
+      GET_WAS_IN(ch) = NOWHERE;
+      act("$n has returned.", TRUE, ch, 0, 0, TO_ROOM);
+    }
+
+    get_from_q(&d->input, comm, &aliased);
+
+    if (!aliased && perform_alias(d, comm, sizeof(comm)))
+      get_from_q(&d->input, comm, &aliased);
+
+    if (GET_WAIT_STATE(ch) == 0 && !char_command_has_pending(ch)) {
+      /* Fast path: no wait, nothing queued — execute this tick, no delay. */
+      d->has_prompt = FALSE;
+      command_interpreter(ch, comm);
+    } else {
+      /* Deferred: wait_state active or prior commands queued. Don't touch
+         has_prompt — nothing has executed yet so no prompt should fire. */
+      char_command_enqueue(ch, comm);
+    }
+  }
 }
 
 void game_legacy_process_commands(void) { connections_handle_commands(); }
@@ -469,10 +476,28 @@ static void ev_autosave(int, int64_t, int64_t) {
 static void ev_record_usage(int, int64_t, int64_t) { record_usage(); }
 static void ev_save_mud_time(int, int64_t, int64_t) { save_mud_time(&time_info); }
 
+static void ev_process_character_commands(int, int64_t, int64_t) {
+  char_iterate_all([](struct char_data *ch) {
+    if (GET_WAIT_STATE(ch) > 0)
+      GET_WAIT_STATE(ch)--;
+
+    if (GET_WAIT_STATE(ch) == 0 && char_command_has_pending(ch)) {
+      char *cmd = char_command_dequeue(ch);
+      if (cmd) {
+        if (ch->desc) ch->desc->has_prompt = FALSE;
+        command_interpreter(ch, cmd);
+        free(cmd);
+      }
+    }
+    return true;
+  });
+}
+
 void event_queue_register_heartbeat_events() {
   const int64_t now = event_queue_now_ms();
 
   // Fixed intervals (milliseconds)
+  event_schedule_c(now + 100LL, 100LL, ev_process_character_commands, EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_wishSYS,               EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_char_condition_update, EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_2SEC,  EQ_MS_2SEC,  ev_base_update,           EQ_CTX_NONE, 0, 0);
@@ -1819,10 +1844,6 @@ int descriptor_process_bytes(struct descriptor_data *t, const char *bytes,
         t->history_pos = 0;
     }
 
-    if ((*tmp == '-') && (*(tmp + 1) == '-') && !(*(tmp + 2))) {
-      write_to_output(t, "All queued commands cancelled.\r\n");
-      flush_queues(t);
-    }
     if (!failed_subst)
       write_to_q(tmp, &t->input, 0);
 
@@ -1973,12 +1994,7 @@ int process_input(struct descriptor_data *t) {
       if (++t->history_pos >= HISTORY_SIZE)     /* Wrap to top. */
         t->history_pos = 0;
     }
-    /* the '--' command flushes the queue - Jamdog - 9th May 2007 */
-    if ((*tmp == '-') && (*(tmp + 1) == '-') && !(*(tmp + 2))) {
-      write_to_output(t, "All queued commands cancelled.\r\n");
-      flush_queues(t); /* Flush the command queue */
-      /* No need to process the -- command any further, so quit back out */
-    }
+
     if (!failed_subst)
       write_to_q(tmp, &t->input, 0);
 

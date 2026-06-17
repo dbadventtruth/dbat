@@ -54,7 +54,6 @@ ACMD(do_snet);
 ACMD(do_spar);
 ACMD(do_pushup);
 ACMD(do_situp);
-ACMD(do_transform);
 ACMD(do_summon);
 ACMD(do_instant);
 ACMD(do_barrier);
