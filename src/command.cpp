@@ -516,7 +516,7 @@ const struct command_info cmd_info[] = {
     {"starbreaker", "starbr", POS_FIGHTING, do_breaker, 0, ADMLVL_NONE, 0},
     {"stake", "stak", POS_SLEEPING, do_beacon, 0, 0, 0},
     {"stat", "stat", POS_DEAD, do_stat, 0, ADMLVL_IMMORT, 0},
-    {"status", "statu", POS_DEAD, do_status, 0, 0, 0},
+    /* do_status moved to lua/characters/pcommands/info/status.lua */
     {"steal", "ste", POS_STANDING, do_steal, 1, ADMLVL_NONE, 0},
     {"stone", "ston", POS_STANDING, do_spit, 0, ADMLVL_NONE, 0},
     {"stop", "sto", POS_STANDING, do_stop, 0, ADMLVL_NONE, 0},

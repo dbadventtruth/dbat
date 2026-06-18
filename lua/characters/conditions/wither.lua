@@ -13,4 +13,5 @@ return {
     tags = { "wither", "healthy_clear" },
     persistent = true,
     modifiers = modifiers,
+    status_line = function(ch, cond) return "You've been withered! You feel so weak..." end,
 }

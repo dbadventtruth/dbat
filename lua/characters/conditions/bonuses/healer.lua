@@ -3,4 +3,5 @@ return {
     name       = "Healer",
     tags       = { "bonus" },
     persistent = false,
+    description = "Healer - Heal/First-aid/Vigor/Repair restore +10%",
 }

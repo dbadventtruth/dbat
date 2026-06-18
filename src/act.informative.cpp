@@ -5103,6 +5103,13 @@ static void trans_check(struct char_data *ch, struct char_data *vict) {
 
 } // End trans check
 
+/* do_status has been moved to lua/characters/pcommands/info/status.lua */
+/* list_bonuses[] and bonus_status() are superseded by the description field  */
+/* on individual bonus/flaw condition Lua files and the status traits command. */
+
+static void bonus_status(struct char_data *) {} /* kept as stub; no longer called */
+
+#if 0 /* do_status body preserved for reference */
 ACMD(do_status) {
   char arg[MAX_INPUT_LENGTH];
   struct affected_type *aff;
@@ -5279,13 +5286,17 @@ ACMD(do_status) {
     send_to_char(
         ch, "         "
             "@D--------------------@D[@GInfo@D]---------------------@n\r\n");
+    // translation note: transformations are now conditions, we can simply iterate by tag. Don't need to use trans_check's logic anymore.
     trans_check(ch, ch);
+
     send_to_char(ch, "         You have died %d times.\r\n", GET_DCOUNT(ch));
     if (PLR_FLAGGED(ch, PLR_NOSHOUT)) {
       send_to_char(ch,
                    "         You have been @rmuted@n on public channels.\r\n");
     }
-    if (char_room_get(ch) == room_by_id(9)) {
+
+    // Translation note: we don't really need the hell thing....
+    if (char_room_vnum_get(ch) == 9) {
       send_to_char(ch, "         You are in punishment hell, so sad....\r\n");
     }
     if (!PRF_FLAGGED(ch, PRF_HINTS)) {
@@ -5309,6 +5320,8 @@ ACMD(do_status) {
       send_to_char(ch,
                    "         Your eyes are your most distinctive feature.\r\n");
     }
+
+    // I don't think preference is exposed to Lua; should be char_combat_preference_(get|set)() if not.
     if (GET_PREFERENCE(ch) == 0) {
       send_to_char(ch,
                    "         You preferred a balanced form of fighting.\r\n");
@@ -5436,18 +5449,18 @@ ACMD(do_status) {
     }
 
     if (GET_RDISPLAY(ch)) {
-      if (GET_RDISPLAY(ch) != "Empty") {
-        send_to_char(ch, "         Room Display: @C...%s@n\r\n",
+      send_to_char(ch, "         Room Display: @C...%s@n\r\n",
                      GET_RDISPLAY(ch));
-      }
     }
 
     send_to_char(ch, "\r\n@D<@b-------------------------@D[@BCondition@D]@b----"
                      "----------------------@D>@n\r\n");
 
+    // The insomniac bonus is a condition now...
     if (GET_BONUS(ch, BONUS_INSOMNIAC)) {
       send_to_char(ch, "You can not sleep.\r\n");
     } else {
+      // I don't think sleeptime is exposed to Lua.
       if (GET_SLEEPT(ch) > 6 && GET_POS(ch) != POS_SLEEPING) {
         send_to_char(ch, "You are well rested.\r\n");
       } else if (GET_SLEEPT(ch) > 6 && GET_POS(ch) == POS_SLEEPING) {
@@ -5463,6 +5476,7 @@ ACMD(do_status) {
       }
     }
 
+    // Translation Note: I don't think relax_count is exposed to Lua; I would like this to be a condition called "relaxed" and store its count there.
     if (GET_RELAXCOUNT(ch) > 464) {
       send_to_char(ch, "You are far too at ease to train hard like you should. "
                        "Get out of the house more often.\r\n");
@@ -5478,6 +5492,8 @@ ACMD(do_status) {
       send_to_char(ch, "You are mimicing the general appearance of %s %s\r\n",
                    AN(LRACE(ch)), LRACE(ch));
     }
+
+    // Translation Note: We can iterate mutations by group tag and print them.
     if (IS_MUTANT(ch)) {
       send_to_char(ch, "Your Mutations:\r\n");
       if (GET_GENOME(ch, 0) == 1) {
@@ -5541,6 +5557,8 @@ ACMD(do_status) {
         send_to_char(ch, "  Natural Energy.\r\n");
       }
     }
+
+    // Translate Note: We can replace this by iterating through any bio_genome conditions by tag.
     if (IS_BIO(ch)) {
       send_to_char(ch, "Your genes carry:\r\n");
       if (GET_GENOME(ch, 0) == 1) {
@@ -5592,12 +5610,14 @@ ACMD(do_status) {
         send_to_char(ch, "  Konatsu DNA.\r\n");
       }
     }
-    if (GET_GENOME(ch, 0) == 11) {
+    if (char_condition_has(ch, "kyodaika")) {
       send_to_char(ch, "You have used kyodaika.\r\n");
     }
     if (PRF_FLAGGED(ch, PRF_NOPARRY)) {
       send_to_char(ch, "You have decided not to parry attacks.\r\n");
     }
+
+    // Translation Note: Position is now a Condition; I wonder if we can have it report its own state?
     switch (GET_POS(ch)) {
     case POS_DEAD:
       send_to_char(ch, "You are DEAD!\r\n");
@@ -5663,6 +5683,7 @@ ACMD(do_status) {
     if (char_condition_has(ch, "hasshuken")) {
       send_to_char(ch, "Your arms are moving fast.\r\n");
     }
+    // Translation Note: Infuse needs to become a Condition, and all uses of AFF_FLAGGED should become is_affected
     if (AFF_FLAGGED(ch, AFF_INFUSE)) {
       send_to_char(ch,
                    "Your ki will be infused in your next physical attack.\r\n");
@@ -5920,6 +5941,10 @@ ACMD(do_status) {
                      "want your status do not use an argument.\r\n");
   }
 }
+
+// Translation Note: Dear god, we need to add these to the individual bonus_*.lua files... don't list this here...
+// The bonuses/flaws should be iterated separately, and for each that exists on the character, display the effect line if it has one.
+// As part of the migration we should actually add this data to the .lua files.
 const char
     *
         list_bonuses[] =
@@ -6063,6 +6088,7 @@ static void bonus_status(struct char_data *ch) {
   send_to_char(ch, "@D-----------------------------@n\r\n");
   return;
 }
+#endif /* do_status body end */
 
 /* do_inventory has been moved to lua/characters/pcommands/info/inventory.lua */
 

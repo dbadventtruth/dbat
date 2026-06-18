@@ -3,4 +3,5 @@ return {
     name       = "Unfocused",
     tags       = { "flaw" },
     persistent = false,
+    description = "Unfocused - Charge concentration randomly breaks",
 }

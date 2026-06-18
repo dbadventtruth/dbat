@@ -35,6 +35,10 @@ on_update      = function(ch, instance, ctx)    -- called from C++ tick (rarely 
                  end,
 on_event       = function(ch, instance, event)  -- dispatched via ch:on_update("condition:<id>:<event>")
                  end,                           -- event defaults to "tick" if omitted from kind
+status_line    = function(ch, instance)         -- optional: returns a display string for `status` command
+                     return "You are affected."  -- or nil to suppress; no trailing newline
+                 end,
+description    = "Trait description string",    -- for bonus/flaw conditions shown by `status traits`
 ```
 
 **Modifier table format** (returned from `modifiers()`):

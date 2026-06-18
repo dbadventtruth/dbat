@@ -1,3 +1,12 @@
+local FORGET_LABELS = {
+    [0] = "@GRemembered Well@n",
+    [1] = "@GRemembered Well Enough@n",
+    [2] = "@RGetting Foggy@n",
+    [3] = "@RHalf Forgotten@n",
+    [4] = "@rAlmost Forgotten@n",
+    [5] = "@rForgotten@n",
+}
+
 return {
     id         = "forget_skill",
     name       = "Forgetting Skill",
@@ -37,5 +46,12 @@ return {
             ch:send_line(string.format("@MYou have finally forgotten %s.@n", skill_name))
             ch:condition_remove("forget_skill", "completed")
         end
+    end,
+
+    status_line = function(ch, cond)
+        local skill_name = cond:string_get("skill_name") or "unknown"
+        local count = math.max(0, math.min(5, cond:number_get("forget_count")))
+        local label = FORGET_LABELS[count] or FORGET_LABELS[5]
+        return string.format("@MForgetting @D[@m%s - %s@D]@n", skill_name, label)
     end,
 }

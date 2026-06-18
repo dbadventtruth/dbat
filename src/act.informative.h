@@ -33,7 +33,7 @@ int search_help(const char *argument, int level);
 // commands
 ACMD(do_look);
 ACMD(do_examine);
-ACMD(do_status);
+/* do_status moved to lua/characters/pcommands/info/status.lua */
 /* do_inventory moved to lua/characters/pcommands/info/inventory.lua */
 /* do_equipment moved to lua/characters/pcommands/info/equipment.lua */
 ACMD(do_time);

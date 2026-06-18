@@ -11,4 +11,5 @@ return {
             { target = { "derived", "weight" }, kind = "multiplier", value = 500000, label = "Kyodaika" },
         }
     end,
+    status_line = function(ch, cond) return "You have used kyodaika." end,
 }

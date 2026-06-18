@@ -152,6 +152,7 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "event_remaining_ms", luaObjectEventRemainingMs);
     addMethod(lua, "kicharge_get", luaObjectKichargeGet);
     addMethod(lua, "distance_get", luaObjectDistanceGet);
+    addMethod(lua, "scoutfreq_get", luaObjectScoutfreqGet);
 
     lua_meta.mergeMethods(lua, "lua.objects.object");
 
@@ -765,5 +766,10 @@ fn luaObjectKichargeGet(lua: *Lua) i32 {
 
 fn luaObjectDistanceGet(lua: *Lua) i32 {
     lua.pushInteger(checkObject(lua).distance);
+    return 1;
+}
+
+fn luaObjectScoutfreqGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).scoutfreq);
     return 1;
 }

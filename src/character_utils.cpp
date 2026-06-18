@@ -4405,3 +4405,14 @@ extern "C" int64_t char_level_exp(struct char_data *ch, int level) {
 extern "C" int char_rpp_to_level(struct char_data *ch) {
   return rpp_to_level(ch);
 }
+
+#include "mail.h"
+#include "config.h"
+
+extern "C" bool char_has_mail(struct char_data *ch) {
+  return has_mail(GET_IDNUM(ch)) != 0;
+}
+
+extern "C" bool char_news_pending(struct char_data *ch) {
+  return NEWSUPDATE > GET_LPLAY(ch);
+}

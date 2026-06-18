@@ -409,6 +409,32 @@ static inline void char_following_set(struct char_data *ch, struct char_data *le
 int64_t char_level_exp(struct char_data *ch, int level);
 int     char_rpp_to_level(struct char_data *ch);
 
+/* Status display helpers — new Lua bindings for do_status port */
+int     char_limbcond_get(struct char_data *ch, int n);   /* n=1..4 */
+int64_t char_charge_get(struct char_data *ch);
+int64_t char_barrier_get(struct char_data *ch);
+int     char_song_get(struct char_data *ch);
+const char *char_voice_get(struct char_data *ch);
+int     char_distfea_get(struct char_data *ch);
+const char *char_rdisplay_get(struct char_data *ch);
+const char *char_feature_get(struct char_data *ch);
+int     char_absorbs_get(struct char_data *ch);
+int     char_mimic_get(struct char_data *ch);
+int     char_backstab_cooldown_get(struct char_data *ch);
+int     char_preference_get(struct char_data *ch);
+int     char_aura_get(struct char_data *ch);
+int     char_hairl_get(struct char_data *ch);
+int     char_hairs_get(struct char_data *ch);
+int     char_hairc_get(struct char_data *ch);
+int     char_skin_get(struct char_data *ch);
+int     char_eye_get(struct char_data *ch);
+int     char_sleeptime_get(struct char_data *ch);
+int     char_relax_count_get(struct char_data *ch);
+bool    char_has_group(struct char_data *ch);
+bool    char_has_mail(struct char_data *ch);
+int64_t char_soft_cap(struct char_data *ch);
+bool    char_news_pending(struct char_data *ch);
+
 #ifdef __cplusplus
 }
 #endif

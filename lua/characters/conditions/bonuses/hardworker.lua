@@ -3,4 +3,5 @@ return {
     name       = "Hardworker",
     tags       = { "bonus" },
     persistent = false,
+    description = "Hard Worker - Physical activity bonuses + drains less stamina",
 }

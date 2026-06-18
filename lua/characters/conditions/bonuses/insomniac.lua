@@ -3,4 +3,5 @@ return {
     name       = "Insomniac",
     tags       = { "bonus" },
     persistent = false,
+    description = "Insomniac - Can't Sleep. Immune to yoikominminken and paralysis",
 }

@@ -3,4 +3,5 @@ return {
     name       = "Masochistic",
     tags       = { "flaw" },
     persistent = false,
+    description = "Masochistic - Defense Skills Cap At 75",
 }

@@ -3,4 +3,5 @@ return {
     name       = "Arrogant",
     tags       = { "flaw" },
     persistent = false,
+    description = "Arrogant - Cannot Suppress",
 }

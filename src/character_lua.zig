@@ -238,6 +238,30 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "level_exp", luaCharacterLevelExp);
     addMethod(lua, "rpp_to_level", luaCharacterRppToLevel);
     addMethod(lua, "molt_threshold", luaCharacterMoltThreshold);
+    addMethod(lua, "limbcond_get", luaCharacterLimbCondGet);
+    addMethod(lua, "charge_get", luaCharacterChargeGet);
+    addMethod(lua, "barrier_get", luaCharacterBarrierGet);
+    addMethod(lua, "song_get", luaCharacterSongGet);
+    addMethod(lua, "voice_get", luaCharacterVoiceGet);
+    addMethod(lua, "distfea_get", luaCharacterDistfeaGet);
+    addMethod(lua, "rdisplay_get", luaCharacterRdisplayGet);
+    addMethod(lua, "feature_get", luaCharacterFeatureGet);
+    addMethod(lua, "absorbs_get", luaCharacterAbsorbsGet);
+    addMethod(lua, "mimic_get", luaCharacterMimicGet);
+    addMethod(lua, "backstab_cooldown", luaCharacterBackstabCooldown);
+    addMethod(lua, "preference_get", luaCharacterPreferenceGet);
+    addMethod(lua, "aura_get", luaCharacterAuraGet);
+    addMethod(lua, "hairl_get", luaCharacterHairlGet);
+    addMethod(lua, "hairs_get", luaCharacterHairsGet);
+    addMethod(lua, "hairc_get", luaCharacterHaircGet);
+    addMethod(lua, "skin_get", luaCharacterSkinGet);
+    addMethod(lua, "eye_get", luaCharacterEyeGet);
+    addMethod(lua, "sleeptime_get", luaCharacterSleepcountGet);
+    addMethod(lua, "relax_count_get", luaCharacterRelaxCountGet);
+    addMethod(lua, "has_group", luaCharacterHasGroup);
+    addMethod(lua, "has_mail", luaCharacterHasMail);
+    addMethod(lua, "soft_cap", luaCharacterSoftCap);
+    addMethod(lua, "news_pending", luaCharacterNewsPending);
 
     lua_meta.mergeMethods(lua, "lua.characters.character");
 
@@ -1660,5 +1684,127 @@ fn luaCharacterAffFlagged(lua: *Lua) i32 {
 
 fn luaCharacterBodyFlagged(lua: *Lua) i32 {
     lua.pushBoolean(cdb.char_bodyflagged(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "body slot")));
+    return 1;
+}
+
+fn luaCharacterLimbCondGet(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const n = intCastOrError(lua, c_int, integer(lua, 2), "limb index");
+    lua.pushInteger(cdb.char_limbcond_get(ch, n));
+    return 1;
+}
+
+fn luaCharacterChargeGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_charge_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterBarrierGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_barrier_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterSongGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_song_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterVoiceGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.char_voice_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterDistfeaGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_distfea_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterRdisplayGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.char_rdisplay_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterFeatureGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.char_feature_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterAbsorbsGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_absorbs_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterMimicGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_mimic_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterBackstabCooldown(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_backstab_cooldown_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterPreferenceGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_preference_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterAuraGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_aura_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterHairlGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_hairl_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterHairsGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_hairs_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterHaircGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_hairc_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterSkinGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_skin_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterEyeGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_eye_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterSleepcountGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_sleeptime_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterRelaxCountGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_relax_count_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterHasGroup(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_has_group(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterHasMail(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_has_mail(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterSoftCap(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_soft_cap(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterNewsPending(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_news_pending(checkCharacter(lua)));
     return 1;
 }

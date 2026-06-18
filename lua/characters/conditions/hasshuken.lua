@@ -13,4 +13,5 @@ return {
     tags = { "hasshuken" },
     persistent = true,
     modifiers = modifiers,
+    status_line = function(ch, cond) return "Your arms are moving fast." end,
 }

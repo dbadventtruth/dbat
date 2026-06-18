@@ -12,4 +12,5 @@ return {
         end
         return {}
     end,
+    description = "Destroyer - Damaged Rooms act as regen rooms for you",
 }

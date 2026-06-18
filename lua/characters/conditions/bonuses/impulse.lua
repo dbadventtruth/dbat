@@ -3,4 +3,5 @@ return {
     name       = "Impulse",
     tags       = { "bonus" },
     persistent = false,
+    description = "Impulse Shop - +25% shop costs",
 }

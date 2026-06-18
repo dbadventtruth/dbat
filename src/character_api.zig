@@ -1601,3 +1601,36 @@ pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
     if (bitflags.get(ch.affected_by[0..], cdb.AFF_HAYASA))
         _ = cdb.char_condition_apply(ch, "hayasa", "entry", "hayasa_sync");
 }
+
+// ---- Status display bindings ----
+
+pub export fn char_limbcond_get(ch: *cdb.char_data, n: c_int) c_int {
+    const idx: usize = @intCast(n - 1);
+    if (idx >= ch.limb_condition.len) return 0;
+    return ch.limb_condition[idx];
+}
+
+pub export fn char_charge_get(ch: *cdb.char_data) i64 { return ch.charge; }
+pub export fn char_barrier_get(ch: *cdb.char_data) i64 { return ch.barrier; }
+pub export fn char_song_get(ch: *cdb.char_data) c_int { return @intCast(ch.song); }
+
+pub export fn char_voice_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.voice; }
+pub export fn char_rdisplay_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.rdisplay; }
+pub export fn char_feature_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.feature; }
+
+pub export fn char_absorbs_get(ch: *cdb.char_data) c_int { return ch.absorbs; }
+pub export fn char_mimic_get(ch: *cdb.char_data) c_int { return ch.mimic; }
+pub export fn char_backstab_cooldown_get(ch: *cdb.char_data) c_int { return ch.backstabcool; }
+pub export fn char_preference_get(ch: *cdb.char_data) c_int { return ch.preference; }
+pub export fn char_aura_get(ch: *cdb.char_data) c_int { return ch.aura; }
+pub export fn char_hairl_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairl); }
+pub export fn char_hairs_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairs); }
+pub export fn char_hairc_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairc); }
+pub export fn char_skin_get(ch: *cdb.char_data) c_int { return @intCast(ch.skin); }
+pub export fn char_eye_get(ch: *cdb.char_data) c_int { return @intCast(ch.eye); }
+pub export fn char_distfea_get(ch: *cdb.char_data) c_int { return @intCast(ch.distfea); }
+pub export fn char_sleeptime_get(ch: *cdb.char_data) c_int { return ch.sleeptime; }
+pub export fn char_relax_count_get(ch: *cdb.char_data) c_int { return ch.relax_count; }
+
+pub export fn char_has_group(ch: *cdb.char_data) bool { return cdb.has_group(ch) != 0; }
+pub export fn char_soft_cap(ch: *cdb.char_data) i64 { return cdb.calc_soft_cap(ch); }
