@@ -12,14 +12,6 @@ local GENDER_DISPLAY = { neutral = "Neutral", male = "Male", female = "Female" }
 
 local FOOTER = "  @cO@D" .. string.rep("-", 68) .. "@cO@n\n"
 
--- Computes the GOLD_CARRY macro: level-based gold capacity.
-local function gold_carry_max(ch)
-    local lv = ch:stat_get("level")
-    if lv < 50 then return lv * 10000
-    elseif lv < 100 then return 500000
-    else return 50000000 end
-end
-
 -- ---------------------------------------------------------------------------
 -- Section: Personal
 -- ---------------------------------------------------------------------------
@@ -146,7 +138,7 @@ local function render_other(ch)
         fmt(ch:stat_get("money_bank")), fmt(ch:der_total("weight_carry_capacity")))
     t[#t+1] = string.format(
         "      @D[ @CMax Carry@D| @W%-15s@D]@n\n",
-        fmt(gold_carry_max(ch)))
+        fmt(ch:der_total("money_max_carry")))
     t[#t+1] = string.format(
         "      @D[  @CInterest@D| @W%-15s@D]\n",
         fmt(ch:der_total("bank_interest")))
@@ -223,9 +215,9 @@ return {
                 ch:send_line("Syntax: score, or... score (personal, health, statistics, other)")
                 return
             end
-            ch:send(render(ch, mode))
+            ch:send_line(render(ch, mode))
         else
-            ch:send(render(ch, nil))
+            ch:send_line(render(ch, nil))
         end
     end,
 }
