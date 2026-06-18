@@ -66,7 +66,7 @@ ACMD(do_draw);
 ACMD(do_kyodaika);
 ACMD(do_mimic);
 ACMD(do_rdisplay);
-ACMD(do_evolve);
+/* do_evolve moved to lua/characters/commands/advancement/evolve.lua */
 ACMD(do_showoff);
 ACMD(do_intro);
 ACMD(do_scan);

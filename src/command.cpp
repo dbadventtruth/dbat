@@ -194,7 +194,7 @@ const struct command_info cmd_info[] = {
     /* equipment moved to lua/characters/pcommands/info/equipment.lua */
     {"eraser", "eras", POS_FIGHTING, do_eraser, 0, ADMLVL_NONE, 0},
     {"escape", "esca", POS_RESTING, do_escape, 0, ADMLVL_NONE, 0},
-    {"evolve", "evolv", POS_RESTING, do_evolve, 0, ADMLVL_NONE, 0},
+    /* evolve moved to lua/characters/commands/advancement/evolve.lua */
     {"exchange", "exchan", POS_RESTING, do_rptrans, 0, ADMLVL_NONE, 0},
     {"exits", "ex", POS_RESTING, do_exits, 0, ADMLVL_NONE, 0},
     {"examine", "exa", POS_SITTING, do_examine, 0, ADMLVL_NONE, 0},
