@@ -10,7 +10,6 @@
 
 #include "act.informative.h"
 #include "act.movement.h"
-#include "affect.h"
 #include "class.h"
 #include "combat.h"
 #include "comm.h"
@@ -198,8 +197,9 @@ void ghostify(char_data *ch) {
     }
   }
 
+  char_condition_remove_tag(ch, "sleep_aff", "ghostify");
+
   REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SLEEP);
   REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_PARALYZE);
 }
 
@@ -406,16 +406,6 @@ int64_t harmCurHealth(char_data *ch, int64_t amt) {
 
 int64_t getCurPL(char_data *ch) {
   return char_meter_current(ch, "powerlevel");
-}
-
-int64_t getEffBasePL(char_data *ch) {
-  if (ch->original)
-    return getEffBasePL(ch->original);
-  if (ch->clones) {
-    return getBasePL(ch) / (ch->clones + 1);
-  } else {
-    return getBasePL(ch);
-  }
 }
 
 int64_t getBasePL(char_data *ch) { return char_stat_get(ch, "powerlevel"); }
@@ -707,7 +697,7 @@ void cureStatusBurn(char_data *ch) { cureStatusBurnAnnounced(ch, true); }
 
 void cureStatusPoisonAnnounced(char_data *ch, bool announce) {
   act("@C$n@W suddenly looks a lot better!@b", FALSE, ch, 0, 0, TO_NOTVICT);
-  affect_from_char(ch, SPELL_POISON);
+  char_condition_remove(ch, "poison", "healing_poisoned");
 }
 
 void cureStatusPoison(char_data *ch) { cureStatusPoisonAnnounced(ch, true); }
@@ -1001,8 +991,8 @@ int has_group(struct char_data *ch) {
       return true;
     });
     if (found) return (TRUE);
-  } else if (ch->master) {
-    if (!char_condition_has(ch->master, "group"))
+  } else if (MASTER(ch)) {
+    if (!char_condition_has(MASTER(ch), "group"))
       return (FALSE);
     else
       return (TRUE);
@@ -1014,7 +1004,7 @@ int has_group(struct char_data *ch) {
 const char *report_party_health(struct char_data *ch) {
   if (!char_condition_has(ch, "group"))
     return "";
-  if (!char_follower_count(ch) && !ch->master)
+  if (!char_follower_count(ch) && !MASTER(ch))
     return "";
 
   static const char *plcol[] = {"@r", "@y", "@Y", "@G", ""};
@@ -1048,9 +1038,9 @@ const char *report_party_health(struct char_data *ch) {
         party[n++] = fol;
       return true;
     });
-  } else if (ch->master && char_condition_has(ch->master, "group")) {
-    party[n++] = ch->master;
-    char_followers_iterate(ch->master, [&](struct char_data *fol) {
+  } else if (MASTER(ch) && char_condition_has(MASTER(ch), "group")) {
+    party[n++] = MASTER(ch);
+    char_followers_iterate(MASTER(ch), [&](struct char_data *fol) {
       if (n >= 4) return false;
       if (fol != ch && char_condition_has(fol, "group"))
         party[n++] = fol;
@@ -2487,8 +2477,8 @@ int block_calc(struct char_data *ch) {
       act("$n proves $s great skill and escapes from you!", TRUE, ch, 0, blocker, TO_VICT);
       act("Using your great skill you manage to escape from $N!", TRUE, ch, 0, blocker, TO_CHAR);
     }
-    BLOCKED(ch) = NULL;
-    BLOCKS(blocker) = NULL;
+    char_blocked_by_set(ch, NULL);
+    char_blocking_set(blocker, NULL);
   };
 
   if (GET_SPEEDI(ch) < GET_SPEEDI(blocker) && GET_POS(blocker) > POS_SITTING) {
@@ -2782,7 +2772,7 @@ int mob_respond(struct char_data *ch, struct char_data *vict,
 
   if ((hears("spar") || hears("Spar")) && !FIGHTING(vict)) {
     send_to_room(char_room_get(vict), "\r\n");
-    if (vict->original == ch) {
+    if (GET_ORIGINAL(vict) == ch) {
       say("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n");
       SET_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
       return 0;
@@ -3220,7 +3210,7 @@ void improve_skill(struct char_data *ch, int skill, int num) {
 bool circle_follow(struct char_data *ch, struct char_data *victim) {
   struct char_data *k;
 
-  for (k = victim; k; k = k->master) {
+  for (k = victim; k; k = MASTER(k)) {
     if (k == ch)
       return (TRUE);
   }
@@ -3231,19 +3221,19 @@ bool circle_follow(struct char_data *ch, struct char_data *victim) {
 /* Called when stop following persons, or stopping charm */
 /* This will NOT do if a character quits/dies!!          */
 void stop_follower(struct char_data *ch) {
-  if (ch->master == NULL) {
+  if (MASTER(ch) == NULL) {
     core_dump();
     return;
   }
 
-  act("You stop following $N.", FALSE, ch, 0, ch->master, TO_CHAR);
-  act("$n stops following $N.", TRUE, ch, 0, ch->master, TO_NOTVICT);
-  if (!(DEAD(ch->master) ||
-        (ch->master->desc && STATE(ch->master->desc) == CON_MENU)))
-    act("$n stops following you.", TRUE, ch, 0, ch->master, TO_VICT);
+  act("You stop following $N.", FALSE, ch, 0, MASTER(ch), TO_CHAR);
+  act("$n stops following $N.", TRUE, ch, 0, MASTER(ch), TO_NOTVICT);
+  if (!(DEAD(MASTER(ch)) ||
+        (MASTER(ch)->desc && STATE(MASTER(ch)->desc) == CON_MENU)))
+    act("$n stops following you.", TRUE, ch, 0, MASTER(ch), TO_VICT);
 
-  char_follower_remove(ch->master, ch);
-  ch->master = NULL;
+  char_follower_remove(MASTER(ch), ch);
+  char_following_set(ch, NULL);
 }
 
 int num_followers_charmed(struct char_data *ch) {
@@ -3253,7 +3243,7 @@ int num_followers_charmed(struct char_data *ch) {
   char_followers_iterate(ch, [&](struct char_data *lackey) {
     if (AFF_FLAGGED(lackey, AFF_CHARM) &&
         !AFF_FLAGGED(lackey, AFF_SUMMONED) &&
-        lackey->master == ch)
+        MASTER(lackey) == ch)
       total++;
     return true;
   });
@@ -3274,7 +3264,7 @@ void switch_leader(struct char_data *old, struct char_data *new_leader) {
 }
 /* Called when a character that follows/is followed dies */
 void die_follower(struct char_data *ch) {
-  if (ch->master)
+  if (MASTER(ch))
     stop_follower(ch);
 
   char_followers_iterate(ch, [&](struct char_data *fol) {
@@ -3286,12 +3276,12 @@ void die_follower(struct char_data *ch) {
 /* Do NOT call this before having checked if a circle of followers */
 /* will arise. CH will follow leader                               */
 void add_follower(struct char_data *ch, struct char_data *leader) {
-  if (ch->master) {
+  if (MASTER(ch)) {
     core_dump();
     return;
   }
 
-  ch->master = leader;
+  char_following_set(ch, leader);
   char_follower_add(leader, ch);
 
   act("You now follow $N.", FALSE, ch, 0, leader, TO_CHAR);

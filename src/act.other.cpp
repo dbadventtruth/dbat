@@ -62,7 +62,6 @@
 
 #include <sys/stat.h>
 
-#include "affect.h"
 #include "extract.h"
 #include "fileop.h"
 #include "races_plus.h"
@@ -948,12 +947,11 @@ ACMD(do_grapple) {
         TO_VICT);
     act("@r$n@R stops grappling with @r$N@R!@n", TRUE, ch, 0, GRAPPLING(ch),
         TO_NOTVICT);
-    GRAPTYPE(GRAPPLING(ch)) = -1;
-    GRAPPLED(GRAPPLING(ch)) = NULL;
-    char_condition_remove(ch, "grappling", "grapple_end");
-    char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-    GRAPPLING(ch) = NULL;
-    GRAPTYPE(ch) = -1;
+    {
+      struct char_data *other = GRAPPLING(ch);
+      char_grappling_set(ch, NULL, 0);
+      char_grappled_set(other, NULL, 0);
+    }
     return;
   }
 
@@ -1131,14 +1129,8 @@ ACMD(do_grapple) {
           "behind!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
 
-      /* Let's grapple! */
-      GRAPPLING(ch) = vict;
-      GRAPTYPE(ch) = 1;
-      GRAPPLED(vict) = ch;
-      GRAPTYPE(vict) = 1;
-      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
-      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
-      /* Let's grapple! */
+      char_grappling_set(ch, vict, 1);
+      char_grappled_set(vict, ch, 1);
 
       decCurST(ch, cost);
       improve_skill(ch, SKILL_GRAPPLE, 1);
@@ -1156,14 +1148,8 @@ ACMD(do_grapple) {
           "hands!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
 
-      /* Let's grapple! */
-      GRAPPLING(ch) = vict;
-      GRAPTYPE(ch) = 2;
-      GRAPPLED(vict) = ch;
-      GRAPTYPE(vict) = 2;
-      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
-      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
-      /* Let's grapple! */
+      char_grappling_set(ch, vict, 2);
+      char_grappled_set(vict, ch, 2);
 
       decCurST(ch, cost);
       improve_skill(ch, SKILL_GRAPPLE, 1);
@@ -1188,14 +1174,8 @@ ACMD(do_grapple) {
           "appears that @c$N's@M body is being crushed slowly!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
 
-      /* Let's grapple! */
-      GRAPPLING(ch) = vict;
-      GRAPTYPE(ch) = 4;
-      GRAPPLED(vict) = ch;
-      GRAPTYPE(vict) = 4;
-      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
-      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
-      /* Let's grapple! */
+      char_grappling_set(ch, vict, 4);
+      char_grappled_set(vict, ch, 4);
 
       decCurST(ch, cost);
       improve_skill(ch, SKILL_GRAPPLE, 1);
@@ -1210,14 +1190,8 @@ ACMD(do_grapple) {
       act("@r$n@R rushes at @r$N@R and manages to lock $s arm onto @r$N's@R!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
 
-      /* Let's grapple! */
-      GRAPPLING(ch) = vict;
-      GRAPTYPE(ch) = 3;
-      GRAPPLED(vict) = ch;
-      GRAPTYPE(vict) = 3;
-      char_condition_apply_with_number(ch, "grappling", "combat", "grapple", "target_id", char_id_get(vict));
-      char_condition_apply_with_number(vict, "grappled", "combat", "grapple", "grappler_id", char_id_get(ch));
-      /* Let's grapple! */
+      char_grappling_set(ch, vict, 3);
+      char_grappled_set(vict, ch, 3);
 
       if (!PLR_FLAGGED(vict, PLR_THANDW)) {
         REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_THANDW);
@@ -1479,16 +1453,17 @@ ACMD(do_train) {
 
   /* Figure up the weight bonus */
   struct room_data *room = char_room_get(ch);
+  auto rv = room_vnum_get(room);
   int gravity = room_gravity_get(room);
   total = weight * (gravity + 1);
   total += (gravity + 1) ^ 2;
-  if (char_room_vnum_get(ch) >= 6100 && char_room_vnum_get(ch) <= 6135) {
+  if (rv >= 6100 && rv <= 6135) {
     total += total * 0.15;
   }
 
   int sensei = -1;
 
-  if (char_room_vnum_get(ch) == sensei_location_id(ch->chclass)) {
+  if (rv == sensei_location_id(ch->chclass)) {
     if (!(GET_GOLD(ch) >= 8 && GET_PRACTICES(ch, GET_CLASS(ch)) >= 1)) {
       send_to_char(ch,
                    "It costs 8 Zenni and 1 PS to train with your sensei.\r\n");
@@ -1531,11 +1506,12 @@ ACMD(do_train) {
     cost -= cost * 0.25;
   }
 
-  if (GET_RELAXCOUNT(ch) >= 464) {
+  auto relax = GET_RELAXCOUNT(ch);
+  if (relax >= 464) {
     cost *= 10;
-  } else if (GET_RELAXCOUNT(ch) >= 232) {
+  } else if (relax >= 232) {
     cost *= 5;
-  } else if (GET_RELAXCOUNT(ch) >= 116) {
+  } else if (relax >= 116) {
     cost *= 2;
   }
 
@@ -2447,8 +2423,8 @@ ACMD(do_drag) {
 
   if (DRAGGING(ch)) {
     vict = DRAGGING(ch);
-    DRAGGING(ch) = NULL;
-    DRAGGED(vict) = NULL;
+    char_dragging_set(ch, NULL);
+    char_being_dragged_set(vict, NULL);
     act("@wYou stop dragging @C$N@W.@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@C$n@W stops dragging @c$N@W.@n", TRUE, ch, 0, vict, TO_ROOM);
     return;
@@ -2526,9 +2502,9 @@ ACMD(do_drag) {
     act("@wYou grab and start dragging @C$N@W.@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@C$n@W grabs and starts dragging @c$N@W.@n", TRUE, ch, 0, vict,
         TO_NOTVICT);
-    DRAGGING(ch) = vict;
-    DRAGGED(vict) = ch;
-    if (!AFF_FLAGGED(vict, AFF_KNOCKED) && !AFF_FLAGGED(vict, AFF_SLEEP) &&
+    char_dragging_set(ch, vict);
+    char_being_dragged_set(vict, ch);
+    if (!AFF_FLAGGED(vict, AFF_KNOCKED) && !is_affected(vict, AFF_SLEEP) &&
         rand_number(1, 3)) {
       send_to_char(vict, "You feel your sleeping body being moved.\r\n");
       if (IS_NPC(vict) && !FIGHTING(vict)) {
@@ -3196,8 +3172,9 @@ ACMD(do_telepathy) {
           MINDLINK(ch), TO_CHAR);
       act("@w$n@C removes the link $s mind had with yours.@n", TRUE, ch, 0,
           MINDLINK(ch), TO_VICT);
-      MINDLINK(MINDLINK(ch)) = NULL;
-      MINDLINK(ch) = NULL;
+      struct char_data *linked = MINDLINK(ch);
+      char_mindlinked_set(ch, NULL);
+      char_mindlinked_set(linked, NULL);
       LINKER(ch) = 0;
       return;
     } else if (!(vict = get_char_vis(ch, arg2, NULL, FIND_CHAR_WORLD))) {
@@ -3235,8 +3212,8 @@ ACMD(do_telepathy) {
           "with 'think'.@n",
           TRUE, ch, 0, vict, TO_VICT);
       send_to_char(vict, "@wIf this is undesirable, Try: meditate break@n\r\n");
-      MINDLINK(vict) = ch;
-      MINDLINK(ch) = vict;
+      char_mindlinked_set(vict, ch);
+      char_mindlinked_set(ch, vict);
       LINKER(ch) = 1;
       return;
     }
@@ -3488,7 +3465,7 @@ ACMD(do_majinize) {
   if (char_condition_has(vict, "majinized") > 0 && char_condition_number_get(vict, "majinized", "lord") != GET_IDNUM(ch)) {
     send_to_char(ch, "They are already majinized before by someone else.\r\n");
     return;
-  } else if ((vict->master != ch)) {
+  } else if ((MASTER(vict) != ch)) {
     send_to_char(
         ch,
         "They must be following you in order for you to majinize them.\r\n");
@@ -3634,12 +3611,7 @@ ACMD(do_spit) {
     improve_skill(ch, SKILL_SPIT, 1);
     return;
   } else {
-    af.type = SPELL_PARALYZE;
-    af.duration = rand_number(1, 2);
-    af.modifier = 0;
-    af.location = APPLY_NONE;
-    af.bitvector = AFF_PARALYZE;
-    affect_join(vict, &af, FALSE, FALSE, FALSE, FALSE);
+    char_condition_apply_with_number(vict, "stone_spit", "skill", "spit", "duration", rand_number(1, 2));
 
     decCurKI(ch, cost);
     reveal_hiding(ch, 0);
@@ -3913,7 +3885,7 @@ ACMD(do_form) {
       send_to_char(ch, "Clothesbeam who?\r\nSyntax: create clothesbeam (target)\r\n");
       return;
     }
-    if (vict->master != ch) {
+    if (MASTER(vict) != ch) {
       send_to_char(ch, "They must be following you first.\r\n");
       return;
     }
@@ -4656,8 +4628,9 @@ ACMD(do_absorb) {
     if (IS_NPC(ABSORBING(ch)) && !FIGHTING(ABSORBING(ch))) {
       set_fighting(ABSORBING(ch), ch);
     }
-    ABSORBBY(ABSORBING(ch)) = NULL;
-    ABSORBING(ch) = NULL;
+    struct char_data *absorbed = ABSORBING(ch);
+    char_absorbing_set(ch, NULL);
+    char_absorbed_by_set(absorbed, NULL);
   }
 
   if (!*arg && IS_ANDROID(ch)) {
@@ -4748,8 +4721,8 @@ ACMD(do_absorb) {
           "on!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       improve_skill(ch, SKILL_ABSORB, 1);
-      ABSORBING(ch) = vict;
-      ABSORBBY(vict) = ch;
+      char_absorbing_set(ch, vict);
+      char_absorbed_by_set(vict, ch);
       WAIT_STATE(ch, PULSE_3SEC);
       return;
     }
@@ -4977,8 +4950,9 @@ ACMD(do_escape) {
       if (FIGHTING(ABSORBBY(ch)) == NULL) {
         set_fighting(ABSORBBY(ch), ch);
       }
-      ABSORBING(ABSORBBY(ch)) = NULL;
-      ABSORBBY(ch) = NULL;
+      struct char_data *absorber4955 = ABSORBBY(ch);
+      char_absorbed_by_set(ch, NULL);
+      char_absorbing_set(absorber4955, NULL);
     } else {
       act("@c$N@W struggles to break loose of @C$n's@W hold!@n", TRUE,
           ABSORBBY(ch), 0, ch, TO_NOTVICT);
@@ -4996,8 +4970,9 @@ ACMD(do_escape) {
               ABSORBBY(ch), 0, ch, TO_VICT);
           act("@c$N@W manages to break loose of your hold!@n", TRUE,
               ABSORBBY(ch), 0, ch, TO_CHAR);
-          ABSORBING(ABSORBBY(ch)) = NULL;
-          ABSORBBY(ch) = NULL;
+          struct char_data *absorber4974 = ABSORBBY(ch);
+          char_absorbed_by_set(ch, NULL);
+          char_absorbing_set(absorber4974, NULL);
         }
       }
       WAIT_STATE(ch, PULSE_2SEC);
@@ -5036,12 +5011,11 @@ ACMD(do_escape) {
       if (FIGHTING(GRAPPLED(ch)) == NULL) {
         set_fighting(GRAPPLED(ch), ch);
       }
-      GRAPTYPE(GRAPPLED(ch)) = -1;
-      GRAPPLING(GRAPPLED(ch)) = NULL;
-      char_condition_remove(ch, "grappling", "grapple_end");
-      char_condition_remove(GRAPPLED(ch), "grappled", "grapple_end");
-      GRAPPLED(ch) = NULL;
-      GRAPTYPE(ch) = -1;
+      {
+        struct char_data *other = GRAPPLED(ch);
+        char_grappling_set(other, NULL, 0);
+        char_grappled_set(ch, NULL, 0);
+      }
     } else {
       act("@c$N@W struggles to break loose of @C$n's@W hold!@n", TRUE,
           GRAPPLED(ch), 0, ch, TO_NOTVICT);
@@ -5059,12 +5033,11 @@ ACMD(do_escape) {
               GRAPPLED(ch), 0, ch, TO_VICT);
           act("@c$N@W manages to break loose of your hold!@n", TRUE,
               GRAPPLED(ch), 0, ch, TO_CHAR);
-          GRAPTYPE(GRAPPLED(ch)) = -1;
-          GRAPPLING(GRAPPLED(ch)) = NULL;
-          char_condition_remove(ch, "grappling", "grapple_end");
-          char_condition_remove(GRAPPLED(ch), "grappled", "grapple_end");
-          GRAPPLED(ch) = NULL;
-          GRAPTYPE(ch) = -1;
+          {
+            struct char_data *other = GRAPPLED(ch);
+            char_grappling_set(other, NULL, 0);
+            char_grappled_set(ch, NULL, 0);
+          }
         }
       }
       WAIT_STATE(ch, PULSE_2SEC);
@@ -5558,7 +5531,7 @@ ACMD(do_focus) {
     act("You focus ki into $N's mind, making it work faster!", TRUE, ch, 0, vict, TO_CHAR);
     act("$n focuses ki into your mind, making it work faster!", TRUE, ch, 0, vict, TO_VICT);
     act("$n focuses ki into $N's mind, making it work faster!", TRUE, ch, 0, vict, TO_NOTVICT);
-    if ((vict->master == ch || ch->master == vict || ch->master == vict->master) &&
+    if ((MASTER(vict) == ch || MASTER(ch) == vict || MASTER(ch) == MASTER(vict)) &&
         char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
       if (IS_KAI(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
           rand_number(1, 3) == 3) {
@@ -5624,7 +5597,7 @@ ACMD(do_focus) {
     act("You focus ki into $N's limbs, making them more flexible!", TRUE, ch, 0, vict, TO_CHAR);
     act("$n focuses ki into your limbs, making them more flexible!", TRUE, ch, 0, vict, TO_VICT);
     act("$n focuses ki into $N's limbs, making them more flexible!", TRUE, ch, 0, vict, TO_NOTVICT);
-    if ((vict->master == ch || ch->master == vict || ch->master == vict->master) &&
+    if ((MASTER(vict) == ch || MASTER(ch) == vict || MASTER(ch) == MASTER(vict)) &&
         char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
       if (IS_KAI(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
           rand_number(1, 3) == 3) {
@@ -5699,7 +5672,7 @@ ACMD(do_focus) {
           TRUE, ch, 0, vict, TO_VICT);
       act("$n focuses ki while chanting spiritual words. $n then places a hand on $N's head, blessing them!",
           TRUE, ch, 0, vict, TO_NOTVICT);
-      if ((vict->master == ch || ch->master == vict || ch->master == vict->master) &&
+      if ((MASTER(vict) == ch || MASTER(ch) == vict || MASTER(ch) == MASTER(vict)) &&
           char_condition_has(ch, "group") && char_condition_has(vict, "group")) {
         if (IS_KAI(ch) && level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
             rand_number(1, 3) == 3) {
@@ -5782,9 +5755,9 @@ ACMD(do_focus) {
       send_to_char(ch, "Use Yoikominminken on who?\r\n"); return;
     }
     if (!can_kill(ch, vict, NULL, 0)) return;
-    if (AFF_FLAGGED(vict, AFF_SLEEP)) { send_to_char(ch, "They already have been put to sleep!\r\n"); return; }
+    if (is_affected(vict, AFF_SLEEP)) { send_to_char(ch, "They already have been put to sleep!\r\n"); return; }
     if (PLR_FLAGGED(vict, PLR_EYEC)) { send_to_char(ch, "Their eyes are closed!\r\n"); return; }
-    if (AFF_FLAGGED(vict, AFF_BLIND)) { send_to_char(ch, "They appear to be blind!\r\n"); return; }
+    if (is_affected(vict, AFF_BLIND)) { send_to_char(ch, "They appear to be blind!\r\n"); return; }
     if (!ki_check()) { send_to_char(ch, "You do not have enough ki to use Yoikominminken.\r\n"); return; }
     if (GET_BONUS(vict, BONUS_INSOMNIAC)) {
       drain_reveal();
@@ -5887,7 +5860,6 @@ ACMD(do_focus) {
         act("$n focuses ki and aims a pulsing light at $s body. Nothing seems to happen.", TRUE, ch, 0, 0, TO_ROOM);
         return;
       }
-      affect_from_char(ch, SPELL_POISON);
       drain_reveal();
       act("You focus ki and aim a pulsing light at your body. You feel the poison in your blood disappear!",
           TRUE, ch, 0, 0, TO_CHAR);
@@ -5911,7 +5883,6 @@ ACMD(do_focus) {
       act("$n focuses ki and aims a pulsing light at $N's body. $N looks disappointed.", TRUE, ch, 0, vict, TO_NOTVICT);
       return;
     }
-    affect_from_char(vict, SPELL_POISON);
     drain_reveal();
     act("You focus ki and aim a pulsing light at $N's body. $e is cured.", TRUE, ch, 0, vict, TO_CHAR);
     act("$n focuses ki and aims a pulsing light at your body. You have been cured of your poison!",
@@ -6611,8 +6582,8 @@ ACMD(do_block) {
       act("@C$n@w stops blocking @c$N@w.@n", TRUE, ch, 0, BLOCKS(ch),
           TO_NOTVICT);
       vict = BLOCKS(ch);
-      BLOCKED(vict) = NULL;
-      BLOCKS(ch) = NULL;
+      char_blocked_by_set(vict, NULL);
+      char_blocking_set(ch, NULL);
       return;
     }
   }
@@ -6642,9 +6613,9 @@ ACMD(do_block) {
     act("@C$n@w stops blocking you.@n", TRUE, ch, 0, BLOCKS(ch), TO_VICT);
     act("@C$n@w stops blocking @c$N@w.@n", TRUE, ch, 0, BLOCKS(ch), TO_NOTVICT);
     struct char_data *oldv = BLOCKS(ch);
-    BLOCKED(oldv) = NULL;
-    BLOCKS(ch) = vict;
-    BLOCKED(vict) = ch;
+    char_blocked_by_set(oldv, NULL);
+    char_blocking_set(ch, vict);
+    char_blocked_by_set(vict, ch);
     reveal_hiding(ch, 0);
     act("@wYou start blocking @c$N's@w escape.@n", TRUE, ch, 0, BLOCKS(ch),
         TO_CHAR);
@@ -6654,8 +6625,8 @@ ACMD(do_block) {
         TO_NOTVICT);
     return;
   } else {
-    BLOCKS(ch) = vict;
-    BLOCKED(vict) = ch;
+    char_blocking_set(ch, vict);
+    char_blocked_by_set(vict, ch);
     reveal_hiding(ch, 0);
     act("@wYou start blocking @c$N's@w escape.@n", TRUE, ch, 0, BLOCKS(ch),
         TO_CHAR);
@@ -6924,8 +6895,8 @@ ACMD(do_heal) {
                    "You feel that your lifeforce has recovered some!\r\n");
     }
     improve_skill(ch, SKILL_HEAL, 0);
-    if (vict->master == ch || ch->master == vict ||
-        ch->master == vict->master) {
+    if (MASTER(vict) == ch || MASTER(ch) == vict ||
+        MASTER(ch) == MASTER(vict)) {
       if (IS_NAIL(ch) && IS_NAMEK(ch) &&
           level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch) > 0 &&
           GET_HIT(vict) <= getMaxPL(vict) * 0.85 && rand_number(1, 3) == 3) {
@@ -8027,9 +7998,10 @@ ACMD(do_meditate) {
         REMOVE_BIT_AR(AFF_FLAGS(MINDLINK(ch)), AFF_SHOCKED);
       }
 
-      LINKER(MINDLINK(ch)) = 0;
-      MINDLINK(MINDLINK(ch)) = NULL;
-      MINDLINK(ch) = NULL;
+      struct char_data *linked8004 = MINDLINK(ch);
+      LINKER(linked8004) = 0;
+      char_mindlinked_set(ch, NULL);
+      char_mindlinked_set(linked8004, NULL);
       return;
     } else {
       act("@rYou struggle to free your mind of @R$N's@r link, but fail!@n",
@@ -8705,13 +8677,15 @@ static void tick_player_stale_links(struct char_data *ch) {
     carry_drop(ch, 3);
   if (GET_DEFENDER(ch) &&
       char_room_get(ch) != char_room_get(GET_DEFENDER(ch))) {
-    GET_DEFENDING(GET_DEFENDER(ch)) = NULL;
-    GET_DEFENDER(ch) = NULL;
+    struct char_data *protected_person = GET_DEFENDER(ch);
+    char_defending_for_set(ch, NULL);
+    char_defended_by_set(protected_person, NULL);
   }
   if (GET_DEFENDING(ch) &&
       char_room_get(ch) != char_room_get(GET_DEFENDING(ch))) {
-    GET_DEFENDER(GET_DEFENDING(ch)) = NULL;
-    GET_DEFENDING(ch) = NULL;
+    struct char_data *protected_person = GET_DEFENDING(ch);
+    char_defended_by_set(ch, NULL);
+    char_defending_for_set(protected_person, NULL);
   }
   if (SITS(ch) && char_room_get(ch) != obj_room_get(SITS(ch))) {
     SITTING(SITS(ch)) = NULL;
@@ -8720,8 +8694,8 @@ static void tick_player_stale_links(struct char_data *ch) {
   if (BLOCKS(ch)) {
     struct char_data *vict = BLOCKS(ch);
     if (char_room_get(vict) != char_room_get(ch)) {
-      BLOCKED(vict) = NULL;
-      BLOCKS(ch) = NULL;
+      char_blocked_by_set(vict, NULL);
+      char_blocking_set(ch, NULL);
     }
   }
 }
@@ -8774,8 +8748,9 @@ static void tick_player_geoeffect(struct char_data *ch) {
 static void tick_player_android_absorb(struct char_data *ch) {
   if (ABSORBING(ch) && char_room_get(ch) != char_room_get(ABSORBING(ch))) {
     send_to_char(ch, "You stop absorbing %s!\r\n", GET_NAME(ABSORBING(ch)));
-    ABSORBBY(ABSORBING(ch)) = NULL;
-    ABSORBING(ch) = NULL;
+    struct char_data *absorbed8755 = ABSORBING(ch);
+    char_absorbing_set(ch, NULL);
+    char_absorbed_by_set(absorbed8755, NULL);
   }
   if (!IS_ANDROID(ch) || !ABSORBING(ch)) return;
 
@@ -8790,8 +8765,8 @@ static void tick_player_android_absorb(struct char_data *ch) {
       set_fighting(ch, ABSORBBY(target));
     if (!FIGHTING(ABSORBBY(target)) || FIGHTING(ABSORBBY(target)) != ch)
       set_fighting(ABSORBBY(target), ch);
-    ABSORBBY(target) = NULL;
-    ABSORBING(ch) = NULL;
+    char_absorbed_by_set(target, NULL);
+    char_absorbing_set(ch, NULL);
   };
 
   if (getCurST(target) < (GET_MAX_MOVE(ch) / 15) &&
@@ -8828,8 +8803,8 @@ static void tick_player_android_absorb(struct char_data *ch) {
       set_fighting(ch, ABSORBBY(target));
     if (!FIGHTING(ABSORBBY(target)) || FIGHTING(ABSORBBY(target)) != ch)
       set_fighting(ABSORBBY(target), ch);
-    ABSORBBY(target) = NULL;
-    ABSORBING(ch) = NULL;
+    char_absorbed_by_set(target, NULL);
+    char_absorbing_set(ch, NULL);
     return;
   }
 
@@ -8837,7 +8812,7 @@ static void tick_player_android_absorb(struct char_data *ch) {
   bool sum    = !is_soft_cap(ch, 0);
   bool mum    = !is_soft_cap(ch, 2);
   bool ium    = !is_soft_cap(ch, 1);
-  auto *leader = ch->master ? ch->master : ch;
+  auto *leader = MASTER(ch) ? MASTER(ch) : ch;
 
   auto absorb_gain = [&](bool under_cap, bool is_ki_check, const char *msg,
                           int64_t (*gain_fn)(struct char_data *, int64_t)) {
@@ -8854,7 +8829,7 @@ static void tick_player_android_absorb(struct char_data *ch) {
       if (GET_LEVEL(ch) > 90) gain *= 4;
       send_to_char(ch, msg, gain);
       if (group_bonus(ch, 2) == 7 &&
-          (!is_ki_check || ch->master) &&
+          (!is_ki_check || MASTER(ch)) &&
           PLR_FLAGGED(leader, PLR_SENSEM)) {
         int gbonus = gain * 0.15;
         gain += gbonus;
@@ -9598,7 +9573,7 @@ ACMD(do_quit) {
     mudlog(NRM, MAX(ADMLVL_IMMORT, GET_INVIS_LEV(ch)), TRUE,
            "%s has quit the game.", GET_NAME(ch));
     send_to_char(ch, "Goodbye, friend.. Come back soon!\r\n");
-    if (char_follower_count(ch) || ch->master)
+    if (char_follower_count(ch) || MASTER(ch))
       die_follower(ch);
     if (ch == ch_selling)
       stop_auction(AUC_QUIT_CANCEL, NULL);
@@ -10109,7 +10084,7 @@ static void print_group(struct char_data *ch) {
 
     send_to_char(ch, "Your group consists of:\r\n");
 
-    k = (ch->master ? ch->master : ch);
+    k = (MASTER(ch) ? MASTER(ch) : ch);
 
     if (char_condition_has(k, "group")) {
       send_to_char(ch, "@D----------------@n\r\n");
@@ -10176,7 +10151,7 @@ ACMD(do_group) {
     return;
   }
 
-  if (ch->master) {
+  if (MASTER(ch)) {
     act("You cannot enroll group members without being head of a group.", FALSE,
         ch, 0, 0, TO_CHAR);
     return;
@@ -10216,7 +10191,7 @@ ACMD(do_group) {
 
   if (!(vict = get_char_vis(ch, buf, NULL, FIND_CHAR_ROOM)))
     send_to_char(ch, "%s", CONFIG_NOPERSON);
-  else if ((vict->master != ch) && (vict != ch))
+  else if ((MASTER(vict) != ch) && (vict != ch))
     act("$N must follow you to enter your group.", FALSE, ch, 0, vict, TO_CHAR);
   else {
     if (!char_condition_has(vict, "group")) {
@@ -10245,7 +10220,7 @@ ACMD(do_ungroup) {
   one_argument(argument, buf);
 
   if (!*buf) {
-    if (ch->master || !(char_condition_has(ch, "group"))) {
+    if (MASTER(ch) || !(char_condition_has(ch, "group"))) {
       send_to_char(ch, "But you lead no group!\r\n");
       return;
     }
@@ -10268,7 +10243,7 @@ ACMD(do_ungroup) {
     send_to_char(ch, "There is no such person!\r\n");
     return;
   }
-  if (tch->master != ch) {
+  if (MASTER(tch) != ch) {
     send_to_char(ch, "That person is not following you!\r\n");
     return;
   }
@@ -10303,7 +10278,7 @@ ACMD(do_report) {
            GET_HIT(ch), GET_MAX_HIT(ch), (getCurKI(ch)), GET_MAX_MANA(ch),
            (getCurST(ch)), GET_MAX_MOVE(ch));
 
-  k = (ch->master ? ch->master : ch);
+  k = (MASTER(ch) ? MASTER(ch) : ch);
 
   char_followers_iterate(k, [&](struct char_data *fol) {
     if (char_condition_has(fol, "group") && fol != ch)
@@ -10339,7 +10314,7 @@ ACMD(do_split) {
       return;
     }
     char_stat_mod(ch, "money", -amount);
-    k = (ch->master ? ch->master : ch);
+    k = (MASTER(ch) ? MASTER(ch) : ch);
 
     if (char_condition_has(k, "group") && (char_room_get(k) == char_room_get(ch)))
       num = 1;
@@ -11442,17 +11417,6 @@ void add_innate_timer(struct char_data *ch, int spellnum) {}
    Usually these will stay set, but certain circumstances will
    cause them to wear off (ie. removing eq with a perm affect).
 */
-void add_innate_affects(struct char_data *ch) {
-  switch (GET_RACE(ch)) {
-  case RACE_DEMON:
-  case RACE_ICER:
-  case RACE_ANDROID:
-  case RACE_BIO:
-    affect_modify(ch, APPLY_NONE, 0, 0, AFF_INFRAVISION, TRUE);
-    break;
-  }
-  affect_total(ch);
-}
 
 /* Called to update the innate timers */
 void update_innate(struct char_data *ch) {}
@@ -11484,45 +11448,6 @@ const room_vnum freeres[NUM_ALIGNS] = {
     /* LAWFUL_EVIL */ 1000,
     /* NEUTRAL_EVIL */ 1000,
     /* CHAOTIC_EVIL */ 1000};
-
-ACMD(do_resurrect) {
-  struct room_data *rm = NULL;
-  struct affected_type *af, *next_af;
-
-  if (IS_NPC(ch)) {
-    send_to_char(ch, "Sorry, only players get spirits.\r\n");
-    return;
-  }
-
-  if (!AFF_FLAGGED(ch, AFF_SPIRIT)) {
-    send_to_char(ch, "But you're not even dead!\r\n");
-    return;
-  }
-
-  send_to_char(
-      ch,
-      "You take an experience penalty and pray for charity resurrection.\r\n");
-  gain_exp(ch,
-           -(level_exp(ch, GET_LEVEL(ch)) - level_exp(ch, GET_LEVEL(ch) - 1)));
-
-  for (af = ch->affected; af; af = next_af) {
-    next_af = af->next;
-    if (af->location == APPLY_NONE && af->type == -1 &&
-        (af->bitvector == AFF_SPIRIT || af->bitvector == AFF_ETHEREAL))
-      affect_remove(ch, af);
-  }
-
-  if ((rm = room_by_id(freeres[ALIGN_TYPE(ch)])) == NULL)
-    rm = room_by_id(CONFIG_MORTAL_START);
-
-  if (rm) {
-    char_from_room(ch);
-    char_to_room(ch, rm);
-    look_at_room(char_room_get(ch), ch, 0);
-  }
-
-  act("$n's body forms in a pool of @Bblue light@n.", TRUE, ch, 0, 0, TO_ROOM);
-}
 
 static void show_clan_info(struct char_data *ch) {
 

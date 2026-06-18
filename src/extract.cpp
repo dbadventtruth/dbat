@@ -9,7 +9,6 @@
 #include "mobact.h"
 #include "objsave.h"
 
-#include "affect.h"
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
@@ -101,7 +100,7 @@ void extract_char_final(struct char_data *ch) {
   }
   /* On with the character's assets... */
 
-  if (char_follower_count(ch) || ch->master)
+  if (char_follower_count(ch) || MASTER(ch))
     die_follower(ch);
 
   if (auto chair = SITS(ch)) {
@@ -115,7 +114,7 @@ void extract_char_final(struct char_data *ch) {
     }
   }
 
-  if (!IS_NPC(ch) && GET_CLONES(ch) > 0) {
+  if (!IS_NPC(ch) && char_condition_number_get(ch, "multiform_original", "count") > 0) {
     char_iterate_all([&](struct char_data *clone) {
       if (IS_NPC(clone) && GET_MOB_VNUM(clone) == 25 &&
           GET_ORIGINAL(clone) == ch) {
@@ -128,8 +127,9 @@ void extract_char_final(struct char_data *ch) {
   purge_homing(ch);
 
   if (MINDLINK(ch)) {
-    MINDLINK(MINDLINK(ch)) = NULL;
-    MINDLINK(ch) = NULL;
+    struct char_data *other = MINDLINK(ch);
+    char_mindlinked_set(ch, NULL);
+    char_mindlinked_set(other, NULL);
   }
 
   if (GRAPPLING(ch)) {
@@ -137,24 +137,22 @@ void extract_char_final(struct char_data *ch) {
         TO_CHAR);
     act("@C$n@W stops grappling with @c$N@W!@n", TRUE, ch, 0, GRAPPLING(ch),
         TO_ROOM);
-    GRAPTYPE(GRAPPLING(ch)) = -1;
-    GRAPPLED(GRAPPLING(ch)) = NULL;
+    struct char_data *other = GRAPPLING(ch);
     char_condition_remove(ch, "grappling", "grapple_end");
-    char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-    GRAPPLING(ch) = NULL;
-    GRAPTYPE(ch) = -1;
+    char_condition_remove(other, "grappled", "grapple_end");
+    char_grappling_set(ch, NULL, 0);
+    char_grappled_set(other, NULL, 0);
   }
   if (GRAPPLED(ch)) {
     act("@WYou stop being grappled with by @C$N@W!@n", TRUE, ch, 0,
         GRAPPLED(ch), TO_CHAR);
     act("@C$n@W stops being grappled with by @c$N@W!@n", TRUE, ch, 0,
         GRAPPLED(ch), TO_ROOM);
-    GRAPTYPE(GRAPPLED(ch)) = -1;
-    GRAPPLING(GRAPPLED(ch)) = NULL;
-    char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
+    struct char_data *other = GRAPPLED(ch);
+    char_condition_remove(other, "grappling", "grapple_end");
     char_condition_remove(ch, "grappled", "grapple_end");
-    GRAPPLED(ch) = NULL;
-    GRAPTYPE(ch) = -1;
+    char_grappled_set(ch, NULL, 0);
+    char_grappling_set(other, NULL, 0);
   }
 
   if (CARRYING(ch)) {
@@ -167,8 +165,9 @@ void extract_char_final(struct char_data *ch) {
   if (DRAGGING(ch)) {
     act("@WYou stop dragging @C$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
     act("@C$n@W stops dragging @c$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_ROOM);
-    DRAGGED(DRAGGING(ch)) = NULL;
-    DRAGGING(ch) = NULL;
+    struct char_data *other = DRAGGING(ch);
+    char_dragging_set(ch, NULL);
+    char_being_dragged_set(other, NULL);
   }
 
   if (DRAGGED(ch)) {
@@ -176,34 +175,41 @@ void extract_char_final(struct char_data *ch) {
         TO_CHAR);
     act("@C$n@W stops being dragged by @c$N@W!@n", TRUE, ch, 0, DRAGGED(ch),
         TO_ROOM);
-    DRAGGING(DRAGGED(ch)) = NULL;
-    DRAGGED(ch) = NULL;
+    struct char_data *other = DRAGGED(ch);
+    char_being_dragged_set(ch, NULL);
+    char_dragging_set(other, NULL);
   }
 
   if (GET_DEFENDER(ch)) {
-    GET_DEFENDING(GET_DEFENDER(ch)) = NULL;
-    GET_DEFENDER(ch) = NULL;
+    struct char_data *other = GET_DEFENDER(ch);
+    char_defending_for_set(ch, NULL);
+    char_defended_by_set(other, NULL);
   }
   if (GET_DEFENDING(ch)) {
-    GET_DEFENDER(GET_DEFENDING(ch)) = NULL;
-    GET_DEFENDING(ch) = NULL;
+    struct char_data *other = GET_DEFENDING(ch);
+    char_defended_by_set(ch, NULL);
+    char_defending_for_set(other, NULL);
   }
 
   if (BLOCKED(ch)) {
-    BLOCKS(BLOCKED(ch)) = NULL;
-    BLOCKED(ch) = NULL;
+    struct char_data *other = BLOCKED(ch);
+    char_blocked_by_set(ch, NULL);
+    char_blocking_set(other, NULL);
   }
   if (BLOCKS(ch)) {
-    BLOCKED(BLOCKS(ch)) = NULL;
-    BLOCKS(ch) = NULL;
+    struct char_data *other = BLOCKS(ch);
+    char_blocking_set(ch, NULL);
+    char_blocked_by_set(other, NULL);
   }
   if (ABSORBING(ch)) {
-    ABSORBBY(ABSORBING(ch)) = NULL;
-    ABSORBING(ch) = NULL;
+    struct char_data *other = ABSORBING(ch);
+    char_absorbing_set(ch, NULL);
+    char_absorbed_by_set(other, NULL);
   }
   if (ABSORBBY(ch)) {
-    ABSORBING(ABSORBBY(ch)) = NULL;
-    ABSORBBY(ch) = NULL;
+    struct char_data *other = ABSORBBY(ch);
+    char_absorbed_by_set(ch, NULL);
+    char_absorbing_set(other, NULL);
   }
 
   /* transfer objects to room, if any */

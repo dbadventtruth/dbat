@@ -936,8 +936,8 @@ ACMD(do_gsay) {
   else {
     char buf[MAX_STRING_LENGTH];
 
-    if (ch->master)
-      k = ch->master;
+    if (MASTER(ch))
+      k = MASTER(ch);
     else
       k = ch;
 

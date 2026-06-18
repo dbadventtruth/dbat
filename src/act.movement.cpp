@@ -142,24 +142,18 @@ void handle_teleport(struct char_data *ch, struct char_data *tar,
       act("@WYou stop dragging @C$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
       act("@C$n@W stops dragging @c$N@W!@n", TRUE, ch, 0, DRAGGING(ch),
           TO_ROOM);
-      DRAGGED(DRAGGING(ch)) = NULL;
-      DRAGGING(ch) = NULL;
+      char_being_dragged_set(DRAGGING(ch), NULL);
+      char_dragging_set(ch, NULL);
     }
     if (GRAPPLING(ch) && IS_NPC(GRAPPLING(ch))) {
-      GRAPTYPE(GRAPPLING(ch)) = -1;
-      GRAPPLED(GRAPPLING(ch)) = NULL;
-      char_condition_remove(ch, "grappling", "grapple_end");
-      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-      GRAPPLING(ch) = NULL;
-      GRAPTYPE(ch) = -1;
+      struct char_data *other = GRAPPLING(ch);
+      char_grappling_set(ch, NULL, 0);
+      char_grappled_set(other, NULL, 0);
     }
     if (GRAPPLED(ch) && IS_NPC(GRAPPLED(ch))) {
-      GRAPTYPE(GRAPPLED(ch)) = -1;
-      GRAPPLING(GRAPPLED(ch)) = NULL;
-      char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
-      char_condition_remove(ch, "grappled", "grapple_end");
-      GRAPPLED(ch) = NULL;
-      GRAPTYPE(ch) = -1;
+      struct char_data *other = GRAPPLED(ch);
+      char_grappling_set(other, NULL, 0);
+      char_grappled_set(ch, NULL, 0);
     }
   } else { /* Wut... */
     mud_log("ERROR: handle_teleport called without a destination.");
@@ -241,8 +235,8 @@ ACMD(do_carry) {
         SITTING(chair) = NULL;
         SITS(vict) = NULL;
       }
-      CARRYING(ch) = vict;
-      CARRIED_BY(vict) = ch;
+      char_carrying_char_set(ch, vict);
+      char_carried_by_char_set(vict, ch);
       WAIT_STATE(ch, PULSE_1SEC);
       return;
     }
@@ -291,8 +285,8 @@ void carry_drop(struct char_data *ch, int type) {
         TO_NOTVICT);
     break;
   }
-  CARRYING(ch) = NULL;
-  CARRIED_BY(vict) = NULL;
+  char_carrying_char_set(ch, NULL);
+  char_carried_by_char_set(vict, NULL);
 }
 
 int land_location(struct char_data *ch, char *arg) {
@@ -776,8 +770,8 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
       char_room_get(ch) != was_in_room) /* prevent teleport crashes */
     return 0;
   /* charmed? */
-  if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master &&
-      char_room_get(ch) == char_room_get(ch->master)) {
+  if (AFF_FLAGGED(ch, AFF_CHARM) && MASTER(ch) &&
+      char_room_get(ch) == char_room_get(MASTER(ch))) {
     send_to_char(ch, "The thought of leaving your master makes you weep.\r\n");
     act("$n bursts into tears.", FALSE, ch, 0, 0, TO_ROOM);
     return (0);
@@ -832,7 +826,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
   }
 
   if (IS_NPC(ch) && room_flagged(exit_dest_get(EXIT(ch, dir)), ROOM_NOMOB) &&
-      !ch->master) {
+      !MASTER(ch)) {
     return (0);
   }
 
@@ -914,7 +908,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
 
   if ((getCurST(ch)) < need_movement && !char_condition_has(ch, "flying") &&
       !IS_NPC(ch)) {
-    if (need_specials_check && ch->master) {
+    if (need_specials_check && MASTER(ch)) {
       send_to_char(ch, "You are too exhausted to follow.\r\n");
     } else {
       send_to_char(ch, "You are too exhausted.\r\n");
@@ -1088,7 +1082,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
       obj_to_room(SITS(DRAGGING(ch)), char_room_get(ch));
     }
     if (!AFF_FLAGGED(DRAGGING(ch), AFF_KNOCKED) &&
-        !AFF_FLAGGED(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
+        !is_affected(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
       send_to_char(DRAGGING(ch),
                    "You feel your sleeping body being moved.\r\n");
       if (IS_NPC(DRAGGING(ch)) && !FIGHTING(DRAGGING(ch))) {
@@ -1102,7 +1096,7 @@ int do_simple_move(struct char_data *ch, int dir, int need_specials_check) {
     char_from_room(CARRYING(ch));
     char_to_room(CARRYING(ch), char_room_get(ch));
     if (!AFF_FLAGGED(CARRYING(ch), AFF_KNOCKED) &&
-        !AFF_FLAGGED(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
+        !is_affected(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
       send_to_char(CARRYING(ch),
                    "You feel your sleeping body being moved.\r\n");
     }
@@ -1405,8 +1399,9 @@ ACMD(do_move) {
           0, ch, TO_VICT);
       act("@c$N@W manages to break loose of your hold!@n", TRUE, ABSORBBY(ch),
           0, ch, TO_CHAR);
-      ABSORBING(ABSORBBY(ch)) = NULL;
-      ABSORBBY(ch) = NULL;
+      struct char_data *absorber = ABSORBBY(ch);
+      char_absorbed_by_set(ch, NULL);
+      char_absorbing_set(absorber, NULL);
     }
   }
   if (!block_calc(ch)) {
@@ -2117,8 +2112,8 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj,
   int need_movement = 0;
 
   /* charmed? */
-  if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master &&
-      char_room_get(ch) == char_room_get(ch->master)) {
+  if (AFF_FLAGGED(ch, AFF_CHARM) && MASTER(ch) &&
+      char_room_get(ch) == char_room_get(MASTER(ch))) {
     send_to_char(ch, "The thought of leaving your master makes you weep.\r\n");
     act("$n bursts into tears.", FALSE, ch, 0, 0, TO_ROOM);
     return (0);
@@ -2137,7 +2132,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj,
   }
   if ((getCurST(ch)) < need_movement && !char_condition_has(ch, "flying") &&
       !IS_NPC(ch)) {
-    if (need_specials_check && ch->master)
+    if (need_specials_check && MASTER(ch))
       send_to_char(ch, "You are too exhausted to follow.\r\n");
     else
       send_to_char(ch, "You are too exhausted.\r\n");
@@ -2197,7 +2192,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj,
     act("@wYou drag @C$N@w with you.@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
     act("@C$n@w drags @c$N@w with $m.@n", TRUE, ch, 0, DRAGGING(ch), TO_ROOM);
     if (!AFF_FLAGGED(DRAGGING(ch), AFF_KNOCKED) &&
-        !AFF_FLAGGED(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
+        !is_affected(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
       send_to_char(DRAGGING(ch),
                    "You feel your sleeping body being moved.\r\n");
       if (IS_NPC(DRAGGING(ch)) && !FIGHTING(DRAGGING(ch))) {
@@ -2215,7 +2210,7 @@ static int do_simple_enter(struct char_data *ch, struct obj_data *obj,
     act("@wYou carry @C$N@w with you.@n", TRUE, ch, 0, CARRYING(ch), TO_CHAR);
     act("@C$n@w carries @c$N@w with $m.@n", TRUE, ch, 0, CARRYING(ch), TO_ROOM);
     if (!AFF_FLAGGED(CARRYING(ch), AFF_KNOCKED) &&
-        !AFF_FLAGGED(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
+        !is_affected(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
       send_to_char(CARRYING(ch),
                    "You feel your sleeping body being moved.\r\n");
     }
@@ -2386,8 +2381,8 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
   }
 
   /* charmed? */
-  if (AFF_FLAGGED(ch, AFF_CHARM) && ch->master &&
-      char_room_get(ch) == char_room_get(ch->master)) {
+  if (AFF_FLAGGED(ch, AFF_CHARM) && MASTER(ch) &&
+      char_room_get(ch) == char_room_get(MASTER(ch))) {
     send_to_char(ch, "The thought of leaving your master makes you weep.\r\n");
     act("$n bursts into tears.", FALSE, ch, 0, 0, TO_ROOM);
     return (0);
@@ -2406,7 +2401,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
   }
   if ((getCurST(ch)) < need_movement && !char_condition_has(ch, "flying") &&
       !IS_NPC(ch)) {
-    if (need_specials_check && ch->master)
+    if (need_specials_check && MASTER(ch))
       send_to_char(ch, "You are too exhausted to follow.\r\n");
     else
       send_to_char(ch, "You are too exhausted.\r\n");
@@ -2468,7 +2463,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
       obj_to_room(SITS(DRAGGING(ch)), char_room_get(ch));
     }
     if (!AFF_FLAGGED(DRAGGING(ch), AFF_KNOCKED) &&
-        !AFF_FLAGGED(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
+        !is_affected(DRAGGING(ch), AFF_SLEEP) && rand_number(1, 3)) {
       send_to_char(DRAGGING(ch),
                    "You feel your sleeping body being moved.\r\n");
       if (IS_NPC(DRAGGING(ch)) && !FIGHTING(DRAGGING(ch))) {
@@ -2486,7 +2481,7 @@ static int do_simple_leave(struct char_data *ch, struct obj_data *obj,
       obj_to_room(SITS(CARRYING(ch)), char_room_get(ch));
     }
     if (!AFF_FLAGGED(CARRYING(ch), AFF_KNOCKED) &&
-        !AFF_FLAGGED(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
+        !is_affected(CARRYING(ch), AFF_SLEEP) && rand_number(1, 3)) {
       send_to_char(CARRYING(ch),
                    "You feel your sleeping body being moved.\r\n");
     }
@@ -2924,8 +2919,9 @@ ACMD(do_sit) {
   if (DRAGGING(ch)) {
     act("@WYou stop dragging @C$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
     act("@C$n@W stops dragging @c$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_ROOM);
-    DRAGGED(DRAGGING(ch)) = NULL;
-    DRAGGING(ch) = NULL;
+    struct char_data *dragged = DRAGGING(ch);
+    char_dragging_set(ch, NULL);
+    char_being_dragged_set(dragged, NULL);
   }
   if (CARRYING(ch)) {
     send_to_char(ch, "You are busy carrying someone!\r\n");
@@ -3058,8 +3054,9 @@ ACMD(do_rest) {
   if (DRAGGING(ch)) {
     act("@WYou stop dragging @C$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
     act("@C$n@W stops dragging @c$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_ROOM);
-    DRAGGED(DRAGGING(ch)) = NULL;
-    DRAGGING(ch) = NULL;
+    struct char_data *dragged = DRAGGING(ch);
+    char_dragging_set(ch, NULL);
+    char_being_dragged_set(dragged, NULL);
   }
 
   if (CARRYING(ch)) {
@@ -3220,8 +3217,9 @@ ACMD(do_sleep) {
   if (DRAGGING(ch)) {
     act("@WYou stop dragging @C$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_CHAR);
     act("@C$n@W stops dragging @c$N@W!@n", TRUE, ch, 0, DRAGGING(ch), TO_ROOM);
-    DRAGGED(DRAGGING(ch)) = NULL;
-    DRAGGING(ch) = NULL;
+    struct char_data *dragged = DRAGGING(ch);
+    char_dragging_set(ch, NULL);
+    char_being_dragged_set(dragged, NULL);
   }
   if (CARRYING(ch)) {
     send_to_char(ch, "You are carrying someone!\r\n");
@@ -3362,7 +3360,7 @@ ACMD(do_wake) {
       self = 1;
     else if (AWAKE(vict))
       act("$E is already awake.", FALSE, ch, 0, vict, TO_CHAR);
-    else if (AFF_FLAGGED(vict, AFF_SLEEP))
+    else if (is_affected(vict, AFF_SLEEP))
       act("You can't wake $M up!", FALSE, ch, 0, vict, TO_CHAR);
     else if (GET_POS(vict) < POS_SLEEPING)
       act("$E's in pretty bad shape!", FALSE, ch, 0, vict, TO_CHAR);
@@ -3379,8 +3377,9 @@ ACMD(do_wake) {
             TO_CHAR);
         act("@C$n@W stops dragging @c$N@W!@n", TRUE, DRAGGED(vict), 0, vict,
             TO_ROOM);
-        DRAGGING(DRAGGED(vict)) = NULL;
-        DRAGGED(vict) = NULL;
+        struct char_data *dragger = DRAGGED(vict);
+        char_being_dragged_set(vict, NULL);
+        char_dragging_set(dragger, NULL);
       }
       if (CARRIED_BY(vict)) {
         if (GET_ALIGNMENT(CARRIED_BY(vict)) > 50) {
@@ -3393,7 +3392,7 @@ ACMD(do_wake) {
     if (!self)
       return;
   }
-  if (AFF_FLAGGED(ch, AFF_SLEEP))
+  if (is_affected(ch, AFF_SLEEP))
     send_to_char(ch, "You can't wake up!\r\n");
   else if (GET_POS(ch) > POS_SLEEPING)
     send_to_char(ch, "You are already awake...\r\n");
@@ -3405,8 +3404,9 @@ ACMD(do_wake) {
       act("@C$n@W stops dragging you!@n", TRUE, DRAGGED(ch), 0, ch, TO_VICT);
       act("@C$n@W stops dragging @c$N@W!@n", TRUE, DRAGGED(ch), 0, ch,
           TO_NOTVICT);
-      DRAGGING(DRAGGED(ch)) = NULL;
-      DRAGGED(ch) = NULL;
+      struct char_data *dragger = DRAGGED(ch);
+      char_being_dragged_set(ch, NULL);
+      char_dragging_set(dragger, NULL);
     }
     if (CARRIED_BY(ch)) {
       if (GET_ALIGNMENT(CARRIED_BY(ch)) > 50) {
@@ -3440,16 +3440,16 @@ ACMD(do_follow) {
     return;
   }
 
-  if (ch->master == leader) {
+  if (MASTER(ch) == leader) {
     act("You are already following $M.", FALSE, ch, 0, leader, TO_CHAR);
     return;
   }
-  if (AFF_FLAGGED(ch, AFF_CHARM) && (ch->master)) {
-    act("But you only feel like following $N!", FALSE, ch, 0, ch->master,
+  if (AFF_FLAGGED(ch, AFF_CHARM) && (MASTER(ch))) {
+    act("But you only feel like following $N!", FALSE, ch, 0, MASTER(ch),
         TO_CHAR);
   } else { /* Not Charmed follow person */
     if (leader == ch) {
-      if (!ch->master) {
+      if (!MASTER(ch)) {
         send_to_char(ch, "You are already following yourself.\r\n");
         return;
       }
@@ -3459,7 +3459,7 @@ ACMD(do_follow) {
         send_to_char(ch, "Sorry, but following in loops is not allowed.\r\n");
         return;
       }
-      if (ch->master)
+      if (MASTER(ch))
         stop_follower(ch);
       char_condition_remove(ch, "group", "leave_group");
       reveal_hiding(ch, 0);

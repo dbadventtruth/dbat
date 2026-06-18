@@ -28,7 +28,7 @@
 #include "consts/skills.h"
 #include "consts/songs.h"
 
-#include "affect.h"
+
 #include "extract.h"
 #include "interpreter.h"
 #include "iterate.hpp"
@@ -48,7 +48,6 @@
 #include "comm.h"
 #include "spells.h"
 
-#include "affect.h"
 #include "character_api.h"
 #include "character_db.h"
 #include "character_macros.h"
@@ -322,7 +321,9 @@ static void generate_multiform(struct char_data *ch, int count) {
   }
 
   if (char_condition_has(ch, "multiform_original")) {
-    char_condition_number_mod(ch, "multiform_original", "clones", count);
+    auto clone_count = char_condition_number_get(ch, "multiform_original", "clones");
+    clone_count += count;
+    char_condition_number_set(ch, "multiform_original", "clones", clone_count);
   } else {
     char_condition_apply_with_number(ch, "multiform_original", "skill",
                                      "multiform", "clones", count);
@@ -384,9 +385,7 @@ static void generate_multiform(struct char_data *ch, int count) {
       clone->limb_condition[l] = ch->limb_condition[l];
     }
 
-    GET_CLONES(ch) += 1;
-
-    GET_ORIGINAL(clone) = ch;
+    char_multiform_clone_set(clone, ch);
     char_condition_apply_with_number(clone, "multiform", "skill", "multiform",
                                      "original_id", char_id_get(ch));
     char_to_room(clone, char_room_get(ch));
@@ -403,8 +402,11 @@ void handle_multi_merge(struct char_data *form) {
   send_to_char(ch, "@YYou merge with one of your forms!@n\r\n");
   act("@y$n@Y merges with one of his multiforms!@n\r\n", TRUE, ch, 0, 0,
       TO_ROOM);
+  
+  auto count = char_condition_number_get(ch, "multiform_original", "clones");
+  count--;
+  char_condition_number_set(ch, "multiform_original", "clones", count);
 
-  ch->clones = MAX(0, ch->clones - 1);
   extract_char(form);
 }
 
@@ -497,7 +499,7 @@ static void resolve_song(struct char_data *ch) {
   /* true when vict is a group ally of ch (excludes ch == vict) */
   auto is_group_ally = [&](char_data *vict) {
     return (char_condition_has(ch, "group") && char_condition_has(vict, "group")) &&
-           (ch == vict->master || ch->master == vict || ch->master == vict->master);
+           (ch == MASTER(vict) || MASTER(ch) == vict || MASTER(ch) == MASTER(vict));
   };
 
   /* stop the song because ch ran out of ki; returns true if it happened */
@@ -576,7 +578,7 @@ static void resolve_song(struct char_data *ch) {
     }
     case SONG_SHADOW_STITCH:
       /* skip allies; both must have an explicit master for the group check to apply */
-      if (ch->master && vict->master && is_group_ally(vict)) return true;
+      if (MASTER(ch) && MASTER(vict) && is_group_ally(vict)) return true;
       if (skill > diceroll + 10)
         apply_shadow_sitch(ch, vict, skill);
       if (ki_exhausted()) { stop_song = true; return false; }
@@ -912,8 +914,8 @@ ACMD(do_moondust) {
       return true;
     }
     if (char_condition_has(vict, "group")) {
-      if (ch->master == vict->master || vict->master == ch ||
-          ch->master == vict) {
+      if (MASTER(ch) == MASTER(vict) || MASTER(vict) == ch ||
+          MASTER(ch) == vict) {
         incCurHealth(vict, heal);
         act("@CYou breathe in the dust and are healed by it somewhat!@n", TRUE,
             vict, 0, 0, TO_CHAR);
@@ -1025,20 +1027,18 @@ ACMD(do_liquefy) {
 
   if (!strcasecmp(arg, "hide")) {
     if (GRAPPLED(ch)) {
-      GRAPPLING(GRAPPLED(ch)) = NULL;
-      char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
-      char_condition_remove(ch, "grappled", "grapple_end");
-      GRAPPLED(ch) = NULL;
+      struct char_data *other = GRAPPLED(ch);
+      char_grappling_set(other, NULL, 0);
+      char_grappled_set(ch, NULL, 0);
     }
     if (GRAPPLING(ch)) {
-      GRAPPLED(GRAPPLING(ch)) = NULL;
-      char_condition_remove(ch, "grappling", "grapple_end");
-      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-      GRAPPLING(ch) = NULL;
+      struct char_data *other = GRAPPLING(ch);
+      char_grappling_set(ch, NULL, 0);
+      char_grappled_set(other, NULL, 0);
     }
     if (DRAGGING(ch)) {
-      DRAGGED(DRAGGING(ch)) = NULL;
-      DRAGGING(ch) = NULL;
+      char_being_dragged_set(DRAGGING(ch), NULL);
+      char_dragging_set(ch, NULL);
     }
     if (axion_dice(0) > GET_LEVEL(ch)) {
       act("@MYour body starts to become loose and sag, but you lose focus and "
@@ -1065,20 +1065,18 @@ ACMD(do_liquefy) {
   } else if (!strcasecmp(arg, "explode")) {
     struct char_data *vict;
     if (GRAPPLED(ch)) {
-      GRAPPLING(GRAPPLED(ch)) = NULL;
-      char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
-      char_condition_remove(ch, "grappled", "grapple_end");
-      GRAPPLED(ch) = NULL;
+      struct char_data *other = GRAPPLED(ch);
+      char_grappling_set(other, NULL, 0);
+      char_grappled_set(ch, NULL, 0);
     }
     if (GRAPPLING(ch)) {
-      GRAPPLED(GRAPPLING(ch)) = NULL;
-      char_condition_remove(ch, "grappling", "grapple_end");
-      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-      GRAPPLING(ch) = NULL;
+      struct char_data *other = GRAPPLING(ch);
+      char_grappling_set(ch, NULL, 0);
+      char_grappled_set(other, NULL, 0);
     }
     if (DRAGGING(ch)) {
-      DRAGGED(DRAGGING(ch)) = NULL;
-      DRAGGING(ch) = NULL;
+      char_being_dragged_set(DRAGGING(ch), NULL);
+      char_dragging_set(ch, NULL);
     }
     if (!*arg2) {
       send_to_char(
@@ -1220,8 +1218,9 @@ ACMD(do_defend) {
         TO_VICT);
     act("@y$n@Y stops defending @y$N@Y.@n", TRUE, ch, 0, GET_DEFENDING(ch),
         TO_NOTVICT);
-    GET_DEFENDER(GET_DEFENDING(ch)) = NULL;
-    GET_DEFENDING(ch) = NULL;
+    struct char_data *protected_person = GET_DEFENDING(ch);
+    char_defending_for_set(ch, NULL);
+    char_defended_by_set(protected_person, NULL);
     return;
   }
 
@@ -1236,8 +1235,8 @@ ACMD(do_defend) {
     act("@YYou start defending @y$N@Y.@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@y$n@Y starts defending you.@n", TRUE, ch, 0, vict, TO_VICT);
     act("@y$n@Y starts defending @y$N@Y.@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    GET_DEFENDER(vict) = ch;
-    GET_DEFENDING(ch) = vict;
+    char_defended_by_set(vict, ch);
+    char_defending_for_set(ch, vict);
     return;
   }
 }
@@ -3247,15 +3246,7 @@ ACMD(do_hayasa) {
     improve_skill(ch, SKILL_HAYASA, 1);
     WAIT_STATE(ch, PULSE_2SEC);
   } else {
-    struct affected_type af;
-
     decCurKI(ch, cost);
-    af.type = SPELL_HAYASA;
-    af.duration = duration;
-    af.modifier = 0;
-    af.location = APPLY_NONE;
-    af.bitvector = AFF_HAYASA;
-    affect_join(ch, &af, FALSE, FALSE, FALSE, FALSE);
     char_condition_apply(ch, "hayasa", "hayasa", "activate");
     reveal_hiding(ch, 0);
     act("@CYou close your eyes for a brief moment and focus your ki around "
@@ -5918,7 +5909,7 @@ ACMD(do_feed) {
     return;
   }
 
-  if (vict->master != ch && ch->master != vict && ch->master != vict->master) {
+  if (MASTER(vict) != ch && MASTER(ch) != vict && MASTER(ch) != MASTER(vict)) {
     send_to_char(ch, "You need to be grouped with them first.\r\n");
     return;
   }

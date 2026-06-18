@@ -54,7 +54,6 @@
 #include "util_macros.h"
 #include "weather_db.h"
 
-#include "affect.h"
 #include "class.h"
 #include "db.h"
 #include "dg_scripts.h"
@@ -2984,9 +2983,6 @@ static void list_one_char(struct char_data *i, struct char_data *ch) {
           TO_VICT);
     if (AFF_FLAGGED(i, AFF_BLIND))
       act("...$e is groping around blindly!", FALSE, i, 0, ch, TO_VICT);
-    if (affected_by_spell(i, SPELL_FAERIE_FIRE))
-      act("@m...$e @mis outlined with purple fire!@m", FALSE, i, 0, ch,
-          TO_VICT);
     if (GET_FEATURE(i)) {
       char woo[MAX_STRING_LENGTH];
       sprintf(woo, "@C%s@n", GET_FEATURE(i));
@@ -6142,9 +6138,6 @@ ACMD(do_status) {
     if (AFF_FLAGGED(ch, AFF_CHARM))
       send_to_char(ch, "You have been charmed!\r\n");
 
-    if (affected_by_spell(ch, SPELL_MAGE_ARMOR))
-      send_to_char(ch, "You feel protected.\r\n");
-
     if (AFF_FLAGGED(ch, AFF_INFRAVISION))
       send_to_char(ch, "You can see in darkness with infravision.\r\n");
 
@@ -6659,7 +6652,7 @@ ACMD(do_who) {
         continue;
       if (showclass && !(showclass & (1 << GET_CLASS(tch))))
         continue;
-      if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
+      if (showgroup && (!MASTER(tch) || !char_condition_has(tch, "group")))
         continue;
       for (i = 0; i < num_ranks; i++)
         if (GET_ADMLEVEL(tch) >= rank[i].min_level &&
@@ -6710,7 +6703,7 @@ ACMD(do_who) {
         continue;
       if (showclass && !(showclass & (1 << GET_CLASS(tch))))
         continue;
-      if (showgroup && (!tch->master || !char_condition_has(tch, "group")))
+      if (showgroup && (!MASTER(tch) || !char_condition_has(tch, "group")))
         continue;
       if (showleader && (!char_follower_count(tch) || !char_condition_has(tch, "group")))
         continue;

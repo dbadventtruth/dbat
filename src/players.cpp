@@ -10,7 +10,7 @@
 #include "players.h"
 
 #include "config_db.h"
-#include "affect.h"
+
 #include "affected_impl.h"
 #include "character_api.h"
 #include "character_impl.h"
@@ -295,7 +295,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_CLAN(ch) = strdup("None.");
     GET_HOME(ch) = PFDEF_HOMETOWN;
     char_meter_set(ch, "powerlevel", 1000000);
-    GET_RELAXCOUNT(ch) = PFDEF_EYE;
     char_meter_set(ch, "lifeforce", 1000000);
     char_position_set(ch, POS_STANDING);
     char_meter_set(ch, "ki", 1000000);
@@ -784,7 +783,7 @@ int load_char(const char *name, struct char_data *ch) {
     ch->time.maxage = ch->time.birth + max_age(ch);
   }
 
-  affect_total(ch);
+  char_der_invalidate(ch);
 
   /* initialization for imms */
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
@@ -899,31 +898,12 @@ void save_char(struct char_data *ch) {
     else char_eq[i] = NULL;
   }
 
-  for (aff = ch->affected, i = 0; i < MAX_AFFECT; i++) {
-    if (aff) {
-      tmp_aff[i] = *aff;
-      tmp_aff[i].next = 0;
-      aff = aff->next;
-    } else {
-      tmp_aff[i].type = 0; /* Zero signifies not used */
-      tmp_aff[i].duration = 0;
-      tmp_aff[i].modifier = 0;
-      tmp_aff[i].specific = 0;
-      tmp_aff[i].location = 0;
-      tmp_aff[i].bitvector = 0;
-      tmp_aff[i].next = 0;
-    }
-  }
-
   save_char_vars(ch);
 
   /*
    * remove the affections so that the raw values are stored; otherwise the
    * effects are doubled when the char logs back in.
    */
-
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   if ((i >= MAX_AFFECT) && aff && aff->next)
     mud_log("SYSERR: WARNING: OUT OF STORE ROOM FOR AFFECTED TYPES!!!");
@@ -1252,24 +1232,6 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "0 0\n");
   }
 
-  /* Save affects */
-  fprintf(fl, "Affs:\n");
-  for (i = 0; i < MAX_AFFECT; i++) {
-    aff = &tmp_aff[i];
-    if (aff->type)
-      fprintf(fl, "%d %d %d %d %d %d\n", aff->type, aff->duration,
-              aff->modifier, aff->location, (int)aff->bitvector, aff->specific);
-  }
-  fprintf(fl, "0 0 0 0 0 0\n");
-  fprintf(fl, "Affv:\n");
-  for (i = 0; i < MAX_AFFECT; i++) {
-    aff = &tmp_affv[i];
-    if (aff->type)
-      fprintf(fl, "%d %d %d %d %d %d\n", aff->type, aff->duration,
-              aff->modifier, aff->location, (int)aff->bitvector, aff->specific);
-  }
-  fprintf(fl, "0 0 0 0 0 0\n");
-
   /*fprintf(fl, "LevD:\n");
   write_level_data(ch, fl);*/
 
@@ -1287,11 +1249,6 @@ after_file_write:
 
 restore_state:
 
-  /* add spell and eq affections back in now */
-  for (i = 0; i < MAX_AFFECT; i++) {
-    if (tmp_aff[i].type)
-      affect_to_char(ch, &tmp_aff[i]);
-  }
 
   for (i = 0; i < NUM_WEARS; i++) {
     if (char_eq[i])
@@ -1399,8 +1356,6 @@ void load_affects(FILE *fl, struct char_data *ch, int violence) {
       af.location = num4;
       af.bitvector = num5;
       af.specific = num6;
-      if (!violence)
-        affect_to_char(ch, &af);
       i++;
     }
   } while (num != 0);

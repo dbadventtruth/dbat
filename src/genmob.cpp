@@ -8,7 +8,7 @@
 #include "iterate.hpp"
 #include "shop.h"
 #include "config_db.h"
-#include "affect.h"
+
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
@@ -379,8 +379,6 @@ int mobile_free_editor(struct char_data *mob) {
   free_mobile_strings(mob);
   if (mob->proto_script)
     free_proto_script(mob, MOB_TRIGGER);
-  while (mob->affected)
-    affect_remove(mob, mob->affected);
 
   /* free any assigned scripts */
   if (SCRIPT(mob))

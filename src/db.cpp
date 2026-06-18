@@ -61,7 +61,6 @@
 
 #include "help.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "fileop.h"
 #include "json.h"
@@ -637,7 +636,7 @@ void destroy_db(void) {
 
   /* Active Mobiles & Players (snapshot: free_char unregisters as we go) */
   char_iterate_all([](struct char_data *chtmp) {
-    if (chtmp->master)
+    if (MASTER(chtmp))
       stop_follower(chtmp);
     free_char(chtmp);
     return true;
@@ -2817,11 +2816,11 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   mob->eye = rand_number(0, 11);
 
   GET_ABSORBS(mob) = 0;
-  ABSORBING(mob) = NULL;
-  ABSORBBY(mob) = NULL;
+  char_absorbing_set(mob, NULL);
+  char_absorbed_by_set(mob, NULL);
   SITS(mob) = NULL;
-  BLOCKED(mob) = NULL;
-  BLOCKS(mob) = NULL;
+  char_blocked_by_set(mob, NULL);
+  char_blocking_set(mob, NULL);
 
   if (!IS_HUMAN(mob) && !IS_SAIYAN(mob) && !IS_HALFBREED(mob) &&
       !IS_NAMEK(mob)) {
@@ -4199,8 +4198,6 @@ void char_free_instance(struct char_data *ch) {
     if (ch->proto_script)
       free_proto_script(ch, MOB_TRIGGER);
   }
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   /* free any assigned scripts */
   if (SCRIPT(ch))
@@ -4242,9 +4239,6 @@ void char_free_prototype(struct char_data *ch) {
 
   if (ch->proto_script)
     free_proto_script(ch, MOB_TRIGGER);
-
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   if (SCRIPT(ch))
     extract_script(ch, MOB_TRIGGER);
@@ -4374,9 +4368,7 @@ void reset_char(struct char_data *ch) {
   for (i = 0; i < NUM_WEARS; i++)
     GET_EQ(ch, i) = NULL;
 
-  ch->master = NULL;
   IN_ROOM(ch) = NOWHERE;
-  FIGHTING(ch) = NULL;
   ch->mob_specials.default_pos = POS_STANDING;
   ch->time.logon = time(0);
 

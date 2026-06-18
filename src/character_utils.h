@@ -50,7 +50,6 @@ int64_t getMaxPL(char_data *ch);
 int64_t getMaxPL(char_data *ch);
 int64_t getCurPL(char_data *ch);
 int64_t getBasePL(char_data *ch);
-int64_t getEffBasePL(char_data *ch);
 double getCurPLPercent(char_data *ch);
 int64_t getPercentOfCurPL(char_data *ch, double amt);
 int64_t getPercentOfMaxPL(char_data *ch, double amt);

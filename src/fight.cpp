@@ -14,7 +14,7 @@
 #include "act.misc.h"
 #include "act.movement.h"
 #include "act.other.h"
-#include "affect.h"
+
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"
@@ -125,38 +125,38 @@ int group_bonus(struct char_data *ch, int type) {
       return false; // stop on first group member
     });
     if (acted) return result;
-  } else if (ch->master) {
-    if (!char_condition_has(ch->master, "group"))
+  } else if (MASTER(ch)) {
+    if (!char_condition_has(MASTER(ch), "group"))
       return (FALSE);
     else {
       if (type == 0) {
-        group_bonus(ch->master, 0);
+        group_bonus(MASTER(ch), 0);
       } else if (type == 2) {
-        if (IS_ROSHI(ch->master)) {
+        if (IS_ROSHI(MASTER(ch))) {
           return (2);
-        } else if (IS_KRANE(ch->master)) {
+        } else if (IS_KRANE(MASTER(ch))) {
           return (3);
-        } else if (IS_BARDOCK(ch->master)) {
+        } else if (IS_BARDOCK(MASTER(ch))) {
           return (4);
-        } else if (IS_NAIL(ch->master)) {
+        } else if (IS_NAIL(MASTER(ch))) {
           return (5);
-        } else if (IS_KABITO(ch->master)) {
+        } else if (IS_KABITO(MASTER(ch))) {
           return (6);
-        } else if (IS_ANDSIX(ch->master)) {
+        } else if (IS_ANDSIX(MASTER(ch))) {
           return (7);
-        } else if (IS_TAPION(ch->master)) {
+        } else if (IS_TAPION(MASTER(ch))) {
           return (8);
-        } else if (IS_FRIEZA(ch->master)) {
+        } else if (IS_FRIEZA(MASTER(ch))) {
           return (9);
-        } else if (IS_TSUNA(ch->master)) {
+        } else if (IS_TSUNA(MASTER(ch))) {
           return (10);
-        } else if (IS_PICCOLO(ch->master)) {
+        } else if (IS_PICCOLO(MASTER(ch))) {
           return (11);
-        } else if (IS_KURZAK(ch->master)) {
+        } else if (IS_KURZAK(MASTER(ch))) {
           return (12);
-        } else if (IS_JINTO(ch->master)) {
+        } else if (IS_JINTO(MASTER(ch))) {
           return (13);
-        } else if (IS_DABURA(ch->master)) {
+        } else if (IS_DABURA(MASTER(ch))) {
           return (14);
         }
       }
@@ -767,8 +767,9 @@ static void tick_dragging_interrupt(struct char_data *ch) {
         DRAGGING(ch), TO_CHAR);
     act("@C$n@W is forced to stop dragging @c$N@W!@n", TRUE, ch, 0,
         DRAGGING(ch), TO_ROOM);
-    DRAGGED(DRAGGING(ch)) = NULL;
-    DRAGGING(ch) = NULL;
+    struct char_data *dragged = DRAGGING(ch);
+    char_dragging_set(ch, NULL);
+    char_being_dragged_set(dragged, NULL);
   }
 }
 
@@ -845,7 +846,7 @@ static void tick_position_advantage(struct char_data *ch) {
 
 static void tick_grapple_damage(struct char_data *ch) {
   if (GRAPPLING(ch) && GRAPTYPE(ch) == 2 && rand_number(1, 11) >= 8) {
-    if ((getCurST((ch)->grappling)) >= GET_MAX_MOVE(GRAPPLING(ch)) / 8) {
+    if ((getCurST(GRAPPLING(ch))) >= GET_MAX_MOVE(GRAPPLING(ch)) / 8) {
       act("@WYou choke @C$N@W!@n", TRUE, ch, 0, GRAPPLING(ch), TO_CHAR);
       act("@C$n@W chokes YOU@W!@n", TRUE, ch, 0, GRAPPLING(ch), TO_VICT);
       act("@C$n@W chokes @c$N@W!@n", TRUE, ch, 0, GRAPPLING(ch), TO_NOTVICT);
@@ -859,12 +860,11 @@ static void tick_grapple_damage(struct char_data *ch) {
           GRAPPLING(ch), TO_NOTVICT);
       SET_BIT_AR(AFF_FLAGS(GRAPPLING(ch)), AFF_KNOCKED);
       char_position_set(GRAPPLING(ch), POS_SLEEPING);
-      GRAPTYPE(GRAPPLING(ch)) = -1;
-      GRAPPLED(GRAPPLING(ch)) = NULL;
-      char_condition_remove(ch, "grappling", "grapple_end");
-      char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-      GRAPPLING(ch) = NULL;
-      GRAPTYPE(ch) = -1;
+      {
+        struct char_data *other = GRAPPLING(ch);
+        char_grappling_set(ch, NULL, 0);
+        char_grappled_set(other, NULL, 0);
+      }
     }
   } else if (GRAPPLING(ch) && GRAPTYPE(ch) == 4 && rand_number(1, 12) >= 8) {
     act("@WYou crush @C$N@W some more!@n", TRUE, ch, 0, GRAPPLING(ch),
@@ -1354,8 +1354,6 @@ void fight_stack() {
 }
 
 void appear(struct char_data *ch) {
-  if (affected_by_spell(ch, SPELL_INVISIBLE))
-    affect_from_char(ch, SPELL_INVISIBLE);
 
   if (AFF_FLAGGED(ch, AFF_INVISIBLE))
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_INVISIBLE);
@@ -1407,7 +1405,7 @@ void set_fighting(struct char_data *ch, struct char_data *vict) {
 
   char_subscribe_add(ch, "combat");
 
-  FIGHTING(ch) = vict;
+  char_fighting_set(ch, vict);
 
   if (GET_POS(ch) == POS_SITTING) {
     char_position_set(ch, POS_SITTING);
@@ -1426,7 +1424,7 @@ void stop_fighting(struct char_data *ch) {
 
   char_condition_remove(ch, "combo", "end_combo");
   
-  FIGHTING(ch) = NULL;
+  char_fighting_set(ch, NULL);
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
   }
@@ -1664,7 +1662,7 @@ static void final_combat_resolve(struct char_data *ch) {
     SITS(ch) = NULL;
     SITTING(chair) = NULL;
   }
-  if (!IS_NPC(ch) && GET_CLONES(ch) > 0) {
+  if (!IS_NPC(ch) && char_condition_has(ch, "multiform_original")) {
     char_iterate_all([&](struct char_data *clone) {
       if (IS_NPC(clone) && GET_MOB_VNUM(clone) == 25 &&
           GET_ORIGINAL(clone) == ch) {
@@ -1680,44 +1678,38 @@ static void final_combat_resolve(struct char_data *ch) {
     carry_drop(CARRIED_BY(ch), 2);
   }
   if (DRAGGING(ch)) {
-    DRAGGED(DRAGGING(ch)) = NULL;
-    DRAGGING(ch) = NULL;
+    char_being_dragged_set(DRAGGING(ch), NULL);
+    char_dragging_set(ch, NULL);
   }
   if (DRAGGED(ch)) {
-    DRAGGING(DRAGGED(ch)) = NULL;
-    DRAGGED(ch) = NULL;
+    char_dragging_set(DRAGGED(ch), NULL);
+    char_being_dragged_set(ch, NULL);
   }
   if (GRAPPLING(ch)) {
-    GRAPTYPE(GRAPPLING(ch)) = -1;
-    GRAPPLED(GRAPPLING(ch)) = NULL;
-    char_condition_remove(ch, "grappling", "grapple_end");
-    char_condition_remove(GRAPPLING(ch), "grappled", "grapple_end");
-    GRAPPLING(ch) = NULL;
-    GRAPTYPE(ch) = -1;
+    struct char_data *other = GRAPPLING(ch);
+    char_grappling_set(ch, NULL, 0);
+    char_grappled_set(other, NULL, 0);
   }
   if (GRAPPLED(ch)) {
-    GRAPTYPE(GRAPPLED(ch)) = -1;
-    GRAPPLING(GRAPPLED(ch)) = NULL;
-    char_condition_remove(GRAPPLED(ch), "grappling", "grapple_end");
-    char_condition_remove(ch, "grappled", "grapple_end");
-    GRAPPLED(ch) = NULL;
-    GRAPTYPE(ch) = -1;
+    struct char_data *other = GRAPPLED(ch);
+    char_grappled_set(ch, NULL, 0);
+    char_grappling_set(other, NULL, 0);
   }
   if (BLOCKED(ch)) {
-    BLOCKS(BLOCKED(ch)) = NULL;
-    BLOCKED(ch) = NULL;
+    char_blocking_set(BLOCKED(ch), NULL);
+    char_blocked_by_set(ch, NULL);
   }
   if (BLOCKS(ch)) {
-    BLOCKED(BLOCKS(ch)) = NULL;
-    BLOCKS(ch) = NULL;
+    char_blocked_by_set(BLOCKS(ch), NULL);
+    char_blocking_set(ch, NULL);
   }
   if (ABSORBING(ch)) {
-    ABSORBBY(ABSORBING(ch)) = NULL;
-    ABSORBING(ch) = NULL;
+    char_absorbed_by_set(ABSORBING(ch), NULL);
+    char_absorbing_set(ch, NULL);
   }
   if (ABSORBBY(ch)) {
-    ABSORBING(ABSORBBY(ch)) = NULL;
-    ABSORBBY(ch) = NULL;
+    char_absorbing_set(ABSORBBY(ch), NULL);
+    char_absorbed_by_set(ch, NULL);
   }
 }
 
@@ -1728,9 +1720,6 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
 
   if (FIGHTING(ch))
     stop_fighting(ch);
-
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   /* To make ordinary commands work in scripts.  welcor*/
   if (GET_POS(ch) != POS_SITTING && GET_POS(ch) != POS_SLEEPING &&
@@ -1933,7 +1922,7 @@ void raw_kill(struct char_data *ch, struct char_data *killer) {
       ghostify(ch);
       purge_homing(ch);
       if (GET_LEVEL(ch) > 0 && has_group(ch)) {
-        if (ch->master != NULL) {
+        if (MASTER(ch) != NULL) {
           group_bonus(ch, 1);
         } else {
           group_bonus(ch, 0);
@@ -2055,9 +2044,8 @@ void die(struct char_data *ch, struct char_data *killer) {
   // Removing some consequences that might happen.
   REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_KILLER);
   REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_THIEF);
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SLEEP);
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_PARALYZE);
+
+  char_condition_remove_tag(ch, "remove_on_death", "death");
 
   // those who die in the arena don't actually die. They get returned to the
   // waiting room.
@@ -2125,7 +2113,7 @@ static void perform_group_gain(struct char_data *ch, int base,
   if (IN_ARENA(ch)) {
     return;
   }
-  struct char_data *leader = ch->master ? ch->master : ch;
+  struct char_data *leader = MASTER(ch) ? MASTER(ch) : ch;
 
   /*share = MIN(CONFIG_MAX_EXP_GAIN, MAX(1, base * GET_LEVEL(ch)));*/
   share = MIN(2000000, base * GET_LEVEL(ch));
@@ -2158,12 +2146,12 @@ static void perform_group_gain(struct char_data *ch, int base,
         checkit = TRUE;
       return true;
     });
-    if (checkit == FALSE && ch->master != NULL &&
-        GET_IDNUM(ch->master) == LASTHIT(victim)) {
+    if (checkit == FALSE && MASTER(ch) != NULL &&
+        GET_IDNUM(MASTER(ch)) == LASTHIT(victim)) {
       checkit = TRUE;
     }
-    if (checkit == FALSE && ch->master != NULL) {
-      struct char_data *master = ch->master;
+    if (checkit == FALSE && MASTER(ch) != NULL) {
+      struct char_data *master = MASTER(ch);
       char_followers_iterate(master, [&](struct char_data *fol) {
         if (fol != ch && char_condition_has(fol, "group") &&
             LASTHIT(victim) == GET_IDNUM(fol))
@@ -2191,10 +2179,10 @@ static void perform_group_gain(struct char_data *ch, int base,
   if (IS_ICER(ch)) {
     share = share - (share * .20);
   }
-  if (GET_BONUS(ch, BONUS_LOYAL) > 0 && ch->master != NULL) {
+  if (GET_BONUS(ch, BONUS_LOYAL) > 0 && MASTER(ch) != NULL) {
     share += share * 0.2;
   }
-  if (ch->master != NULL && ch->master != ch) {
+  if (MASTER(ch) != NULL && MASTER(ch) != ch) {
     share += share * 0.15;
   }
   if (MOB_FLAGGED(victim, MOB_KNOWKAIO)) {
@@ -2298,7 +2286,7 @@ void group_gain(struct char_data *ch, struct char_data *victim) {
   int64_t tot_gain, base;
   struct char_data *k;
 
-  if (!(k = ch->master))
+  if (!(k = MASTER(ch)))
     k = ch;
 
   if (char_condition_has(k, "group") && (char_room_get(k) == char_room_get(ch))) {

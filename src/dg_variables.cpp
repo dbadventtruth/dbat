@@ -977,10 +977,10 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig,
         }
 
         else if (!strcasecmp(field, "master")) {
-          if (!c->master)
+          if (!MASTER(c))
             *str = '\0';
           else
-            snprintf(str, slen, "%cC%d", UID_CHAR, GET_ID(c->master));
+            snprintf(str, slen, "%cC%d", UID_CHAR, GET_ID(MASTER(c)));
         }
         break;
       case 'n':

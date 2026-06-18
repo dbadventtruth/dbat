@@ -27,7 +27,6 @@
 #include "weather_db.h"
 #include "zone_impl.h"
 
-#include "affect.h"
 #include "config.h"
 #include "fileop.h"
 #include "guild.h"
@@ -210,11 +209,11 @@ ACMD(do_teach) {
   if (cost == 0) /* Just to be sure */
     cost = 1;
 
-  if (!vict->master) {
+  if (!MASTER(vict)) {
     send_to_char(
         ch, "They must be following you in order for you to teach them.\r\n");
     return;
-  } else if (vict->master != ch) {
+  } else if (MASTER(vict) != ch) {
     send_to_char(
         ch, "They must be following you in order for you to teach them.\r\n");
     return;

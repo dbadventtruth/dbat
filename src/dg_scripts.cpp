@@ -2608,12 +2608,6 @@ int script_driver(void *go_adress, trig_data *trig, int type, int mode) {
       else if (!strncasecmp(cmd, "halt", 4))
         break;
 
-      else if (!strncasecmp(cmd, "dg_cast ", 8))
-        do_dg_cast(go, sc, trig, type, cmd);
-
-      else if (!strncasecmp(cmd, "dg_affect ", 10))
-        do_dg_affect(go, sc, trig, type, cmd);
-
       else if (!strncasecmp(cmd, "global ", 7))
         process_global(sc, trig, cmd, sc->context);
 

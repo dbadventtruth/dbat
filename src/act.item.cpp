@@ -21,7 +21,6 @@
 #include "consts/sectortypes.h"
 #include "consts/skills.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "iterate.hpp"
 #include "interpreter.h"

@@ -27,7 +27,6 @@
 #include "mobact.h"
 #include "techniques.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "random.h"
 #include "relocate.h"
@@ -2077,8 +2076,8 @@ static void huge_room_blast(struct obj_data *k, struct char_data *ch,
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) return true;
     if (skip_target && vict == TARGET(k)) return true;
     if (char_condition_has(vict, "group")) {
-      if (vict->master == ch || ch->master == vict) return true;
-      if (skip_target && vict->master == ch->master) return true;
+      if (MASTER(vict) == ch || MASTER(ch) == vict) return true;
+      if (skip_target && MASTER(vict) == MASTER(ch)) return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) return true;
     if (MOB_FLAGGED(vict, MOB_NOKILL)) return true;
@@ -4243,8 +4242,8 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
       remember(vict, ch);
     if (IS_NPC(vict) && GET_HIT(vict) > ((getMaxPL(vict))) / 4)
       LASTHIT(vict) = GET_IDNUM(ch);
-    if (AFF_FLAGGED(vict, AFF_SLEEP) && rand_number(1, 2) == 2) {
-      affect_from_char(vict, SPELL_SLEEP);
+    if (is_affected(vict, AFF_SLEEP) && rand_number(1, 2) == 2) {
+      char_condition_remove_tag(vict, "sleep_aff", "struck");
       act("@c$N@W seems to be more aware now.@n", TRUE, ch, 0, vict, TO_CHAR);
       act("@WYou are no longer so sleepy.@n", TRUE, ch, 0, vict, TO_VICT);
       act("@c$N@W seems to be more aware now.@n", TRUE, ch, 0, vict,

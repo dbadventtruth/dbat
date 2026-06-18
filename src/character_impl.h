@@ -125,8 +125,9 @@ struct char_data {
   struct mob_special_data mob_specials;
   /* NPC specials				*/
 
+  // affected is now vestigial; it was replaced by the Conditions system.
+  // Keeping it around until we can migrate all the old code.
   struct affected_type *affected;
-  /* affected by what spells		*/
 
   // inventory and equipment
   struct obj_data *equipment[NUM_WEARS];
@@ -139,31 +140,11 @@ struct char_data {
   struct script_data *script;   /* script info for the object		*/
   struct script_memory *memory; /* for mob memory triggers		*/
 
-  struct char_data *master;      /* Who is char following?		*/
   int32_t master_id;
 
-  struct char_data *fighting; /* Opponent				*/
-  
   int timer; /* Timer for update			*/
 
   struct obj_data *sits; /* What am I sitting on? */
-
-  // combat blocking
-  struct char_data *blocks;  /* Who am I blocking?    */
-  struct char_data *blocked; /* Who is blocking me?    */
-
-  // android absorb
-  struct char_data *absorbing; /* Who am I absorbing */
-  struct char_data *absorbby;  /* Who is absorbing me */
-
-  // defend stuff
-  struct char_data *defender;
-  struct char_data *defending;
-
-  // grappling stuff
-  int grap;
-  struct char_data *grappling;
-  struct char_data *grappled;
 
   // Skill info
   int forgeting;
@@ -211,11 +192,6 @@ struct char_data {
   int eavesdir;
   int arenawatch;
 
-  // dragging
-  struct char_data *drag;
-  struct char_data *dragged;
-
-  struct char_data *mindlink;
   int lasthit;
 
   // limb information... why do we have three of them?
@@ -262,8 +238,6 @@ struct char_data {
   room_vnum droom;
   time_t deathtime;
 
-  // misc combat stuff
-  int speedboost;
   // transformation data
   int transclass;
   int transcost[6];
@@ -279,10 +253,6 @@ struct char_data {
   int mobcharge;
   int preference;
   int aggtimer;
-
-  // multiform stuff
-  struct char_data *original;
-  short clones;
 
   int relax_count;
 
@@ -309,10 +279,6 @@ struct char_data {
 
   char *color_choices[NUM_COLOR]; /* Choices for custom colors		*/
   int murder;                     /* Murder of PC's count                 */
-
-  // player characters can carry others.
-  struct char_data *carrying_char;
-  struct char_data *carried_by_char;
 
   int racial_pref;
 

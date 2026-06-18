@@ -190,10 +190,6 @@ void sub_write(char *arg, char_data *ch, int8_t find_invis, int targets);
 void send_to_zone(char *messg, struct zone_data *zone);
 
 /* from dg_misc.c */
-void do_dg_cast(void *go, struct script_data *sc, trig_data *trig, int type,
-                char *cmd);
-void do_dg_affect(void *go, struct script_data *sc, trig_data *trig, int type,
-                  char *cmd);
 void send_char_pos(struct char_data *ch, int dam);
 int valid_dg_target(char_data *ch, int bitvector);
 void script_damage(char_data *vict, int dam);

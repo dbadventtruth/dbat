@@ -39,7 +39,6 @@
 #include "time.h"
 #include "time_info.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "fileop.h"
 #include "relocate.h"
@@ -1913,7 +1912,7 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
                  (int)char_stat_get(k, "drunk"));
 
   column = send_to_char(ch, "Master is: %s, Followers are:",
-                        k->master ? GET_NAME(k->master) : "<none>");
+                        MASTER(k) ? GET_NAME(MASTER(k)) : "<none>");
   {
     size_t fol_count;
     auto fol_ids = char_follower_ids(k, &fol_count);
@@ -3420,18 +3419,8 @@ ACMD(do_wizutil) {
           0, TO_ROOM);
       break;
     case SCMD_UNAFFECT:
-      if (vict->affected || AFF_FLAGS(vict)) {
-        while (vict->affected)
-          affect_remove(vict, vict->affected);
-        for (taeller = 0; taeller < AF_ARRAY_MAX; taeller++)
-          AFF_FLAGS(ch)[taeller] = 0;
-        send_to_char(vict, "There is a brief flash of light!\r\nYou feel "
-                           "slightly different.\r\n");
-        send_to_char(ch, "All spells removed.\r\n");
-      } else {
-        send_to_char(ch, "Your victim does not have any affections!\r\n");
+      send_to_char(ch, "Your victim does not have any affections!\r\n");
         return;
-      }
       break;
     default:
       mud_log("SYSERR: Unknown subcmd %d passed to do_wizutil (%s)", subcmd,
@@ -4078,7 +4067,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
   case 8:
     // vict->mana = value;
-    affect_total(vict);
+    char_der_invalidate(vict);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set ki for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set ki for %s.", GET_NAME(ch), GET_NAME(vict));
@@ -4095,7 +4084,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set align for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set align for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 11:
     RANGE(0, 100);
@@ -4103,7 +4092,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set str for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set str for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 12:
     send_to_char(ch, "Setting str_add does nothing now.\r\n");
@@ -4114,7 +4103,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set intel for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set intel for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 14:
     RANGE(0, 100);
@@ -4122,7 +4111,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set wis for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set wis for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 15:
     RANGE(0, 100);
@@ -4130,7 +4119,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set dex for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set dex for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 16:
     RANGE(0, 100);
@@ -4138,7 +4127,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set con for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set con for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 17:
     RANGE(0, 100);
@@ -4147,7 +4136,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set speed for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set speed for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 18:
     char_stat_set(vict, "armor", RANGE(-100, 500));
@@ -4155,7 +4144,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set armor index for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set armor index for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 19:
     char_stat_set(vict, "money", RANGE(0, 100000000));
@@ -4182,7 +4171,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
   case 23:
     // vict->damage_mod = RANGE(-20, 20);
-    // affect_total(vict);
+    // char_der_invalidate(vict);
     break;
   case 24:
     if (GET_ADMLEVEL(ch) < ADMLVL_IMPL && ch != vict) {
@@ -4362,12 +4351,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
 
   case 49: /* Blame/Thank Rick Glover. :) */
     char_stat_set(vict, "height", value);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 50:
     char_stat_set(vict, "weight", value);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 51:
@@ -4412,12 +4401,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
 
   case 56:
     //vict->max_ki = RANGE(1, 5000);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 57:
     //vict->ki = RANGE(0, vict->max_ki);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 58:
@@ -4583,8 +4572,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
 
   case 81:
-    GET_CLONES(vict) = RANGE(1, 3);
-    send_to_char(ch, "Done.\r\n");
+    send_to_char(ch, "Unsupported.\r\n");
     break;
 
   case 82:

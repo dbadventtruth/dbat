@@ -70,8 +70,9 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
         TO_VICT);
     act("@R$n@w releases @R$N@w from $s grip!@n", TRUE, ch, 0, ABSORBING(ch),
         TO_NOTVICT);
-    ABSORBBY(ABSORBING(ch)) = NULL;
-    ABSORBING(ch) = NULL;
+    struct char_data *absorbed = ABSORBING(ch);
+    char_absorbing_set(ch, NULL);
+    char_absorbed_by_set(absorbed, NULL);
     return;
   }
 
@@ -132,8 +133,8 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
         0, vict, TO_VICT);
     act("@R$n@r grabs onto @R$N@r and starts to absorb your energy!@n", TRUE,
         ch, 0, vict, TO_NOTVICT);
-    ABSORBING(ch) = vict;
-    ABSORBBY(vict) = ch;
+    char_absorbing_set(ch, vict);
+    char_absorbed_by_set(vict, ch);
     return;
   }
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "consts/types.h"
+#include "character_db.h"
 #include <stddef.h>
 
 #ifdef __cplusplus
@@ -227,6 +228,164 @@ int64_t char_position_get(struct char_data *ch);
 void char_position_set(struct char_data *ch, int64_t value);
 
 void char_apply_entry_conditions(struct char_data *ch);
+
+/* --- Relationship helpers: inline get/set for each inter-character pointer --- */
+/* Each getter reads the condition's target_id and resolves via char_by_id.     */
+/* Each setter removes any existing condition then applies a fresh one.          */
+
+static inline struct char_data *char_fighting_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "fighting", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_fighting_set(struct char_data *ch, struct char_data *vict) {
+    char_condition_remove(ch, "fighting", "update");
+    if (vict) char_condition_apply_with_number(ch, "fighting", "combat", "engage", "target_id", char_id_get(vict));
+}
+
+static inline struct char_data *char_grappling_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "grappling", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_grappling_set(struct char_data *ch, struct char_data *vict, int grap_type) {
+    char_condition_remove(ch, "grappling", "update");
+    if (vict) char_condition_apply_with_numbers2(ch, "grappling", "combat", "grapple",
+        "target_id", char_id_get(vict), "grap_type", (int64_t)grap_type);
+}
+static inline void char_graptype_set(struct char_data *ch, int val) {
+    char_condition_number_set(ch, "grappling", "grap_type", (int64_t)val);
+}
+
+static inline struct char_data *char_grappled_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "grappled", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_grappled_set(struct char_data *ch, struct char_data *grappler, int grap_type) {
+    char_condition_remove(ch, "grappled", "update");
+    if (grappler) char_condition_apply_with_numbers2(ch, "grappled", "combat", "grapple",
+        "target_id", char_id_get(grappler), "grap_type", (int64_t)grap_type);
+}
+static inline int char_graptype_get(struct char_data *ch) {
+    int t = (int)char_condition_number_get(ch, "grappling", "grap_type");
+    if (t) return t;
+    return (int)char_condition_number_get(ch, "grappled", "grap_type");
+}
+
+static inline struct char_data *char_blocking_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "blocking", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_blocking_set(struct char_data *ch, struct char_data *vict) {
+    char_condition_remove(ch, "blocking", "update");
+    if (vict) char_condition_apply_with_number(ch, "blocking", "combat", "block", "target_id", char_id_get(vict));
+}
+
+static inline struct char_data *char_blocked_by_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "blocked_by", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_blocked_by_set(struct char_data *ch, struct char_data *blocker) {
+    char_condition_remove(ch, "blocked_by", "update");
+    if (blocker) char_condition_apply_with_number(ch, "blocked_by", "combat", "block", "target_id", char_id_get(blocker));
+}
+
+static inline struct char_data *char_absorbing_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "absorbing", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_absorbing_set(struct char_data *ch, struct char_data *vict) {
+    char_condition_remove(ch, "absorbing", "update");
+    if (vict) char_condition_apply_with_number(ch, "absorbing", "absorb", "absorb", "target_id", char_id_get(vict));
+}
+
+static inline struct char_data *char_absorbed_by_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "absorbed_by", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_absorbed_by_set(struct char_data *ch, struct char_data *absorber) {
+    char_condition_remove(ch, "absorbed_by", "update");
+    if (absorber) char_condition_apply_with_number(ch, "absorbed_by", "absorb", "absorb", "target_id", char_id_get(absorber));
+}
+
+static inline struct char_data *char_defending_for_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "defending_for", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_defending_for_set(struct char_data *ch, struct char_data *vict) {
+    char_condition_remove(ch, "defending_for", "update");
+    if (vict) char_condition_apply_with_number(ch, "defending_for", "combat", "defend", "target_id", char_id_get(vict));
+}
+
+static inline struct char_data *char_defended_by_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "defended_by", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_defended_by_set(struct char_data *ch, struct char_data *defender) {
+    char_condition_remove(ch, "defended_by", "update");
+    if (defender) char_condition_apply_with_number(ch, "defended_by", "combat", "defend", "target_id", char_id_get(defender));
+}
+
+static inline struct char_data *char_dragging_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "dragging", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_dragging_set(struct char_data *ch, struct char_data *vict) {
+    char_condition_remove(ch, "dragging", "update");
+    if (vict) char_condition_apply_with_number(ch, "dragging", "movement", "drag", "target_id", char_id_get(vict));
+}
+
+static inline struct char_data *char_being_dragged_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "being_dragged", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_being_dragged_set(struct char_data *ch, struct char_data *dragger) {
+    char_condition_remove(ch, "being_dragged", "update");
+    if (dragger) char_condition_apply_with_number(ch, "being_dragged", "movement", "drag", "target_id", char_id_get(dragger));
+}
+
+static inline struct char_data *char_mindlinked_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "mindlinked", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_mindlinked_set(struct char_data *ch, struct char_data *vict) {
+    char_condition_remove(ch, "mindlinked", "update");
+    if (vict) char_condition_apply_with_number(ch, "mindlinked", "ability", "mindlink", "target_id", char_id_get(vict));
+}
+
+static inline struct char_data *char_carrying_char_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "carrying_char", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_carrying_char_set(struct char_data *ch, struct char_data *carried) {
+    char_condition_remove(ch, "carrying_char", "update");
+    if (carried) char_condition_apply_with_number(ch, "carrying_char", "movement", "carry", "target_id", char_id_get(carried));
+}
+
+static inline struct char_data *char_carried_by_char_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "carried_by_char", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_carried_by_char_set(struct char_data *ch, struct char_data *carrier) {
+    char_condition_remove(ch, "carried_by_char", "update");
+    if (carrier) char_condition_apply_with_number(ch, "carried_by_char", "movement", "carry", "target_id", char_id_get(carrier));
+}
+
+static inline struct char_data *char_multiform_clone_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "multiform_clone", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_multiform_clone_set(struct char_data *ch, struct char_data *orig) {
+    char_condition_remove(ch, "multiform_clone", "update");
+    if (orig) char_condition_apply_with_number(ch, "multiform_clone", "multiform", "clone", "target_id", char_id_get(orig));
+}
+
+static inline struct char_data *char_following_get(struct char_data *ch) {
+    int64_t id = char_condition_number_get(ch, "following", "target_id");
+    return id ? char_by_id(id) : NULL;
+}
+static inline void char_following_set(struct char_data *ch, struct char_data *leader) {
+    char_condition_remove(ch, "following", "update");
+    if (leader) char_condition_apply_with_number(ch, "following", "group", "follow", "target_id", char_id_get(leader));
+}
 
 #ifdef __cplusplus
 }

@@ -2467,8 +2467,8 @@ ACMD(do_genki) {
       return true;
     }
     if (char_condition_has(friend_char, "group") &&
-        (friend_char->master == ch || ch->master == friend_char ||
-         friend_char->master == ch->master)) {
+        (MASTER(friend_char) == ch || MASTER(ch) == friend_char ||
+         MASTER(friend_char) == MASTER(ch))) {
       GET_CHARGE(ch) += (getCurKI(ch)) / 10;
       decCurKI(ch, getCurKI(ch) / 20);
     }
@@ -4595,11 +4595,11 @@ ACMD(do_kakusanha) {
       return true;
     }
     if (char_condition_has(vict, "group") && !IS_NPC(vict)) {
-      if (vict->master == ch) {
+      if (MASTER(vict) == ch) {
         return true;
-      } else if (ch->master == vict) {
+      } else if (MASTER(ch) == vict) {
         return true;
-      } else if (vict->master == ch->master) {
+      } else if (MASTER(vict) == MASTER(ch)) {
         return true;
       }
     }
@@ -4676,7 +4676,7 @@ ACMD(do_kakusanha) {
         return true;
       }
       if (char_condition_has(vict, "group") &&
-          (vict->master == ch || ch->master == vict)) {
+          (MASTER(vict) == ch || MASTER(ch) == vict)) {
         return true;
       }
       if (MOB_FLAGGED(vict, MOB_NOKILL)) {
@@ -7534,7 +7534,7 @@ ACMD(do_baku) {
       return true;
     }
     if (char_condition_has(vict, "group") &&
-        (vict->master == ch || ch->master == vict)) {
+        (MASTER(vict) == ch || MASTER(ch) == vict)) {
       return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
@@ -7610,8 +7610,8 @@ ACMD(do_baku) {
         return true;
       }
       if (char_condition_has(vict, "group") &&
-          (vict->master == ch || ch->master == vict ||
-           vict->master == ch->master)) {
+          (MASTER(vict) == ch || MASTER(ch) == vict ||
+           MASTER(vict) == MASTER(ch))) {
         return true;
       }
       if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
@@ -17175,8 +17175,9 @@ ACMD(do_flee) {
               ABSORBBY(ch), 0, ch, TO_VICT);
           act("@c$N@W manages to break loose of your hold!@n", TRUE,
               ABSORBBY(ch), 0, ch, TO_CHAR);
-          ABSORBING(ABSORBBY(ch)) = NULL;
-          ABSORBBY(ch) = NULL;
+          struct char_data *absorber = ABSORBBY(ch);
+          char_absorbed_by_set(ch, NULL);
+          char_absorbing_set(absorber, NULL);
         }
       }
       if (do_simple_move(ch, attempt, TRUE)) {
