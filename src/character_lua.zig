@@ -160,6 +160,8 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "pref_flagged", luaCharacterPrefFlagged);
     addMethod(lua, "pref_flag_set", luaCharacterPrefFlagSet);
     addMethod(lua, "pref_flag_toggle", luaCharacterPrefFlagToggle);
+    addMethod(lua, "aff_flagged", luaCharacterAffFlagged);
+    addMethod(lua, "body_flagged", luaCharacterBodyFlagged);
     addMethod(lua, "user_get", luaCharacterUserGet);
     addMethod(lua, "stat_get", luaCharacterStatGet);
     addMethod(lua, "stat_set", luaCharacterStatSet);
@@ -226,6 +228,16 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "event_cancel", luaCharacterEventCancel);
     addMethod(lua, "event_count", luaCharacterEventCount);
     addMethod(lua, "event_remaining_ms", luaCharacterEventRemainingMs);
+    addMethod(lua, "time_played", luaCharacterTimePlayed);
+    addMethod(lua, "age_years", luaCharacterAgeYears);
+    addMethod(lua, "clan_get", luaCharacterClanGet);
+    addMethod(lua, "rp_get", luaCharacterRpGet);
+    addMethod(lua, "height_cm", luaCharacterHeightCm);
+    addMethod(lua, "weight_kg", luaCharacterWeightKg);
+    addMethod(lua, "align_str", luaCharacterAlignStr);
+    addMethod(lua, "level_exp", luaCharacterLevelExp);
+    addMethod(lua, "rpp_to_level", luaCharacterRppToLevel);
+    addMethod(lua, "molt_threshold", luaCharacterMoltThreshold);
 
     lua_meta.mergeMethods(lua, "lua.characters.character");
 
@@ -1582,5 +1594,71 @@ fn luaCharacterEventRemainingMs(lua: *Lua) i32 {
     const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
     const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_CHAR), cdb.char_id_get(ch), kind);
     lua.pushInteger(ms);
+    return 1;
+}
+
+fn luaCharacterTimePlayed(lua: *Lua) i32 {
+    lua.pushInteger(checkCharacter(lua).time.played);
+    return 1;
+}
+
+fn luaCharacterAgeYears(lua: *Lua) i32 {
+    lua.pushInteger(cdb.age(checkCharacter(lua))[0].year);
+    return 1;
+}
+
+fn luaCharacterClanGet(lua: *Lua) i32 {
+    pushCString(lua, checkCharacter(lua).clan);
+    return 1;
+}
+
+fn luaCharacterRpGet(lua: *Lua) i32 {
+    lua.pushInteger(checkCharacter(lua).rp);
+    return 1;
+}
+
+fn luaCharacterHeightCm(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const raw = intCastOrError(lua, c_int, cdb.char_der_total_get(ch, "height"), "height");
+    lua.pushInteger(cdb.get_measure(ch, raw, 0));
+    return 1;
+}
+
+fn luaCharacterWeightKg(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const raw = intCastOrError(lua, c_int, cdb.char_der_total_get(ch, "weight"), "weight");
+    lua.pushInteger(cdb.get_measure(ch, 0, raw));
+    return 1;
+}
+
+fn luaCharacterAlignStr(lua: *Lua) i32 {
+    pushCString(lua, cdb.disp_align(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterLevelExp(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const level = intCastOrError(lua, c_int, integer(lua, 2), "level");
+    lua.pushInteger(cdb.char_level_exp(ch, level));
+    return 1;
+}
+
+fn luaCharacterRppToLevel(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_rpp_to_level(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterMoltThreshold(lua: *Lua) i32 {
+    lua.pushInteger(cdb.molt_threshold(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterAffFlagged(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_affflagged(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "aff flag")));
+    return 1;
+}
+
+fn luaCharacterBodyFlagged(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_bodyflagged(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "body slot")));
     return 1;
 }

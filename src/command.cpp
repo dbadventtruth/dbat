@@ -75,7 +75,7 @@ const struct command_info cmd_info[] = {
     {"se", "se", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_SE},
     {"southwest", "southw", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_SW},
     {"sw", "sw", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_SW},
-    {"i", "i", POS_DEAD, do_inventory, 0, ADMLVL_NONE, 0},
+    /* "i" shorthand for inventory moved to pcommand alias */
     {"inside", "in", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_IN},
     {"outside", "out", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_OUT},
 
@@ -191,7 +191,7 @@ const struct command_info cmd_info[] = {
     {":", ":", POS_RESTING, do_echo, 1, ADMLVL_NONE, SCMD_EMOTE},
     {"ensnare", "ensnar", POS_FIGHTING, do_ensnare, 0, ADMLVL_NONE, 0},
     {"enter", "ent", POS_STANDING, do_enter, 0, ADMLVL_NONE, 0},
-    {"equipment", "eq", POS_SLEEPING, do_equipment, 0, ADMLVL_NONE, 0},
+    /* equipment moved to lua/characters/pcommands/info/equipment.lua */
     {"eraser", "eras", POS_FIGHTING, do_eraser, 0, ADMLVL_NONE, 0},
     {"escape", "esca", POS_RESTING, do_escape, 0, ADMLVL_NONE, 0},
     {"evolve", "evolv", POS_RESTING, do_evolve, 0, ADMLVL_NONE, 0},
@@ -288,7 +288,7 @@ const struct command_info cmd_info[] = {
     {"instruct", "instruc", POS_STANDING, do_gen_tog, 0, 0, SCMD_INSTRUCT},
     /*{ "insult"   , "insult"	, POS_RESTING , do_insult   , 0, ADMLVL_NONE
        , 0 },*/
-    {"inventory", "inv", POS_DEAD, do_inventory, 0, ADMLVL_NONE, 0},
+    /* inventory moved to lua/characters/pcommands/info/inventory.lua */
     {"interest", "inter", POS_DEAD, do_interest, 0, ADMLVL_IMPL, 0},
     {"iedit", "ie", POS_DEAD, do_iedit, 0, ADMLVL_IMPL, 0},
     {"invis", "invi", POS_DEAD, do_invis, 0, ADMLVL_IMMORT, 0},
@@ -462,7 +462,7 @@ const struct command_info cmd_info[] = {
     {"sbc", "sbc", POS_FIGHTING, do_sbc, 0, ADMLVL_NONE, 0},
     {"scan", "sca", POS_FIGHTING, do_scan, 0, ADMLVL_NONE, 0},
     {"scatter", "scatte", POS_FIGHTING, do_scatter, 0, ADMLVL_NONE, 0},
-    {"score", "sc", POS_DEAD, do_score, 0, ADMLVL_NONE, 0},
+    /* score is now a Lua pcommand (lua/characters/pcommands/info/score.lua) */
     /*{ "scopy"    , "scopy"  	, POS_DEAD    , do_oasis_copy, 0, ADMLVL_GOD
        , CON_SEDIT },*/
     {"scouter", "scou", POS_RESTING, do_scouter, 0, ADMLVL_NONE, 0},

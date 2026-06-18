@@ -11,6 +11,7 @@
 #include "act.informative.h"
 #include "act.movement.h"
 #include "class.h"
+#include "guild.h"
 #include "combat.h"
 #include "comm.h"
 #include "consts/affflags.h"
@@ -4395,4 +4396,12 @@ extern "C" bool release_charge(struct char_data *ch) {
 bool char_is_extracted(struct char_data *ch) {
   if(IS_NPC(ch)) return IS_SET_AR(MOB_FLAGS(ch), MOB_NOTDEADYET);
   else return PLR_FLAGGED(ch, PLR_NOTDEADYET);
+}
+
+extern "C" int64_t char_level_exp(struct char_data *ch, int level) {
+  return level_exp(ch, level);
+}
+
+extern "C" int char_rpp_to_level(struct char_data *ch) {
+  return rpp_to_level(ch);
 }

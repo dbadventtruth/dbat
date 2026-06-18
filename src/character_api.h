@@ -54,6 +54,8 @@ void char_plrflag_set(struct char_data *ch, int pos, bool value);
 bool char_prfflagged(struct char_data *ch, int pos);
 bool char_prfflag_toggle(struct char_data *ch, int pos);
 void char_prfflag_set(struct char_data *ch, int pos, bool value);
+bool char_affflagged(struct char_data *ch, int pos);
+bool char_bodyflagged(struct char_data *ch, int pos);
 const char *char_user_get(struct char_data *ch); /* returns desc->user or NULL */
 
 void char_inventory_iterate(struct char_data *ch, bool recursive,
@@ -402,6 +404,10 @@ static inline void char_following_set(struct char_data *ch, struct char_data *le
     char_condition_remove(ch, "following", "update");
     if (leader) char_condition_apply_with_number(ch, "following", "group", "follow", "target_id", char_id_get(leader));
 }
+
+/* Score display helpers — thin wrappers so Zig can call functions in class.h / guild.h */
+int64_t char_level_exp(struct char_data *ch, int level);
+int     char_rpp_to_level(struct char_data *ch);
 
 #ifdef __cplusplus
 }

@@ -547,6 +547,14 @@ pub export fn char_prfflag_set(ch: *cdb.char_data, pos: c_int, value: bool) void
     bitflags.set(ch.pref[0..], pos, value);
 }
 
+pub export fn char_affflagged(ch: *cdb.char_data, pos: c_int) bool {
+    return bitflags.get(ch.affected_by[0..], pos);
+}
+
+pub export fn char_bodyflagged(ch: *cdb.char_data, pos: c_int) bool {
+    return bitflags.get(ch.bodyparts[0..], pos);
+}
+
 pub export fn char_user_get(ch: *cdb.char_data) [*c]const u8 {
     const desc = ch.desc;
     if (desc == null) return null;

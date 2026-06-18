@@ -4985,187 +4985,6 @@ ACMD(do_examine) {
   }
 }
 
-
-ACMD(do_score) {
-
-  if (IS_NPC(ch))
-    return;
-
-  int view = 0, full = 5, personal = 1, health = 2, stats = 3, other = 4;
-
-  char arg[MAX_INPUT_LENGTH];
-
-  one_argument(argument, arg);
-
-  if (!*arg) {
-    view = full;
-  } else if (strstr("personal", arg) || strstr("Personal", arg)) {
-    view = personal;
-  } else if (strstr("health", arg) || strstr("Health", arg)) {
-    view = health;
-  } else if (strstr("statistics", arg) || strstr("Statistics", arg)) {
-    view = stats;
-  } else if (strstr("other", arg) || strstr("Other", arg)) {
-    view = other;
-  } else {
-    send_to_char(
-        ch,
-        "Syntax: score, or... score (personal, health, statistics, other)\r\n");
-    return;
-  }
-
-  if (view == full || view == personal) {
-    send_to_char(ch, "  @cO@D-----------------------------[  @cPersonal  "
-                     "@D]-----------------------------@cO@n\n");
-    send_to_char(ch, "  @D|  @CName@D: @W%15s@D,   @CTitle@D: @W%-38s@D|@n\n",
-                 GET_NAME(ch), GET_TITLE(ch));
-    if (IS_ANDROID(ch)) {
-      char model[100], version[100];
-      int absorb = 0;
-      if (PLR_FLAGGED(ch, PLR_ABSORB)) {
-        sprintf(model, "@CAbsorption");
-      } else if (PLR_FLAGGED(ch, PLR_REPAIR)) {
-        sprintf(model, "@GSelf Repairing");
-      } else if (PLR_FLAGGED(ch, PLR_SENSEM)) {
-        sprintf(model, "@RSensor Equiped");
-      }
-
-      send_to_char(ch,
-                   "  @D| @CModel@D: %15s@D,    @CUGP@D: @G%15s@D,  "
-                   "@CVersion@D: @r%-12s@D|@n\n",
-                   model, absorb > 0 ? "@RN/A" : add_commas(GET_UP(ch)),
-                   "???");
-    }
-    if (GET_CLAN(ch) != NULL) {
-      send_to_char(ch, "  @D|  @CClan@D: @W%-64s@D|@n\n", GET_CLAN(ch));
-    }
-    send_to_char(ch,
-                 "  @D|  @CRace@D: @W%10s@D,  @CSensei@D: @W%15s@D,     "
-                 "@CArt@D: @W%-17s@D|@n\n",
-                 TRUE_RACE(ch), SENSEI_NAME(ch), SENSEI_STYLE(ch));
-    char hei[300], wei[300];
-    sprintf(hei, "%dcm", get_measure(ch, GET_PC_HEIGHT(ch), 0));
-    sprintf(wei, "%dkg", get_measure(ch, 0, GET_PC_WEIGHT(ch)));
-    send_to_char(ch,
-                 "  @D|   @CAge@D: @W%10s@D,  @CHeight@D: @W%15s@D,  "
-                 "@CWeight@D: @W%-17s@D|@n\n",
-                 add_commas(GET_AGE(ch)), hei, wei);
-    send_to_char(ch,
-                 "  @D|@CGender@D: @W%10s@D,  @C  Size@D: @W%15s@D,  @C "
-                 "Align@D: @W%-17s@D|@n\n",
-                 genders[(int)GET_SEX(ch)], size_names[get_size(ch)],
-                 disp_align(ch));
-  }
-  if (view == full || view == health) {
-    send_to_char(ch, "  @cO@D-----------------------------@D[   @cHealth   "
-                     "@D]-----------------------------@cO@n\n");
-    send_to_char(ch, "                 @D<@rPowerlevel@D>          <@BKi@D>    "
-                     "         <@GStamina@D>@n\n");
-    send_to_char(ch,
-                 "    @wCurrent   @D-[@R%-16s@D]-[@R%-16s@D]-[@R%-16s@D]@n\n",
-                 add_commas(char_meter_current(ch, "powerlevel")), add_commas(char_meter_current(ch, "ki")),
-                 add_commas((char_meter_current(ch, "stamina"))));
-    send_to_char(ch,
-                 "    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n",
-                 add_commas(char_meter_max(ch, "powerlevel")), add_commas(char_meter_max(ch, "ki")),
-                 add_commas(char_meter_max(ch, "stamina")));
-    send_to_char(ch,
-                 "    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n",
-                  add_commas((char_stat_get(ch, "powerlevel"))), add_commas((char_stat_get(ch, "ki"))),
-                  add_commas((char_stat_get(ch, "stamina"))));
-    if (!IS_ANDROID(ch) && char_meter_current(ch, "lifeforce") > 0) {
-      send_to_char(ch,
-                   "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife "
-                   "Percent@D-[@Y%3ld%s@D]@n\n",
-                   add_commas((char_meter_current(ch, "lifeforce"))), "/", add_commas((char_meter_max(ch, "lifeforce"))),
-                   char_stat_get(ch, "life_percent"), "%");
-    } else if (!IS_ANDROID(ch)) {
-      send_to_char(ch,
-                   "    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife "
-                   "Percent@D-[@Y%3ld%s@D]@n\n",
-                   add_commas(0), "/", add_commas((char_meter_max(ch, "lifeforce"))),
-                   char_stat_get(ch, "life_percent"), "%");
-    }
-  }
-  if (view == full || view == stats) {
-    send_to_char(ch, "  @cO@D-----------------------------@D[ @cStatistics "
-                     "@D]-----------------------------@cO@n\n");
-    send_to_char(
-        ch, "      @D<@wCharacter Level@D: @w%-3ld@D> <@wRPP@D: @w%-3d@D>\n",
-        GET_LEVEL(ch), GET_RP(ch));
-    send_to_char(
-        ch,
-        "      @D<@wSpeed Index@D: @w%-15s@D> <@wArmor Index@D: @w%-15s@D>@n\n",
-        add_commas(GET_SPEEDI(ch)), add_commas(GET_ARMOR(ch)));
-    send_to_char(
-        ch,
-        "    @D[    @RStrength@D|@G%2ld (%3ld)@D] [     @YAgility@D|@G%2ld "
-        "(%3ld)@D] [      @BSpeed@D|@G%2ld (%3ld)@D]@n\n",
-        char_stat_get(ch, "strength"), GET_STR(ch),
-        char_stat_get(ch, "agility"), GET_DEX(ch),
-        char_stat_get(ch, "speed"), GET_CHA(ch));
-    send_to_char(
-        ch,
-        "    @D[@gConstitution@D|@G%2ld (%3ld)@D] [@CIntelligence@D|@G%2ld "
-        "(%3ld)@D] [     @MWisdom@D|@G%2ld (%3ld)@D]@n\n",
-        char_stat_get(ch, "constitution"), GET_CON(ch),
-        char_stat_get(ch, "intelligence"), GET_INT(ch),
-        char_stat_get(ch, "wisdom"), GET_WIS(ch));
-  }
-  if (view == full || view == other) {
-    send_to_char(ch, "  @cO@D-----------------------------@D[   @cOther    "
-                     "@D]-----------------------------@cO@n\n");
-    send_to_char(ch, "                @D<@YZenni@D>                 "
-                     "<@rInventory Weight@D>@n\n");
-    send_to_char(
-        ch,
-        "      @D[   @CCarried@D| @W%-15s@D] [   @CCarried@D| @W%-15s@D]@n\n",
-        add_commas(GET_GOLD(ch)), add_commas((getCurCarriedWeight(ch))));
-    send_to_char(
-        ch,
-        "      @D[      @CBank@D| @W%-15s@D] [ @CMax Carry@D| @W%-15s@D]@n\n",
-        add_commas(GET_BANK_GOLD(ch)), add_commas(CAN_CARRY_W(ch)));
-    send_to_char(ch, "      @D[ @CMax Carry@D| @W%-15s@D]@n\n",
-                 add_commas(GOLD_CARRY(ch)));
-    int numb = GET_BANK_INTEREST(ch);
-    send_to_char(ch, "      @D[  @CInterest@D| @W%-15s@D]\n", add_commas(numb));
-    if (IS_ARLIAN(ch)) {
-      send_to_char(ch, "                             @D<@GEvolution @D>@n\n");
-      send_to_char(
-          ch,
-          "      @D[ @CEvo Level@D| @W%-15ld@D] [   @CEvo Exp@D| @W%-15s@D]\n",
-          GET_MOLT_LEVEL(ch), add_commas(GET_MOLT_EXP(ch)));
-      send_to_char(ch, "      @D[ @CThreshold@D| @W%-15s@D]@n\n",
-                   add_commas(molt_threshold(ch)));
-    }
-    if (GET_LEVEL(ch) < 100) {
-      send_to_char(ch, "                             @D<@gAdvancement@D>@n\n");
-    }
-    if (GET_LEVEL(ch) < 100) {
-      send_to_char(
-          ch,
-          "      @D[@CExperience@D| @W%-15s@D] [@CNext Level@D| @W%-15s@D]@n\n",
-          add_commas(GET_EXP(ch)),
-          add_commas(level_exp(ch, GET_LEVEL(ch) + 1) - GET_EXP(ch)));
-      send_to_char(ch, "      @D[  @CRpp Cost@D| @W%-15d@D]@n\n",
-                   rpp_to_level(ch));
-    }
-
-    send_to_char(
-        ch,
-        "\n     @D<@wPlayed@D: @yYears @D(@W%2d@D) @yWeeks @D(@W%2d@D) @yDays "
-        "@D(@W%2d@D) @yHours @D(@W%2d@D) @yMinutes @D(@W%2d@D)>@n\n",
-        (int)ch->time.played / 31536000,
-        (int)((ch->time.played % 31536000) / 604800),
-        (int)((ch->time.played % 604800) / 86400),
-        (int)((ch->time.played % 86400) / 3600),
-        (int)((ch->time.played % 3600) / 60));
-  }
-  send_to_char(ch, "  "
-                   "@cO@D------------------------------------------------------"
-                   "------------------@cO@n\n");
-}
-
 static void trans_check(struct char_data *ch, struct char_data *vict) {
   /* Rillao: transloc, add new transes here */
   if (IS_HUMAN(vict)) {
@@ -6344,77 +6163,9 @@ static void bonus_status(struct char_data *ch) {
   return;
 }
 
-ACMD(do_inventory) {
-  send_to_char(ch,
-               "@w              "
-               "@YInventory\r\n@D-------------------------------------@w\r\n");
-  if (!IS_NPC(ch)) {
-    if (PLR_FLAGGED(ch, PLR_STOLEN)) {
-      REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_STOLEN);
-      send_to_char(
-          ch, "@r   --------------------------------------------------@n\n");
-      send_to_char(
-          ch,
-          "@R    You notice that you have been robbed sometime recently!\n");
-      send_to_char(
-          ch, "@r   --------------------------------------------------@n\n");
-      return;
-    }
-  }
-  list_obj_to_char(inv_for_char(ch), ch, SHOW_OBJ_SHORT, TRUE);
-  send_to_char(ch, "\n");
-}
+/* do_inventory has been moved to lua/characters/pcommands/info/inventory.lua */
 
-ACMD(do_equipment) {
-  int i;
-
-  send_to_char(ch, "        @YEquipment Being "
-                   "Worn\r\n@D-------------------------------------@w\r\n");
-  
-  for (i = 1; i < NUM_WEARS; i++) {
-    if (auto eq = GET_EQ(ch, i); eq && CAN_SEE_OBJ(ch, eq)) {
-      if ((i != WEAR_WIELD1 && i != WEAR_WIELD2)) {
-        send_to_char(ch, "%s", wear_where[i]);
-        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
-
-        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
-          struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = eq;
-          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
-            send_to_char(ch, "@D  ---- @YSheathed@D ----@c> @n");
-            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            return true;
-          });
-        }
-      } else if ((!PLR_FLAGGED(ch, PLR_THANDW))) {
-        send_to_char(ch, "%s", wear_where[i]);
-        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
-        if (OBJ_FLAGGED(eq, ITEM_SHEATH)) {
-          struct obj_data *obj2 = NULL, *next_obj = NULL,
-                          *sheath = eq;
-          obj_contents_iterate(sheath, [&](struct obj_data *obj2) {
-            send_to_char(ch, "@D  ---- @YSheathed@D ----> @n");
-            show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT);
-            return true;
-          });
-        }
-      } else if ((PLR_FLAGGED(ch, PLR_THANDW))) {
-        send_to_char(ch, "@c<@CWielded by B. Hands@c>@n ");
-        show_obj_to_char(eq, ch, SHOW_OBJ_SHORT);
-      } else {
-        send_to_char(ch, "%s", wear_where[i]);
-        send_to_char(ch, "Something.\r\n");
-      }
-    } else {
-      if (BODY_FLAGGED(ch, i) && (i != WEAR_WIELD2)) {
-        send_to_char(ch, "%s@wNothing.@n\r\n", wear_where[i]);
-      } else if (BODY_FLAGGED(ch, i) &&
-                 (i == WEAR_WIELD2 && !PLR_FLAGGED(ch, PLR_THANDW))) {
-        send_to_char(ch, "%s@wNothing.@n\r\n", wear_where[i]);
-      }
-    }
-  }
-}
+/* do_equipment has been moved to lua/characters/pcommands/info/equipment.lua */
 
 ACMD(do_time) {
   const char *suf;
@@ -7124,36 +6875,36 @@ static void perform_immort_where(struct char_data *ch, char *arg) {
         "             ------   ----------    ----------------\r\n");
     for (d = descriptor_list; d; d = d->next)
       if (IS_PLAYING(d)) {
-        if (char_room_get(d->character) != NULL) {
-          if ((char_room_get(d->character) &&
-               room_flagged(char_room_get(d->character), ROOM_EARTH))) {
+        if (auto room = char_room_get(d->character); room) {
+          if ((room &&
+               room_flagged(room, ROOM_EARTH))) {
             num2 = 0;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character), ROOM_FRIGID))) {
+          } else if ((room &&
+                      room_flagged(room, ROOM_FRIGID))) {
             num2 = 1;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character), ROOM_VEGETA))) {
+          } else if ((room &&
+                      room_flagged(room, ROOM_VEGETA))) {
             num2 = 2;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character), ROOM_KONACK))) {
+          } else if ((room &&
+                      room_flagged(room, ROOM_KONACK))) {
             num2 = 3;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character), ROOM_NAMEK))) {
+          } else if ((room &&
+                      room_flagged(room, ROOM_NAMEK))) {
             num2 = 4;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character), ROOM_AETHER))) {
+          } else if ((room &&
+                      room_flagged(room, ROOM_AETHER))) {
             num2 = 5;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character), ROOM_ARLIA))) {
+          } else if ((room &&
+                      room_flagged(room, ROOM_ARLIA))) {
             num2 = 6;
           } else if (char_planet_zenith(d->character)) {
             num2 = 7;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character),
+          } else if ((room &&
+                      room_flagged(room,
                                    ROOM_YARDRAT))) {
             num2 = 8;
-          } else if ((char_room_get(d->character) &&
-                      room_flagged(char_room_get(d->character),
+          } else if ((room &&
+                      room_flagged(room,
                                    ROOM_KANASSA))) {
             num2 = 9;
           } else {

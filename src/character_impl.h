@@ -146,7 +146,6 @@ struct char_data {
 
   struct obj_data *sits; /* What am I sitting on? */
 
-  // Skill info
   skill_data skills[SKILL_TABLE_SIZE];
 
   bitvector_t act[PM_ARRAY_MAX]; /* act flag for NPC's; player flag for PC's */

@@ -150,6 +150,8 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "event_cancel", luaObjectEventCancel);
     addMethod(lua, "event_count", luaObjectEventCount);
     addMethod(lua, "event_remaining_ms", luaObjectEventRemainingMs);
+    addMethod(lua, "kicharge_get", luaObjectKichargeGet);
+    addMethod(lua, "distance_get", luaObjectDistanceGet);
 
     lua_meta.mergeMethods(lua, "lua.objects.object");
 
@@ -753,5 +755,15 @@ fn luaObjectEventRemainingMs(lua: *Lua) i32 {
     const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
     const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind);
     lua.pushInteger(ms);
+    return 1;
+}
+
+fn luaObjectKichargeGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).kicharge);
+    return 1;
+}
+
+fn luaObjectDistanceGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).distance);
     return 1;
 }
