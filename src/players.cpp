@@ -332,8 +332,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_ABSORBS(ch) = PFDEF_BANK;
     GET_INGESTLEARNED(ch) = PFDEF_BANK;
     RACIAL_PREF(ch) = PFDEF_BANK;
-    GET_FORGETING(ch) = PFDEF_BANK;
-    GET_FORGET_COUNT(ch) = PFDEF_BANK;
     GET_TRANSCLASS(ch) = PFDEF_EXP;
     SPEAKING(ch) = PFDEF_SPEAKING;
     GET_OLC_ZONE(ch) = PFDEF_OLC;
@@ -475,10 +473,6 @@ int load_char(const char *name, struct char_data *ch) {
         if (!strcmp(tag, "Fisd"));
         else if (!strcmp(tag, "Frez"))
           GET_FREEZE_LEV(ch) = atoi(line);
-        else if (!strcmp(tag, "Forc"))
-          GET_FORGET_COUNT(ch) = atoi(line);
-        else if (!strcmp(tag, "Forg"))
-          GET_FORGETING(ch) = atoi(line);
         else if (!strcmp(tag, "Fury"))
           char_stat_set(ch, "fury", atoi(line));
         break;
@@ -1066,10 +1060,6 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "INGl: %d\n", GET_INGESTLEARNED(ch));
   if (GET_UP(ch) != PFDEF_GOLD)
     fprintf(fl, "Upgr: %d\n", GET_UP(ch));
-  if (GET_FORGETING(ch) != PFDEF_BANK)
-    fprintf(fl, "Forg: %d\n", GET_FORGETING(ch));
-  if (GET_FORGET_COUNT(ch) != PFDEF_BANK)
-    fprintf(fl, "Forc: %d\n", GET_FORGET_COUNT(ch));
   if (GET_KAIOKEN(ch) != PFDEF_GOLD)
     fprintf(fl, "Kaio: %d\n", GET_KAIOKEN(ch));
   if (GET_GOLD(ch) != PFDEF_GOLD)

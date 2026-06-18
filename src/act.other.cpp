@@ -2079,8 +2079,7 @@ ACMD(do_paralyze) {
         "flows into @r$N@R body and partially paralyzes $M!@n",
         TRUE, ch, 0, vict, TO_NOTVICT);
     int duration = GET_INT(ch) / 15;
-    char_condition_add(vict, "paralyze", "skill", "paralyze");
-    char_condition_duration_set(vict, "paralyze", duration * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(vict, "paralyze", "skill", "paralyze", duration * SECS_PER_MUD_HOUR);
     decCurKI(ch, GET_HIT(vict) / 6 + (GET_MAX_MANA(ch) / 20));
     improve_skill(ch, SKILL_PARALYZE, 0);
   }
@@ -2637,8 +2636,7 @@ ACMD(do_hass) {
         "speeds.@n",
         TRUE, ch, 0, 0, TO_ROOM);
     int duration = perc / 15;
-    char_condition_add(ch, "hasshuken", "skill", "hasshuken");
-    char_condition_duration_set(ch, "hasshuken", duration * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(ch, "hasshuken", "skill", "hasshuken", duration * SECS_PER_MUD_HOUR);
     decCurST(ch, getMaxST(ch) / 30);
     improve_skill(ch, SKILL_HASSHUKEN, 0);
     return;
@@ -2920,8 +2918,7 @@ ACMD(do_pose) {
         "@WYou feel your confidence increase! @G+8 Str @Wand@G +8 Wis!@n\r\n");
     int64_t before = (getMaxLF(ch));
     int duration = 5 * GET_SKILL(ch, SKILL_POSE);
-    char_condition_apply(ch, "special_pose", "affect", "special_pose");
-    char_condition_duration_set(ch, "special_pose", duration);
+    char_condition_apply_with_duration(ch, "special_pose", "affect", "special_pose", duration);
     save_char(ch);
     incCurLF(ch, (getMaxLF(ch)) - before);
     decCurST(ch, getMaxST(ch) / 40);
@@ -5238,8 +5235,7 @@ ACMD(do_focus) {
 
   auto add_timed = [&](struct char_data *tgt, const char *cond, const char *src,
                         const char *label, int dur) {
-    char_condition_add(tgt, cond, src, label);
-    char_condition_duration_set(tgt, cond, dur * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(tgt, cond, src, label, dur * SECS_PER_MUD_HOUR);
   };
 
   auto ki_check = [&](int div = 20) -> bool {
@@ -5660,12 +5656,12 @@ ACMD(do_focus) {
     }
     {
       int dur = roll_aff_duration(GET_INT(ch), 3);
-      char_condition_add(vict, "bless", "affect", "bless");
-      char_condition_duration_set(vict, "bless", dur * SECS_PER_MUD_HOUR);
       drain_reveal();
       int bless_level = IS_KAI(ch) ? GET_SKILL(ch, SKILL_BLESS) : 0;
-      char_condition_apply(vict, "bless", "affect", "bless");
+      char_condition_add_silent(vict, "bless", "affect", "bless");
+      char_condition_duration_set(vict, "bless", dur * SECS_PER_MUD_HOUR);
       char_condition_number_set(vict, "bless", "level", bless_level);
+      char_condition_notify_applied(vict, "bless");
       act("You focus ki while chanting spiritual words. Blessing $N with faster regeneration!",
           TRUE, ch, 0, vict, TO_CHAR);
       act("$n focuses ki while chanting spiritual words. $n then places a hand on your head, blessing you!",
@@ -6724,8 +6720,7 @@ ACMD(do_solar) {
     if (GET_POS(vict) == POS_SLEEPING)
       return true;
     int duration = 1;
-    char_condition_add(vict, "solar_flare", "skill", "solar_flare");
-    char_condition_duration_set(vict, "solar_flare", duration * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(vict, "solar_flare", "skill", "solar_flare", duration * SECS_PER_MUD_HOUR);
     act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_CHAR);
     act("@RYou are @YBLINDED@R!@n", TRUE, ch, 0, vict, TO_VICT);
     act("@W$N@W is @YBLINDED@W!@n", TRUE, ch, 0, vict, TO_NOTVICT);

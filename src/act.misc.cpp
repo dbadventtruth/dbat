@@ -120,8 +120,7 @@ ACMD(do_spiritcontrol) {
         act("@y$n@Y seems to concentrate hard for a moment.@n", TRUE, ch, 0, 0,
             TO_ROOM);
         int duration = rand_number(2, 4);
-        char_condition_add(ch, "spirit_control", "spirit", "control");
-        char_condition_duration_set(ch, "spirit_control", duration * SECS_PER_MUD_HOUR);
+        char_condition_apply_with_duration(ch, "spirit_control", "spirit", "control", duration * SECS_PER_MUD_HOUR);
       }
     }
   }
@@ -436,8 +435,7 @@ static void apply_shadow_sitch(struct char_data *ch, struct char_data *vict,
       "body, slowing $S actions!@n",
       TRUE, ch, 0, vict, TO_NOTVICT);
   decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-  char_condition_apply(vict, "shadow_stitch", "song", "shadow_stitch");
-  char_condition_duration_set(vict, "shadow_stitch", 60);
+  char_condition_apply_with_duration(vict, "shadow_stitch", "song", "shadow_stitch", 60);
 }
 
 static const char *song_name(int song) {
@@ -2018,8 +2016,7 @@ ACMD(do_runic) {
     send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
     send_to_char(vict, "%s", vict_msg);
     if (condition && duration > 0) {
-      char_condition_add(vict, condition, "skill", "runic");
-      char_condition_duration_set(vict, condition, duration * SECS_PER_MUD_HOUR);
+      char_condition_apply_with_duration(vict, condition, "skill", "runic", duration * SECS_PER_MUD_HOUR);
     }
     spend_ink();
   };
@@ -2227,8 +2224,7 @@ void ash_burn(struct char_data *ch) {
               act("@r$n@D eyes appear to have been hurt by the ash!@n", TRUE,
                   ch, 0, 0, TO_ROOM);
               int duration = 1;
-              char_condition_add(ch, "ash_blinded", "skill", "ash_burn");
-              char_condition_duration_set(ch, "ash_blinded", duration * SECS_PER_MUD_HOUR);
+              char_condition_apply_with_duration(ch, "ash_blinded", "skill", "ash_burn", duration * SECS_PER_MUD_HOUR);
 
             }
           }
@@ -2514,11 +2510,10 @@ ACMD(do_healglow) {
       act("@c$n@C places $s hands on $s body. Slowly a strong blue glow "
           "glistens and shines across $s skin!@n",
           TRUE, ch, 0, 0, TO_ROOM);
-      char_condition_add(vict, "healing_glow", "skill", "healing glow");
       int duration = (GET_SKILL(ch, SKILL_HEALGLOW) * 0.1);
       if (duration <= 0)
         duration = 1;
-      char_condition_duration_set(vict, "healing_glow", duration * SECS_PER_MUD_HOUR);
+      char_condition_apply_with_duration(vict, "healing_glow", "skill", "healing glow", duration * SECS_PER_MUD_HOUR);
       decCurKI(ch, cost);
     } else {
       act("@CPlacing your hands on @c$N's@C body you begin to focus your "
@@ -2535,8 +2530,7 @@ ACMD(do_healglow) {
       duration += rand_number(-2, 1);
       if (duration <= 0)
         duration = 1;
-      char_condition_add(vict, "healing_glow", "skill", "healing glow");
-      char_condition_duration_set(vict, "healing_glow", duration * SECS_PER_MUD_HOUR);
+      char_condition_apply_with_duration(vict, "healing_glow", "skill", "healing glow", duration * SECS_PER_MUD_HOUR);
       decCurKI(ch, cost);
     }
   }
@@ -2605,9 +2599,8 @@ ACMD(do_metamorph) {
         TRUE, ch, 0, 0, TO_ROOM);
 
     int duration = (GET_INT(ch) / 12) * SECS_PER_MUD_HOUR;
-    char_condition_add(ch, "dark_metamorphosis", "affect",
-                         "dark_metamorphosis");
-    char_condition_duration_set(ch, "dark_metamorphosis", duration);
+    char_condition_apply_with_duration(ch, "dark_metamorphosis", "affect",
+                                       "dark_metamorphosis", duration);
     incCurHealthPercent(ch, .6);
 }
 

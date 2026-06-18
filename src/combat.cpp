@@ -4519,8 +4519,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
               "onto @c$n's@C body and begin temporarily hampering $s "
               "actions!@n",
               TRUE, ch, 0, vict, TO_ROOM);
-          char_condition_add(vict, "ethereal_chains", "skill", "ethereal_chains");
-          char_condition_duration_set(vict, "ethereal_chains", 60);
+          char_condition_apply_with_duration(vict, "ethereal_chains", "skill", "ethereal_chains", 60);
         }
       } else {
         send_to_char(ch, "@D[@GDamage@W: @BPitiful...@D]@n\r\n");

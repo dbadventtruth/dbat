@@ -161,8 +161,7 @@ void resurrect(char_data *ch, int mode) {
             "a weakened state for a few hours (Game time)! Strength, "
             "constitution, wisdom, intelligence, speed, and agility have been "
             "reduced by a fifth for the duration.@n\r\n");
-    char_condition_add(ch, "resurrection_weakness", "resurrection", "normal");
-    char_condition_duration_set(ch, "resurrection_weakness", dur * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(ch, "resurrection_weakness", "resurrection", "normal", dur * SECS_PER_MUD_HOUR);
     if (losschance >= 100) {
       int psloss = rand_number(100, 300);
       char_stat_mod(ch, "practices", -psloss);
@@ -3053,7 +3052,8 @@ void improve_skill(struct char_data *ch, int skill, int num) {
   if (AFF_FLAGGED(ch, AFF_SHOCKED))
     return;
 
-  if (GET_FORGETING(ch) == skill)
+  if (char_condition_has(ch, "forget_skill") &&
+      strcmp(char_condition_string_get(ch, "forget_skill", "skill_name"), spell_info[skill].name) == 0)
     return;
 
   if (GET_SKILL_BASE(ch, skill) >= 90) {

@@ -5731,8 +5731,7 @@ ACMD(do_ddslash) {
         act("@c$n@m is struck blind by the attack!@n", TRUE, vict, 0, 0,
             TO_ROOM);
         int duration = 1;
-        char_condition_add(vict, "darkness_dragon_slash", "skill", "darkness_dragon_slash");
-        char_condition_duration_set(vict, "darkness_dragon_slash", duration * SECS_PER_MUD_HOUR); 
+        char_condition_apply_with_duration(vict, "darkness_dragon_slash", "skill", "darkness_dragon_slash", duration * SECS_PER_MUD_HOUR);
       }
       pcost(ch, attperc, 0);
 
@@ -13472,9 +13471,10 @@ ACMD(do_bite) {
           int duration = (GET_INT(ch) / 50) + 1;
           char idbuf[20];
           snprintf(idbuf, sizeof(idbuf), "%d", ch->id);
-          char_condition_add(ch, "poison", "character", idbuf);
+          char_condition_add_silent(ch, "poison", "character", idbuf);
           char_condition_duration_set(ch, "poison", duration * SECS_PER_MUD_HOUR);
           char_condition_number_set(ch, "poison", "poison_by", ch->id);
+          char_condition_notify_applied(ch, "poison");
         }
       }
 

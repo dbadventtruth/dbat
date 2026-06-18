@@ -95,8 +95,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putString(&object, allocator, "rdisplay", ch.rdisplay);
         try jsonx.putString(&object, allocator, "voice", ch.voice);
         try jsonx.put(&object, allocator, "time", try serializeTime(allocator, ch));
-        try jsonx.putInt(&object, allocator, "forgeting", ch.forgeting);
-        try jsonx.putInt(&object, allocator, "forgetcount", ch.forgetcount);
         try jsonx.putInt(&object, allocator, "lastint", ch.lastint);
         try jsonx.putInt(&object, allocator, "sleeptime", ch.sleeptime);
         try jsonx.putInt(&object, allocator, "cooldown", ch.cooldown);
@@ -264,8 +262,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         try setPointerStringField(options.c_allocator, value, "rdisplay", &ch.rdisplay, setRawString);
         try setPointerStringField(options.c_allocator, value, "voice", &ch.voice, setRawString);
         if (jsonx.field(value, "time")) |time| try deserializeTime(ch, time);
-        if (try jsonx.intField(value, "forgeting", c_int)) |v| ch.forgeting = v;
-        if (try jsonx.intField(value, "forgetcount", c_int)) |v| ch.forgetcount = v;
         if (try jsonx.intField(value, "lastint", cdb.time_t)) |v| ch.lastint = v;
         if (try jsonx.intField(value, "sleeptime", c_int)) |v| ch.sleeptime = v;
         if (try jsonx.intField(value, "cooldown", c_int)) |v| ch.cooldown = v;
@@ -394,19 +390,22 @@ fn deserializeConditions(ch: *cdb.char_data, conditions: JsonValue) !void {
         if (item != .object) return error.ExpectedObject;
         const id_z = try std.heap.page_allocator.dupeZ(u8, id);
         defer std.heap.page_allocator.free(id_z);
+        // Add silently so on_apply fires AFTER variables are restored below.
         if (jsonx.field(item, "sources")) |sources| {
             if (sources == .array and sources.array.items.len > 0) {
                 try deserializeConditionSources(ch, id_z.ptr, sources);
             } else {
-                _ = cdb.char_condition_add(ch, id_z.ptr, "json", "conditions");
+                _ = cdb.char_condition_add_silent(ch, id_z.ptr, "json", "conditions");
             }
         } else {
-            _ = cdb.char_condition_add(ch, id_z.ptr, "json", "conditions");
+            _ = cdb.char_condition_add_silent(ch, id_z.ptr, "json", "conditions");
         }
         if (try jsonx.intField(item, "stacks", i64)) |v| _ = cdb.char_condition_stacks_set(ch, id_z.ptr, v);
         if (try jsonx.intField(item, "duration", i64)) |v| _ = cdb.char_condition_duration_set(ch, id_z.ptr, v);
         if (jsonx.field(item, "numbers")) |numbers| try deserializeConditionNumbers(ch, id, numbers);
         if (jsonx.field(item, "strings")) |strings| try deserializeConditionStrings(ch, id, strings);
+        // Fire on_apply now that all variables are set.
+        cdb.char_condition_notify_applied(ch, id_z.ptr);
     }
 }
 
@@ -422,7 +421,7 @@ fn deserializeConditionSources(ch: *cdb.char_data, id_z: [*:0]const u8, sources:
         defer std.heap.page_allocator.free(category_z);
         const source_z = try std.heap.page_allocator.dupeZ(u8, source_id);
         defer std.heap.page_allocator.free(source_z);
-        _ = cdb.char_condition_add(ch, id_z, category_z.ptr, source_z.ptr);
+        _ = cdb.char_condition_add_silent(ch, id_z, category_z.ptr, source_z.ptr);
     }
 }
 

@@ -267,6 +267,10 @@ fn registerConditionMetatable(lua: *Lua) void {
     addMethod(lua, "number_mod", luaConditionNumberMod);
     addMethod(lua, "string_get", luaConditionStringGet);
     addMethod(lua, "string_set", luaConditionStringSet);
+    addMethod(lua, "schedule_event", luaConditionScheduleEvent);
+    addMethod(lua, "cancel_event", luaConditionCancelEvent);
+    addMethod(lua, "event_pending", luaConditionEventPending);
+    addMethod(lua, "event_next_ms", luaConditionEventNextMs);
     lua.pop(1);
 }
 
@@ -465,6 +469,24 @@ fn luaCharacterUpdate(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const kind = if (lua.isNoneOrNil(2)) "manual" else string(lua, 2);
     const seconds: i64 = if (lua.isNoneOrNil(3)) 0 else intCastOrError(lua, i64, integer(lua, 3), "update seconds");
+    // Route "condition:<id>:<event>" kinds to targeted on_event dispatch rather than broadcast on_update.
+    if (std.mem.startsWith(u8, kind, "condition:")) {
+        const rest = kind["condition:".len..];
+        if (std.mem.indexOfScalar(u8, rest, ':')) |sep| {
+            const cond_id = rest[0..sep];
+            const event_name = rest[sep + 1 ..];
+            var cond_buf: [128:0]u8 = undefined;
+            var ev_buf: [128:0]u8 = undefined;
+            if (cond_id.len < cond_buf.len and event_name.len < ev_buf.len) {
+                @memcpy(cond_buf[0..cond_id.len], cond_id);
+                cond_buf[cond_id.len] = 0;
+                @memcpy(ev_buf[0..event_name.len], event_name);
+                ev_buf[event_name.len] = 0;
+                cdb.char_condition_event_dispatch(ch, &cond_buf, &ev_buf);
+                return 0;
+            }
+        }
+    }
     cdb.char_condition_update_with_context(ch, kind, 0, seconds);
     return 0;
 }
@@ -1355,6 +1377,82 @@ fn luaConditionStringGet(lua: *Lua) i32 {
 fn luaConditionStringSet(lua: *Lua) i32 {
     const handle = checkConditionHandle(lua);
     lua.pushBoolean(cdb.char_condition_string_set(conditionCharacter(lua, handle), conditionName(handle), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+// Build "condition:<cond_id>:<event>" into a stack buffer. Returns a sentinel-terminated slice.
+fn condEventKind(buf: *[192:0]u8, cond: []const u8, event: []const u8) ?[:0]u8 {
+    const prefix = "condition:";
+    const total = prefix.len + cond.len + 1 + event.len;
+    if (total >= buf.len) return null;
+    @memcpy(buf[0..prefix.len], prefix);
+    @memcpy(buf[prefix.len..][0..cond.len], cond);
+    buf[prefix.len + cond.len] = ':';
+    @memcpy(buf[prefix.len + cond.len + 1 ..][0..event.len], event);
+    buf[total] = 0;
+    return buf[0..total :0];
+}
+
+// cond:schedule_event(ch, name, delay_ms [, interval_ms])
+fn luaConditionScheduleEvent(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const delay_ms = intCastOrError(lua, i64, integer(lua, 3), "delay_ms");
+    const interval_ms: i64 = if (lua.isNoneOrNil(4)) 0 else intCastOrError(lua, i64, integer(lua, 4), "interval_ms");
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, event_name) orelse {
+        lua.pushInteger(0);
+        return 1;
+    };
+    // Cancel any existing event with this kind first (idempotent).
+    _ = eq_cancel_owner(1, cdb.char_id_get(ch), kind.ptr);
+    const fire_at = event_queue_now_ms() + delay_ms;
+    const id = event_schedule_lua_char_update(fire_at, interval_ms, kind.ptr, cdb.char_id_get(ch));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+// cond:cancel_event(ch, name)
+fn luaConditionCancelEvent(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, event_name) orelse return 0;
+    _ = eq_cancel_owner(1, cdb.char_id_get(ch), kind.ptr);
+    return 0;
+}
+
+// cond:event_pending(ch, name) -> bool
+fn luaConditionEventPending(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, event_name) orelse {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    lua.pushBoolean(eq_owner_count(1, cdb.char_id_get(ch), kind.ptr) > 0);
+    return 1;
+}
+
+// cond:event_next_ms(ch, name) -> i64 or -1
+fn luaConditionEventNextMs(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, event_name) orelse {
+        lua.pushInteger(-1);
+        return 1;
+    };
+    lua.pushInteger(eq_owner_next_ms(1, cdb.char_id_get(ch), kind.ptr));
     return 1;
 }
 

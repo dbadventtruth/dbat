@@ -5692,10 +5692,13 @@ ACMD(do_status) {
                    "         Your strengths are potentially limitless.\r\n");
     }
 
-    if (GET_FORGETING(ch) != 0) {
+    if (char_condition_has(ch, "forget_skill")) {
+      int count = (int)char_condition_number_get(ch, "forget_skill", "forget_count");
+      if (count < 0) count = 0;
+      if (count > 5) count = 5;
       send_to_char(ch, "         @MForgetting @D[@m%s - %s@D]@n\r\n",
-                   spell_info[GET_FORGETING(ch)].name,
-                   forget_level[GET_FORGET_COUNT(ch)]);
+                   char_condition_string_get(ch, "forget_skill", "skill_name"),
+                   forget_level[count]);
     } else {
       send_to_char(ch, "         @MForgetting @D[@mNothing.@D]@n\r\n");
     }

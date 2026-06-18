@@ -3821,8 +3821,7 @@ ACMD(do_drink) {
     send_to_char(ch, "Oops, it tasted rather strange!\r\n");
     act("$n chokes and utters some strange sounds.", TRUE, ch, 0, 0, TO_ROOM);
 
-    char_condition_add(ch, "poison", "drink", "poison");
-    char_condition_duration_set(ch, "poison", amount * 3 * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(ch, "poison", "drink", "poison", amount * 3 * SECS_PER_MUD_HOUR);
   }
   /* empty the container, and no longer poison.
      Only remove if it's max capacity > 0, not eternal */
@@ -4003,8 +4002,7 @@ ACMD(do_eat) {
     send_to_char(ch, "Oops, that tasted rather strange!\r\n");
     act("$n coughs and utters some strange sounds.", FALSE, ch, 0, 0, TO_ROOM);
 
-    char_condition_add(ch, "poison", "eat", "poison");
-    char_condition_duration_set(ch, "poison", amount * 2 * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(ch, "poison", "eat", "poison", amount * 2 * SECS_PER_MUD_HOUR);
   }
 
   GET_OBJ_VAL(food, VAL_FOOD_FOODVAL) -= amount;

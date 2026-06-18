@@ -52,6 +52,7 @@
 #include "log.h"
 #include "lua.h"
 #include "mail.h"
+#include "mobact.h"
 #include "oasis.h"
 #include "obj_edit.h"
 #include "objsave.h"
@@ -445,6 +446,7 @@ int enter_player_game(struct descriptor_data *d) {
 
   game_active_player_enter();
   char_to_room(ch, load_room);
+  char_game_activate(ch);
   load_result = Crash_load(ch);
   if (ch->host) {
     free(ch->host);

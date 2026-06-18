@@ -158,6 +158,13 @@ bool char_condition_add_with_variables(
     const char *source_id, const struct condition_number_arg *numbers,
     size_t number_count, const struct condition_string_arg *strings,
     size_t string_count);
+bool char_condition_add_silent(struct char_data *ch, const char *condition,
+                               const char *source_category, const char *source_id);
+void char_condition_notify_applied(struct char_data *ch, const char *condition);
+void char_condition_event_dispatch(struct char_data *ch, const char *condition,
+                                   const char *event_name);
+void char_condition_game_activate(struct char_data *ch);
+void char_condition_game_deactivate(struct char_data *ch);
 bool char_condition_apply(struct char_data *ch, const char *condition,
                           const char *source_category, const char *source_id);
 bool char_condition_apply_with_variables(
@@ -170,6 +177,15 @@ bool char_condition_apply_with_number(struct char_data *ch,
                                       const char *source_category,
                                       const char *source_id, const char *key,
                                       int64_t value);
+bool char_condition_apply_with_string(struct char_data *ch,
+                                      const char *condition,
+                                      const char *source_category,
+                                      const char *source_id, const char *key,
+                                      const char *value);
+bool char_condition_apply_with_duration(struct char_data *ch,
+                                        const char *condition,
+                                        const char *source_category,
+                                        const char *source_id, int64_t duration);
 bool char_condition_apply_with_numbers2(struct char_data *ch,
                                         const char *condition,
                                         const char *source_category,

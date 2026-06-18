@@ -707,6 +707,26 @@ pub fn callConditionUpdateHook(ch: *cdb.char_data, condition: []const u8, kind: 
     };
 }
 
+pub fn callConditionEventHook(ch: *cdb.char_data, condition: []const u8, event_name: []const u8) void {
+    if (!initialized or condition.len == 0) return;
+    if (!(pushThing("conditions", condition) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "on_event") != .function) {
+        lua.pop(1);
+        return;
+    }
+    characters_lua.pushCharacter(lua, ch.id);
+    characters_lua.pushCondition(lua, ch.id, condition);
+    _ = lua.pushString(event_name);
+    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("condition {s}.on_event({s}) failed: {s}", .{ condition, event_name, message });
+        lua.pop(1);
+    };
+}
+
 pub fn emitCharacterModifiers(ch: *cdb.char_data, cache: *modifiers_api.ModifierCache) void {
     if (!initialized) return;
     const lua = lua_state.?;

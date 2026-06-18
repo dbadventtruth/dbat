@@ -178,8 +178,6 @@ extern "C" {
 #define GET_MAJINIZED(ch) ((ch)->majinizer)
 #define GET_FURY(ch) char_stat_get((ch), "fury")
 #define GET_UP(ch) char_stat_get((ch), "upgrades")
-#define GET_FORGETING(ch) ((ch)->forgeting)
-#define GET_FORGET_COUNT(ch) ((ch)->forgetcount)
 #define GET_BANK_GOLD(ch) char_stat_get((ch), "money_bank")
 #define GET_POLE_BONUS(ch) char_legacy_modifier(ch, APPLY_ACCURACY, -1)
 #define GET_SPELLFAIL(ch) ((ch)->spellfail)

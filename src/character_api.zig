@@ -983,6 +983,81 @@ pub export fn char_condition_add_with_variables(ch: *cdb.char_data, condition: ?
     return true;
 }
 
+// Like char_condition_add but does NOT fire on_apply — use when you will set variables
+// immediately after and then call char_condition_notify_applied.
+pub export fn char_condition_add_silent(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) bool {
+    const name = statName(condition) orelse return false;
+    const definition = lua_api.conditionDefinition(name) orelse return false;
+    const cond_id = intern_mod.intern(name);
+    const zigdata = char_ensure_zigdata(ch) orelse return false;
+    const is_new = !zigdata.conditions.contains(cond_id);
+    if (is_new) {
+        var instance = ConditionInstance.init(std.heap.page_allocator, name) catch return false;
+        zigdata.conditions.put(cond_id, instance) catch {
+            instance.deinit(std.heap.page_allocator);
+            return false;
+        };
+    } else if (definition.stackable) {
+        zigdata.conditions.getPtr(cond_id).?.stacks += 1;
+    }
+    if (zigdata.conditions.getPtr(cond_id)) |instance| {
+        addConditionSource(instance, source_category, source_id) catch {};
+    }
+    conditionChanged(ch, zigdata);
+    return true;
+}
+
+// Fire on_apply for an already-added condition. Pair with char_condition_add_silent.
+pub export fn char_condition_notify_applied(ch: *cdb.char_data, condition: ?[*:0]const u8) void {
+    const name = statName(condition) orelse return;
+    lua_api.callConditionHook(ch, name, "on_apply", null);
+}
+
+// Dispatch a named event to a specific condition's on_event hook.
+// Idempotent if condition is not active on ch.
+pub export fn char_condition_event_dispatch(ch: *cdb.char_data, condition: ?[*:0]const u8, event_name: ?[*:0]const u8) void {
+    const name = statName(condition) orelse return;
+    const ev = statName(event_name) orelse return;
+    if (conditionGet(ch, condition) == null) return;
+    lua_api.callConditionEventHook(ch, name, ev);
+}
+
+// Fire on_game_activate on every active condition on ch.
+pub export fn char_condition_game_activate(ch: *cdb.char_data) void {
+    if (ch.zigdata == null) return;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var names = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
+    defer {
+        for (names.items) |n| std.heap.c_allocator.free(n);
+        names.deinit();
+    }
+    var it = zigdata.conditions.keyIterator();
+    while (it.next()) |id_ptr| {
+        names.append(std.heap.c_allocator.dupeZ(u8, intern_mod.nameOf(id_ptr.*)) catch return) catch return;
+    }
+    for (names.items) |name_z| {
+        lua_api.callConditionHook(ch, std.mem.sliceTo(name_z, 0), "on_game_activate", null);
+    }
+}
+
+// Fire on_game_deactivate on every active condition on ch.
+pub export fn char_condition_game_deactivate(ch: *cdb.char_data) void {
+    if (ch.zigdata == null) return;
+    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var names = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
+    defer {
+        for (names.items) |n| std.heap.c_allocator.free(n);
+        names.deinit();
+    }
+    var it = zigdata.conditions.keyIterator();
+    while (it.next()) |id_ptr| {
+        names.append(std.heap.c_allocator.dupeZ(u8, intern_mod.nameOf(id_ptr.*)) catch return) catch return;
+    }
+    for (names.items) |name_z| {
+        lua_api.callConditionHook(ch, std.mem.sliceTo(name_z, 0), "on_game_deactivate", null);
+    }
+}
+
 pub export fn char_condition_apply(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8) bool {
     return char_condition_apply_with_variables(ch, condition, source_category, source_id, null, 0, null, 0);
 }
@@ -1014,6 +1089,36 @@ pub export fn char_condition_apply_with_variables(ch: *cdb.char_data, condition:
 pub export fn char_condition_apply_with_number(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, key: ?[*:0]const u8, value: i64) bool {
     const args = [_]ConditionNumberArg{.{ .key = key, .value = value }};
     return char_condition_apply_with_variables(ch, condition, source_category, source_id, &args, args.len, null, 0);
+}
+
+pub export fn char_condition_apply_with_string(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, key: ?[*:0]const u8, value: ?[*:0]const u8) bool {
+    const args = [_]ConditionStringArg{.{ .key = key, .value = value }};
+    return char_condition_apply_with_variables(ch, condition, source_category, source_id, null, 0, &args, args.len);
+}
+
+pub export fn char_condition_apply_with_duration(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, duration: i64) bool {
+    const name = statName(condition) orelse return false;
+    if (lua_api.conditionDefinition(name) == null) return false;
+    if (ch.zigdata) |ptr| {
+        const zigdata: *CharacterData = @ptrCast(@alignCast(ptr));
+        var to_remove = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
+        defer {
+            for (to_remove.items) |item| std.heap.c_allocator.free(item);
+            to_remove.deinit();
+        }
+        var it = zigdata.conditions.keyIterator();
+        while (it.next()) |id_ptr| {
+            const cname = intern_mod.nameOf(id_ptr.*);
+            if (std.mem.eql(u8, cname, name)) continue;
+            if (!lua_api.conditionsConflict(name, cname)) continue;
+            to_remove.append(std.heap.c_allocator.dupeZ(u8, cname) catch return false) catch return false;
+        }
+        for (to_remove.items) |item| _ = char_condition_remove(ch, item.ptr, "exclusive");
+    }
+    if (!char_condition_add_silent(ch, condition, source_category, source_id)) return false;
+    _ = char_condition_duration_set(ch, condition, duration);
+    char_condition_notify_applied(ch, condition);
+    return true;
 }
 
 pub export fn char_condition_apply_with_numbers2(ch: *cdb.char_data, condition: ?[*:0]const u8, source_category: ?[*:0]const u8, source_id: ?[*:0]const u8, key1: ?[*:0]const u8, value1: i64, key2: ?[*:0]const u8, value2: i64) bool {

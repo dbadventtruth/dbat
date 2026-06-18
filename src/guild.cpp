@@ -88,7 +88,7 @@ int calculate_skill_cost(struct char_data *ch, int skill) {
   else if (GET_SKILL_BASE(ch, skill) > 30)
     cost += 1;
 
-  if (GET_FORGETING(ch) != 0)
+  if (char_condition_has(ch, "forget_skill"))
     cost += 6;
 
   if (skill == SKILL_RUNIC)
@@ -217,7 +217,8 @@ ACMD(do_teach) {
     send_to_char(
         ch, "They must be following you in order for you to teach them.\r\n");
     return;
-  } else if (GET_FORGETING(vict) == skill) {
+  } else if (char_condition_has(vict, "forget_skill") &&
+             strcmp(char_condition_string_get(vict, "forget_skill", "skill_name"), spell_info[skill].name) == 0) {
     send_to_char(ch, "They are trying to forget that skill!\r\n");
     return;
   } else if (GET_PRACTICES(vict, GET_CLASS(vict)) < cost) {
@@ -892,22 +893,24 @@ void handle_forget(struct char_data *keeper, struct guild_data *guild,
     send_to_char(ch, "@MYou can not forget such a fundamental skill!@n\r\n");
   } else if (GET_SKILL_BASE(ch, skill_num) <= 0) {
     send_to_char(ch, "@MYou can not forget a skill you don't know!@n\r\n");
-  } else if (GET_FORGETING(ch) == skill_num) {
+  } else if (char_condition_has(ch, "forget_skill") &&
+             strcmp(char_condition_string_get(ch, "forget_skill", "skill_name"), spell_info[skill_num].name) == 0) {
     send_to_char(ch, "@MYou stop forgetting %s@n\r\n",
                  spell_info[skill_num].name);
-    GET_FORGET_COUNT(ch) = 0;
-    GET_FORGETING(ch) = 0;
-  } else if (GET_FORGETING(ch) != 0) {
+    char_condition_remove(ch, "forget_skill", "cancelled");
+  } else if (char_condition_has(ch, "forget_skill")) {
     send_to_char(
         ch, "@MYou stop forgetting %s, and start trying to forget %s.@n\r\n",
-        spell_info[GET_FORGETING(ch)].name, spell_info[skill_num].name);
-    GET_FORGET_COUNT(ch) = 0;
-    GET_FORGETING(ch) = skill_num;
+        char_condition_string_get(ch, "forget_skill", "skill_name"),
+        spell_info[skill_num].name);
+    char_condition_remove(ch, "forget_skill", "replaced");
+    char_condition_apply_with_string(ch, "forget_skill", "guild", "forget",
+                                     "skill_name", spell_info[skill_num].name);
   } else {
     send_to_char(ch, "@MYou start trying to forget %s.@n\r\n",
                  spell_info[skill_num].name);
-    GET_FORGET_COUNT(ch) = 0;
-    GET_FORGETING(ch) = skill_num;
+    char_condition_apply_with_string(ch, "forget_skill", "guild", "forget",
+                                     "skill_name", spell_info[skill_num].name);
   }
 }
 
@@ -1006,7 +1009,8 @@ void handle_practice(struct char_data *keeper, struct guild_data *guild,
     skill_num = 539;
   }
 
-  if (skill_num == GET_FORGETING(ch)) {
+  if (char_condition_has(ch, "forget_skill") &&
+      strcmp(char_condition_string_get(ch, "forget_skill", "skill_name"), spell_info[skill_num].name) == 0) {
     send_to_char(ch,
                  "You can't practice that! You are trying to forget it!@n\r\n");
     return;
@@ -1117,22 +1121,6 @@ void handle_practice(struct char_data *keeper, struct guild_data *guild,
             SET_SKILL(ch, skill_num,
                       GET_SKILL_BASE(ch, skill_num) + rand_number(10, 25));
             char_stat_mod(ch, "practices", -pointcost);
-            if (GET_FORGETING(ch) != 0 &&
-                GET_SKILL_BASE(ch, GET_FORGETING(ch)) < 30) {
-              GET_FORGET_COUNT(ch) += 1;
-              if (GET_FORGET_COUNT(ch) >= 5) {
-                SET_SKILL(ch, GET_FORGETING(ch), 0);
-                send_to_char(ch,
-                             "@MYou have finally forgotten what little you "
-                             "knew of %s@n\r\n",
-                             spell_info[GET_FORGETING(ch)].name);
-                GET_FORGETING(ch) = 0;
-                GET_FORGET_COUNT(ch) = 0;
-                save_char(ch);
-              }
-            } else if (GET_SKILL_BASE(ch, GET_FORGETING(ch)) < 30) {
-              GET_FORGETING(ch) = 0;
-            }
           } else {
             send_to_char(ch, "You already know the maximum number of skills "
                              "you can for the time being!\r\n");
@@ -1156,19 +1144,6 @@ void handle_practice(struct char_data *keeper, struct guild_data *guild,
               SET_SKILL(ch, skill_num, GET_SKILL_BASE(ch, skill_num) + 5);
             }
             gain_exp(ch, level_exp(ch, GET_LEVEL(ch) + 1) / 20);
-          }
-          if (GET_FORGETING(ch) != 0) {
-            GET_FORGET_COUNT(ch) += 1;
-            if (GET_FORGET_COUNT(ch) >= 5) {
-              SET_SKILL(ch, GET_FORGETING(ch), 0);
-              send_to_char(ch,
-                           "@MYou have finally forgotten what little you knew "
-                           "of %s@n\r\n",
-                           spell_info[GET_FORGETING(ch)].name);
-              GET_FORGETING(ch) = 0;
-              GET_FORGET_COUNT(ch) = 0;
-              save_char(ch);
-            }
           }
         }
       }
