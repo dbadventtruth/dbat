@@ -873,20 +873,8 @@ ACMD(do_finddoor) {
   }
 }
 
-ACMD(do_recall) {
-  if (GET_ADMLEVEL(ch) < 1) {
-    send_to_char(ch, "You are not an immortal!\r\n");
-  } else {
-    send_to_char(ch, "You disappear in a burst of light!\r\n");
-    act("$n disappears in a burst of light!", FALSE, ch, 0, 0, TO_ROOM);
-    if (room_by_id(2)) {
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(2));
-      look_at_room(char_room_get(ch), ch, 0);
-      GET_LOADROOM(ch) = char_room_vnum_get(ch);
-    }
-  }
-}
+/* do_recall moved to lua/characters/pcommands/wizard/recall.lua */
+ACMD(do_recall) { (void)ch; (void)argument; (void)cmd; (void)subcmd; }
 
 ACMD(do_hell) {
   struct char_data *vict;
@@ -1145,31 +1133,7 @@ ACMD(do_at) {
   }
 }
 
-ACMD(do_goto) {
-  char buf[MAX_STRING_LENGTH];
-  struct room_data *location;
-
-  if ((location = find_target_room(ch, argument)) == NULL)
-    return;
-  if (PLR_FLAGGED(ch, PLR_HEALT)) {
-    send_to_char(ch, "They are inside a healing tank!\r\n");
-    return;
-  }
-
-  snprintf(buf, sizeof(buf), "$n %s",
-           POOFOUT(ch) ? POOFOUT(ch) : "disappears in a puff of smoke.");
-  act(buf, TRUE, ch, 0, 0, TO_ROOM);
-
-  char_from_room(ch);
-  char_to_room(ch, location);
-
-  snprintf(buf, sizeof(buf), "$n %s",
-           POOFIN(ch) ? POOFIN(ch) : "appears with an ear-splitting bang.");
-  act(buf, TRUE, ch, 0, 0, TO_ROOM);
-
-  look_at_room(char_room_get(ch), ch, 0);
-  enter_wtrigger(char_room_get(ch), ch, -1);
-}
+/* do_goto moved to lua/characters/pcommands/wizard/goto.lua */
 
 ACMD(do_trans) {
   char buf[MAX_INPUT_LENGTH];
@@ -1257,39 +1221,7 @@ ACMD(do_teleport) {
   }
 }
 
-ACMD(do_vnum) {
-  char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
-
-  half_chop(argument, buf, buf2);
-
-  if (!*buf || !*buf2 ||
-      (!is_abbrev(buf, "mob") && !is_abbrev(buf, "obj") &&
-       !is_abbrev(buf, "mat") && !is_abbrev(buf, "wtype") &&
-       !is_abbrev(buf, "atype"))) {
-    send_to_char(
-        ch, "Usage: vnum { atype | material | mob | obj | wtype } <name>\r\n");
-    return;
-  }
-  if (is_abbrev(buf, "mob"))
-    if (!vnum_mobile(buf2, ch))
-      send_to_char(ch, "No mobiles by that name.\r\n");
-
-  if (is_abbrev(buf, "obj"))
-    if (!vnum_object(buf2, ch))
-      send_to_char(ch, "No objects by that name.\r\n");
-
-  if (is_abbrev(buf, "mat"))
-    if (!vnum_material(buf2, ch))
-      send_to_char(ch, "No materials by that name.\r\n");
-
-  if (is_abbrev(buf, "wtype"))
-    if (!vnum_weapontype(buf2, ch))
-      send_to_char(ch, "No weapon types by that name.\r\n");
-
-  if (is_abbrev(buf, "atype"))
-    if (!vnum_armortype(buf2, ch))
-      send_to_char(ch, "No armor types by that name.\r\n");
-}
+/* do_vnum moved to lua/characters/pcommands/wizard/vnum.lua */
 
 void list_zone_commands_room(struct char_data *ch, room_vnum rvnum) {
 
@@ -2307,78 +2239,7 @@ ACMD(do_return) {
   }
 }
 
-ACMD(do_load) {
-  char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH], buf3[MAX_INPUT_LENGTH];
-  int i = 0, n = 1;
-
-  one_argument(two_arguments(argument, buf, buf2), buf3);
-
-  if (!*buf || !*buf2 || !isdigit(*buf2)) {
-    send_to_char(ch, "Usage: load { obj | mob } <vnum> (amt)\r\n");
-    return;
-  }
-  if (!is_number(buf2) || !is_number(buf3)) {
-    send_to_char(ch, "That is not a number.\r\n");
-    return;
-  }
-
-  if (atoi(buf3) > 0) {
-    if (atoi(buf3) >= 100) {
-      n = 100;
-    } else if (atoi(buf3) < 100) {
-      n = atoi(buf3);
-    }
-  } else {
-    n = 1;
-  }
-
-  if (is_abbrev(buf, "mob")) {
-    struct char_data *mob = NULL;
-    struct mob_proto_data *proto = NULL;
-    mob_vnum v_num = atoi(buf2);
-
-    if (!(proto = mob_proto_by_id(v_num))) {
-      send_to_char(ch, "There is no monster with that number.\r\n");
-      return;
-    }
-    for (i = 0; i < n; i++) {
-      mob = read_mobile(v_num, VIRTUAL);
-      char_to_room(mob, char_room_get(ch));
-
-      act("$n makes a quaint, magical gesture with one hand.", TRUE, ch, 0, 0,
-          TO_ROOM);
-      act("$n has created $N!", FALSE, ch, 0, mob, TO_ROOM);
-      act("You create $N.", FALSE, ch, 0, mob, TO_CHAR);
-      load_mtrigger(mob);
-    }
-  } else if (is_abbrev(buf, "obj")) {
-    struct obj_data *obj;
-    struct obj_proto_data *proto;
-
-    if (!(proto = obj_proto_by_id(atoi(buf2)))) {
-      send_to_char(ch, "There is no object with that number.\r\n");
-      return;
-    }
-    for (i = 0; i < n; i++) {
-      obj = read_object(proto->id, VIRTUAL);
-      if (GET_ADMLEVEL(ch) > 0) {
-        send_to_imm("LOAD: %s has loaded a %s", GET_NAME(ch),
-                    obj->short_description);
-        log_imm_action("LOAD: %s has loaded a %s", GET_NAME(ch),
-                       obj->short_description);
-      }
-      if (CONFIG_LOAD_INVENTORY)
-        obj_to_char(obj, ch);
-      else
-        obj_to_room(obj, char_room_get(ch));
-      act("$n makes a strange magical gesture.", TRUE, ch, 0, 0, TO_ROOM);
-      act("$n has created $p!", FALSE, ch, obj, 0, TO_ROOM);
-      act("You create $p.", FALSE, ch, obj, 0, TO_CHAR);
-      load_otrigger(obj);
-    }
-  } else
-    send_to_char(ch, "That'll have to be either 'obj' or 'mob'.\r\n");
-}
+/* do_load moved to lua/characters/pcommands/wizard/load.lua */
 
 ACMD(do_vstat) {
   char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
@@ -2788,38 +2649,7 @@ ACMD(do_handout) {
   log_imm_action("HANDOUT: %s has handed out 10 PS to everyone.", GET_NAME(ch));
 }
 
-ACMD(do_restore) {
-  char buf[MAX_INPUT_LENGTH];
-  struct char_data *vict;
-  struct descriptor_data *j;
-  int i;
-
-  one_argument(argument, buf);
-  if (!*buf)
-    send_to_char(ch, "Whom do you wish to restore?\r\n");
-  else if (is_abbrev(buf, "all")) {
-    send_to_imm("[Log: %s restored all.]", GET_NAME(ch));
-    log_imm_action("RESTORE: %s has restored all players.", GET_NAME(ch));
-    for (j = descriptor_list; j; j = j->next) {
-      if (!IS_PLAYING(j) || !(vict = j->character))
-        continue;
-      restore_by(vict, ch);
-    }
-    send_to_char(ch, "Okay.\r\n");
-  } else if (!(vict = get_char_vis(ch, buf, NULL, FIND_CHAR_WORLD)))
-    send_to_char(ch, "%s", CONFIG_NOPERSON);
-  else if (!IS_NPC(vict) && ch != vict &&
-           GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
-    send_to_char(ch, "They don't need your help.\r\n");
-  else {
-    restore_by(vict, ch);
-    send_to_char(ch, "%s", CONFIG_OK);
-    send_to_imm("[Log: %s restored %s.]", GET_NAME(ch), GET_NAME(vict));
-    log_imm_action("RESTORE: %s has restored %s.", GET_NAME(ch),
-                   GET_NAME(vict));
-  }
-}
-
+/* do_restore moved to lua/characters/pcommands/wizard/restore.lua */
 void perform_immort_vis(struct char_data *ch) { GET_INVIS_LEV(ch) = 0; }
 
 static void perform_immort_invis(struct char_data *ch, int level) {

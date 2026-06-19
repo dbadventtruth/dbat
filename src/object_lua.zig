@@ -97,6 +97,9 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "to_room", luaObjectToRoom);
     addMethod(lua, "from_char", luaObjectFromChar);
     addMethod(lua, "to_char", luaObjectToChar);
+    addMethod(lua, "from_container", luaObjectFromContainer);
+    addMethod(lua, "to_container", luaObjectToContainer);
+    addMethod(lua, "show_to", luaObjectShowTo);
     addMethod(lua, "equip", luaObjectEquip);
     addMethod(lua, "value_get", luaObjectValueGet);
     addMethod(lua, "value_set", luaObjectValueSet);
@@ -143,6 +146,7 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "worn_on_set", luaObjectWornOnSet);
     addMethod(lua, "in_obj_get", luaObjectInObjGet);
     addMethod(lua, "sitting_get", luaObjectSittingGet);
+    addMethod(lua, "sitting_set", luaObjectSittingSet);
     addMethod(lua, "inventory_count", luaObjectInventoryCount);
     addMethod(lua, "inventory_get", luaObjectInventoryGet);
     addMethod(lua, "inventory", luaObjectInventoryGet);
@@ -367,6 +371,25 @@ fn luaObjectToChar(lua: *Lua) i32 {
     const ch = characters_lua.checkCharacterAt(lua, 2);
     removeObjectFromLocation(obj);
     cdb.obj_to_char(obj, ch);
+    return 0;
+}
+
+fn luaObjectFromContainer(lua: *Lua) i32 {
+    cdb.obj_from_container(checkObject(lua));
+    return 0;
+}
+
+fn luaObjectToContainer(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const container = checkObjectAt(lua, 2);
+    cdb.obj_to_container(obj, container);
+    return 0;
+}
+
+fn luaObjectShowTo(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const ch = characters_lua.checkCharacterAt(lua, 2);
+    cdb.obj_show_action_to_char(obj, ch);
     return 0;
 }
 
@@ -677,6 +700,12 @@ fn luaObjectInObjGet(lua: *Lua) i32 {
 fn luaObjectSittingGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.obj_sitting_get(checkObject(lua)));
     return 1;
+}
+fn luaObjectSittingSet(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const ch: ?*cdb.char_data = if (lua.isNoneOrNil(2)) null else characters_lua.checkCharacterAt(lua, 2);
+    cdb.obj_sitting_set(obj, ch);
+    return 0;
 }
 
 fn luaObjectInventoryCount(lua: *Lua) i32 {

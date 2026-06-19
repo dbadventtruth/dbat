@@ -159,6 +159,13 @@ pub fn register(lua: *Lua) void {
     pushStringArray(lua, cdb.hairs_types);       lua.setField(-2, "hair_style_names");
     pushStringArray(lua, cdb.skin_types);        lua.setField(-2, "skin_color_names");
 
+    // Timing constants
+    lua.pushInteger(300);  lua.setField(-2, "secs_per_mud_hour");
+    lua.newTable();
+    lua.pushInteger(10);  lua.setField(-2, "one_sec");
+    lua.pushInteger(20);  lua.setField(-2, "two_sec");
+    lua.setField(-2, "pulses");
+
     // Bound constants for iterating string arrays
     lua.pushInteger(cdb.NUM_WEARS);          lua.setField(-2, "NUM_WEARS");
     lua.pushInteger(cdb.NUM_SIZES);          lua.setField(-2, "NUM_SIZES");

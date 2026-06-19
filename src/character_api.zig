@@ -1622,6 +1622,23 @@ pub export fn char_absorbs_get(ch: *cdb.char_data) c_int { return ch.absorbs; }
 pub export fn char_mimic_get(ch: *cdb.char_data) c_int { return ch.mimic; }
 pub export fn char_backstab_cooldown_get(ch: *cdb.char_data) c_int { return ch.backstabcool; }
 pub export fn char_preference_get(ch: *cdb.char_data) c_int { return ch.preference; }
+pub export fn char_preference_set(ch: *cdb.char_data, value: c_int) void { ch.preference = value; }
+pub export fn char_genome_get(ch: *cdb.char_data, slot: c_int) c_int {
+    const idx: usize = @intCast(slot);
+    if (idx >= ch.genome.len) return 0;
+    return ch.genome[idx];
+}
+pub export fn char_wait_set(ch: *cdb.char_data, pulses: c_int) void {
+    if (ch.desc != null) ch.wait = pulses;
+}
+pub export fn char_know_skill(ch: *cdb.char_data, skill_name: ?[*:0]const u8) bool {
+    const index = skillIndex(skill_name) orelse return false;
+    return cdb.know_skill(ch, @intCast(index)) != 0;
+}
+pub export fn char_improve_skill(ch: *cdb.char_data, skill_name: ?[*:0]const u8, flag: c_int) void {
+    const index = skillIndex(skill_name) orelse return;
+    cdb.improve_skill(ch, @intCast(index), flag);
+}
 pub export fn char_aura_get(ch: *cdb.char_data) c_int { return ch.aura; }
 pub export fn char_hairl_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairl); }
 pub export fn char_hairs_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairs); }
@@ -1634,3 +1651,96 @@ pub export fn char_relax_count_get(ch: *cdb.char_data) c_int { return ch.relax_c
 
 pub export fn char_has_group(ch: *cdb.char_data) bool { return cdb.has_group(ch) != 0; }
 pub export fn char_soft_cap(ch: *cdb.char_data) i64 { return cdb.calc_soft_cap(ch); }
+
+// extern declarations for C functions not in zig_api.h
+extern fn carry_drop(ch: *cdb.char_data, @"type": c_int) void;
+extern fn look_at_room(room: *cdb.room_data, ch: *cdb.char_data, mode: c_int) void;
+extern fn do_fly(ch: *cdb.char_data, arg: ?[*:0]u8, cmd: c_int, subcmd: c_int) void;
+extern fn find_target_room(ch: *cdb.char_data, rawroomstr: [*:0]u8) ?*cdb.room_data;
+extern fn vnum_mobile(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
+extern fn vnum_object(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
+extern fn vnum_material(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
+extern fn vnum_weapontype(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
+extern fn vnum_armortype(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
+
+pub export fn char_bonus_flagged(ch: *cdb.char_data, n: c_int) bool {
+    const idx: usize = @intCast(n);
+    if (idx >= ch.bonuses.len) return false;
+    return ch.bonuses[idx] != 0;
+}
+pub export fn char_affflag_set(ch: *cdb.char_data, flag: c_int, val: bool) void {
+    bitflags.set(ch.affected_by[0..], flag, val);
+}
+pub export fn char_barrier_set(ch: *cdb.char_data, val: i64) void { ch.barrier = val; }
+pub export fn char_carry_drop(ch: *cdb.char_data, @"type": c_int) void { carry_drop(ch, @"type"); }
+pub export fn char_land(ch: *cdb.char_data) void {
+    if (cdb.char_condition_has(ch, "flying")) do_fly(ch, null, 0, 0);
+}
+pub export fn char_arena_idnum_get(ch: *cdb.char_data) c_int { return @intCast(ch.arenawatch); }
+pub export fn char_arena_idnum_set(ch: *cdb.char_data, idnum: c_int) void { ch.arenawatch = @intCast(idnum); }
+
+pub export fn char_poofin_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.poofin; }
+pub export fn char_poofout_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.poofout; }
+pub export fn char_loadroom_get(ch: *cdb.char_data) c_int { return @intCast(ch.load_room); }
+pub export fn char_loadroom_set(ch: *cdb.char_data, vnum: c_int) void { ch.load_room = @intCast(vnum); }
+pub export fn char_look_at_room(ch: *cdb.char_data) void {
+    const room = cdb.char_room_get(ch) orelse return;
+    look_at_room(room, ch, 0);
+}
+pub export fn char_restore(vict: *cdb.char_data, healer: *cdb.char_data) void {
+    cdb.restore_by(vict, healer);
+}
+pub export fn char_find_target_room(ch: *cdb.char_data, arg: ?[*:0]const u8) ?*cdb.room_data {
+    if (arg == null) return null;
+    var buf: [256:0]u8 = undefined;
+    const src = std.mem.span(arg.?);
+    const len = @min(src.len, buf.len - 1);
+    @memcpy(buf[0..len], src[0..len]);
+    buf[len] = 0;
+    return find_target_room(ch, &buf);
+}
+pub export fn char_vnum_mob(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
+    if (name == null) return 0;
+    var buf: [256:0]u8 = undefined;
+    const src = std.mem.span(name.?);
+    const len = @min(src.len, buf.len - 1);
+    @memcpy(buf[0..len], src[0..len]);
+    buf[len] = 0;
+    return vnum_mobile(&buf, ch);
+}
+pub export fn char_vnum_obj(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
+    if (name == null) return 0;
+    var buf: [256:0]u8 = undefined;
+    const src = std.mem.span(name.?);
+    const len = @min(src.len, buf.len - 1);
+    @memcpy(buf[0..len], src[0..len]);
+    buf[len] = 0;
+    return vnum_object(&buf, ch);
+}
+pub export fn char_vnum_mat(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
+    if (name == null) return 0;
+    var buf: [256:0]u8 = undefined;
+    const src = std.mem.span(name.?);
+    const len = @min(src.len, buf.len - 1);
+    @memcpy(buf[0..len], src[0..len]);
+    buf[len] = 0;
+    return vnum_material(&buf, ch);
+}
+pub export fn char_vnum_wtype(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
+    if (name == null) return 0;
+    var buf: [256:0]u8 = undefined;
+    const src = std.mem.span(name.?);
+    const len = @min(src.len, buf.len - 1);
+    @memcpy(buf[0..len], src[0..len]);
+    buf[len] = 0;
+    return vnum_weapontype(&buf, ch);
+}
+pub export fn char_vnum_atype(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
+    if (name == null) return 0;
+    var buf: [256:0]u8 = undefined;
+    const src = std.mem.span(name.?);
+    const len = @min(src.len, buf.len - 1);
+    @memcpy(buf[0..len], src[0..len]);
+    buf[len] = 0;
+    return vnum_armortype(&buf, ch);
+}

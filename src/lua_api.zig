@@ -1091,6 +1091,21 @@ fn openDbat(lua: *Lua) i32 {
     lua.pushFunction(zlua.wrap(luaAddCommas));
     lua.setField(-2, "format_number");
 
+    lua.pushFunction(zlua.wrap(luaAxionDice));
+    lua.setField(-2, "axion_dice");
+
+    lua.pushFunction(zlua.wrap(luaSendToImm));
+    lua.setField(-2, "send_to_imm");
+
+    lua.pushFunction(zlua.wrap(luaLogImmAction));
+    lua.setField(-2, "log_imm_action");
+
+    lua.pushFunction(zlua.wrap(luaEachPlayer));
+    lua.setField(-2, "each_player");
+
+    lua.pushBoolean(cdb.config_info.play.load_into_inventory != 0);
+    lua.setField(-2, "load_into_inventory");
+
     registerTestModule(lua);
 
     return 1;
@@ -1190,9 +1205,42 @@ fn luaWeather(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaAxionDice(lua: *Lua) i32 {
+    const adjust: c_int = if (lua.isNoneOrNil(1)) 0 else @intCast(lua.toInteger(1) catch 0);
+    lua.pushInteger(cdb.axion_dice(adjust));
+    return 1;
+}
+
 fn luaLog(lua: *Lua) i32 {
     const message = lua.toString(1) catch "";
     std.log.info("lua: {s}", .{message});
+    return 0;
+}
+
+fn luaSendToImm(lua: *Lua) i32 {
+    const msg = lua.toString(1) catch return 0;
+    cdb.char_send_to_imm(msg.ptr);
+    return 0;
+}
+
+fn luaLogImmAction(lua: *Lua) i32 {
+    const msg = lua.toString(1) catch return 0;
+    cdb.char_log_imm_action(msg.ptr);
+    return 0;
+}
+
+fn luaEachPlayer(lua: *Lua) i32 {
+    if (!lua.isFunction(1)) lua.typeError(1, "function");
+    var desc = cdb.descriptor_list;
+    while (desc != null) {
+        const d: *cdb.descriptor_data = @ptrCast(desc.?);
+        desc = d.next;
+        if (d.connected != cdb.CON_PLAYING) continue;
+        const ch = d.character orelse continue;
+        lua.pushValue(1);
+        characters_lua.pushCharacter(lua, cdb.char_id_get(@ptrCast(ch)));
+        lua.protectedCall(.{ .args = 1, .results = 0 }) catch {};
+    }
     return 0;
 }
 

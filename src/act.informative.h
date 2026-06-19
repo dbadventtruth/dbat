@@ -36,8 +36,10 @@ ACMD(do_examine);
 /* do_status moved to lua/characters/pcommands/info/status.lua */
 /* do_inventory moved to lua/characters/pcommands/info/inventory.lua */
 /* do_equipment moved to lua/characters/pcommands/info/equipment.lua */
-ACMD(do_time);
-ACMD(do_weather);
+/* do_time moved to lua/characters/pcommands/info/time.lua */
+/* do_weather moved to lua/characters/pcommands/info/weather.lua */
+/* do_levels moved to lua/characters/pcommands/info/levels.lua */
+/* do_consider moved to lua/characters/pcommands/info/consider.lua */
 ACMD(do_help);
 ACMD(do_who);
 ACMD(do_users);
@@ -57,17 +59,17 @@ ACMD(do_rptrans);
 ACMD(do_finger);
 ACMD(do_perf);
 ACMD(do_nickname);
-ACMD(do_table);
-ACMD(do_play);
+/* do_table moved to lua/characters/commands/cardgame/table.lua */
+/* do_play moved to lua/characters/commands/cardgame/play.lua */
 ACMD(do_post);
-ACMD(do_hand);
-ACMD(do_shuffle);
-ACMD(do_draw);
-ACMD(do_kyodaika);
+/* do_hand moved to lua/characters/commands/cardgame/hand.lua */
+/* do_shuffle moved to lua/characters/commands/cardgame/shuffle.lua */
+/* do_draw moved to lua/characters/commands/cardgame/draw.lua */
+/* do_kyodaika moved to lua/characters/commands/namek/kyodaika.lua */
 ACMD(do_mimic);
 ACMD(do_rdisplay);
 /* do_evolve moved to lua/characters/commands/advancement/evolve.lua */
-ACMD(do_showoff);
+/* do_showoff moved to lua/characters/commands/items/show.lua */
 ACMD(do_intro);
 ACMD(do_scan);
 ACMD(do_toplist);

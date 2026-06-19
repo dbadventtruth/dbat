@@ -422,6 +422,11 @@ int     char_absorbs_get(struct char_data *ch);
 int     char_mimic_get(struct char_data *ch);
 int     char_backstab_cooldown_get(struct char_data *ch);
 int     char_preference_get(struct char_data *ch);
+void    char_preference_set(struct char_data *ch, int value);
+int     char_genome_get(struct char_data *ch, int slot);
+void    char_wait_set(struct char_data *ch, int pulses);
+bool    char_know_skill(struct char_data *ch, const char *skill_name);
+void    char_improve_skill(struct char_data *ch, const char *skill_name, int flag);
 int     char_aura_get(struct char_data *ch);
 int     char_hairl_get(struct char_data *ch);
 int     char_hairs_get(struct char_data *ch);
@@ -434,6 +439,33 @@ bool    char_has_group(struct char_data *ch);
 bool    char_has_mail(struct char_data *ch);
 int64_t char_soft_cap(struct char_data *ch);
 bool    char_news_pending(struct char_data *ch);
+
+/* Position commands */
+bool    char_bonus_flagged(struct char_data *ch, int n);
+void    char_affflag_set(struct char_data *ch, int flag, bool val);
+void    char_barrier_set(struct char_data *ch, int64_t val);
+void    char_carry_drop(struct char_data *ch, int type);
+void    char_land(struct char_data *ch);
+int     char_arena_idnum_get(struct char_data *ch);
+void    char_arena_idnum_set(struct char_data *ch, int idnum);
+
+/* Wizard commands */
+const char *char_poofin_get(struct char_data *ch);
+const char *char_poofout_get(struct char_data *ch);
+int     char_loadroom_get(struct char_data *ch);
+void    char_loadroom_set(struct char_data *ch, int vnum);
+void    char_look_at_room(struct char_data *ch);
+void    char_restore(struct char_data *vict, struct char_data *healer);
+struct room_data *char_find_target_room(struct char_data *ch, const char *arg);
+int     char_vnum_mob(struct char_data *ch, const char *name);
+int     char_vnum_obj(struct char_data *ch, const char *name);
+int     char_vnum_mat(struct char_data *ch, const char *name);
+int     char_vnum_wtype(struct char_data *ch, const char *name);
+int     char_vnum_atype(struct char_data *ch, const char *name);
+
+/* Imm logging / messaging */
+void    char_send_to_imm(const char *msg);
+void    char_log_imm_action(const char *msg);
 
 #ifdef __cplusplus
 }

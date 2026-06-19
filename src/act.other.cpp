@@ -1971,30 +1971,8 @@ ACMD(do_rip) {
   }
 }
 
-ACMD(do_infuse) {
-
-  if (!know_skill(ch, SKILL_INFUSE)) {
-    return;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_INFUSE)) {
-    act("You stop infusing ki into your attacks.", TRUE, ch, 0, 0, TO_CHAR);
-    act("$n stops infusing ki into $s attacks.", TRUE, ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_INFUSE);
-    return;
-  }
-
-  if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 100) {
-    send_to_char(ch,
-                 "You don't have enough ki to infuse into your attacks!\r\n");
-    return;
-  }
-  reveal_hiding(ch, 0);
-  act("You start infusing ki into your attacks.", TRUE, ch, 0, 0, TO_CHAR);
-  act("$n starts infusing ki into $s attacks.", TRUE, ch, 0, 0, TO_ROOM);
-  SET_BIT_AR(AFF_FLAGS(ch), AFF_INFUSE);
-  decCurKI(ch, getMaxKI(ch) / 100);
-}
+/* do_infuse moved to lua/characters/commands/misc/infuse.lua */
+ACMD(do_infuse) { (void)ch; (void)argument; (void)cmd; (void)subcmd; }
 
 ACMD(do_paralyze) {
   struct char_data *vict;
@@ -12394,3 +12372,6 @@ ACMD(do_aura) {
     }
   }
 }
+
+void char_send_to_imm(const char *msg) { send_to_imm("%s", msg); }
+void char_log_imm_action(const char *msg) { log_imm_action("%s", msg); }

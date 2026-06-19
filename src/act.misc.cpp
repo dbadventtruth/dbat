@@ -93,81 +93,9 @@ static void catch_fish(struct char_data *ch, int quality);
 static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b);
 static int valid_silk(struct obj_data *obj);
 
-ACMD(do_spiritcontrol) {
-
-  if (!GET_SKILL(ch, SKILL_SPIRITCONTROL)) {
-    send_to_char(ch, "You do not know how to perform that technique.\r\n");
-    return;
-  } else {
-    if (char_condition_has(ch, "spirit_control")) {
-      send_to_char(ch, "You have already concentrated and have full control of "
-                       "your spirit.\r\n");
-      return;
-    } else {
-      int64_t cost = GET_MAX_MANA(ch) * 0.2;
-      if ((getCurST(ch)) < cost) {
-        send_to_char(ch,
-                     "You need at least 20%s of your max ki in stamina to "
-                     "prepare this skill.\r\n",
-                     "%");
-        return;
-      } else {
-        decCurST(ch, cost);
-        act("@YYou concentrate and quantify every last bit of your spiritual "
-            "and mental energies. You have full control of them and can bring "
-            "them forth in an instant.@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@y$n@Y seems to concentrate hard for a moment.@n", TRUE, ch, 0, 0,
-            TO_ROOM);
-        int duration = rand_number(2, 4);
-        char_condition_apply_with_duration(ch, "spirit_control", "spirit", "control", duration * SECS_PER_MUD_HOUR);
-      }
-    }
-  }
-}
-
-ACMD(do_tailhide) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!(IS_SAIYAN(ch)) && !(IS_HALFBREED(ch))) {
-    send_to_char(ch, "You have no need to hide your tail!\r\n");
-    return;
-  }
-
-  if (!(PLR_FLAGGED(ch, PLR_TAILHIDE))) {
-    SET_BIT_AR(PLR_FLAGS(ch), PLR_TAILHIDE);
-    act("You tuck your tail away, hiding it from view.", FALSE, ch, 0, 0,
-        TO_CHAR);
-    act("$n tucks $s tail away, hiding it from view.", FALSE, ch, 0, 0,
-        TO_ROOM);
-  } else {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TAILHIDE);
-    act("You have decided to display your tail for all to see!", FALSE, ch, 0,
-        0, TO_CHAR);
-    act("$n has decided to display $s tail for all to see!", FALSE, ch, 0, 0,
-        TO_ROOM);
-  }
-}
-
-ACMD(do_nogrow) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!(IS_SAIYAN(ch)) && !(IS_HALFBREED(ch))) {
-    send_to_char(ch, "What do you mean?\r\n");
-  }
-  if ((IS_SAIYAN(ch) || IS_HALFBREED(ch)) && !(PLR_FLAGGED(ch, PLR_NOGROW))) {
-    SET_BIT_AR(PLR_FLAGS(ch), PLR_NOGROW);
-    send_to_char(ch, "You have decided to halt your tail growth!\r\n");
-  } else if ((IS_SAIYAN(ch) || IS_HALFBREED(ch)) &&
-             PLR_FLAGGED(ch, PLR_NOGROW)) {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_NOGROW);
-    send_to_char(ch, "You have decided to regrow your tail!\r\n");
-  }
-}
+/* do_spiritcontrol moved to lua/characters/commands/misc/spiritcontrol.lua */
+/* do_tailhide moved to lua/characters/commands/misc/tailhide.lua */
+/* do_nogrow moved to lua/characters/commands/misc/nogrow.lua */
 
 ACMD(do_restring) {
 
@@ -791,57 +719,7 @@ ACMD(do_song) {
   }
 }
 
-ACMD(do_preference) {
-
-  if (IS_NPC(ch))
-    return;
-
-  char arg[MAX_INPUT_LENGTH];
-
-  one_argument(argument, arg);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: preference (throw | weapon | hand | ki)\r\n");
-    return;
-  }
-
-  if (GET_PREFERENCE(ch) > 0) {
-    send_to_char(ch,
-                 "You've already chosen a specialization. No going back.\r\n");
-    return;
-  }
-
-  if (!strcasecmp(arg, "throw")) {
-    send_to_char(ch, "You will now favor throwing weapons as fighting "
-                     "specialization. You're sure to nail it.\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_THROWING;
-    if (GET_SKILL_BASE(ch, SKILL_THROW) <= 90) {
-      GET_SKILL_BASE(ch, SKILL_THROW) += 10;
-    } else if (GET_SKILL_BASE(ch, SKILL_THROW) < 100) {
-      GET_SKILL_BASE(ch, SKILL_THROW) = 100;
-    }
-    return;
-  } else if (!strcasecmp(arg, "hand")) {
-    send_to_char(ch, "You will now favor your body as your fighting "
-                     "specialization. Your body is ready.\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_H2H;
-    return;
-  } else if (!strcasecmp(arg, "ki")) {
-    send_to_char(
-        ch, "You will now favor your ki energy as your fighting "
-            "specialization. I expect more than a few smoldering craters.\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_KI;
-    return;
-  } else if (!strcasecmp(arg, "weapon")) {
-    send_to_char(ch, "You will now favor your weapons as your fighting "
-                     "specialization. Let the blood fly!\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_WEAPON;
-    return;
-  } else {
-    send_to_char(ch, "Syntax: preference (throw | weapon | hand | ki)\r\n");
-    return;
-  }
-}
+/* do_preference moved to lua/characters/commands/misc/preference.lua */
 
 ACMD(do_moondust) {
   int64_t cost = GET_MAX_MOVE(ch) * 0.02, heal = 0;
@@ -926,57 +804,7 @@ ACMD(do_moondust) {
   });
 }
 
-ACMD(do_shell) {
-
-  if (!IS_ARLIAN(ch)) {
-    send_to_char(ch, "You are not capable of doing that!\r\n");
-    return;
-  }
-
-  if (GET_SEX(ch) == SEX_FEMALE) {
-    send_to_char(ch, "Sorry, you can't do that.\r\n");
-    return;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_SHELL)) {
-    act("@mYou quickly absorb the armor carapace covering your body back "
-        "inside.@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@M$n's@m armored carapce retreats back to its original size.@n", TRUE,
-        ch, 0, 0, TO_ROOM);
-    char_condition_remove(ch, "arlian_shell", "retract");
-    return;
-  }
-
-  if ((getCurST(ch)) < GET_MAX_MOVE(ch) * 0.2) {
-    send_to_char(
-        ch,
-        "You do not have enough stamina to grow your armored carapace.@n\r\n");
-    return;
-  } else if (axion_dice(0) > GET_CON(ch) + rand_number(1, 10)) {
-    act("@mYou crouch down and begin to focus on your body's carapace cells "
-        "encouraging them to multiply! However your control is lacking and you "
-        "ultimately fail to grow your armor very much.@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@M$n@m crouches down and seems to strain for a moment before giving "
-        "up and resuming $s normal stance.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    return;
-  } else {
-    act("@mYou crouch down and begin to focus on your body's carapace cells, "
-        "encouraging them to multiply! Very quickly millions of new carapace "
-        "cells have been born and your armored carapace extends over all parts "
-        "of your body!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@M$n@m crouches down and after a few moments of straining $s body's "
-        "carapace armor starts to grow thicker and extends to cover all parts "
-        "of $s body!@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    decCurSTPercent(ch, .2);
-    char_condition_apply(ch, "arlian_shell", "shell", "activate");
-    return;
-  }
-}
+/* do_shell moved to lua/characters/commands/misc/shell.lua */
 
 ACMD(do_liquefy) {
 
@@ -1166,78 +994,8 @@ ACMD(do_liquefy) {
   }
 }
 
-ACMD(do_lifeforce) {
-
-  char arg[MAX_INPUT_LENGTH];
-  int setting = 0;
-
-  one_argument(argument, arg);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: life (0 - 99)\n0 is off.\r\n");
-    return;
-  }
-
-  setting = atoi(arg);
-
-  if (setting > 99) {
-    send_to_char(ch,
-                 "Syntax: life (1 - 99)\n%s isn't an acceptable percent.\r\n",
-                 add_commas(setting));
-    return;
-  } else if (setting <= 0) {
-    send_to_char(ch, "Your will just isn't in the fight, huh?\nYou will not "
-                     "use up life force to maintain your PL period.\r\n");
-    char_stat_set(ch, "life_percent", 0);
-    return;
-  } else {
-    send_to_char(ch,
-                 "Your life force will automatically kick in at %d%s of your "
-                 "optimal PL.\r\n",
-                 setting, "%");
-    char_stat_set(ch, "life_percent", setting);
-    return;
-  }
-}
-
-ACMD(do_defend) {
-  struct char_data *vict;
-  char arg[MAX_INPUT_LENGTH];
-
-  one_argument(argument, arg);
-
-  if (!*arg && GET_DEFENDING(ch) == NULL) {
-    send_to_char(ch, "Defend who?\r\n");
-    return;
-  } else if (!*arg && GET_DEFENDING(ch)) {
-    act("@YYou stop defending @y$N@Y.@n", TRUE, ch, 0, GET_DEFENDING(ch),
-        TO_CHAR);
-    act("@y$n@Y stops defending you.@n", TRUE, ch, 0, GET_DEFENDING(ch),
-        TO_VICT);
-    act("@y$n@Y stops defending @y$N@Y.@n", TRUE, ch, 0, GET_DEFENDING(ch),
-        TO_NOTVICT);
-    struct char_data *protected_person = GET_DEFENDING(ch);
-    char_defending_for_set(ch, NULL);
-    char_defended_by_set(protected_person, NULL);
-    return;
-  }
-
-  if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
-    send_to_char(ch, "You can't seem to find that person.\r\n");
-    return;
-  } else if (vict == ch) {
-    send_to_char(ch,
-                 "Well hopefully you are smart enough to defend yourself.\r\n");
-    return;
-  } else {
-    act("@YYou start defending @y$N@Y.@n", TRUE, ch, 0, vict, TO_CHAR);
-    act("@y$n@Y starts defending you.@n", TRUE, ch, 0, vict, TO_VICT);
-    act("@y$n@Y starts defending @y$N@Y.@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    char_defended_by_set(vict, ch);
-    char_defending_for_set(ch, vict);
-    return;
-  }
-}
+/* do_lifeforce moved to lua/characters/pcommands/info/lifeforce.lua */
+/* do_defend moved to lua/characters/commands/misc/defend.lua */
 
 ACMD(do_fish) {
 
@@ -2455,154 +2213,9 @@ ACMD(do_resize) {
   }
 }
 
-ACMD(do_healglow) {
-  struct char_data *vict;
-  char arg[MAX_INPUT_LENGTH];
-  one_argument(argument, arg);
+/* do_healglow moved to lua/characters/commands/misc/healglow.lua */
 
-  if (!GET_SKILL(ch, SKILL_HEALGLOW)) {
-    send_to_char(ch, "You do not know how to perform that technique.\r\n");
-    return;
-  }
-
-  if (!*arg) {
-    vict = ch;
-  } else if (GET_SKILL(ch, SKILL_HEALGLOW) < 100) {
-    send_to_char(ch, "You can not target anyone except yourself unless you are "
-                     "a master of this technique.\nSyntax: healingglow\r\n");
-    return;
-  } else if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
-    send_to_char(ch, "Nobody around by that name.\r\n");
-    return;
-  }
-
-  if (char_condition_has(vict, "healing_glow") && vict == ch) {
-    send_to_char(ch,
-                 "You already have a healing glow surrounding your body.\r\n");
-    return;
-  } else if (char_condition_has(vict, "healing_glow")) {
-    send_to_char(
-        ch, "They already have a healing glow surrounding their body.\r\n");
-    return;
-  }
-
-  if (FIGHTING(vict) && vict == ch) {
-    send_to_char(ch, "You are too busy fighting!@n\r\n");
-    return;
-  } else if (FIGHTING(vict)) {
-    send_to_char(ch, "They are too busy fighting!@n\r\n");
-    return;
-  }
-
-  int64_t cost = GET_MAX_MANA(ch) * 0.5;
-
-  if ((getCurKI(ch)) < cost) {
-    send_to_char(ch,
-                 "You do not have enough ki. It requires at least 50%s of your "
-                 "ki in cost.\r\n",
-                 "%");
-    return;
-  } else {
-    if (vict == ch) {
-      act("@CPlacing your hands on your body you begin to focus your energies. "
-          "Slowly a strong blue glow glistens and shines across your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@c$n@C places $s hands on $s body. Slowly a strong blue glow "
-          "glistens and shines across $s skin!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      int duration = (GET_SKILL(ch, SKILL_HEALGLOW) * 0.1);
-      if (duration <= 0)
-        duration = 1;
-      char_condition_apply_with_duration(vict, "healing_glow", "skill", "healing glow", duration * SECS_PER_MUD_HOUR);
-      decCurKI(ch, cost);
-    } else {
-      act("@CPlacing your hands on @c$N's@C body you begin to focus your "
-          "energies. Slowly a strong blue glow glistens and shines across $S "
-          "skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@c$n@C places $s hands on YOUR body. Slowly a strong blue glow "
-          "glistens and shines across your skin!@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@c$n@C places $s hands on @c$N's@C body. Slowly a strong blue glow "
-          "glistens and shines across $S skin!@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      int duration = (GET_SKILL(ch, SKILL_HEALGLOW) * 0.1);
-      duration += rand_number(-2, 1);
-      if (duration <= 0)
-        duration = 1;
-      char_condition_apply_with_duration(vict, "healing_glow", "skill", "healing glow", duration * SECS_PER_MUD_HOUR);
-      decCurKI(ch, cost);
-    }
-  }
-}
-
-/* Demon's lame skill */
-ACMD(do_metamorph) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!know_skill(ch, SKILL_METAMORPH)) {
-    return;
-  }
-
-  if (GET_ALIGNMENT(ch) >= 51) {
-    send_to_char(ch, "Your heart is too pure to use that technique!\r\n");
-    return;
-  }
-
-  int64_t cost = (GET_MAX_MANA(ch) * 0.16);
-
-  if (char_condition_has(ch, "dark_metamorphosis")) {
-    send_to_char(ch, "You are already surrounded by a dark aura!\r\n");
-    return;
-  }
-
-  if ((getCurKI(ch)) < cost) {
-    send_to_char(ch, "You do not have enough ki. You need %s.\r\n",
-                 add_commas(cost));
-    return;
-  }
-
-  int chance = axion_dice(0), perc = (GET_WIS(ch) * 2);
-
-  if (perc < 100 && perc > 60)
-    perc += 100 - perc;
-  else if (perc < 100)
-    perc += 10;
-
-  decCurKI(ch, cost / 2);
-  if (perc < chance) {
-    act("@WYou focus your energies and prepare your @RDark Metamorphisis@W but "
-        "screw up your focus!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@WA dark @Rred@W glow starts to surround @C$n@W, but it fades "
-        "quickly.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-
-    return;
-  }
-
-  act("'@RDark@W...' An explosion of sanguine aura erupts over the surface "
-        "of your body, your eyes darkening to a bleeding crimson. The flaring "
-        "glow emanating from your body pronounces the shadows cast, a "
-        "darkening umbrage that threatens a malicious promise. Fists clench "
-        "tightly, muscles bulking as you hiss; You complete the transition, "
-        "relaxing visibly, '...@RMetamorphosis@W'@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("'@RDark@W...' An explosion of sanguine aura erupts over the surface "
-        "of @C$n@W's body, $s eyes darkening to a bleeding crimson. The "
-        "flaring glow emanating from $s body pronounces the shadows cast, a "
-        "darkening umbrage that threatens a malicious promise. Fists clench "
-        "tightly, muscles bulking as $e hisses; $e completes the transition, "
-        "relaxing visibly, '...@RMetamorphosis@W'@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-
-    int duration = (GET_INT(ch) / 12) * SECS_PER_MUD_HOUR;
-    char_condition_apply_with_duration(ch, "dark_metamorphosis", "affect",
-                                       "dark_metamorphosis", duration);
-    incCurHealthPercent(ch, .6);
-}
+/* do_metamorph moved to lua/characters/commands/misc/metamorph.lua */
 
 ACMD(do_shimmer) {
 
@@ -3194,65 +2807,7 @@ ACMD(do_instill) {
   }
 }
 
-ACMD(do_hayasa) {
-
-  if (!IS_NPC(ch) && !GET_SKILL(ch, SKILL_HAYASA)) {
-    send_to_char(ch, "You do not know how to perform this technique!\r\n");
-    return;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_HAYASA)) {
-    send_to_char(ch, "You are already focusing ki to continually speed up your "
-                     "movements.\r\n");
-    return;
-  }
-
-  int skill = GET_SKILL(ch, SKILL_HAYASA), prob = axion_dice(0);
-  int64_t cost = GET_MAX_MANA(ch) / (skill / 2);
-  int duration = 1;
-
-  if (skill >= 100) {
-    duration = 6;
-  } else if (skill >= 80) {
-    duration = 5;
-  } else if (skill >= 50) {
-    duration = 4;
-  } else if (skill >= 25) {
-    duration = 3;
-  } else {
-    duration = 2;
-  }
-
-  if ((getCurKI(ch)) < cost) {
-    send_to_char(ch, "You do not have enough ki.\r\n");
-    return;
-  } else if (skill < prob) {
-    decCurKI(ch, cost);
-    act("@CYou close your eyes for a brief moment and focus your ki around "
-        "your body as a soft blue glow. The glow disappears though as you fail "
-        "to maintain the effect...@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C closes $s eyes for a brief moment and a soft blue glow begins "
-        "to form around $s body. The glow disappears a second later though and "
-        "$e frowns.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    improve_skill(ch, SKILL_HAYASA, 1);
-    WAIT_STATE(ch, PULSE_2SEC);
-  } else {
-    decCurKI(ch, cost);
-    char_condition_apply(ch, "hayasa", "hayasa", "activate");
-    reveal_hiding(ch, 0);
-    act("@CYou close your eyes for a brief moment and focus your ki around "
-        "your body as a soft blue glow. All your movements are faster now!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C closes $s eyes for a brief moment and a soft blue glow begins "
-        "to form around $s body. The glow pulsates gently as $e opens his eyes "
-        "and smiles.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    improve_skill(ch, SKILL_HAYASA, 1);
-    WAIT_STATE(ch, PULSE_2SEC);
-  }
-}
+/* do_hayasa moved to lua/characters/commands/misc/hayasa.lua */
 
 /* This is the mortal dig command. */
 ACMD(do_bury) {
@@ -4047,70 +3602,7 @@ ACMD(do_silk) {
   }
 }
 
-/* Let's an Arlian trade Stamina for either PL or Ki*/
-ACMD(do_adrenaline) {
-
-  if (!IS_ARLIAN(ch) &&
-      (!IS_BIO(ch) ||
-       (IS_BIO(ch) && (GET_GENOME(ch, 0) != 6 && GET_GENOME(ch, 1) != 6)))) {
-    send_to_char(ch,
-                 "You are not an arlian and do not possess this ability\r\n");
-    return;
-  } else {
-    char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-    two_arguments(argument, arg, arg2);
-
-    if (!*arg || !*arg2) {
-      send_to_char(ch, "Syntax: adrenaline (pl or ki) (percent)\r\nExample: "
-                       "adrenaline pl 10\r\n");
-      return;
-    } else {
-      if (atoi(arg2) < 0 || atoi(arg2) > 100) {
-        send_to_char(ch, "The percent must be between 1 and 100%s.\r\n", "%");
-        return;
-      }
-
-      double percent = atoi(arg2) * 0.01;
-
-      if ((getCurST(ch) - (getBasePL(ch) * percent)) < 0) {
-        send_to_char(
-            ch, "You do not have enough stamina to trade for adrenaline!\r\n");
-        return;
-      }
-
-      int64_t trade = getBaseST(ch) * percent;
-
-      if (!strcasecmp(arg, "pl")) {
-        act("@GYou focus your mind and begin to overwork your powerful adrenal "
-            "glands and your wounds begin to heal!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@g$n@G seems to concentrate and $s wounds begin to heal!@n", TRUE,
-            ch, 0, 0, TO_ROOM);
-
-        if (GET_HIT(ch) + trade > getMaxPL(ch))
-          send_to_char(ch, "Some of your stamina was wasted because your "
-                           "powerlevel maxed out.\r\n");
-        incCurHealth(ch, trade);
-        decCurST(ch, trade);
-
-      } else if (!strcasecmp(arg, "ki")) {
-        act("@GYou focus your mind and begin to overwork your powerful adrenal "
-            "glands and you feel your ki replenish!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@g$n@G seems to concentrate and $e appears energized!@n", TRUE, ch,
-            0, 0, TO_ROOM);
-
-        if ((getCurKI(ch)) + trade > GET_MAX_MANA(ch))
-          send_to_char(
-              ch,
-              "Some of your stamina was wasted because your ki maxed out.\r\n");
-        incCurKI(ch, trade);
-        decCurST(ch, trade);
-      }
-    } /* End inner else */
-
-  } /* end main else */
-}
+/* do_adrenaline moved to lua/characters/commands/misc/adrenaline.lua */
 
 /* This handles displaying the rpp item store to a player. */
 void disp_rpp_store(struct char_data *ch) {
@@ -5760,72 +5252,7 @@ ACMD(do_obstruct) {
   }
 }
 
-/* This allows a player to flood a room. */
-ACMD(do_dimizu) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!know_skill(ch, SKILL_DIMIZU)) {
-    return;
-  }
-
-  int skill = GET_SKILL(ch, SKILL_DIMIZU);
-  int prob = axion_dice(0);
-
-  struct room_data *room = char_room_get(ch);
-
-  if (room_geffect_get(room) < 0) {
-    act("@CYou concentrate and distabilie the water, separating the hydrogen "
-        "and oxygen. The gases dissipate quickly.",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C concentrates and the water filling the area seems to shudder. "
-        "Suddenly the water begins to evaporate as the hydrogen and oxygen are "
-        "separated.",
-        TRUE, ch, 0, 0, TO_ROOM);
-    room_geffect_set(room, 0);
-    WAIT_STATE(ch, PULSE_1SEC);
-    return;
-  } else if (room_sector_type_get(room) == SECT_UNDERWATER) {
-    send_to_char(ch, "The area is already underwater!\r\n");
-    return;
-  } else if (room_sector_type_get(room) == SECT_SPACE ||
-             (char_room_get(ch) &&
-              room_flagged(char_room_get(ch), ROOM_SPACE))) {
-    send_to_char(ch, "You can't flood space!\r\n");
-    return;
-  } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 12) {
-    send_to_char(ch, "You do not have enough ki to perform the technique.\r\n");
-    return;
-  } else if (skill < prob) {
-    act("@CYou gather your ki and concentrate on creating water from it. Water "
-        "begins to flow upward around the entire area, but you lose your "
-        "concentration and it all goes flooding away!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C gathers $s ki and concentrates on creating water from it. "
-        "Water begins to flow upward around the entire area, but $e loses $s "
-        "concentration and all the water goes flooding away!@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    decCurKI(ch, getMaxKI(ch) / 12);
-    improve_skill(ch, SKILL_DIMIZU, 0);
-    return;
-  } else {
-    act("@CYou gather your ki and concentrate on creating water from it. Water "
-        "begins to flow upward around the entire area. You form the water into "
-        "a perfect cube with barely any ripples in its walls. It will maintain "
-        "this form for a while.@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C gathers $s ki and concentrates on creating water from it. "
-        "Water begins to flow upward around the entire area. @c$n@C forms the "
-        "water into a perfect cube with barely any ripples in its walls. It "
-        "appears the water will maintain this form for a while.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    decCurKI(ch, getMaxKI(ch) / 12);
-    room_geffect_set(room, -3);
-    improve_skill(ch, SKILL_DIMIZU, 0);
-    return;
-  }
-}
+/* do_dimizu moved to lua/characters/commands/misc/dimizu.lua */
 
 /* Allows a player to place a "beacon" on a room they want to return to if
  * they revive from death. */

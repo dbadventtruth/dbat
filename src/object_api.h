@@ -91,6 +91,13 @@ struct obj_data *obj_contents_search_vnum(struct obj_data *obj, obj_vnum vnum,
 struct obj_data *obj_contents_search_type(struct obj_data *obj, int type,
                                           bool recursive, int flags);
 
+/* Object placement helpers — from_obj/to_obj for container movement */
+void obj_from_container(struct obj_data *obj);
+void obj_to_container(struct obj_data *obj, struct obj_data *container);
+
+/* Show object action description to a character (wraps show_obj_to_char SHOW_OBJ_ACTION) */
+void obj_show_action_to_char(struct obj_data *obj, struct char_data *ch);
+
 #ifdef __cplusplus
 }
 #endif
