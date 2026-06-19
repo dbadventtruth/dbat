@@ -1421,7 +1421,7 @@ ACMD(do_zen) {
 
   /* Can they do the technique? */
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -1927,7 +1927,7 @@ ACMD(do_malice) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -2477,7 +2477,7 @@ ACMD(do_head) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -2747,7 +2747,7 @@ ACMD(do_bash) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -3014,7 +3014,7 @@ ACMD(do_seishou) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -3270,7 +3270,7 @@ ACMD(do_throw) {
 
   half_chop(argument, arg, chunk);
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;

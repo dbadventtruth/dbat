@@ -240,6 +240,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "rpp_to_level", luaCharacterRppToLevel);
     addMethod(lua, "molt_threshold", luaCharacterMoltThreshold);
     addMethod(lua, "limbcond_get", luaCharacterLimbCondGet);
+    addMethod(lua, "limbcond_set", luaCharacterLimbCondSet);
     addMethod(lua, "charge_get", luaCharacterChargeGet);
     addMethod(lua, "barrier_get", luaCharacterBarrierGet);
     addMethod(lua, "song_get", luaCharacterSongGet);
@@ -1734,6 +1735,13 @@ fn luaCharacterLimbCondGet(lua: *Lua) i32 {
     const n = intCastOrError(lua, c_int, integer(lua, 2), "limb index");
     lua.pushInteger(cdb.char_limbcond_get(ch, n));
     return 1;
+}
+fn luaCharacterLimbCondSet(lua: *Lua) i32 {
+    const ch  = checkCharacter(lua);
+    const n   = intCastOrError(lua, c_int, integer(lua, 2), "limb index");
+    const val = intCastOrError(lua, c_int, integer(lua, 3), "limb value");
+    cdb.char_limbcond_set(ch, n, val);
+    return 0;
 }
 
 fn luaCharacterChargeGet(lua: *Lua) i32 {

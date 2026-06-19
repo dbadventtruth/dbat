@@ -499,7 +499,7 @@ const struct command_info cmd_info[] = {
     {"smote", "sm", POS_RESTING, do_echo, 1, ADMLVL_NONE, SCMD_SMOTE},
     {"sneak", "sneak", POS_STANDING, do_gen_tog, 1, ADMLVL_NONE, SCMD_SNEAK},
     {"snoop", "snoop", POS_DEAD, do_snoop, 0, ADMLVL_IMMORT, 0},
-    {"song", "son", POS_RESTING, do_song, 0, 0, 0},
+    /* do_song moved to lua/characters/commands/misc/song.lua */
     {"spiral", "spiral", POS_STANDING, do_spiral, 0, ADMLVL_NONE, 0},
     {"socials", "socials", POS_DEAD, do_commands, 0, ADMLVL_NONE, SCMD_SOCIALS},
     {"solarflare", "solarflare", POS_FIGHTING, do_solar, 0, ADMLVL_NONE, 0},

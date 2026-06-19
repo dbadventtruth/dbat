@@ -47,7 +47,7 @@ ACMD(do_liquefy);
 /* do_shell moved to lua/characters/commands/misc/shell.lua */
 ACMD(do_moondust);
 /* do_preference moved to lua/characters/commands/misc/preference.lua */
-ACMD(do_song);
+/* do_song moved to lua/characters/commands/misc/song.lua */
 ACMD(do_multiform);
 /* do_spiritcontrol moved to lua/characters/commands/misc/spiritcontrol.lua */
 ACMD(do_ashcloud);

@@ -143,7 +143,7 @@ extern "C" {
 // why is this i-1? Because whoever wrote it didn't know how C arrays work.
 // We'll be replacing the limb system anyways so fuck this macro.
 #define GET_LIMBCOND(ch, i) ((ch)->limb_condition[i - 1])
-#define GET_SONG(ch) ((ch)->song)
+/* GET_SONG removed — song tracking moved to mystic_melody condition */
 #define GET_BONUS(ch, i) ((ch)->bonuses[i])
 #define GET_TRANSCOST(ch, i) ((ch)->transcost[i - 1])
 #define GET_CCPOINTS(ch) ((ch)->ccpoints)

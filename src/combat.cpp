@@ -64,6 +64,8 @@
 
 #include "iterate.hpp"
 
+#include <initializer_list>
+
 /* local functions */
 void damage_weapon(struct char_data *ch, struct obj_data *obj,
                    struct char_data *vict) {
@@ -221,7 +223,7 @@ void handle_multihit(struct char_data *ch, struct char_data *vict) {
   if (IS_KONATSU(ch)) {
     perc *= 1.5;
   }
-  if (IS_BIO(ch) && (GET_GENOME(ch, 0) == 8 || GET_GENOME(ch, 1) == 8)) {
+  if (IS_BIO(ch) && HAS_GENOME(ch, 8)) {
     perc *= 1.4;
   }
 
@@ -236,15 +238,17 @@ void handle_multihit(struct char_data *ch, struct char_data *vict) {
 
   int amt = 70;
 
-  if (GET_SKILL(ch, SKILL_STYLE) >= 100) {
+  auto skill_style = GET_SKILL(ch, SKILL_STYLE);
+
+  if (skill_style >= 100) {
     amt -= amt * 0.1;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 80) {
+  } else if (skill_style >= 80) {
     amt -= amt * 0.08;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 60) {
+  } else if (skill_style >= 60) {
     amt -= amt * 0.06;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 40) {
+  } else if (skill_style >= 40) {
     amt -= amt * 0.04;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 20) {
+  } else if (skill_style >= 20) {
     amt -= amt * 0.02;
   }
 
@@ -1282,38 +1286,11 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl,
 int count_physical(struct char_data *ch) {
   int count = 0;
 
-  if (GET_SKILL(ch, SKILL_PUNCH) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KICK) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KNEE) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ELBOW) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ROUNDHOUSE) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_SLAM) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_UPPERCUT) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_TAILWHIP) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_BASH) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEADBUTT) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEELDROP) >= 1) {
-    count += 1;
+  for(auto s : {SKILL_PUNCH, SKILL_KICK, SKILL_KNEE, SKILL_ELBOW, SKILL_ROUNDHOUSE, SKILL_SLAM, SKILL_UPPERCUT,
+                SKILL_TAILWHIP, SKILL_BASH, SKILL_HEADBUTT, SKILL_HEELDROP}) {
+    if (GET_SKILL(ch, s) >= 1) {
+      count += 1;
+    }
   }
 
   return (count);
@@ -1323,38 +1300,11 @@ int physical_mastery(struct char_data *ch) {
 
   int count = 22;
 
-  if (GET_SKILL(ch, SKILL_PUNCH) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KICK) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KNEE) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ELBOW) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ROUNDHOUSE) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_SLAM) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_UPPERCUT) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_TAILWHIP) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_BASH) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEADBUTT) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEELDROP) >= 100) {
-    count += 1;
+  for(auto s : {SKILL_PUNCH, SKILL_KICK, SKILL_KNEE, SKILL_ELBOW, SKILL_ROUNDHOUSE, SKILL_SLAM, SKILL_UPPERCUT,
+                SKILL_TAILWHIP, SKILL_BASH, SKILL_HEADBUTT, SKILL_HEELDROP}) {
+    if (GET_SKILL(ch, s) >= 100) {
+      count += 1;
+    }
   }
 
   if (count == 26)
@@ -1549,30 +1499,32 @@ int64_t armor_calc(struct char_data *ch, int64_t dmg, int type) {
 
   int64_t reduce = 0;
 
-  if (GET_ARMOR(ch) < 1000) {
-    reduce = GET_ARMOR(ch) * 0.5;
-  } else if (GET_ARMOR(ch) < 2000) {
-    reduce = GET_ARMOR(ch) * .75;
-  } else if (GET_ARMOR(ch) < 5000) {
-    reduce = GET_ARMOR(ch);
-  } else if (GET_ARMOR(ch) < 10000) {
-    reduce = GET_ARMOR(ch) * 2;
-  } else if (GET_ARMOR(ch) < 20000) {
-    reduce = GET_ARMOR(ch) * 4;
-  } else if (GET_ARMOR(ch) < 30000) {
-    reduce = GET_ARMOR(ch) * 8;
-  } else if (GET_ARMOR(ch) < 40000) {
-    reduce = GET_ARMOR(ch) * 12;
-  } else if (GET_ARMOR(ch) < 60000) {
-    reduce = GET_ARMOR(ch) * 25;
-  } else if (GET_ARMOR(ch) < 100000) {
-    reduce = GET_ARMOR(ch) * 50;
-  } else if (GET_ARMOR(ch) < 150000) {
-    reduce = GET_ARMOR(ch) * 75;
-  } else if (GET_ARMOR(ch) < 200000) {
-    reduce = GET_ARMOR(ch) * 150;
-  } else if (GET_ARMOR(ch) >= 200000) {
-    reduce = GET_ARMOR(ch) * 250;
+  auto armor = GET_ARMOR(ch);
+
+  if (armor < 1000) {
+    reduce = armor * 0.5;
+  } else if (armor < 2000) {
+    reduce = armor * .75;
+  } else if (armor < 5000) {
+    reduce = armor;
+  } else if (armor < 10000) {
+    reduce = armor * 2;
+  } else if (armor < 20000) {
+    reduce = armor * 4;
+  } else if (armor < 30000) {
+    reduce = armor * 8;
+  } else if (armor < 40000) {
+    reduce = armor * 12;
+  } else if (armor < 60000) {
+    reduce = armor * 25;
+  } else if (armor < 100000) {
+    reduce = armor * 50;
+  } else if (armor < 150000) {
+    reduce = armor * 75;
+  } else if (armor < 200000) {
+    reduce = armor * 150;
+  } else if (armor >= 200000) {
+    reduce = armor * 250;
   }
 
   /* loc: 0 = Physical Bonus, 1 = Ki Bonus, 2 = Bonus To Both */
@@ -1676,17 +1628,18 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
     ;
   }
 
-  if (GET_ARMOR(vict) > 50000) {
+  auto armor = GET_ARMOR(vict);
+  if (armor > 50000) {
     dmg -= 5;
-  } else if (GET_ARMOR(vict) > 40000) {
+  } else if (armor > 40000) {
     dmg -= 4;
-  } else if (GET_ARMOR(vict) > 30000) {
+  } else if (armor > 30000) {
     dmg -= 3;
-  } else if (GET_ARMOR(vict) > 20000) {
+  } else if (armor > 20000) {
     dmg -= 2;
-  } else if (GET_ARMOR(vict) > 10000) {
+  } else if (armor > 10000) {
     dmg -= 1;
-  } else if (GET_ARMOR(vict) > 5000) {
+  } else if (armor > 5000) {
     dmg -= rand_number(0, 1);
   }
 

@@ -1609,6 +1609,11 @@ pub export fn char_limbcond_get(ch: *cdb.char_data, n: c_int) c_int {
     if (idx >= ch.limb_condition.len) return 0;
     return ch.limb_condition[idx];
 }
+pub export fn char_limbcond_set(ch: *cdb.char_data, n: c_int, val: c_int) void {
+    const idx: usize = @intCast(n - 1);
+    if (idx >= ch.limb_condition.len) return;
+    ch.limb_condition[idx] = val;
+}
 
 pub export fn char_charge_get(ch: *cdb.char_data) i64 { return ch.charge; }
 pub export fn char_barrier_get(ch: *cdb.char_data) i64 { return ch.barrier; }

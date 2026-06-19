@@ -918,7 +918,7 @@ ACMD(do_grapple) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -9652,7 +9652,7 @@ ACMD(do_steal) {
 
   two_arguments(argument, arg, arg2);
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;

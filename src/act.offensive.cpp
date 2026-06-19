@@ -1156,7 +1156,7 @@ ACMD(do_tslash) {
 
   /* Can they do the technique? */
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -1657,7 +1657,7 @@ ACMD(do_eraser) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -3218,7 +3218,7 @@ ACMD(do_pslash) {
   two_arguments(argument, arg, arg2);
 
   /* Can they do the technique? */
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -5428,7 +5428,7 @@ ACMD(do_ddslash) {
 
   /* Can they do the technique? */
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -8603,7 +8603,7 @@ ACMD(do_kousengan) {
 
   /* Can they do the technique? */
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -10747,7 +10747,7 @@ ACMD(do_heeldrop) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -11061,7 +11061,7 @@ ACMD(do_attack) {
   }
   one_argument(argument, arg);
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -15202,7 +15202,7 @@ ACMD(do_tailwhip) {
 
   one_argument(argument, arg);
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;

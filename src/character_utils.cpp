@@ -3823,7 +3823,7 @@ int limb_ok(struct char_data *ch, int type) {
                      "'escape' to get out of it!\r\n");
     return FALSE;
   }
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return FALSE;

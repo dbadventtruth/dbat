@@ -411,6 +411,7 @@ int     char_rpp_to_level(struct char_data *ch);
 
 /* Status display helpers — new Lua bindings for do_status port */
 int     char_limbcond_get(struct char_data *ch, int n);   /* n=1..4 */
+void    char_limbcond_set(struct char_data *ch, int n, int val);
 int64_t char_charge_get(struct char_data *ch);
 int64_t char_barrier_get(struct char_data *ch);
 int     char_song_get(struct char_data *ch);
