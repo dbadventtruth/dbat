@@ -70,7 +70,7 @@ These are merged into the Room metatable at load time:
 | `send_text` | `room:send_text(msg [, ...])` | Send to all people in room; optional `string.format` |
 | `send_line` | `room:send_line(msg [, ...])` | Same, but ensures `\r\n` tail |
 | `modifiers` | `room:modifiers()` | Returns modifier list (regen rooms, bedrooms, aura rooms, cook elements) |
-| `on_update` | `room:on_update(kind)` | Event dispatch hook; routes by subsystem prefix in `kind` |
+| `on_event` | `room:on_event(kind)` | Entity event dispatch hook; routes by subsystem prefix in `kind` |
 | `event_schedule` | `room:event_schedule(kind, delay_ms [, interval_ms])` | Schedule an entity-update event; returns event id |
 | `event_cancel` | `room:event_cancel(kind)` | Cancel all events matching `kind`; returns count cancelled |
 | `event_count` | `room:event_count([kind])` | Count pending events (all if `kind` omitted) |

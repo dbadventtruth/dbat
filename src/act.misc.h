@@ -40,7 +40,7 @@ ACMD(do_resize);
 ACMD(do_scry);
 ACMD(do_runic);
 ACMD(do_extract);
-ACMD(do_fish);
+/* do_fish moved to lua/characters/commands/misc/fish.lua */
 /* do_defend moved to lua/characters/commands/misc/defend.lua */
 /* do_lifeforce moved to lua/characters/pcommands/info/lifeforce.lua */
 ACMD(do_liquefy);

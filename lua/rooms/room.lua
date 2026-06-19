@@ -51,7 +51,7 @@ local function send_line(room, msg, ...)
   end
 end
 
-local function on_update(room, kind)
+local function on_event(room, kind)
   local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
   event_name = (event_name and event_name ~= "") and event_name or "tick"
   _ = subsystem
@@ -65,5 +65,5 @@ return {
   modifiers = modifiers,
   send_text = send_text,
   send_line = send_line,
-  on_update = on_update,
+  on_event = on_event,
 }

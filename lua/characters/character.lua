@@ -210,7 +210,7 @@ local function modifiers(ch)
   return all
 end
 
-local function on_update(ch, kind)
+local function on_event(ch, kind)
   local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
   event_name = (event_name and event_name ~= "") and event_name or "tick"
 
@@ -361,7 +361,7 @@ return {
   apparent_sex = apparent_sex,
   apparent_race = apparent_race,
   display_name_for = display_name_for,
-  on_update = on_update,
+  on_event = on_event,
   act_self = act_self,
   act_around = act_around,
   der_total = der_total,

@@ -33,7 +33,7 @@ on_remove      = function(ch, instance, reason) -- called when condition is remo
 on_update      = function(ch, instance, ctx)    -- called from C++ tick (rarely needed)
                      -- ctx = { kind="manual"|"second"|..., pulses=n, seconds=n }
                  end,
-on_event       = function(ch, instance, event)  -- dispatched via ch:on_update("condition:<id>:<event>")
+on_event       = function(ch, instance, event)  -- dispatched via ch:on_event("condition:<id>:<event>")
                  end,                           -- event defaults to "tick" if omitted from kind
 status_line    = function(ch, instance)         -- optional: returns a display string for `status` command
                      return "You are affected."  -- or nil to suppress; no trailing newline

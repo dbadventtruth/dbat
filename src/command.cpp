@@ -208,7 +208,7 @@ const struct command_info cmd_info[] = {
     {"findkey", "findk", POS_SLEEPING, do_findkey, 0, ADMLVL_IMMORT, 0},
     {"finger", "finge", POS_SLEEPING, do_finger, 0, ADMLVL_NONE, 0},
     {"fireshield", "firesh", POS_STANDING, do_fireshield, 0, ADMLVL_NONE, 0},
-    {"fish", "fis", POS_STANDING, do_fish, 0, ADMLVL_NONE, 0},
+    /* {"fish", "fis", ...} moved to lua/characters/commands/misc/fish.lua */
     {"fix", "fix", POS_STANDING, do_fix, 0, ADMLVL_NONE, 0},
     {"flee", "fl", POS_FIGHTING, do_flee, 1, ADMLVL_NONE, 0},
     {"fly", "fly", POS_RESTING, do_fly, 0, ADMLVL_NONE, 0},

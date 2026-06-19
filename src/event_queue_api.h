@@ -81,7 +81,7 @@ int64_t eq_remaining_ms(uint64_t id);
 // Current wall time in milliseconds. Use as base for fire_at calculations.
 int64_t event_queue_now_ms(void);
 
-// Schedule a lua_entity_update event: fires entity:on_update(kind) on the target entity.
+// Schedule a lua_entity_update event: fires entity:on_event(kind) on the target entity.
 // kind is the colon-delimited routing string (e.g. "condition:bonus_healthy:tick").
 // It doubles as the owner-index tag, so eq_cancel_owner / eq_owner_count / eq_owner_next_ms
 // all work with the same string.

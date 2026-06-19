@@ -160,8 +160,8 @@ Conditions are named status effects. They can store per-character number and str
 | `condition_has` | `ch:condition_has(id)` | bool | |
 | `condition_has_tag` | `ch:condition_has_tag(tag)` | bool | True if any active condition has tag |
 | `condition_active_with_tag` | `ch:condition_active_with_tag(tag)` | Condition\|nil | First condition with tag |
-| `condition_add` | `ch:condition_add(id [, category [, source_id]])` | bool | Add without triggering on_gain |
-| `condition_apply` | `ch:condition_apply(id [, category [, source_id]])` | bool | Add and trigger on_gain |
+| `condition_add` | `ch:condition_add(id [, category [, source_id]])` | bool | Add without triggering on_apply |
+| `condition_apply` | `ch:condition_apply(id [, category [, source_id]])` | bool | Add and trigger on_apply |
 | `condition_apply_variables` | `ch:condition_apply_variables(id, nums, strs [, cat [, src]])` | bool | Apply with initial variables |
 | `condition_apply_number` | `ch:condition_apply_number(id, key, value [, cat [, src]])` | bool | Apply with one initial number |
 | `condition_remove` | `ch:condition_remove(id [, reason])` | bool | |
@@ -275,7 +275,7 @@ These are merged into the Character metatable at load time:
 | `send_around` | `ch:send_around(msg)` | Send to all in room except ch |
 | `act_self` | `ch:act_self(msg [, ctx])` | Send rendered message to self |
 | `act_around` | `ch:act_around(msg [, ctx])` | Send rendered message to room excluding self |
-| `on_update` | `ch:on_update(kind)` | Event dispatch hook; routes by subsystem prefix in `kind` |
+| `on_event` | `ch:on_event(kind)` | Entity event dispatch hook; routes by subsystem prefix in `kind` |
 | `event_schedule` | `ch:event_schedule(kind, delay_ms [, interval_ms])` | Schedule an entity-update event; returns event id |
 | `event_cancel` | `ch:event_cancel(kind)` | Cancel all events matching `kind`; returns count cancelled |
 | `event_count` | `ch:event_count([kind])` | Count pending events (all if `kind` omitted) |

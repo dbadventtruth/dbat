@@ -29,7 +29,7 @@ pub const EventContext = union(enum) {
 pub const EventHandler = union(enum) {
     c_fn: *const fn (c_int, i64, i64) callconv(.c) void,
     lua_named: intern_mod.InternedId, // interned dotted path, e.g. "dbat.events.point_update"
-    lua_entity_update: intern_mod.InternedId, // interned kind string; fires entity:on_update(kind)
+    lua_entity_update: intern_mod.InternedId, // interned kind string; fires entity:on_event(kind)
 };
 
 // Registered by game.zig at startup. Receives (kind, ctx_type, entity_id).

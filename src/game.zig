@@ -30,7 +30,7 @@ fn fireEntityUpdate(kind: []const u8, ctx_type: c_int, entity_id: i64) void {
     pushEntityByCtx(lua, ctx_type, entity_id);
     if (lua.typeOf(-1) != .userdata) return;
 
-    if (lua.getField(-1, "on_update") != .function) {
+    if (lua.getField(-1, "on_event") != .function) {
         lua.pop(1);
         return;
     }
@@ -40,7 +40,7 @@ fn fireEntityUpdate(kind: []const u8, ctx_type: c_int, entity_id: i64) void {
 
     lua.protectedCall(.{ .args = 2, .results = 0 }) catch |err| {
         const msg = lua.toString(-1) catch @errorName(err);
-        std.log.err("on_update '{s}' failed: {s}", .{ kind, msg });
+        std.log.err("on_event '{s}' failed: {s}", .{ kind, msg });
         lua.pop(1);
     };
 }
