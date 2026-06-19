@@ -15,25 +15,25 @@ return {
     on_apply = function(ch, cond)
         local skill_name = cond:string_get("skill_name")
         if skill_name and skill_name ~= "" then
-            cond:schedule_event(ch, "tick", 60000, 60000)
+            cond:schedule_event("tick", 60000, 60000)
         end
     end,
 
     on_game_activate = function(ch, cond)
-        if not cond:event_pending(ch, "tick") then
+        if not cond:event_pending("tick") then
             local skill_name = cond:string_get("skill_name")
             if skill_name and skill_name ~= "" then
-                cond:schedule_event(ch, "tick", 60000, 60000)
+                cond:schedule_event("tick", 60000, 60000)
             end
         end
     end,
 
     on_game_deactivate = function(ch, cond)
-        cond:cancel_event(ch, "tick")
+        cond:cancel_event("tick")
     end,
 
     on_remove = function(ch, cond, reason)
-        cond:cancel_event(ch, "tick")
+        cond:cancel_event("tick")
     end,
 
     on_event = function(ch, cond, event)

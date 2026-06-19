@@ -8,6 +8,11 @@ const modifiers_api = @import("modifiers_api.zig");
 const zone_mod = @import("zone.zig");
 const intern_mod = @import("intern.zig");
 
+extern fn event_schedule_lua_char_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, char_id: i64) u64;
+extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn event_queue_now_ms() i64;
+
 pub const TransformData = struct {
     id: []const u8,
     numbers: std.StringHashMap(i64),
@@ -58,7 +63,6 @@ pub const ConditionSource = struct {
 pub const ConditionInstance = struct {
     id: []const u8,
     stacks: i64 = 1,
-    duration: i64 = -1,
     sources: std.array_list.Managed(ConditionSource),
     numbers: std.StringHashMap(i64),
     strings: std.StringHashMap([]const u8),
@@ -80,7 +84,18 @@ pub const ConditionInstance = struct {
 };
 
 const meter_scale: i64 = 1_000_000;
-var condition_update_ids: std.array_list.Managed(i64) = .init(std.heap.page_allocator);
+
+fn condExpireKind(buf: *[192:0]u8, cond_name: []const u8) ?[:0]u8 {
+    const prefix = "condition:";
+    const suffix = ":expire";
+    const total = prefix.len + cond_name.len + suffix.len;
+    if (total >= buf.len) return null;
+    @memcpy(buf[0..prefix.len], prefix);
+    @memcpy(buf[prefix.len..][0..cond_name.len], cond_name);
+    @memcpy(buf[prefix.len + cond_name.len ..][0..suffix.len], suffix);
+    buf[total] = 0;
+    return buf[0..total :0];
+}
 
 const stat_names = [_][]const u8{
     "agility",
@@ -1146,6 +1161,9 @@ fn char_condition_remove_name(ch: *cdb.char_data, name: []const u8, reason: ?[*:
     var removed = zigdata.conditions.fetchRemove(cond_id) orelse return false;
     removed.value.deinit(std.heap.page_allocator);
     conditionChanged(ch, zigdata);
+    var exp_buf: [192:0]u8 = undefined;
+    if (condExpireKind(&exp_buf, name)) |expire_kind|
+        _ = eq_cancel_owner(1, cdb.char_id_get(ch), expire_kind.ptr);
     const reason_slice: ?[]const u8 = if (reason) |r| r[0..std.mem.len(r)] else null;
     lua_api.callConditionHook(ch, name, "on_remove", reason_slice);
     return true;
@@ -1176,62 +1194,14 @@ pub export fn char_condition_remove_tag(ch: *cdb.char_data, tag: ?[*:0]const u8,
 }
 
 pub export fn char_condition_update(ch: *cdb.char_data) void {
-    char_condition_update_context(ch, "manual", 0, 0);
+    _ = ch;
 }
 
 pub export fn char_condition_update_with_context(ch: *cdb.char_data, kind: ?[*:0]const u8, pulses: i64, seconds: i64) void {
-    char_condition_update_context(ch, statName(kind) orelse "manual", pulses, seconds);
-}
-
-pub export fn char_condition_update_all(kind: ?[*:0]const u8, pulses: i64, seconds: i64) void {
-    const update_kind = statName(kind) orelse "manual";
-    const iterator = characters.char_iterator_create() orelse return;
-    defer characters.char_iterator_free(iterator);
-
-    condition_update_ids.clearRetainingCapacity();
-
-    while (characters.char_next(iterator)) |ch| {
-        if (cdb.char_is_extracted(ch)) continue;
-        condition_update_ids.append(cdb.char_id_get(ch)) catch return;
-    }
-
-    for (condition_update_ids.items) |id| {
-        const ch = characters.char_by_id(id) orelse continue;
-        if (cdb.char_is_extracted(ch)) continue;
-        if (zone_mod.zone_player_count_get(char_zone_vnum_get(ch)) == 0) continue;
-        char_condition_update_context(ch, update_kind, pulses, seconds);
-    }
-}
-
-fn char_condition_update_context(ch: *cdb.char_data, kind: []const u8, pulses: i64, seconds: i64) void {
-    if (ch.zigdata == null) return;
-    const zigdata: *CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
-
-    var names = std.array_list.Managed([:0]u8).init(std.heap.c_allocator);
-    defer {
-        for (names.items) |n| std.heap.c_allocator.free(n);
-        names.deinit();
-    }
-
-    var it = zigdata.conditions.keyIterator();
-    while (it.next()) |id_ptr| names.append(std.heap.c_allocator.dupeZ(u8, intern_mod.nameOf(id_ptr.*)) catch return) catch return;
-
-    for (names.items) |name_z| {
-        const instance = conditionGet(ch, name_z.ptr) orelse continue;
-        if (instance.duration == 0) {
-            _ = char_condition_remove(ch, name_z.ptr, "expired");
-            continue;
-        }
-
-        lua_api.callConditionUpdateHook(ch, std.mem.sliceTo(name_z, 0), kind, pulses, seconds);
-        const updated = conditionGet(ch, name_z.ptr) orelse continue;
-        if (seconds > 0 and updated.duration > 0) {
-            updated.duration = @max(0, updated.duration - seconds);
-            conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
-        }
-        const after_duration = conditionGet(ch, name_z.ptr) orelse continue;
-        if (after_duration.duration == 0) _ = char_condition_remove(ch, name_z.ptr, "expired");
-    }
+    _ = ch;
+    _ = kind;
+    _ = pulses;
+    _ = seconds;
 }
 
 pub export fn char_condition_stacks_get(ch: *cdb.char_data, condition: ?[*:0]const u8) i64 {
@@ -1247,14 +1217,24 @@ pub export fn char_condition_stacks_set(ch: *cdb.char_data, condition: ?[*:0]con
 }
 
 pub export fn char_condition_duration_get(ch: *cdb.char_data, condition: ?[*:0]const u8) i64 {
-    const instance = conditionGet(ch, condition) orelse return 0;
-    return instance.duration;
+    const name = statName(condition) orelse return -1;
+    var buf: [192:0]u8 = undefined;
+    const kind = condExpireKind(&buf, name) orelse return -1;
+    const next_ms = eq_owner_next_ms(1, cdb.char_id_get(ch), kind.ptr);
+    if (next_ms < 0) return -1;
+    return @max(0, @divFloor(next_ms, 1000));
 }
 
 pub export fn char_condition_duration_set(ch: *cdb.char_data, condition: ?[*:0]const u8, value: i64) i64 {
-    const instance = conditionGet(ch, condition) orelse return 0;
-    instance.duration = value;
-    conditionChanged(ch, @ptrCast(@alignCast(ch.zigdata.?)));
+    const name = statName(condition) orelse return -1;
+    var buf: [192:0]u8 = undefined;
+    const kind = condExpireKind(&buf, name) orelse return -1;
+    _ = eq_cancel_owner(1, cdb.char_id_get(ch), kind.ptr);
+    if (value > 0) {
+        _ = event_schedule_lua_char_update(event_queue_now_ms() + value * 1000, 0, kind.ptr, cdb.char_id_get(ch));
+    } else if (value == 0) {
+        _ = char_condition_remove(ch, condition, "expired");
+    }
     return value;
 }
 

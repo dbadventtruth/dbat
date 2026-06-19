@@ -217,9 +217,7 @@ local function on_event(ch, kind)
   if subsystem == "condition" then
     if not ch:condition_has(id) then return end
     local def = dbat.get("conditions", id)
-    if def and def.on_event then
-      def.on_event(ch, ch:condition(id), event_name)
-    end
+    if def then def:dispatch_event(ch, ch:condition(id), event_name) end
   elseif subsystem == "transformation" then
     -- future: route to transformation registry
   end

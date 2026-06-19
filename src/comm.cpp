@@ -430,7 +430,6 @@ void game_legacy_post_tick(void) {
 static void ev_wishSYS(int, int64_t, int64_t) { wishSYS(); }
 
 static void ev_char_condition_update(int, int64_t, int64_t) {
-  char_condition_update_all("second", PULSE_1SEC, 1);
   copyover_check();
 }
 

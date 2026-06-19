@@ -178,18 +178,25 @@ Conditions are named status effects. They can store per-character number and str
 
 Obtained from `ch:condition(id)` or `ch:condition_active_with_tag(tag)`.
 
-| Method | Signature | Returns |
-|--------|-----------|---------|
-| `id` | `cond:id()` | string |
-| `stacks` | `cond:stacks()` | integer |
-| `stacks_set` | `cond:stacks_set(n)` | integer |
-| `duration` | `cond:duration()` | integer |
-| `duration_set` | `cond:duration_set(n)` | integer |
-| `number_get` | `cond:number_get(key)` | integer |
-| `number_set` | `cond:number_set(key, value)` | integer |
-| `number_mod` | `cond:number_mod(key, delta)` | integer |
-| `string_get` | `cond:string_get(key)` | string\|nil |
-| `string_set` | `cond:string_set(key, value)` | bool |
+| Method | Signature | Returns | Notes |
+|--------|-----------|---------|-------|
+| `id` | `cond:id()` | string | |
+| `stacks` | `cond:stacks()` | integer | |
+| `stacks_set` | `cond:stacks_set(n)` | integer | |
+| `duration` | `cond:duration()` | integer | Remaining seconds via event queue; -1 = permanent |
+| `duration_set` | `cond:duration_set(n)` | integer | |
+| `number_get` | `cond:number_get(key)` | integer | |
+| `number_set` | `cond:number_set(key, value)` | integer | |
+| `number_mod` | `cond:number_mod(key, delta)` | integer | |
+| `string_get` | `cond:string_get(key)` | string\|nil | |
+| `string_set` | `cond:string_set(key, value)` | bool | |
+| `schedule_event` | `cond:schedule_event(name, delay_ms [, interval_ms])` | integer | Schedule a named event; 0 interval = one-shot |
+| `cancel_event` | `cond:cancel_event(name)` | — | Cancel all events with this name |
+| `event_pending` | `cond:event_pending(name)` | bool | True if event is scheduled |
+| `event_next_ms` | `cond:event_next_ms(name)` | integer | Relative ms until next fire; -1 if not pending |
+| `schedule_expire` | `cond:schedule_expire(secs)` | — | Schedule one-shot "expire" event; replaces existing |
+| `remaining_ms` | `cond:remaining_ms()` | integer | ms until "expire" event; -1 if permanent |
+| `remaining_secs` | `cond:remaining_secs()` | integer | seconds until "expire" event (floored); -1 if permanent |
 
 ---
 

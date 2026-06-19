@@ -342,6 +342,9 @@ fn registerConditionMetatable(lua: *Lua) void {
     addMethod(lua, "cancel_event", luaConditionCancelEvent);
     addMethod(lua, "event_pending", luaConditionEventPending);
     addMethod(lua, "event_next_ms", luaConditionEventNextMs);
+    addMethod(lua, "schedule_expire", luaConditionScheduleExpire);
+    addMethod(lua, "remaining_ms", luaConditionRemainingMs);
+    addMethod(lua, "remaining_secs", luaConditionRemainingSecs);
     lua.pop(1);
 }
 
@@ -1532,6 +1535,49 @@ fn luaConditionEventNextMs(lua: *Lua) i32 {
         return 1;
     };
     lua.pushInteger(eq_owner_next_ms(1, cdb.char_id_get(ch), kind.ptr));
+    return 1;
+}
+
+// cond:schedule_expire(ch, secs) — schedule a one-shot "expire" event
+fn luaConditionScheduleExpire(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const secs = intCastOrError(lua, i64, integer(lua, 2), "duration_secs");
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, "expire") orelse return 0;
+    _ = eq_cancel_owner(1, cdb.char_id_get(ch), kind.ptr);
+    if (secs > 0)
+        _ = event_schedule_lua_char_update(event_queue_now_ms() + secs * 1000, 0, kind.ptr, cdb.char_id_get(ch));
+    return 0;
+}
+
+// cond:remaining_ms(ch) -> relative ms until "expire" event, or -1 if permanent
+fn luaConditionRemainingMs(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, "expire") orelse {
+        lua.pushInteger(-1);
+        return 1;
+    };
+    lua.pushInteger(eq_owner_next_ms(1, cdb.char_id_get(ch), kind.ptr));
+    return 1;
+}
+
+// cond:remaining_secs(ch) -> seconds until "expire" event (floored), or -1 if permanent
+fn luaConditionRemainingSecs(lua: *Lua) i32 {
+    const handle = checkConditionHandle(lua);
+    const ch = conditionCharacter(lua, handle);
+    const cond = std.mem.span(conditionName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = condEventKind(&buf, cond, "expire") orelse {
+        lua.pushInteger(-1);
+        return 1;
+    };
+    const ms = eq_owner_next_ms(1, cdb.char_id_get(ch), kind.ptr);
+    lua.pushInteger(if (ms < 0) -1 else @divFloor(ms, 1000));
     return 1;
 }
 

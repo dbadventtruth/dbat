@@ -201,7 +201,6 @@ int char_condition_remove_tag(struct char_data *ch, const char *tag,
 void char_condition_update(struct char_data *ch);
 void char_condition_update_with_context(struct char_data *ch, const char *kind,
                                         int64_t pulses, int64_t seconds);
-void char_condition_update_all(const char *kind, int64_t pulses, int64_t seconds);
 int64_t char_condition_stacks_get(struct char_data *ch, const char *condition);
 int64_t char_condition_stacks_set(struct char_data *ch, const char *condition,
                                   int64_t value);

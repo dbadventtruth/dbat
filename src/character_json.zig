@@ -350,15 +350,17 @@ fn serializeConditions(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonVa
         const cname = intern_mod.nameOf(entry.key_ptr.*);
         const definition = lua_api.conditionDefinition(cname) orelse continue;
         if (!definition.persistent) continue;
-        try jsonx.put(&object, allocator, cname, try serializeCondition(allocator, entry.value_ptr));
+        try jsonx.put(&object, allocator, cname, try serializeCondition(allocator, ch, cname, entry.value_ptr));
     }
     return object;
 }
 
-fn serializeCondition(allocator: std.mem.Allocator, condition: *characters_api.ConditionInstance) !JsonValue {
+fn serializeCondition(allocator: std.mem.Allocator, ch: *cdb.char_data, name: []const u8, condition: *characters_api.ConditionInstance) !JsonValue {
     var object = jsonx.newObject(allocator);
     try jsonx.putInt(&object, allocator, "stacks", condition.stacks);
-    try jsonx.putInt(&object, allocator, "duration", condition.duration);
+    const name_z = try std.heap.page_allocator.dupeZ(u8, name);
+    defer std.heap.page_allocator.free(name_z);
+    try jsonx.putInt(&object, allocator, "duration", cdb.char_condition_duration_get(ch, name_z.ptr));
 
     var sources = jsonx.JsonArray.init(allocator);
     for (condition.sources.items) |source| {

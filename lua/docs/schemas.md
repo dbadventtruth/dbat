@@ -30,11 +30,11 @@ on_apply       = function(ch, instance)         -- called when condition is adde
                  end,
 on_remove      = function(ch, instance, reason) -- called when condition is removed
                  end,                           -- reason is a string or nil
-on_update      = function(ch, instance, ctx)    -- called from C++ tick (rarely needed)
-                     -- ctx = { kind="manual"|"second"|..., pulses=n, seconds=n }
-                 end,
 on_event       = function(ch, instance, event)  -- dispatched via ch:on_event("condition:<id>:<event>")
                  end,                           -- event defaults to "tick" if omitted from kind
+                                                -- "expire" auto-removes condition if not handled
+                 -- For timed conditions: in on_apply call instance:schedule_expire(ch, secs)
+                 -- The "expire" event auto-removes unless on_event handles it and calls condition_remove itself
 status_line    = function(ch, instance)         -- optional: returns a display string for `status` command
                      return "You are affected."  -- or nil to suppress; no trailing newline
                  end,

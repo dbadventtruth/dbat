@@ -211,17 +211,17 @@ return {
     persistent = false,
 
     on_apply = function(ch, cond)
-        cond:schedule_event(ch, "tick", 15000, 15000)
+        cond:schedule_event("tick", 15000, 15000)
     end,
 
     on_game_activate = function(ch, cond)
-        if not cond:event_pending(ch, "tick") then
-            cond:schedule_event(ch, "tick", 15000, 15000)
+        if not cond:event_pending("tick") then
+            cond:schedule_event("tick", 15000, 15000)
         end
     end,
 
     on_remove = function(ch, cond, reason)
-        cond:cancel_event(ch, "tick")
+        cond:cancel_event("tick")
     end,
 
     on_event = function(ch, cond, event)

@@ -678,35 +678,6 @@ pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hoo
     };
 }
 
-pub fn callConditionUpdateHook(ch: *cdb.char_data, condition: []const u8, kind: []const u8, pulses: i64, seconds: i64) void {
-    if (!initialized or condition.len == 0) return;
-    if (!(pushThing("conditions", condition) catch return)) return;
-    defer pop(1);
-
-    const lua = lua_state.?;
-    if (lua.getField(-1, "on_update") != .function) {
-        lua.pop(1);
-        return;
-    }
-
-    characters_lua.pushCharacter(lua, ch.id);
-    characters_lua.pushCondition(lua, ch.id, condition);
-
-    lua.newTable();
-    _ = lua.pushString(kind);
-    lua.setField(-2, "kind");
-    lua.pushInteger(pulses);
-    lua.setField(-2, "pulses");
-    lua.pushInteger(seconds);
-    lua.setField(-2, "seconds");
-
-    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
-        const message = lua.toString(-1) catch @errorName(err);
-        std.log.err("condition {s}.on_update failed: {s}", .{ condition, message });
-        lua.pop(1);
-    };
-}
-
 pub fn callConditionEventHook(ch: *cdb.char_data, condition: []const u8, event_name: []const u8) void {
     if (!initialized or condition.len == 0) return;
     if (!(pushThing("conditions", condition) catch return)) return;
