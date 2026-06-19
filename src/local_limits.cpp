@@ -73,10 +73,6 @@
 #define sick_fail 2
 
 /* local functions */
-static void heal_limb(struct char_data *ch);
-static int64_t move_gain(struct char_data *ch);
-static int64_t mana_gain(struct char_data *ch);
-static int64_t hit_gain(struct char_data *ch);
 static void update_flags(struct char_data *ch);
 
 static int wearing_stardust(struct char_data *ch);
@@ -179,62 +175,6 @@ static int wearing_stardust(struct char_data *ch) {
     return (0);
 }
 
-/*
- * The hit_limit, mana_limit, and move_limit functions are gone.  They
- * added an unnecessary level of complexity to the internal structure,
- * weren't particularly useful, and led to some annoying bugs.  From the
- * players' point of view, the only difference the removal of these
- * functions will make is that a character's age will now only affect
- * the HMV gain per tick, and _not_ the HMV maximums.
- */
-
-/* manapoint gain pr. game hour */
-static int64_t mana_gain(struct char_data *ch) {
-  int64_t gain = char_der_total_get(ch, "ki_regen");
-
-  if(auto conc = GET_SKILL(ch, SKILL_CONCENTRATION)) {
-
-    gain += (gain * 0.005) * conc;
-  }
-
-  return (gain);
-}
-
-/* Hitpoint gain pr. game hour */
-int64_t hit_gain(struct char_data *ch) {
-  
-  auto gain = char_der_total_get(ch, "powerlevel_regen");
-
-  /* Fury Mode Loss for halfbreeds */
-
-  if (PLR_FLAGGED(ch, PLR_FURY)) {
-    send_to_char(ch, "Your fury subsides for now.\r\n");
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_FURY);
-  }
-
-  if (auto regen = GET_REGEN(ch)) {
-    gain += (gain * 0.01) * regen;
-  }
-
-  return (gain);
-}
-
-/* move gain pr. game hour */
-static int64_t move_gain(struct char_data *ch) {
-  int64_t gain = char_der_total_get(ch, "stamina_regen");
-  struct room_data *room = char_room_get(ch);
-
-  if (!calcGravCost(ch, 0)) {
-    send_to_char(ch, "This gravity is wearing you out!\r\n");
-    gain /= 4;
-  }
-
-  if (auto regen = GET_REGEN(ch)) {
-    gain += (gain * 0.01) * regen;
-  }
-
-  return (gain);
-}
 
 static void update_flags(struct char_data *ch) {
   if (ch == NULL) {
@@ -820,159 +760,6 @@ static void check_idling(struct char_data *ch) {
   }
 }
 
-static void heal_limb(struct char_data *ch) {
-  int healrate = 0, recovered = FALSE;
-
-  if (PLR_FLAGGED(ch, PLR_BANDAGED)) {
-    healrate += 10;
-  }
-
-  if (GET_POS(ch) == POS_SITTING) {
-    healrate += 1;
-  } else if (GET_POS(ch) == POS_RESTING) {
-    healrate += 3;
-  } else if (GET_POS(ch) == POS_SLEEPING) {
-    healrate += 5;
-  }
-
-  if (healrate > 0) {
-    if (GET_LIMBCOND(ch, 1) > 0 && GET_LIMBCOND(ch, 1) < 50) {
-      if (GET_LIMBCOND(ch, 1) + healrate >= 50) {
-        act("You realize your right arm is no longer broken.", TRUE, ch, 0, 0,
-            TO_CHAR);
-        act("$n starts moving $s right arm gingerly for a moment.", TRUE, ch, 0,
-            0, TO_ROOM);
-        GET_LIMBCOND(ch, 1) += healrate;
-        recovered = TRUE;
-      } else {
-        GET_LIMBCOND(ch, 1) += healrate;
-        send_to_char(ch,
-                     "Your right arm feels a little better "
-                     "@D[@G%d%s@D/@g100%s@D]@n.\r\n",
-                     GET_LIMBCOND(ch, 1), "%", "%");
-      }
-    } else if (GET_LIMBCOND(ch, 1) + healrate < 100) {
-      GET_LIMBCOND(ch, 1) += healrate;
-      send_to_char(
-          ch,
-          "Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n",
-          GET_LIMBCOND(ch, 1), "%", "%");
-    } else if (GET_LIMBCOND(ch, 1) < 100 &&
-               GET_LIMBCOND(ch, 1) + healrate >= 100) {
-      GET_LIMBCOND(ch, 1) = 100;
-      send_to_char(ch, "Your right arm has fully recovered.\r\n");
-    }
-
-    if (GET_LIMBCOND(ch, 2) > 0 && GET_LIMBCOND(ch, 2) < 50) {
-      if (GET_LIMBCOND(ch, 2) + healrate >= 50) {
-        act("You realize your left arm is no longer broken.", TRUE, ch, 0, 0,
-            TO_CHAR);
-        act("$n starts moving $s left arm gingerly for a moment.", TRUE, ch, 0,
-            0, TO_ROOM);
-        GET_LIMBCOND(ch, 2) += healrate;
-        recovered = TRUE;
-      } else {
-        GET_LIMBCOND(ch, 2) += healrate;
-        send_to_char(
-            ch,
-            "Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n",
-            GET_LIMBCOND(ch, 1), "%", "%");
-      }
-    } else if (GET_LIMBCOND(ch, 2) + healrate < 100) {
-      GET_LIMBCOND(ch, 2) += healrate;
-      send_to_char(
-          ch,
-          "Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n",
-          GET_LIMBCOND(ch, 2), "%", "%");
-    } else if (GET_LIMBCOND(ch, 2) < 100 &&
-               GET_LIMBCOND(ch, 2) + healrate >= 100) {
-      GET_LIMBCOND(ch, 2) = 100;
-      send_to_char(ch, "Your left arm has fully recovered.\r\n");
-    }
-
-    if (GET_LIMBCOND(ch, 3) > 0 && GET_LIMBCOND(ch, 3) < 50) {
-      if (GET_LIMBCOND(ch, 3) + healrate >= 50) {
-        act("You realize your right leg is no longer broken.", TRUE, ch, 0, 0,
-            TO_CHAR);
-        act("$n starts moving $s right leg gingerly for a moment.", TRUE, ch, 0,
-            0, TO_ROOM);
-        GET_LIMBCOND(ch, 3) += healrate;
-        recovered = TRUE;
-      } else {
-        GET_LIMBCOND(ch, 3) += healrate;
-        send_to_char(ch,
-                     "Your right leg feels a little better "
-                     "@D[@G%d%s@D/@g100%s@D]@n.\r\n",
-                     GET_LIMBCOND(ch, 1), "%", "%");
-      }
-    } else if (GET_LIMBCOND(ch, 3) + healrate < 100) {
-      GET_LIMBCOND(ch, 3) += healrate;
-      send_to_char(
-          ch,
-          "Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n",
-          GET_LIMBCOND(ch, 3), "%", "%");
-    } else if (GET_LIMBCOND(ch, 3) < 100 &&
-               GET_LIMBCOND(ch, 3) + healrate >= 100) {
-      GET_LIMBCOND(ch, 3) = 100;
-      send_to_char(ch, "Your right leg has fully recovered.\r\n");
-    }
-
-    if (GET_LIMBCOND(ch, 4) > 0 && GET_LIMBCOND(ch, 4) < 50) {
-      if (GET_LIMBCOND(ch, 4) + healrate >= 50) {
-        act("You realize your left leg is no longer broken.", TRUE, ch, 0, 0,
-            TO_CHAR);
-        act("$n starts moving $s left leg gingerly for a moment.", TRUE, ch, 0,
-            0, TO_ROOM);
-        GET_LIMBCOND(ch, 4) += healrate;
-        recovered = TRUE;
-      } else {
-        GET_LIMBCOND(ch, 4) += healrate;
-        send_to_char(
-            ch,
-            "Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n",
-            GET_LIMBCOND(ch, 1), "%", "%");
-      }
-    } else if (GET_LIMBCOND(ch, 4) + healrate < 100) {
-      GET_LIMBCOND(ch, 4) += healrate;
-      send_to_char(
-          ch,
-          "Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n",
-          GET_LIMBCOND(ch, 4), "%", "%");
-    } else if (GET_LIMBCOND(ch, 4) < 100 &&
-               GET_LIMBCOND(ch, 4) + healrate >= 100) {
-      GET_LIMBCOND(ch, 4) = 100;
-      send_to_char(ch, "Your left leg as fully recovered.\r\n");
-    }
-
-    if (!PLR_FLAGGED(ch, PLR_BANDAGED) && recovered == TRUE) {
-      if (axion_dice(-10) > GET_CON(ch)) {
-        char_stat_mod(ch, "strength", -1);
-        char_stat_mod(ch, "agility", -1);
-        char_stat_mod(ch, "speed", -1);
-        send_to_char(ch, "@RYou lose 1 Strength, Agility, and Speed!\r\n");
-        if (char_stat_get(ch, "strength") < 4) {
-          char_stat_set(ch, "strength", 4);
-        }
-        if (char_stat_get(ch, "constitution") < 4) {
-          char_stat_set(ch, "constitution", 4);
-        }
-        if (char_stat_get(ch, "agility") < 4) {
-          char_stat_set(ch, "agility", 4);
-        }
-        if (char_stat_get(ch, "speed") < 4) {
-          char_stat_set(ch, "speed", 4);
-        }
-        save_char(ch);
-      }
-    }
-  }
-
-  if (PLR_FLAGGED(ch, PLR_BANDAGED) && recovered == TRUE) {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_BANDAGED);
-    send_to_char(ch, "You remove your bandages.\r\n");
-    return;
-  }
-}
 
 static void tick_char_relax(struct char_data *i) {
   if (IS_NPC(i) || !char_room_get(i)) return;
@@ -998,9 +785,10 @@ static void tick_char_needs(struct char_data *i) {
 
 static void tick_char_aura(struct char_data *i) {
   if (!PLR_FLAGGED(i, PLR_AURALIGHT)) return;
-  if (getCurKI(i) > mana_gain(i) + getPercentOfMaxKI(i, .05)) {
+  auto ki_regen = char_der_total_get(i, "ki_regen");
+  if (getCurKI(i) > ki_regen + getPercentOfMaxKI(i, .05)) {
     send_to_char(i, "You send more energy into your aura to keep the light active.\r\n");
-    decCurKI(i, mana_gain(i) + getPercentOfMaxKI(i, .05));
+    decCurKI(i, ki_regen + getPercentOfMaxKI(i, .05));
   } else {
     send_to_char(i, "You don't have enough energy to keep the aura active.\r\n");
     act("$n's aura slowly stops shining and fades.\r\n", TRUE, i, nullptr, nullptr, TO_ROOM);
@@ -1034,13 +822,6 @@ static void tick_char_burns(struct char_data *i) {
   }
 }
 
-static void tick_char_vitals(struct char_data *i) {
-  incCurHealth(i, hit_gain(i));
-  incCurST(i, move_gain(i));
-  incCurKI(i, mana_gain(i));
-  if (!IS_NPC(i)) heal_limb(i);
-}
-
 /* Returns true if any die() was called (caller should continue to next char). */
 static bool tick_char_survival(struct char_data *i) {
   bool died = false;
@@ -1067,15 +848,18 @@ static bool tick_char_survival(struct char_data *i) {
     }
   }
 
+  auto ki_regen_rate   = char_der_total_get(i, "ki_regen");
+  auto pl_regen_rate   = char_der_total_get(i, "powerlevel_regen");
+
   if (!has_o2(i) && room_is_sunken(char_room_get(i)) &&
       !room_flagged(char_room_get(i), ROOM_SPACE)) {
-    if (getCurKI(i) - mana_gain(i) > GET_MAX_MANA(i) / 200) {
+    if (getCurKI(i) - ki_regen_rate > GET_MAX_MANA(i) / 200) {
       send_to_char(i, "Your ki holds an atmosphere around you.\r\n");
-      decCurKI(i, mana_gain(i) + getPercentOfMaxKI(i, .005));
+      decCurKI(i, ki_regen_rate + getPercentOfMaxKI(i, .005));
     } else {
-      if (GET_HIT(i) - hit_gain(i) > getMaxPL(i) * 0.05) {
+      if (GET_HIT(i) - pl_regen_rate > getMaxPL(i) * 0.05) {
         send_to_char(i, "You struggle trying to hold your breath!\r\n");
-        decCurHealth(i, hit_gain(i) + getPercentOfMaxHealth(i, .05));
+        decCurHealth(i, pl_regen_rate + getPercentOfMaxHealth(i, .05));
       } else if (GET_HIT(i) <= GET_MAX_HIT(i) / 20) {
         send_to_char(i, "You have drowned!\r\n");
         act("@W$n@W drowns right in front of you.@n", FALSE, i, 0, 0, TO_ROOM);
@@ -1086,13 +870,13 @@ static bool tick_char_survival(struct char_data *i) {
   }
 
   if (!has_o2(i) && room_flagged(char_room_get(i), ROOM_SPACE)) {
-    if (getCurKI(i) - mana_gain(i) > GET_MAX_MANA(i) * 0.005) {
+    if (getCurKI(i) - ki_regen_rate > GET_MAX_MANA(i) * 0.005) {
       send_to_char(i, "Your ki holds an atmosphere around you.\r\n");
-      decCurKI(i, mana_gain(i) + getPercentOfMaxKI(i, .005));
+      decCurKI(i, ki_regen_rate + getPercentOfMaxKI(i, .005));
     } else {
-      if (GET_HIT(i) - hit_gain(i) > getMaxPL(i) * 0.05) {
+      if (GET_HIT(i) - pl_regen_rate > getMaxPL(i) * 0.05) {
         send_to_char(i, "You struggle trying to hold your breath!\r\n");
-        decCurHealth(i, hit_gain(i) + getPercentOfMaxHealth(i, .05));
+        decCurHealth(i, pl_regen_rate + getPercentOfMaxHealth(i, .05));
       } else if (GET_HIT(i) <= GET_MAX_HIT(i) / 20) {
         send_to_char(i, "You have drowned!\r\n");
         decCurHealthPercentFloored(i, 1, 1);
@@ -1223,7 +1007,6 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
     t.flags += pu_elapsed(tp, pu_now());
 
     tp = pu_now();
-    tick_char_vitals(i);
     bool dead = tick_char_survival(i);
     t.vitals += pu_elapsed(tp, pu_now());
     if (dead) return;

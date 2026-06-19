@@ -158,6 +158,8 @@ int player_present(struct char_data *ch) {
 
 void char_game_activate(struct char_data *ch) {
   char_condition_game_activate(ch);
+  char_meter_conditions_sync(ch);
+  char_limb_healing_sync(ch);
   if (!IS_NPC(ch))
     return;
   char_subscribe_add(ch, "mob_active");

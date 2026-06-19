@@ -823,13 +823,45 @@ pub export fn char_meter_set(ch: *cdb.char_data, meter: ?[*:0]const u8, value: i
     const clamped = clampMeter(value);
 
     const zigdata = char_ensure_zigdata(ch) orelse return 0;
+    const old_value = zigdata.meters.get(id) orelse meter_scale;
+
     if (zigdata.meters.getPtr(id)) |existing| {
         existing.* = clamped;
-        return clamped;
+    } else {
+        zigdata.meters.put(id, clamped) catch return 0;
     }
 
-    zigdata.meters.put(id, clamped) catch return 0;
+    if (lua_api.meterDefinition(name)) |def| {
+        if (def.linkedCondition()) |linked| {
+            if (old_value >= meter_scale and clamped < meter_scale) {
+                if (!char_condition_has(ch, linked.ptr))
+                    _ = char_condition_apply(ch, linked.ptr, "regen", "meter_depleted");
+            } else if (old_value < meter_scale and clamped >= meter_scale) {
+                if (char_condition_has(ch, linked.ptr))
+                    _ = char_condition_remove(ch, linked.ptr, "meter_full");
+            }
+        }
+    }
+
     return clamped;
+}
+
+pub export fn char_meter_conditions_sync(ch: *cdb.char_data) void {
+    const zigdata = char_ensure_zigdata(ch) orelse return;
+    var it = lua_api.definition_cache.meters.iterator();
+    while (it.next()) |entry| {
+        const def = entry.value_ptr;
+        const linked = def.linkedCondition() orelse continue;
+        const id = intern_mod.lookup(entry.key_ptr.*) orelse continue;
+        const current_pct = zigdata.meters.get(id) orelse meter_scale;
+        if (current_pct < meter_scale) {
+            if (!char_condition_has(ch, linked.ptr))
+                _ = char_condition_apply(ch, linked.ptr, "regen", "meter_sync");
+        } else {
+            if (char_condition_has(ch, linked.ptr))
+                _ = char_condition_remove(ch, linked.ptr, "meter_full");
+        }
+    }
 }
 
 pub export fn char_meter_mod(ch: *cdb.char_data, meter: ?[*:0]const u8, mod: i64) i64 {
@@ -1588,15 +1620,33 @@ pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
 
 // ---- Status display bindings ----
 
+const limb_stat_names = [4][*:0]const u8{
+    "limb_right_arm", "limb_left_arm", "limb_right_leg", "limb_left_leg",
+};
+
 pub export fn char_limbcond_get(ch: *cdb.char_data, n: c_int) c_int {
-    const idx: usize = @intCast(n - 1);
-    if (idx >= ch.limb_condition.len) return 0;
-    return ch.limb_condition[idx];
+    if (n < 1 or n > 4) return 0;
+    return @intCast(char_stat_get(ch, limb_stat_names[@as(usize, @intCast(n)) - 1]));
 }
+
 pub export fn char_limbcond_set(ch: *cdb.char_data, n: c_int, val: c_int) void {
-    const idx: usize = @intCast(n - 1);
-    if (idx >= ch.limb_condition.len) return;
-    ch.limb_condition[idx] = val;
+    if (n < 1 or n > 4) return;
+    _ = char_stat_set(ch, limb_stat_names[@as(usize, @intCast(n)) - 1], @intCast(val));
+    char_limb_healing_sync(ch);
+}
+
+pub export fn char_limb_healing_sync(ch: *cdb.char_data) void {
+    if (ch.idnum == -1) return;
+    for (1..5) |i| {
+        const v = char_limbcond_get(ch, @intCast(i));
+        if (v > 0 and v < 100) {
+            if (!char_condition_has(ch, "limb_healing"))
+                _ = char_condition_apply(ch, "limb_healing", "regen", "limb_damaged");
+            return;
+        }
+    }
+    if (char_condition_has(ch, "limb_healing"))
+        _ = char_condition_remove(ch, "limb_healing", "limbs_healed");
 }
 
 pub export fn char_charge_get(ch: *cdb.char_data) i64 {

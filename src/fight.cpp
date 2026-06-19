@@ -172,7 +172,7 @@ void mutant_limb_regen(struct char_data *ch) {
         TO_CHAR);
     act("$n starts moving $s right arm gingerly for a moment.", TRUE, ch, 0, 0,
         TO_ROOM);
-    GET_LIMBCOND(ch, 1) = 100;
+    SET_LIMBCOND(ch, 1, 100);
   } else if (GET_LIMBCOND(ch, 1) <= 0) {
     act("Your right arm begins to grow back very quickly. Within moments it is "
         "whole again!",
@@ -180,14 +180,14 @@ void mutant_limb_regen(struct char_data *ch) {
     act("$n's right arm starts to regrow! Within moments the arm is whole "
         "again!.",
         TRUE, ch, 0, 0, TO_ROOM);
-    GET_LIMBCOND(ch, 1) = 100;
+    SET_LIMBCOND(ch, 1, 100);
   }
   if (GET_LIMBCOND(ch, 2) > 0 && GET_LIMBCOND(ch, 2) < 50) {
     act("The bones in your left arm have mended them selves.", TRUE, ch, 0, 0,
         TO_CHAR);
     act("$n starts moving $s left arm gingerly for a moment.", TRUE, ch, 0, 0,
         TO_ROOM);
-    GET_LIMBCOND(ch, 2) = 100;
+    SET_LIMBCOND(ch, 2, 100);
   } else if (GET_LIMBCOND(ch, 2) <= 0) {
     act("Your right arm begins to grow back very quickly. Within moments it is "
         "whole again!",
@@ -195,14 +195,14 @@ void mutant_limb_regen(struct char_data *ch) {
     act("$n's right arm starts to regrow! Within moments the arm is whole "
         "again!.",
         TRUE, ch, 0, 0, TO_ROOM);
-    GET_LIMBCOND(ch, 2) = 100;
+    SET_LIMBCOND(ch, 2, 100);
   }
   if (GET_LIMBCOND(ch, 3) > 0 && GET_LIMBCOND(ch, 3) < 50) {
     act("The bones in your right leg have mended them selves.", TRUE, ch, 0, 0,
         TO_CHAR);
     act("$n starts moving $s right leg gingerly for a moment.", TRUE, ch, 0, 0,
         TO_ROOM);
-    GET_LIMBCOND(ch, 3) = 100;
+    SET_LIMBCOND(ch, 3, 100);
   } else if (GET_LIMBCOND(ch, 3) <= 0) {
     act("Your right arm begins to grow back very quickly. Within moments it is "
         "whole again!",
@@ -210,14 +210,14 @@ void mutant_limb_regen(struct char_data *ch) {
     act("$n's right arm starts to regrow! Within moments the arm is whole "
         "again!.",
         TRUE, ch, 0, 0, TO_ROOM);
-    GET_LIMBCOND(ch, 3) = 100;
+    SET_LIMBCOND(ch, 3, 100);
   }
   if (GET_LIMBCOND(ch, 4) > 0 && GET_LIMBCOND(ch, 4) < 50) {
     act("The bones in your left leg have mended them selves.", TRUE, ch, 0, 0,
         TO_CHAR);
     act("$n starts moving $s left leg gingerly for a moment.", TRUE, ch, 0, 0,
         TO_ROOM);
-    GET_LIMBCOND(ch, 4) = 100;
+    SET_LIMBCOND(ch, 4, 100);
   } else if (GET_LIMBCOND(ch, 4) <= 0) {
     act("Your right arm begins to grow back very quickly. Within moments it is "
         "whole again!",
@@ -225,7 +225,7 @@ void mutant_limb_regen(struct char_data *ch) {
     act("$n's right arm starts to regrow! Within moments the arm is whole "
         "again!.",
         TRUE, ch, 0, 0, TO_ROOM);
-    GET_LIMBCOND(ch, 4) = 100;
+    SET_LIMBCOND(ch, 4, 100);
   }
 }
 

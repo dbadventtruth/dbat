@@ -714,7 +714,7 @@ void restoreLimbsAnnounced(char_data *ch, bool announce) {
       else if (GET_LIMBCOND(ch, l.first) < 50)
         send_to_char(ch, "Your %s is no longer broken!\r\n", l.second.c_str());
     }
-    GET_LIMBCOND(ch, l.first) = 100;
+    SET_LIMBCOND(ch, l.first, 100);
   }
 
   char_gain_tail(ch, announce);

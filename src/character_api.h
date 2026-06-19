@@ -123,6 +123,7 @@ int64_t char_meter_mod_int(struct char_data *ch, const char *meter,
 int64_t char_meter_current(struct char_data *ch, const char *meter);
 int64_t char_meter_max(struct char_data *ch, const char *meter);
 bool char_meter_full(struct char_data *ch, const char *meter);
+void char_meter_conditions_sync(struct char_data *ch);
 
 int64_t char_skill_base_get(struct char_data *ch, const char *skill);
 int64_t char_skill_base_set(struct char_data *ch, const char *skill,
@@ -411,6 +412,7 @@ int     char_rpp_to_level(struct char_data *ch);
 /* Status display helpers — new Lua bindings for do_status port */
 int     char_limbcond_get(struct char_data *ch, int n);   /* n=1..4 */
 void    char_limbcond_set(struct char_data *ch, int n, int val);
+void    char_limb_healing_sync(struct char_data *ch);
 int64_t char_charge_get(struct char_data *ch);
 int64_t char_barrier_get(struct char_data *ch);
 const char *char_voice_get(struct char_data *ch);

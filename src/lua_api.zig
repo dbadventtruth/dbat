@@ -50,7 +50,7 @@ pub fn getLuaState() ?*Lua {
 }
 var loaded_entries: usize = 0;
 var active_repl: ?*LuaRepl = null;
-var definition_cache: DefinitionCache = undefined;
+pub var definition_cache: DefinitionCache = undefined;
 var definition_cache_initialized = false;
 
 pub const StatDefinition = struct {
@@ -94,10 +94,17 @@ pub const DerivedDefinition = struct {
 pub const MeterDefinition = struct {
     derived_stat_storage: [64]u8 = undefined,
     derived_stat_len: usize = 0,
+    linked_condition_storage: [64:0]u8 = [_:0]u8{0} ** 64,
+    linked_condition_len: usize = 0,
 
     pub fn derivedStat(self: *const MeterDefinition, fallback: []const u8) []const u8 {
         if (self.derived_stat_len == 0) return fallback;
         return self.derived_stat_storage[0..self.derived_stat_len];
+    }
+
+    pub fn linkedCondition(self: *const MeterDefinition) ?[:0]const u8 {
+        if (self.linked_condition_len == 0) return null;
+        return self.linked_condition_storage[0..self.linked_condition_len :0];
     }
 };
 
@@ -953,6 +960,11 @@ fn cacheMeterDefinition(id: []const u8, index: i32) !void {
         const len = @min(value.len, definition.derived_stat_storage.len);
         @memcpy(definition.derived_stat_storage[0..len], value[0..len]);
         definition.derived_stat_len = len;
+    }
+    if (optionalStringField(definition_index, "linked_condition")) |value| {
+        const len = @min(value.len, definition.linked_condition_storage.len);
+        @memcpy(definition.linked_condition_storage[0..len], value[0..len]);
+        definition.linked_condition_len = len;
     }
     try definition_cache.meters.put(internString(id), definition);
 }

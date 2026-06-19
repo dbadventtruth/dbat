@@ -5,7 +5,7 @@ hints.priority = 0
 hints.aliases = {{"hints", 4}}
 hints.tags = { "system" }
 
-local function hints.can_execute(ch)
+function hints.can_execute(ch)
     if ch:is_npc() then
         return false, "NPCs don't need hints."
     end

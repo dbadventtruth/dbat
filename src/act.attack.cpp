@@ -1441,7 +1441,7 @@ ACMD(do_zen) {
   } else if (GET_LIMBCOND(ch, 1) > 0 && GET_LIMBCOND(ch, 1) < 50 &&
              GET_LIMBCOND(ch, 2) < 0) {
     send_to_char(ch, "Using your broken right arm has damaged it more!@n\r\n");
-    GET_LIMBCOND(ch, 1) -= rand_number(3, 5);
+    SET_LIMBCOND(ch, 1, GET_LIMBCOND(ch, 1) - (rand_number(3, 5)));
     if (GET_LIMBCOND(ch, 1) < 0) {
       act("@RYour right arm has fallen apart!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@r$n@R's right arm has fallen apart!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -1449,7 +1449,7 @@ ACMD(do_zen) {
   } else if (GET_LIMBCOND(ch, 2) > 0 && GET_LIMBCOND(ch, 2) < 50 &&
              GET_LIMBCOND(ch, 1) < 0) {
     send_to_char(ch, "Using your broken left arm has damaged it more!@n\r\n");
-    GET_LIMBCOND(ch, 2) -= rand_number(3, 5);
+    SET_LIMBCOND(ch, 2, GET_LIMBCOND(ch, 2) - (rand_number(3, 5)));
     if (GET_LIMBCOND(ch, 2) < 0) {
       act("@RYour left arm has fallen apart!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@r$n@R's left arm has fallen apart!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -1811,7 +1811,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's left arm is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 2) = 0;
+            SET_LIMBCOND(vict, 2, 0);
             remove_limb(vict, 2);
           } else if (GET_LIMBCOND(vict, 1) > 0 && !is_sparring(ch)) {
             act("@RYour attack severs $N's right arm!@n", TRUE, ch, 0, vict,
@@ -1820,7 +1820,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's right arm is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 1) = 0;
+            SET_LIMBCOND(vict, 1, 0);
             remove_limb(vict, 1);
           }
         }
@@ -1863,7 +1863,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's left leg is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 4) = 0;
+            SET_LIMBCOND(vict, 4, 0);
             remove_limb(vict, 4);
           } else if (GET_LIMBCOND(vict, 3) > 0 && !is_sparring(ch)) {
             act("@RYour attack severs $N's right leg!@n", TRUE, ch, 0, vict,
@@ -1872,7 +1872,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's right leg is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 3) = 0;
+            SET_LIMBCOND(vict, 3, 0);
             remove_limb(vict, 3);
           }
         }

@@ -474,19 +474,19 @@ int enter_player_game(struct descriptor_data *d) {
   }
 
   if (PLR_FLAGGED(ch, PLR_RARM)) {
-    GET_LIMBCOND(ch, 1) = 100;
+    SET_LIMBCOND(ch, 1, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_RARM);
   }
   if (PLR_FLAGGED(ch, PLR_LARM)) {
-    GET_LIMBCOND(ch, 2) = 100;
+    SET_LIMBCOND(ch, 2, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_LARM);
   }
   if (PLR_FLAGGED(ch, PLR_LLEG)) {
-    GET_LIMBCOND(ch, 4) = 100;
+    SET_LIMBCOND(ch, 4, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_LLEG);
   }
   if (PLR_FLAGGED(ch, PLR_RLEG)) {
-    GET_LIMBCOND(ch, 3) = 100;
+    SET_LIMBCOND(ch, 3, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_RLEG);
   }
   GET_COMBINE(ch) = -1;

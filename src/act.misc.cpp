@@ -304,12 +304,6 @@ static void generate_multiform(struct char_data *ch, int count) {
     clone->genome[0] = ch->genome[0];
     clone->genome[1] = ch->genome[1];
 
-    // Limb copy...
-    for (int l = 0; l < 3; l++) {
-      clone->limbs[l] = ch->limbs[l];
-      clone->limb_condition[l] = ch->limb_condition[l];
-    }
-
     char_multiform_clone_set(clone, ch);
     char_condition_apply_with_number(clone, "multiform", "skill", "multiform",
                                      "original_id", char_id_get(ch));

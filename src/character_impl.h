@@ -187,9 +187,6 @@ struct char_data {
 
   int lasthit;
 
-  // limb information... why do we have three of them?
-  int limbs[4]; /* 0 Right Arm, 1 Left Arm, 2 Right Leg, 3 Left Leg */
-  int limb_condition[4];
   bitvector_t bodyparts[AF_ARRAY_MAX]; /* Bitvector for current bodyparts */
 
   time_t rewtime;

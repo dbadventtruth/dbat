@@ -122,7 +122,7 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putNonEmpty(&object, allocator, "player_flags", try jsonx.serializeFlags(allocator, ch, cdb.NUM_PLR_FLAGS, actFlagged));
         try jsonx.putNonEmpty(&object, allocator, "skills", try serializeSkills(allocator, ch));
         try jsonx.put(&object, allocator, "lboard", try serializeIntArray(allocator, ch.lboard[0..]));
-        try jsonx.put(&object, allocator, "limbs", try serializeIntArray(allocator, ch.limb_condition[0..]));
+        // limbs are now stored as stats (limb_right_arm, limb_left_arm, etc.)
         try jsonx.put(&object, allocator, "genome", try serializeIntArray(allocator, ch.genome[0..]));
         try jsonx.put(&object, allocator, "bonuses", try serializeIntArray(allocator, ch.bonuses[0..]));
         try jsonx.put(&object, allocator, "transcost", try serializeIntArray(allocator, ch.transcost[0..]));
@@ -289,7 +289,7 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (jsonx.field(value, "player_flags")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_PLR_FLAGS, actFlagSet);
         if (jsonx.field(value, "skills")) |skills| try deserializeSkills(ch, skills);
         if (jsonx.field(value, "lboard")) |items| try deserializeIntArray(ch.lboard[0..], items);
-        if (jsonx.field(value, "limbs")) |items| try deserializeIntArray(ch.limb_condition[0..], items);
+        if (jsonx.field(value, "limbs")) |items| try migrateOldLimbs(ch, items);
         if (jsonx.field(value, "genome")) |items| try deserializeIntArray(ch.genome[0..], items);
         if (jsonx.field(value, "bonuses")) |items| try deserializeIntArray(ch.bonuses[0..], items);
         if (jsonx.field(value, "transcost")) |items| try deserializeIntArray(ch.transcost[0..], items);
@@ -526,6 +526,20 @@ fn serializeIntArray(allocator: std.mem.Allocator, values: anytype) !JsonValue {
     var array = jsonx.JsonArray.init(allocator);
     for (values) |value| try array.append(.{ .integer = @intCast(value) });
     return .{ .array = array };
+}
+
+const limb_stat_names = [4][*:0]const u8{
+    "limb_right_arm", "limb_left_arm", "limb_right_leg", "limb_left_leg",
+};
+
+fn migrateOldLimbs(ch: *cdb.char_data, json: JsonValue) !void {
+    if (json != .array) return error.ExpectedArray;
+    for (json.array.items, 0..) |item, index| {
+        if (index >= 4) break;
+        if (item != .integer) return error.ExpectedInteger;
+        const val: i64 = @intCast(item.integer);
+        _ = characters_api.char_stat_set(ch, limb_stat_names[index], val);
+    }
 }
 
 fn deserializeIntArray(values: anytype, json: JsonValue) !void {

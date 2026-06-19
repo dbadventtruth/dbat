@@ -542,13 +542,13 @@ int load_char(const char *name, struct char_data *ch) {
         else if (!strcmp(tag, "LFPC"))
           char_stat_set(ch, "life_percent", atoi(line));
         else if (!strcmp(tag, "Lila"))
-          GET_LIMBCOND(ch, 2) = atoi(line);
+          SET_LIMBCOND(ch, 2, atoi(line));
         else if (!strcmp(tag, "Lill"))
-          GET_LIMBCOND(ch, 4) = atoi(line);
+          SET_LIMBCOND(ch, 4, atoi(line));
         else if (!strcmp(tag, "Lira"))
-          GET_LIMBCOND(ch, 1) = atoi(line);
+          SET_LIMBCOND(ch, 1, atoi(line));
         else if (!strcmp(tag, "Lirl"))
-          GET_LIMBCOND(ch, 3) = atoi(line);
+          SET_LIMBCOND(ch, 3, atoi(line));
         else if (!strcmp(tag, "Lint"))
           GET_LINTEREST(ch) = atoi(line);
         else if (!strcmp(tag, "Lpla"))
