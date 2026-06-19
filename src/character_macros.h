@@ -121,7 +121,6 @@ extern "C" {
 #define SPOILED(ch) ((ch)->time.played > 86400)
 #define GET_DEATH_TYPE(ch) ((ch)->death_type)
 #define GET_SLEEPT(ch) ((ch)->sleeptime)
-#define GET_FOODR(ch) ((ch)->foodr)
 #define GET_ALT(ch) char_condition_number_get(ch, "flying", "altitude")
 #define GET_CHARGE(ch) ((ch)->charge)
 #define GET_CHARGETO(ch) ((ch)->chargeto)

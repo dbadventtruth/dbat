@@ -413,7 +413,6 @@ int     char_limbcond_get(struct char_data *ch, int n);   /* n=1..4 */
 void    char_limbcond_set(struct char_data *ch, int n, int val);
 int64_t char_charge_get(struct char_data *ch);
 int64_t char_barrier_get(struct char_data *ch);
-int     char_song_get(struct char_data *ch);
 const char *char_voice_get(struct char_data *ch);
 int     char_distfea_get(struct char_data *ch);
 const char *char_rdisplay_get(struct char_data *ch);

@@ -4450,6 +4450,8 @@ void init_char(struct char_data *ch) {
     char_stat_set(ch, cond_name, (GET_ADMLEVEL(ch) == ADMLVL_IMPL ? -1 : 48));
   }
 
+  char_condition_add(ch, "system_hints", "init", "character");
+
   GET_LOADROOM(ch) = NOWHERE;
   SPEAKING(ch) = SKILL_LANG_COMMON;
   // initialize plrobjs so it doesn't complain on startup.

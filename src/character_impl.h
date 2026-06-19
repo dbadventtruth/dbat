@@ -153,12 +153,9 @@ struct char_data {
   bitvector_t
       affected_by[AF_ARRAY_MAX]; /* Bitvector for current affects	*/
 
-  // magic music
-  short song;
-
   time_t lastint; // last interest time
 
-  // charge systemm
+  // charge system
   int64_t charge;
   int64_t chargeto;
 
@@ -178,7 +175,6 @@ struct char_data {
 
   // food, drink, sleep
   int sleeptime;
-  int foodr;
 
   // Saiyan and halfy stuff
   int tail_growth;

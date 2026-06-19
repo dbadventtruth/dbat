@@ -301,8 +301,12 @@ fn mobProtoEnsureZigdata(proto: *cdb.mob_proto_data) ?*MobProtoData {
     return @ptrCast(@alignCast(proto.zigdata.?));
 }
 
-pub export fn mob_proto_id_get(proto: *cdb.mob_proto_data) cdb.mob_vnum { return proto.id; }
-pub export fn mob_proto_id_set(proto: *cdb.mob_proto_data, id: cdb.mob_vnum) void { proto.id = id; }
+pub export fn mob_proto_id_get(proto: *cdb.mob_proto_data) cdb.mob_vnum {
+    return proto.id;
+}
+pub export fn mob_proto_id_set(proto: *cdb.mob_proto_data, id: cdb.mob_vnum) void {
+    proto.id = id;
+}
 
 pub export fn mob_proto_zig_free(proto: *cdb.mob_proto_data) void {
     if (proto.zigdata == null) return;
@@ -1504,17 +1508,17 @@ pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
     // Mutant mutations (genome[] values 1-10)
     if (race == cdb.RACE_MUTANT) {
         const mutation_map = [_]?[*:0]const u8{
-            null,                         // 0 = none
-            "mutation_extreme_speed",     // 1
-            "mutation_cell_regen",        // 2
-            "mutation_extreme_reflexes",  // 3
-            "mutation_infravision",       // 4
-            "mutation_natural_camo",      // 5
-            "mutation_limb_regen",        // 6
-            "mutation_poisonous",         // 7
-            "mutation_rubbery_body",      // 8
-            "mutation_innate_telepathy",  // 9
-            "mutation_natural_energy",    // 10
+            null, // 0 = none
+            "mutation_extreme_speed", // 1
+            "mutation_cell_regen", // 2
+            "mutation_extreme_reflexes", // 3
+            "mutation_infravision", // 4
+            "mutation_natural_camo", // 5
+            "mutation_limb_regen", // 6
+            "mutation_poisonous", // 7
+            "mutation_rubbery_body", // 8
+            "mutation_innate_telepathy", // 9
+            "mutation_natural_energy", // 10
         };
         for (ch.genome) |g| {
             if (g > 0) {
@@ -1530,14 +1534,14 @@ pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
     // Bio-Android genomes (genome[] values 1-8)
     if (race == cdb.RACE_BIO) {
         const genome_map = [_]?[*:0]const u8{
-            null,             // 0 = none
-            "genome_human",   // 1
-            "genome_saiyan",  // 2
-            "genome_namek",   // 3
-            "genome_icer",    // 4
+            null, // 0 = none
+            "genome_human", // 1
+            "genome_saiyan", // 2
+            "genome_namek", // 3
+            "genome_icer", // 4
             "genome_truffle", // 5
-            "genome_arlian",  // 6
-            "genome_kai",     // 7
+            "genome_arlian", // 6
+            "genome_kai", // 7
             "genome_konatsu", // 8
         };
         for (ch.genome) |g| {
@@ -1553,19 +1557,19 @@ pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
 
     // Bonuses (0-28) and Flaws (29-51)
     const bonus_map = [_][*:0]const u8{
-        "bonus_thrifty", "bonus_prodigy", "bonus_quick_study", "bonus_diehard",
-        "bonus_brawler", "bonus_destroyer", "bonus_hardworker", "bonus_healer",
-        "bonus_loyal", "bonus_brawny", "bonus_scholarly", "bonus_sage",
-        "bonus_agile", "bonus_quick", "bonus_sturdy", "bonus_thickskin",
-        "bonus_recipe", "bonus_fireproof", "bonus_powerhit", "bonus_healthy",
-        "bonus_insomniac", "bonus_evasive", "bonus_wall", "bonus_accurate",
-        "bonus_leech", "bonus_gmemory", "bonus_soft", "bonus_late", "bonus_impulse",
-        "flaw_sickly", "flaw_punchingbag", "flaw_pushover", "flaw_poordepth",
-        "flaw_thinskin", "flaw_fireprone", "flaw_intolerant", "flaw_coward",
-        "flaw_arrogant", "flaw_unfocused", "flaw_slacker", "flaw_slow_learner",
-        "flaw_masochistic", "flaw_mute", "flaw_wimp", "flaw_dull",
-        "flaw_foolish", "flaw_clumsy", "flaw_slow", "flaw_frail",
-        "flaw_sadistic", "flaw_loner", "flaw_bmemory",
+        "bonus_thrifty",     "bonus_prodigy",    "bonus_quick_study", "bonus_diehard",
+        "bonus_brawler",     "bonus_destroyer",  "bonus_hardworker",  "bonus_healer",
+        "bonus_loyal",       "bonus_brawny",     "bonus_scholarly",   "bonus_sage",
+        "bonus_agile",       "bonus_quick",      "bonus_sturdy",      "bonus_thickskin",
+        "bonus_recipe",      "bonus_fireproof",  "bonus_powerhit",    "bonus_healthy",
+        "bonus_insomniac",   "bonus_evasive",    "bonus_wall",        "bonus_accurate",
+        "bonus_leech",       "bonus_gmemory",    "bonus_soft",        "bonus_late",
+        "bonus_impulse",     "flaw_sickly",      "flaw_punchingbag",  "flaw_pushover",
+        "flaw_poordepth",    "flaw_thinskin",    "flaw_fireprone",    "flaw_intolerant",
+        "flaw_coward",       "flaw_arrogant",    "flaw_unfocused",    "flaw_slacker",
+        "flaw_slow_learner", "flaw_masochistic", "flaw_mute",         "flaw_wimp",
+        "flaw_dull",         "flaw_foolish",     "flaw_clumsy",       "flaw_slow",
+        "flaw_frail",        "flaw_sadistic",    "flaw_loner",        "flaw_bmemory",
     };
     for (ch.bonuses, 0..) |val, i| {
         if (val != 0 and i < bonus_map.len) {
@@ -1595,19 +1599,38 @@ pub export fn char_limbcond_set(ch: *cdb.char_data, n: c_int, val: c_int) void {
     ch.limb_condition[idx] = val;
 }
 
-pub export fn char_charge_get(ch: *cdb.char_data) i64 { return ch.charge; }
-pub export fn char_barrier_get(ch: *cdb.char_data) i64 { return ch.barrier; }
-pub export fn char_song_get(ch: *cdb.char_data) c_int { return @intCast(ch.song); }
+pub export fn char_charge_get(ch: *cdb.char_data) i64 {
+    return ch.charge;
+}
+pub export fn char_barrier_get(ch: *cdb.char_data) i64 {
+    return ch.barrier;
+}
 
-pub export fn char_voice_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.voice; }
-pub export fn char_rdisplay_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.rdisplay; }
-pub export fn char_feature_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.feature; }
+pub export fn char_voice_get(ch: *cdb.char_data) ?[*:0]const u8 {
+    return ch.voice;
+}
+pub export fn char_rdisplay_get(ch: *cdb.char_data) ?[*:0]const u8 {
+    return ch.rdisplay;
+}
+pub export fn char_feature_get(ch: *cdb.char_data) ?[*:0]const u8 {
+    return ch.feature;
+}
 
-pub export fn char_absorbs_get(ch: *cdb.char_data) c_int { return ch.absorbs; }
-pub export fn char_mimic_get(ch: *cdb.char_data) c_int { return ch.mimic; }
-pub export fn char_backstab_cooldown_get(ch: *cdb.char_data) c_int { return ch.backstabcool; }
-pub export fn char_preference_get(ch: *cdb.char_data) c_int { return ch.preference; }
-pub export fn char_preference_set(ch: *cdb.char_data, value: c_int) void { ch.preference = value; }
+pub export fn char_absorbs_get(ch: *cdb.char_data) c_int {
+    return ch.absorbs;
+}
+pub export fn char_mimic_get(ch: *cdb.char_data) c_int {
+    return ch.mimic;
+}
+pub export fn char_backstab_cooldown_get(ch: *cdb.char_data) c_int {
+    return ch.backstabcool;
+}
+pub export fn char_preference_get(ch: *cdb.char_data) c_int {
+    return ch.preference;
+}
+pub export fn char_preference_set(ch: *cdb.char_data, value: c_int) void {
+    ch.preference = value;
+}
 pub export fn char_genome_get(ch: *cdb.char_data, slot: c_int) c_int {
     const idx: usize = @intCast(slot);
     if (idx >= ch.genome.len) return 0;
@@ -1624,18 +1647,40 @@ pub export fn char_improve_skill(ch: *cdb.char_data, skill_name: ?[*:0]const u8,
     const index = skillIndex(skill_name) orelse return;
     cdb.improve_skill(ch, @intCast(index), flag);
 }
-pub export fn char_aura_get(ch: *cdb.char_data) c_int { return ch.aura; }
-pub export fn char_hairl_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairl); }
-pub export fn char_hairs_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairs); }
-pub export fn char_hairc_get(ch: *cdb.char_data) c_int { return @intCast(ch.hairc); }
-pub export fn char_skin_get(ch: *cdb.char_data) c_int { return @intCast(ch.skin); }
-pub export fn char_eye_get(ch: *cdb.char_data) c_int { return @intCast(ch.eye); }
-pub export fn char_distfea_get(ch: *cdb.char_data) c_int { return @intCast(ch.distfea); }
-pub export fn char_sleeptime_get(ch: *cdb.char_data) c_int { return ch.sleeptime; }
-pub export fn char_relax_count_get(ch: *cdb.char_data) c_int { return ch.relax_count; }
+pub export fn char_aura_get(ch: *cdb.char_data) c_int {
+    return ch.aura;
+}
+pub export fn char_hairl_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.hairl);
+}
+pub export fn char_hairs_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.hairs);
+}
+pub export fn char_hairc_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.hairc);
+}
+pub export fn char_skin_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.skin);
+}
+pub export fn char_eye_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.eye);
+}
+pub export fn char_distfea_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.distfea);
+}
+pub export fn char_sleeptime_get(ch: *cdb.char_data) c_int {
+    return ch.sleeptime;
+}
+pub export fn char_relax_count_get(ch: *cdb.char_data) c_int {
+    return ch.relax_count;
+}
 
-pub export fn char_has_group(ch: *cdb.char_data) bool { return cdb.has_group(ch) != 0; }
-pub export fn char_soft_cap(ch: *cdb.char_data) i64 { return cdb.calc_soft_cap(ch); }
+pub export fn char_has_group(ch: *cdb.char_data) bool {
+    return cdb.has_group(ch) != 0;
+}
+pub export fn char_soft_cap(ch: *cdb.char_data) i64 {
+    return cdb.calc_soft_cap(ch);
+}
 
 // extern declarations for C functions not in zig_api.h
 extern fn carry_drop(ch: *cdb.char_data, @"type": c_int) void;
@@ -1656,18 +1701,34 @@ pub export fn char_bonus_flagged(ch: *cdb.char_data, n: c_int) bool {
 pub export fn char_affflag_set(ch: *cdb.char_data, flag: c_int, val: bool) void {
     bitflags.set(ch.affected_by[0..], flag, val);
 }
-pub export fn char_barrier_set(ch: *cdb.char_data, val: i64) void { ch.barrier = val; }
-pub export fn char_carry_drop(ch: *cdb.char_data, @"type": c_int) void { carry_drop(ch, @"type"); }
+pub export fn char_barrier_set(ch: *cdb.char_data, val: i64) void {
+    ch.barrier = val;
+}
+pub export fn char_carry_drop(ch: *cdb.char_data, @"type": c_int) void {
+    carry_drop(ch, @"type");
+}
 pub export fn char_land(ch: *cdb.char_data) void {
     if (cdb.char_condition_has(ch, "flying")) do_fly(ch, null, 0, 0);
 }
-pub export fn char_arena_idnum_get(ch: *cdb.char_data) c_int { return @intCast(ch.arenawatch); }
-pub export fn char_arena_idnum_set(ch: *cdb.char_data, idnum: c_int) void { ch.arenawatch = @intCast(idnum); }
+pub export fn char_arena_idnum_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.arenawatch);
+}
+pub export fn char_arena_idnum_set(ch: *cdb.char_data, idnum: c_int) void {
+    ch.arenawatch = @intCast(idnum);
+}
 
-pub export fn char_poofin_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.poofin; }
-pub export fn char_poofout_get(ch: *cdb.char_data) ?[*:0]const u8 { return ch.poofout; }
-pub export fn char_loadroom_get(ch: *cdb.char_data) c_int { return @intCast(ch.load_room); }
-pub export fn char_loadroom_set(ch: *cdb.char_data, vnum: c_int) void { ch.load_room = @intCast(vnum); }
+pub export fn char_poofin_get(ch: *cdb.char_data) ?[*:0]const u8 {
+    return ch.poofin;
+}
+pub export fn char_poofout_get(ch: *cdb.char_data) ?[*:0]const u8 {
+    return ch.poofout;
+}
+pub export fn char_loadroom_get(ch: *cdb.char_data) c_int {
+    return @intCast(ch.load_room);
+}
+pub export fn char_loadroom_set(ch: *cdb.char_data, vnum: c_int) void {
+    ch.load_room = @intCast(vnum);
+}
 pub export fn char_look_at_room(ch: *cdb.char_data) void {
     const room = cdb.char_room_get(ch) orelse return;
     look_at_room(room, ch, 0);

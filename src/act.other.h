@@ -11,7 +11,6 @@ extern const room_vnum freeres[NUM_ALIGNS];
 
 // functions
 void log_imm_action(char *messg, ...);
-void hint_system(struct char_data *ch, int num);
 int dball_count(struct char_data *ch);
 void log_custom(struct descriptor_data *d, struct obj_data *obj);
 void wishSYS(void);

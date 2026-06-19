@@ -243,7 +243,6 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "limbcond_set", luaCharacterLimbCondSet);
     addMethod(lua, "charge_get", luaCharacterChargeGet);
     addMethod(lua, "barrier_get", luaCharacterBarrierGet);
-    addMethod(lua, "song_get", luaCharacterSongGet);
     addMethod(lua, "voice_get", luaCharacterVoiceGet);
     addMethod(lua, "distfea_get", luaCharacterDistfeaGet);
     addMethod(lua, "rdisplay_get", luaCharacterRdisplayGet);
@@ -1069,12 +1068,18 @@ fn luaCharacterModifiersFor(lua: *Lua) i32 {
     const id = string(lua, 3);
     const zigdata = character_api.char_ensure_zigdata(ch) orelse {
         lua.newTable();
-        lua.pushInteger(0); lua.setField(-2, "flat");
-        lua.pushInteger(0); lua.setField(-2, "percent");
-        lua.newTable(); lua.setField(-2, "multipliers");
-        lua.pushNil(); lua.setField(-2, "min");
-        lua.pushNil(); lua.setField(-2, "max");
-        lua.pushNil(); lua.setField(-2, "set");
+        lua.pushInteger(0);
+        lua.setField(-2, "flat");
+        lua.pushInteger(0);
+        lua.setField(-2, "percent");
+        lua.newTable();
+        lua.setField(-2, "multipliers");
+        lua.pushNil();
+        lua.setField(-2, "min");
+        lua.pushNil();
+        lua.setField(-2, "max");
+        lua.pushNil();
+        lua.setField(-2, "set");
         return 1;
     };
 
@@ -1094,19 +1099,33 @@ fn luaCharacterModifiersFor(lua: *Lua) i32 {
     character_api.accumulateDerivedModifiers(&zigdata.modifiers, category, id, &flat, &percent, &multipliers, &min_override, &max_override, &set_override);
 
     lua.newTable();
-    lua.pushInteger(flat); lua.setField(-2, "flat");
-    lua.pushInteger(percent); lua.setField(-2, "percent");
+    lua.pushInteger(flat);
+    lua.setField(-2, "flat");
+    lua.pushInteger(percent);
+    lua.setField(-2, "percent");
     lua.newTable();
     for (multipliers.items, 0..) |m, i| {
         lua.pushInteger(m);
         lua.setIndex(-2, @intCast(i + 1));
     }
     lua.setField(-2, "multipliers");
-    if (min_override) |v| { lua.pushInteger(v); } else { lua.pushNil(); }
+    if (min_override) |v| {
+        lua.pushInteger(v);
+    } else {
+        lua.pushNil();
+    }
     lua.setField(-2, "min");
-    if (max_override) |v| { lua.pushInteger(v); } else { lua.pushNil(); }
+    if (max_override) |v| {
+        lua.pushInteger(v);
+    } else {
+        lua.pushNil();
+    }
     lua.setField(-2, "max");
-    if (set_override) |v| { lua.pushInteger(v); } else { lua.pushNil(); }
+    if (set_override) |v| {
+        lua.pushInteger(v);
+    } else {
+        lua.pushNil();
+    }
     lua.setField(-2, "set");
     return 1;
 }
@@ -1783,8 +1802,8 @@ fn luaCharacterLimbCondGet(lua: *Lua) i32 {
     return 1;
 }
 fn luaCharacterLimbCondSet(lua: *Lua) i32 {
-    const ch  = checkCharacter(lua);
-    const n   = intCastOrError(lua, c_int, integer(lua, 2), "limb index");
+    const ch = checkCharacter(lua);
+    const n = intCastOrError(lua, c_int, integer(lua, 2), "limb index");
     const val = intCastOrError(lua, c_int, integer(lua, 3), "limb value");
     cdb.char_limbcond_set(ch, n, val);
     return 0;
@@ -1797,11 +1816,6 @@ fn luaCharacterChargeGet(lua: *Lua) i32 {
 
 fn luaCharacterBarrierGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.char_barrier_get(checkCharacter(lua)));
-    return 1;
-}
-
-fn luaCharacterSongGet(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_song_get(checkCharacter(lua)));
     return 1;
 }
 
@@ -1875,7 +1889,10 @@ fn luaCharacterImproveSkill(lua: *Lua) i32 {
 fn luaCharacterDefendingForGet(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const id = cdb.char_condition_number_get(ch, "defending_for", "target_id");
-    if (id == 0 or cdb.char_by_id(id) == null) { lua.pushNil(); return 1; }
+    if (id == 0 or cdb.char_by_id(id) == null) {
+        lua.pushNil();
+        return 1;
+    }
     pushCharacter(lua, id);
     return 1;
 }
@@ -1893,7 +1910,10 @@ fn luaCharacterDefendingForSet(lua: *Lua) i32 {
 fn luaCharacterDefendedByGet(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const id = cdb.char_condition_number_get(ch, "defended_by", "target_id");
-    if (id == 0 or cdb.char_by_id(id) == null) { lua.pushNil(); return 1; }
+    if (id == 0 or cdb.char_by_id(id) == null) {
+        lua.pushNil();
+        return 1;
+    }
     pushCharacter(lua, id);
     return 1;
 }
@@ -1999,7 +2019,10 @@ fn luaCharacterArenaIdnumSet(lua: *Lua) i32 {
 fn luaCharacterDraggingGet(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const id = cdb.char_condition_number_get(ch, "dragging", "target_id");
-    if (id == 0 or cdb.char_by_id(id) == null) { lua.pushNil(); return 1; }
+    if (id == 0 or cdb.char_by_id(id) == null) {
+        lua.pushNil();
+        return 1;
+    }
     pushCharacter(lua, id);
     return 1;
 }
@@ -2015,7 +2038,10 @@ fn luaCharacterDraggingSet(lua: *Lua) i32 {
 fn luaCharacterBeingDraggedGet(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const id = cdb.char_condition_number_get(ch, "being_dragged", "target_id");
-    if (id == 0 or cdb.char_by_id(id) == null) { lua.pushNil(); return 1; }
+    if (id == 0 or cdb.char_by_id(id) == null) {
+        lua.pushNil();
+        return 1;
+    }
     pushCharacter(lua, id);
     return 1;
 }
@@ -2031,14 +2057,20 @@ fn luaCharacterBeingDraggedSet(lua: *Lua) i32 {
 fn luaCharacterCarryingCharGet(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const id = cdb.char_condition_number_get(ch, "carrying_char", "target_id");
-    if (id == 0 or cdb.char_by_id(id) == null) { lua.pushNil(); return 1; }
+    if (id == 0 or cdb.char_by_id(id) == null) {
+        lua.pushNil();
+        return 1;
+    }
     pushCharacter(lua, id);
     return 1;
 }
 fn luaCharacterCarriedByCharGet(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const id = cdb.char_condition_number_get(ch, "carried_by_char", "target_id");
-    if (id == 0 or cdb.char_by_id(id) == null) { lua.pushNil(); return 1; }
+    if (id == 0 or cdb.char_by_id(id) == null) {
+        lua.pushNil();
+        return 1;
+    }
     pushCharacter(lua, id);
     return 1;
 }
@@ -2074,7 +2106,10 @@ fn luaCharacterRestore(lua: *Lua) i32 {
 fn luaCharacterFindTargetRoom(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
     const room = cdb.char_find_target_room(ch, string(lua, 2));
-    if (room == null) { lua.pushNil(); return 1; }
+    if (room == null) {
+        lua.pushNil();
+        return 1;
+    }
     rooms_lua.pushRoom(lua, cdb.room_vnum_get(room.?));
     return 1;
 }

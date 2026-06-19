@@ -262,7 +262,6 @@ const struct command_info cmd_info[] = {
     {"helpcheck", "helpch", POS_DEAD, do_helpcheck, 0, ADMLVL_NONE, 0},
     {"handbook", "handb", POS_DEAD, do_gen_ps, 0, ADMLVL_IMMORT, SCMD_HANDBOOK},
     {"hide", "hide", POS_RESTING, do_gen_tog, 1, ADMLVL_NONE, SCMD_HIDE},
-    {"hints", "hints", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_HINTS},
     {"history", "hist", POS_DEAD, do_history, 0, ADMLVL_NONE, 0},
     {"hold", "hold", POS_RESTING, do_grab, 1, ADMLVL_NONE, 0},
     {"holylight", "holy", POS_DEAD, do_gen_tog, 0, ADMLVL_IMMORT,

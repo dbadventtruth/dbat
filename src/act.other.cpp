@@ -2961,69 +2961,6 @@ ACMD(do_fury) {
 
 /* End of do_fury for halfbreeds to release their raaage, rawrg! */
 
-void hint_system(struct char_data *ch, int num) {
-  const char
-      *
-          hints[22] =
-              {
-                  "Remember to save often.",                             /* 0 */
-                  "Remember to eat or drink if you want to stay alive.", /* 1 */
-                  "It is a good idea to save up PS for learning skills instead "
-                  "of just practicing them.",                      /* 2 */
-                  "A good way to save up money is with the bank.", /* 3 */
-                  "If you want to stay alive in this rough world you will need "
-                  "to be mindful of your surroundings.", /* 4 */
-                  "Knowing when to rest and recover can be the difference "
-                  "between life and death.", /* 5 */
-                  "Not every battle can be won. Great warriors know how to "
-                  "pick their fights.", /* 6 */
-                  "It is a good idea to experiment with skills fully before "
-                  "deciding their worth.", /* 7 */
-                  "Having a well balanced repertoire of skills can help you "
-                  "out of any situation.", /* 8 */
-                  "You can become hidden from your enemies on who and ooc with "
-                  "the whohide command.", /* 9 */
-                  "You can value an item at a shopkeeper with the value "
-                  "command.", /* 10 */
-                  "There are ways to earn money through jobs, try looking for "
-                  "a job. Bum.", /* 11 */
-                  "You never know what may be hidden nearby. You should always "
-                  "check out anything you can.", /* 12 */
-                  "You should check for a help file on any subject you can, "
-                  "you never know how the info may 'help' you.", /* 13 */
-                  "Until you are capable of taking care of yourself for long "
-                  "periods of time you should stick near your sensei.", /* 14 */
-                  "You shouldn't travel to other planets until you have a "
-                  "stable supply of money.", /* 15 */
-                  "There is a vast galaxy out there that you may not be able "
-                  "to reach by public ship.", /* 16 */
-                  "Score is used to view the various statistics about your "
-                  "character.", /* 17 */
-                  "Status is used to view what is influencing your character "
-                  "and its characteristics.", /* 18 */
-                  "You will need a scouter in order to use the Scouter Network "
-                  "(SNET).", /* 19 */
-                  "The DBAT forum is a great resource for finding out "
-                  "information and for conversing\r\nwith fellow players. "
-                  "http://advent-truth.com/forum", /* 20 */
-                  "Found a bug or have a suggestion? Log into our forums and "
-                  "post in the relevant section."};
-  if (num == 0) {
-    num = rand_number(0, 21);
-  }
-
-  if (!IS_ANDROID(ch) && !IS_NAMEK(ch)) {
-    send_to_char(ch, "@D[@GHint@D] @G%s@n\r\n", hints[num]);
-  } else {
-    if (num == 1) {
-      num = 0;
-    }
-    send_to_char(ch, "@D[@GHint@D] @G%s@n\r\n", hints[num]);
-  }
-  send_to_char(ch,
-               "@D(@gYou can turn off hints with the command 'hints'@D)@n\r\n");
-}
-
 ACMD(do_think) {
   skip_spaces(&argument);
 

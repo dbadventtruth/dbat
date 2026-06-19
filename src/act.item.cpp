@@ -3787,10 +3787,9 @@ ACMD(do_drink) {
   gain_condition(ch, THIRST,
                  drink_aff[GET_OBJ_VAL(temp, VAL_DRINKCON_LIQUID)][THIRST] *
                      amount);
-  if (GET_FOODR(ch) == 0 && subcmd != SCMD_SIP) {
-    incCurST(ch, (getMaxST(ch) / 100) * amount);
-    GET_FOODR(ch) = 2;
-    send_to_char(ch, "You feel rejuvinated by it.\r\n");
+  if (!char_condition_has(ch, "food_restored") && subcmd != SCMD_SIP) {
+    auto stamina_percent = amount;
+    char_condition_apply_with_number(ch, "food_restored", "drink", "food restoration", "amount", stamina_percent);
   }
   if (GET_SKILL(ch, SKILL_WELLSPRING) && (getCurKI(ch)) < GET_MAX_MANA(ch) &&
       wasthirsty <= 30 && subcmd != SCMD_SIP) {
@@ -3953,13 +3952,12 @@ ACMD(do_eat) {
   double percent_eaten = (double)amount / (double)maxfval;
 
   gain_condition(ch, HUNGER, amount);
-  if (GET_FOODR(ch) == 0 && subcmd != SCMD_TASTE) {
-    incCurSTPercent(ch, 0.01 * (double)amount);
-    GET_FOODR(ch) = 2;
+  if (!char_condition_has(ch, "food_restored") && subcmd != SCMD_TASTE) {
+    auto stamina_percent = amount;
     if (OBJ_FLAGGED(food, ITEM_YUM)) {
-      incCurSTPercent(ch, .25);
+      stamina_percent += 25;
     }
-    send_to_char(ch, "You feel rejuvinated by it.\r\n");
+    char_condition_apply_with_number(ch, "food_restored", "eat", "food restoration", "amount", stamina_percent);
   }
 
   if (subcmd != SCMD_TASTE) {

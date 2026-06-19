@@ -80,7 +80,7 @@ static int64_t hit_gain(struct char_data *ch);
 static void update_flags(struct char_data *ch);
 
 static int wearing_stardust(struct char_data *ch);
-static void healthy_check(struct char_data *ch);
+
 static void barrier_shed(struct char_data *ch);
 static void check_idling(struct char_data *ch);
 
@@ -149,43 +149,6 @@ static void barrier_shed(struct char_data *ch) {
 
 /* If they have the Healthy trait then they have a chance to lose each of these
  */
-static void healthy_check(struct char_data *ch) {
-
-  if (!GET_BONUS(ch, BONUS_HEALTHY) || GET_POS(ch) != POS_SLEEPING) {
-    return;
-  }
-
-  int chance = 70, roll = rand_number(1, 100), change = FALSE;
-
-  if(roll < chance) 
-    return;
-
-  if (AFF_FLAGGED(ch, AFF_SHOCKED)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SHOCKED);
-    change = TRUE;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_MBREAK)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
-    change = TRUE;
-  }
-
-  if(char_condition_remove_tag(ch, "healthy_clear", "healthy")) {
-    change = TRUE;
-  }
-
-
-  if (AFF_FLAGGED(ch, AFF_KNOCKED)) {
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    char_position_set(ch, POS_SITTING);
-    change = TRUE;
-  }
-  if (change) {
-    send_to_char(ch,
-                 "@CYou feel your body recover from all its ailments!@n\r\n");
-  }
-  return;
-}
 
 static int wearing_stardust(struct char_data *ch) {
 
@@ -234,14 +197,6 @@ static int64_t mana_gain(struct char_data *ch) {
     gain += (gain * 0.005) * conc;
   }
 
-  if (GET_FOODR(ch) > 0 && rand_number(1, 2) == 2) {
-    GET_FOODR(ch) -= 1;
-  }
-
-  if (!IS_NPC(ch) && PRF_FLAGGED(ch, PRF_HINTS) && rand_number(1, 5) == 5) {
-    hint_system(ch, 0);
-  }
-
   return (gain);
 }
 
@@ -249,8 +204,6 @@ static int64_t mana_gain(struct char_data *ch) {
 int64_t hit_gain(struct char_data *ch) {
   
   auto gain = char_der_total_get(ch, "powerlevel_regen");
-
-  healthy_check(ch);
 
   /* Fury Mode Loss for halfbreeds */
 

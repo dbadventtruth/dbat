@@ -491,7 +491,6 @@ int enter_player_game(struct descriptor_data *d) {
   }
   GET_COMBINE(ch) = -1;
   GET_SLEEPT(ch) = 8;
-  GET_FOODR(ch) = 2;
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
   }
