@@ -45,6 +45,8 @@ pub fn register(lua: *Lua) void {
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaObjProtoById));
     lua.setField(-2, "by_id");
+    lua.pushFunction(zlua.wrap(luaObjProtosAll));
+    lua.setField(-2, "all");
     lua.setField(-2, "obj_protos");
 }
 
@@ -201,6 +203,11 @@ fn registerObjProtoMetatable(lua: *Lua) void {
     addMethod(lua, "reftype", luaObjProtoRefType);
     addMethod(lua, "valid", luaObjProtoValid);
     addMethod(lua, "vnum_get", luaObjProtoVnumGet);
+    addMethod(lua, "name_get", luaObjProtoNameGet);
+    addMethod(lua, "short_description_get", luaObjProtoShortDescrGet);
+    addMethod(lua, "type_get", luaObjProtoTypeGet);
+    addMethod(lua, "value_get", luaObjProtoValueGet);
+    addMethod(lua, "has_trig", luaObjProtoHasTrig);
     addMethod(lua, "spawn", luaObjProtoSpawn);
 
     lua.pop(1);
@@ -504,6 +511,52 @@ fn luaObjProtoSpawn(lua: *Lua) i32 {
 
     pushObject(lua, cdb.obj_id_get(obj));
     return 1;
+}
+
+fn luaObjProtoNameGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    if (proto.name) |n| _ = lua.pushString(std.mem.span(n)) else lua.pushNil();
+    return 1;
+}
+fn luaObjProtoShortDescrGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    if (proto.short_description) |s| _ = lua.pushString(std.mem.span(s)) else lua.pushNil();
+    return 1;
+}
+fn luaObjProtoTypeGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    lua.pushInteger(proto.type_flag);
+    return 1;
+}
+fn luaObjProtoValueGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    const pos = integer(lua, 2);
+    if (pos < 0 or pos >= cdb.NUM_OBJ_VAL_POSITIONS) {
+        lua.pushInteger(0);
+        return 1;
+    }
+    lua.pushInteger(proto.value[@intCast(pos)]);
+    return 1;
+}
+fn luaObjProtoHasTrig(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    lua.pushBoolean(proto.proto_script != null);
+    return 1;
+}
+fn luaObjProtosAll(lua: *Lua) i32 {
+    lua.newTable();
+    const iterator = cdb.obj_proto_iterator_create();
+    defer cdb.obj_proto_iterator_free(iterator);
+    var index: zlua.Integer = 1;
+    while (true) {
+        const proto_c = cdb.obj_proto_next(iterator);
+        if (proto_c == null) break;
+        const proto: *cdb.obj_proto_data = @ptrCast(@alignCast(proto_c));
+        pushObjProto(lua, proto.id);
+        lua.setIndex(-2, index);
+        index += 1;
+    }
+    return valueIterator(lua);
 }
 
 fn removeObjectFromLocation(obj: *cdb.obj_data) void {

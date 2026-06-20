@@ -466,11 +466,6 @@ void    char_loadroom_set(struct char_data *ch, int vnum);
 void    char_look_at_room(struct char_data *ch);
 void    char_restore(struct char_data *vict, struct char_data *healer);
 struct room_data *char_find_target_room(struct char_data *ch, const char *arg);
-int     char_vnum_mob(struct char_data *ch, const char *name);
-int     char_vnum_obj(struct char_data *ch, const char *name);
-int     char_vnum_mat(struct char_data *ch, const char *name);
-int     char_vnum_wtype(struct char_data *ch, const char *name);
-int     char_vnum_atype(struct char_data *ch, const char *name);
 
 /* Imm logging / messaging */
 void    char_send_to_imm(const char *msg);

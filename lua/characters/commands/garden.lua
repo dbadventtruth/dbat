@@ -1,7 +1,10 @@
-local dbat  = require("dbat")
-local act   = dbat.lib.act
-local search = dbat.lib.search
-local text  = dbat.lib.text
+local dbat          = require("dbat")
+local act           = dbat.lib.act
+local search        = dbat.lib.search
+local text          = dbat.lib.text
+local partial_match = require("lua.libs.utils").partial_match
+
+local SUBCMDS = { "collect", "water", "harvest", "dig", "plant", "pick" }
 
 local PULSE_3SEC = 30  -- 3 * PASSES_PER_SEC (10)
 local PULSE_4SEC = 40  -- 4 * PASSES_PER_SEC (10)
@@ -122,8 +125,8 @@ local function execute(ctx)
   local ch = ctx.ch
 
   local tokens = ctx.argparams.tokens
-  local arg  = string.lower(tokens[1] or "")
-  local arg2 = string.lower(tokens[2] or "")
+  local arg    = string.lower(tokens[1] or "")
+  local subcmd = partial_match(SUBCMDS, string.lower(tokens[2] or ""))
 
   -- Auto-learn gardening on first use
   if not ch:know_skill("gardening") then
@@ -145,7 +148,7 @@ local function execute(ctx)
   local ST = dbat.consts.sector_types
 
   -- collect subcommand (works from any room with soil terrain)
-  if arg == "collect" then
+  if partial_match(SUBCMDS, arg) == "collect" then
     local shovel = ch:inventory_find_vnum(254, SEARCH_WORKING_GENUINE)
     if not shovel then
       ch:send_line("You need a shovel in order to collect soil.")
@@ -175,7 +178,7 @@ local function execute(ctx)
     return
   end
 
-  if arg == "" or arg2 == "" then
+  if arg == "" or not subcmd then
     ch:send_line("Syntax: garden (plant) ( water | harvest | dig | plant | pick )")
     ch:send_line("Syntax: garden collect [Will collect soil from a room with soil.")
     return
@@ -188,7 +191,7 @@ local function execute(ctx)
 
   -- Find the target object
   local obj
-  if arg2 == "plant" then
+  if subcmd == "plant" then
     obj = search.new(ch):add_character_inventory(ch):find_one(arg)
     if not obj then
       ch:send_line("What are you trying to plant?")
@@ -212,7 +215,7 @@ local function execute(ctx)
     return
   end
 
-  if arg2 == "water" then
+  if subcmd == "water" then
     local water = ch:inventory_find_vnum(251)
     if not water then
       ch:send_line("You need a bottle of grow water in order to water the plant.")
@@ -243,7 +246,7 @@ local function execute(ctx)
     ch:wait_set(PULSE_3SEC)
     ch:improve_skill("gardening", 0)
 
-  elseif arg2 == "harvest" then
+  elseif subcmd == "harvest" then
     local clippers = ch:inventory_find_vnum(253, SEARCH_WORKING_GENUINE)
     if not clippers then
       ch:send_line("You need a pair of gardening clippers in order to harvest the plant.")
@@ -283,7 +286,7 @@ local function execute(ctx)
     ch:wait_set(PULSE_3SEC)
     ch:improve_skill("gardening", 0)
 
-  elseif arg2 == "dig" then
+  elseif subcmd == "dig" then
     local shovel = ch:inventory_find_vnum(254, SEARCH_WORKING_GENUINE)
     if not shovel then
       ch:send_line("You need a shovel in order to dig up the plant.")
@@ -298,7 +301,7 @@ local function execute(ctx)
     ch:wait_set(PULSE_3SEC)
     ch:improve_skill("gardening", 0)
 
-  elseif arg2 == "plant" then
+  elseif subcmd == "plant" then
     local shovel = ch:inventory_find_vnum(254, SEARCH_WORKING_GENUINE)
     if not shovel then
       ch:send_line("You need a shovel in order to plant.")
@@ -337,7 +340,7 @@ local function execute(ctx)
     ch:wait_set(PULSE_3SEC)
     ch:improve_skill("gardening", 0)
 
-  elseif arg2 == "pick" then
+  elseif subcmd == "pick" then
     local EF = dbat.consts.item_extra_flags
     if not obj:extra_flagged(EF.MATURE) then
       ch:send_line("You can't pick that type of plant. Syntax: garden (plant) harvest")
@@ -360,9 +363,6 @@ local function execute(ctx)
     ch:wait_set(PULSE_3SEC)
     ch:improve_skill("gardening", 0)
 
-  else
-    ch:send_line("Syntax: garden (plant) ( water | harvest | dig | plant | pick )")
-    ch:send_line("Syntax: garden collect [Will collect soil from a room with soil.")
   end
 end
 

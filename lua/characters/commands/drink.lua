@@ -8,45 +8,7 @@ local ST   = dbat.consts.sector_types
 local PLR  = dbat.consts.player_flags
 local OCMD = dbat.consts.obj_cmd_types
 local SMH  = dbat.consts.secs_per_mud_hour
-
--- Port of gain_condition() from local_limits.cpp
-local function gain_condition(ch, cond_name, value)
-  if ch:is_npc() then return end
-  if ch:stat_get(cond_name) < 0 then return end
-  if ch:room_vnum_get() <= 1 then return end
-  if ch:player_flagged(PLR.WRITING) then return end
-
-  local cur = ch:stat_get(cond_name)
-  local new_val
-  if value > 0 then
-    new_val = math.min(48, cur + value)
-  else
-    new_val = math.max(0, cur + value)
-  end
-  ch:stat_set(cond_name, new_val)
-
-  if cond_name == "hunger" then
-    if new_val >= 1 and new_val <= 3 then
-      ch:send_line("You are extremely hungry!")
-    elseif new_val >= 9 and new_val <= 11 then
-      ch:send_line("You are hungry!")
-    elseif new_val >= 19 and new_val <= 21 then
-      ch:send_line("You could use something to eat.")
-    end
-  elseif cond_name == "thirst" then
-    if new_val >= 1 and new_val <= 3 then
-      ch:send_line("You are extremely thirsty!")
-    elseif new_val >= 9 and new_val <= 11 then
-      ch:send_line("Your throat is pretty dry!")
-    elseif new_val >= 19 and new_val <= 21 then
-      ch:send_line("You could use something to drink.")
-    end
-  elseif cond_name == "drunk" then
-    if value < 0 and cur > 0 and new_val <= 0 then
-      ch:send_line("You are now sober.")
-    end
-  end
-end
+local COND = dbat.consts.player_conds
 
 -- (Drunk, Hunger, Thirst) per liquid type — mirrors drink_aff[] in itemdata.cpp
 local DRINK_AFF = {
@@ -108,7 +70,7 @@ local function execute(ctx)
   -- hunger before thirst cross-check (excluding namek and bio genome 3)
   if ch:stat_get("hunger") <= 1 and ch:stat_get("thirst") >= 2
       and race ~= "namek"
-      and ch:genome_get(0) ~= 3 and ch:genome_get(1) ~= 3 then
+      and not ch:condition_has("genome_namek") then
     ch:send_line("You need to eat first!")
     return
   end
@@ -125,7 +87,7 @@ local function execute(ctx)
     if is_water or is_sunken then
       act.around(ch, "$n takes a refreshing drink from the surrounding water.")
       ch:send_line("You take a refreshing drink from the surrounding water.")
-      gain_condition(ch, "thirst", 1)
+      ch:gain_condition(COND.THIRST, 1)
       if not is_sip then
         local wskill = ch:skill_get("wellspring")
         if wskill ~= 0 and ch:meter_current("ki") < ch:meter_max("ki") and was_thirsty <= 30 then
@@ -181,7 +143,7 @@ local function execute(ctx)
       temp:from_char()
       temp:extract()
       ch:meter_set_int("ki", ch:meter_max("ki"))
-      gain_condition(ch, "thirst", 8)
+      ch:gain_condition(COND.THIRST, 8)
       return
     else
       ch:send_line("You can't drink from that!")
@@ -244,9 +206,9 @@ local function execute(ctx)
   end
 
   local aff = DRINK_AFF[liquid] or {0, 0, 1}
-  gain_condition(ch, "drunk",  aff[1] * amount)
-  gain_condition(ch, "hunger", aff[2] * amount)
-  gain_condition(ch, "thirst", aff[3] * amount)
+  ch:gain_condition(COND.DRUNK,  aff[1] * amount)
+  ch:gain_condition(COND.HUNGER, aff[2] * amount)
+  ch:gain_condition(COND.THIRST, aff[3] * amount)
 
   if not ch:condition_has("food_restored") and not is_sip then
     ch:condition_apply_with_number("food_restored", "drink", "food restoration", "amount", amount)

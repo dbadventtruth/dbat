@@ -1750,11 +1750,6 @@ extern fn carry_drop(ch: *cdb.char_data, @"type": c_int) void;
 extern fn look_at_room(room: *cdb.room_data, ch: *cdb.char_data, mode: c_int) void;
 extern fn do_fly(ch: *cdb.char_data, arg: ?[*:0]u8, cmd: c_int, subcmd: c_int) void;
 extern fn find_target_room(ch: *cdb.char_data, rawroomstr: [*:0]u8) ?*cdb.room_data;
-extern fn vnum_mobile(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
-extern fn vnum_object(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
-extern fn vnum_material(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
-extern fn vnum_weapontype(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
-extern fn vnum_armortype(searchname: [*:0]u8, ch: *cdb.char_data) c_int;
 
 pub export fn char_bonus_flagged(ch: *cdb.char_data, n: c_int) bool {
     const idx: usize = @intCast(n);
@@ -1816,51 +1811,6 @@ pub export fn char_find_target_room(ch: *cdb.char_data, arg: ?[*:0]const u8) ?*c
     @memcpy(buf[0..len], src[0..len]);
     buf[len] = 0;
     return find_target_room(ch, &buf);
-}
-pub export fn char_vnum_mob(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
-    if (name == null) return 0;
-    var buf: [256:0]u8 = undefined;
-    const src = std.mem.span(name.?);
-    const len = @min(src.len, buf.len - 1);
-    @memcpy(buf[0..len], src[0..len]);
-    buf[len] = 0;
-    return vnum_mobile(&buf, ch);
-}
-pub export fn char_vnum_obj(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
-    if (name == null) return 0;
-    var buf: [256:0]u8 = undefined;
-    const src = std.mem.span(name.?);
-    const len = @min(src.len, buf.len - 1);
-    @memcpy(buf[0..len], src[0..len]);
-    buf[len] = 0;
-    return vnum_object(&buf, ch);
-}
-pub export fn char_vnum_mat(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
-    if (name == null) return 0;
-    var buf: [256:0]u8 = undefined;
-    const src = std.mem.span(name.?);
-    const len = @min(src.len, buf.len - 1);
-    @memcpy(buf[0..len], src[0..len]);
-    buf[len] = 0;
-    return vnum_material(&buf, ch);
-}
-pub export fn char_vnum_wtype(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
-    if (name == null) return 0;
-    var buf: [256:0]u8 = undefined;
-    const src = std.mem.span(name.?);
-    const len = @min(src.len, buf.len - 1);
-    @memcpy(buf[0..len], src[0..len]);
-    buf[len] = 0;
-    return vnum_weapontype(&buf, ch);
-}
-pub export fn char_vnum_atype(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
-    if (name == null) return 0;
-    var buf: [256:0]u8 = undefined;
-    const src = std.mem.span(name.?);
-    const len = @min(src.len, buf.len - 1);
-    @memcpy(buf[0..len], src[0..len]);
-    buf[len] = 0;
-    return vnum_armortype(&buf, ch);
 }
 
 // ---- Script C API ----

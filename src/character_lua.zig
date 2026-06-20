@@ -62,6 +62,8 @@ pub fn register(lua: *Lua) void {
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaMobProtoById));
     lua.setField(-2, "by_id");
+    lua.pushFunction(zlua.wrap(luaMobProtosAll));
+    lua.setField(-2, "all");
     lua.setField(-2, "mob_protos");
 }
 
@@ -319,11 +321,6 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "look_at_room", luaCharacterLookAtRoom);
     addMethod(lua, "restore", luaCharacterRestore);
     addMethod(lua, "find_target_room", luaCharacterFindTargetRoom);
-    addMethod(lua, "vnum_mob", luaCharacterVnumMob);
-    addMethod(lua, "vnum_obj", luaCharacterVnumObj);
-    addMethod(lua, "vnum_mat", luaCharacterVnumMat);
-    addMethod(lua, "vnum_wtype", luaCharacterVnumWtype);
-    addMethod(lua, "vnum_atype", luaCharacterVnumAtype);
 
     // Combat-pointer getters for room display
     addMethod(lua, "fighting_get", luaCharacterFightingGet);
@@ -366,6 +363,9 @@ fn registerMobProtoMetatable(lua: *Lua) void {
     addMethod(lua, "reftype", luaMobProtoRefType);
     addMethod(lua, "valid", luaMobProtoValid);
     addMethod(lua, "vnum_get", luaMobProtoVnumGet);
+    addMethod(lua, "name_get", luaMobProtoNameGet);
+    addMethod(lua, "short_description_get", luaMobProtoShortDescrGet);
+    addMethod(lua, "has_trig", luaMobProtoHasTrig);
     addMethod(lua, "spawn", luaMobProtoSpawn);
 
     lua.pop(1);
@@ -2316,30 +2316,35 @@ fn luaCharacterFindTargetRoom(lua: *Lua) i32 {
     rooms_lua.pushRoom(lua, cdb.room_vnum_get(room.?));
     return 1;
 }
-fn luaCharacterVnumMob(lua: *Lua) i32 {
-    const found = cdb.char_vnum_mob(checkCharacter(lua), string(lua, 2));
-    lua.pushBoolean(found != 0);
+fn luaMobProtoNameGet(lua: *Lua) i32 {
+    const proto = checkMobProto(lua);
+    pushCString(lua, proto.name);
     return 1;
 }
-fn luaCharacterVnumObj(lua: *Lua) i32 {
-    const found = cdb.char_vnum_obj(checkCharacter(lua), string(lua, 2));
-    lua.pushBoolean(found != 0);
+fn luaMobProtoShortDescrGet(lua: *Lua) i32 {
+    const proto = checkMobProto(lua);
+    pushCString(lua, proto.short_descr);
     return 1;
 }
-fn luaCharacterVnumMat(lua: *Lua) i32 {
-    const found = cdb.char_vnum_mat(checkCharacter(lua), string(lua, 2));
-    lua.pushBoolean(found != 0);
+fn luaMobProtoHasTrig(lua: *Lua) i32 {
+    const proto = checkMobProto(lua);
+    lua.pushBoolean(proto.proto_script != null);
     return 1;
 }
-fn luaCharacterVnumWtype(lua: *Lua) i32 {
-    const found = cdb.char_vnum_wtype(checkCharacter(lua), string(lua, 2));
-    lua.pushBoolean(found != 0);
-    return 1;
-}
-fn luaCharacterVnumAtype(lua: *Lua) i32 {
-    const found = cdb.char_vnum_atype(checkCharacter(lua), string(lua, 2));
-    lua.pushBoolean(found != 0);
-    return 1;
+fn luaMobProtosAll(lua: *Lua) i32 {
+    lua.newTable();
+    const iterator = cdb.mob_proto_iterator_create();
+    defer cdb.mob_proto_iterator_free(iterator);
+    var index: zlua.Integer = 1;
+    while (true) {
+        const proto_c = cdb.mob_proto_next(iterator);
+        if (proto_c == null) break;
+        const proto: *cdb.mob_proto_data = @ptrCast(@alignCast(proto_c));
+        pushMobProto(lua, proto.id);
+        lua.setIndex(-2, index);
+        index += 1;
+    }
+    return valueIterator(lua);
 }
 
 // Combat-pointer getters — return Character or nil

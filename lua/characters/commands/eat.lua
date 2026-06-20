@@ -2,59 +2,15 @@ local dbat   = require("dbat")
 local Search = dbat.lib.search
 local act    = dbat.lib.act
 
-local IT  = dbat.consts.item_types
-local PLR = dbat.consts.player_flags
-local ADM = dbat.consts.admin_flags
-local SMH = dbat.consts.secs_per_mud_hour
+local IT   = dbat.consts.item_types
+local PLR  = dbat.consts.player_flags
+local ADM  = dbat.consts.admin_flags
+local SMH  = dbat.consts.secs_per_mud_hour
 local OCMD = dbat.consts.obj_cmd_types
+local COND = dbat.consts.player_conds
 
 local function an(word)
   return (word or ""):match("^[aeiouAEIOU]") and "an" or "a"
-end
-
--- Port of gain_condition() from local_limits.cpp
-local HUNGER_MSGS = {
-  [1] = "extremely", [2] = "extremely", [3] = "extremely",
-  [9] = "hungry",   [10] = "hungry",   [11] = "hungry",
-  [19] = "something", [20] = "something", [21] = "something",
-}
-local function gain_condition(ch, cond_name, value)
-  if ch:is_npc() then return end
-  if ch:stat_get(cond_name) < 0 then return end
-  if ch:room_vnum_get() <= 1 then return end
-  if ch:player_flagged(PLR.WRITING) then return end
-
-  local cur = ch:stat_get(cond_name)
-  local new_val
-  if value > 0 then
-    new_val = math.min(48, cur + value)
-  else
-    new_val = math.max(0, cur + value)
-  end
-  ch:stat_set(cond_name, new_val)
-
-  if cond_name == "hunger" then
-    local tag = HUNGER_MSGS[new_val]
-    if tag == "extremely" then
-      ch:send_line("You are extremely hungry!")
-    elseif tag == "hungry" then
-      ch:send_line("You are hungry!")
-    elseif tag == "something" then
-      ch:send_line("You could use something to eat.")
-    end
-  elseif cond_name == "thirst" then
-    if new_val >= 1 and new_val <= 3 then
-      ch:send_line("You are extremely thirsty!")
-    elseif new_val >= 9 and new_val <= 11 then
-      ch:send_line("Your throat is pretty dry!")
-    elseif new_val >= 19 and new_val <= 21 then
-      ch:send_line("You could use something to drink.")
-    end
-  elseif cond_name == "drunk" then
-    if value < 0 and cur > 0 and new_val <= 0 then
-      ch:send_line("You are now sober.")
-    end
-  end
 end
 
 -- Port of majin_gain() from act.item.cpp
@@ -204,7 +160,7 @@ local function execute(ctx)
   end
   local percent_eaten = amount / maxfval
 
-  gain_condition(ch, "hunger", amount)
+  ch:gain_condition(COND.HUNGER, amount)
 
   if not ch:condition_has("food_restored") and not is_taste then
     local stamina_pct = amount

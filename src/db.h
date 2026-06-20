@@ -152,7 +152,7 @@ void init_char(struct char_data *ch);
 struct char_data *create_char(void);
 struct char_data *read_mobile(mob_vnum nr, int type);
 struct char_data *mob_spawn(mob_vnum nr);
-int vnum_mobile(char *searchname, struct char_data *ch);
+
 void clear_char(struct char_data *ch);
 void reset_char(struct char_data *ch);
 void char_free_instance(struct char_data *ch);
@@ -172,11 +172,7 @@ void obj_free_instance(struct obj_data *obj);
 void obj_free_prototype(struct obj_data *obj);
 void free_obj(struct obj_data *obj);
 struct obj_data *read_object(obj_vnum nr, int type);
-int vnum_object(char *searchname, struct char_data *ch);
 int my_obj_save_to_disk(FILE *fp, struct obj_data *obj, int locate);
-int vnum_material(char *searchname, struct char_data *ch);
-int vnum_weapontype(char *searchname, struct char_data *ch);
-int vnum_armortype(char *searchname, struct char_data *ch);
 
 #define REAL 0
 #define VIRTUAL 1

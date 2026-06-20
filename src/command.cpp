@@ -75,14 +75,12 @@ const struct command_info cmd_info[] = {
     {"se", "se", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_SE},
     {"southwest", "southw", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_SW},
     {"sw", "sw", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_SW},
-    /* "i" shorthand for inventory moved to pcommand alias */
     {"inside", "in", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_IN},
     {"outside", "out", POS_RESTING, do_move, 0, ADMLVL_NONE, SCMD_OUT},
 
     /* now, the main list */
     {"absorb", "absor", POS_FIGHTING, do_absorb, 0, ADMLVL_NONE, 0},
     {"at", "at", POS_DEAD, do_at, 0, ADMLVL_BUILDER, 0},
-    /* do_adrenaline moved to lua/characters/commands/misc/adrenaline.lua */
     {"advance", "adv", POS_DEAD, do_advance, 0, ADMLVL_GRGOD, 0},
     {"aedit", "aed", POS_DEAD, do_oasis, 0, ADMLVL_BUILDER, SCMD_OASIS_AEDIT},
     {"alias", "ali", POS_DEAD, do_alias, 0, ADMLVL_NONE, 0},
@@ -135,7 +133,6 @@ const struct command_info cmd_info[] = {
     {"carve", "carv", POS_SLEEPING, do_gen_tog, 0, 0, SCMD_CARVE},
     {"cedit", "cedit", POS_DEAD, do_oasis, 0, ADMLVL_IMPL, SCMD_OASIS_CEDIT},
     {"channel", "channe", POS_FIGHTING, do_channel, 0, 0, 0},
-    /* do_charge moved to lua/characters/commands/misc/charge.lua */
     {"check", "ch", POS_STANDING, do_not_here, 1, ADMLVL_NONE, 0},
     {"checkload", "checkl", POS_DEAD, do_checkloadstatus, 0, ADMLVL_GOD, 0},
     {"chown", "cho", POS_DEAD, do_chown, 1, ADMLVL_IMPL, 0},
@@ -145,7 +142,6 @@ const struct command_info cmd_info[] = {
     {"closeeyes", "closeey", POS_RESTING, do_eyec, 0, ADMLVL_NONE, 0},
     {"cls", "cls", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_CLEAR},
     {"clsolc", "clsolc", POS_DEAD, do_gen_tog, 0, ADMLVL_BUILDER, SCMD_CLS},
-    /* do_consider moved to lua/characters/pcommands/info/consider.lua */
     {"color", "col", POS_DEAD, do_color, 0, ADMLVL_NONE, 0},
     {"combine", "comb", POS_RESTING, do_combine, 0, ADMLVL_NONE, 0},
     {"compare", "comp", POS_RESTING, do_compare, 0, ADMLVL_NONE, 0},
@@ -154,7 +150,6 @@ const struct command_info cmd_info[] = {
     {"compact", "compact", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_COMPACT},
     {"cook", "coo", POS_RESTING, do_cook, 0, ADMLVL_NONE, 0},
     {"copyover", "copyover", POS_DEAD, do_copyover, 0, ADMLVL_GOD, 0},
-    /* create moved to lua/characters/commands/misc/create.lua */
     {"credits", "cred", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_CREDITS},
     {"crusher", "crushe", POS_FIGHTING, do_crusher, 0, 0, 0},
 
@@ -164,12 +159,10 @@ const struct command_info cmd_info[] = {
     {"deathball", "deathbal", POS_FIGHTING, do_deathball, 0, ADMLVL_NONE, 0},
     {"deathbeam", "deathbea", POS_FIGHTING, do_deathbeam, 0, ADMLVL_NONE, 0},
     {"decapitate", "decapit", POS_STANDING, do_spoil, 0, ADMLVL_NONE, 0},
-    /* do_defend moved to lua/characters/commands/misc/defend.lua */
     {"deploy", "deplo", POS_STANDING, do_deploy, 0, ADMLVL_NONE, 0},
     {"dualbeam", "dualbea", POS_FIGHTING, do_dualbeam, 0, ADMLVL_NONE, 0},
     {"deposit", "depo", POS_STANDING, do_not_here, 1, ADMLVL_NONE, 0},
     {"diagnose", "diagnos", POS_RESTING, do_diagnose, 0, ADMLVL_NONE, 0},
-    /* do_dimizu moved to lua/characters/commands/misc/dimizu.lua */
     {"disable", "disa", POS_DEAD, do_disable, 0, ADMLVL_VICE, 0},
     {"disguise", "disguis", POS_DEAD, do_disguise, 0, 0, 0},
     {"dig", "dig", POS_DEAD, do_bury, 0, ADMLVL_NONE, 0},
@@ -177,12 +170,8 @@ const struct command_info cmd_info[] = {
     {"dodonpa", "dodon", POS_FIGHTING, do_dodonpa, 0, ADMLVL_NONE, 0},
     {"donate", "don", POS_RESTING, do_drop, 0, ADMLVL_NONE, SCMD_DONATE},
     {"drag", "dra", POS_STANDING, do_drag, 0, ADMLVL_NONE, 0},
-    /* do_draw moved to lua/characters/commands/cardgame/draw.lua */
-    {"drink", "dri", POS_RESTING, do_drink, 0, ADMLVL_NONE, SCMD_DRINK},
     {"drop", "dro", POS_RESTING, do_drop, 0, ADMLVL_NONE, SCMD_DROP},
     {"dub", "du", POS_STANDING, do_intro, 0, ADMLVL_NONE, 0},
-
-    {"eat", "ea", POS_RESTING, do_eat, 0, ADMLVL_NONE, SCMD_EAT},
     {"eavesdrop", "eaves", POS_RESTING, do_eavesdrop, 0, ADMLVL_NONE, 0},
     {"echo", "ec", POS_SLEEPING, do_echo, 0, ADMLVL_IMMORT, SCMD_ECHO},
     {"elbow", "elb", POS_FIGHTING, do_elbow, 0, ADMLVL_NONE, 0},
@@ -191,14 +180,11 @@ const struct command_info cmd_info[] = {
     {":", ":", POS_RESTING, do_echo, 1, ADMLVL_NONE, SCMD_EMOTE},
     {"ensnare", "ensnar", POS_FIGHTING, do_ensnare, 0, ADMLVL_NONE, 0},
     {"enter", "ent", POS_STANDING, do_enter, 0, ADMLVL_NONE, 0},
-    /* equipment moved to lua/characters/pcommands/info/equipment.lua */
     {"eraser", "eras", POS_FIGHTING, do_eraser, 0, ADMLVL_NONE, 0},
     {"escape", "esca", POS_RESTING, do_escape, 0, ADMLVL_NONE, 0},
-    /* evolve moved to lua/characters/commands/advancement/evolve.lua */
     {"exchange", "exchan", POS_RESTING, do_rptrans, 0, ADMLVL_NONE, 0},
     {"exits", "ex", POS_RESTING, do_exits, 0, ADMLVL_NONE, 0},
     {"examine", "exa", POS_SITTING, do_examine, 0, ADMLVL_NONE, 0},
-    /* extract moved to lua/characters/commands/misc/extract.lua */
 
     {"feed", "fee", POS_STANDING, do_feed, 0, ADMLVL_NONE, 0},
     {"fill", "fil", POS_STANDING, do_pour, 0, ADMLVL_NONE, SCMD_FILL},
@@ -208,7 +194,6 @@ const struct command_info cmd_info[] = {
     {"findkey", "findk", POS_SLEEPING, do_findkey, 0, ADMLVL_IMMORT, 0},
     {"finger", "finge", POS_SLEEPING, do_finger, 0, ADMLVL_NONE, 0},
     {"fireshield", "firesh", POS_STANDING, do_fireshield, 0, ADMLVL_NONE, 0},
-    /* {"fish", "fis", ...} moved to lua/characters/commands/misc/fish.lua */
     {"fix", "fix", POS_STANDING, do_fix, 0, ADMLVL_NONE, 0},
     {"flee", "fl", POS_FIGHTING, do_flee, 1, ADMLVL_NONE, 0},
     {"fly", "fly", POS_RESTING, do_fly, 0, ADMLVL_NONE, 0},
@@ -224,7 +209,6 @@ const struct command_info cmd_info[] = {
     {"gain", "ga", POS_RESTING, do_not_here, 0, ADMLVL_NONE, 0},
     {"galikgun", "galik", POS_FIGHTING, do_galikgun, 0, ADMLVL_NONE, 0},
     {"game", "gam", POS_RESTING, do_show, 0, ADMLVL_IMMORT, 0},
-    {"garden", "garde", POS_STANDING, do_garden, 0, ADMLVL_NONE, 0},
     {"genkidama", "genkidam", POS_FIGHTING, do_genki, 0, ADMLVL_NONE, 0},
     {"genocide", "genocid", POS_FIGHTING, do_geno, 0, ADMLVL_NONE, 0},
     {"get", "get", POS_RESTING, do_get, 0, ADMLVL_NONE, 0},
@@ -235,7 +219,6 @@ const struct command_info cmd_info[] = {
     {"glist", "glist", POS_SLEEPING, do_oasis, 0, ADMLVL_BUILDER,
      SCMD_OASIS_GLIST},
     {"give", "giv", POS_RESTING, do_give, 0, ADMLVL_NONE, 0},
-    /* do_goto moved to lua/characters/pcommands/wizard/goto.lua */
     {"group", "gro", POS_RESTING, do_group, 1, ADMLVL_NONE, 0},
     {"grab", "grab", POS_RESTING, do_grab, 0, ADMLVL_NONE, 0},
     {"grand", "gran", POS_RESTING, do_not_here, 0, ADMLVL_NONE, 0},
@@ -244,15 +227,11 @@ const struct command_info cmd_info[] = {
     {"gravity", "grav", POS_STANDING, do_not_here, 1, ADMLVL_NONE, 0},
     {"gsay", "gsay", POS_SLEEPING, do_gsay, 0, ADMLVL_NONE, 0},
     {"gtell", "gt", POS_SLEEPING, do_gsay, 0, ADMLVL_NONE, 0},
-
-    /* do_hand moved to lua/characters/commands/cardgame/hand.lua */
     {"handout", "hand", POS_STANDING, do_handout, 0, ADMLVL_GOD, 0},
     {"hasshuken", "hasshuke", POS_STANDING, do_hass, 0, ADMLVL_NONE, 0},
-    /* do_hayasa moved to lua/characters/commands/misc/hayasa.lua */
     {"headbutt", "headbut", POS_FIGHTING, do_head, 0, ADMLVL_NONE, 0},
     {"heal", "hea", POS_STANDING, do_heal, 0, ADMLVL_NONE, 0},
     {"health", "hea", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_GHEALTH},
-    /* do_healglow moved to lua/characters/commands/misc/healglow.lua */
     {"heeldrop", "heeldr", POS_FIGHTING, do_heeldrop, 0, ADMLVL_NONE, 0},
     {"hellflash", "hellflas", POS_FIGHTING, do_hellflash, 0, ADMLVL_NONE, 0},
     {"hellspear", "hellspea", POS_FIGHTING, do_hellspear, 0, ADMLVL_NONE, 0},
@@ -277,7 +256,6 @@ const struct command_info cmd_info[] = {
 
     {"ihealth", "ihea", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_IHEALTH},
     {"info", "info", POS_DEAD, do_ginfo, 0, ADMLVL_IMMORT, 0},
-    /* do_infuse moved to lua/characters/commands/misc/infuse.lua */
     {"ingest", "inges", POS_STANDING, do_ingest, 0, ADMLVL_NONE, 0},
     {"imotd", "imotd", POS_DEAD, do_gen_ps, 0, ADMLVL_IMMORT, SCMD_IMOTD},
     {"immlist", "imm", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_WIZLIST},
@@ -285,9 +263,6 @@ const struct command_info cmd_info[] = {
     {"instant", "insta", POS_STANDING, do_instant, 0, ADMLVL_NONE, 0},
     {"instill", "instil", POS_STANDING, do_instill, 0, ADMLVL_NONE, 0},
     {"instruct", "instruc", POS_STANDING, do_gen_tog, 0, 0, SCMD_INSTRUCT},
-    /*{ "insult"   , "insult"	, POS_RESTING , do_insult   , 0, ADMLVL_NONE
-       , 0 },*/
-    /* inventory moved to lua/characters/pcommands/info/inventory.lua */
     {"interest", "inter", POS_DEAD, do_interest, 0, ADMLVL_IMPL, 0},
     {"iedit", "ie", POS_DEAD, do_iedit, 0, ADMLVL_IMPL, 0},
     {"invis", "invi", POS_DEAD, do_invis, 0, ADMLVL_IMMORT, 0},
@@ -307,8 +282,6 @@ const struct command_info cmd_info[] = {
     {"koteiru", "koteiru", POS_FIGHTING, do_koteiru, 0, ADMLVL_NONE, 0},
     {"kousengan", "kousengan", POS_FIGHTING, do_kousengan, 0, ADMLVL_NONE, 0},
     {"kuraiiro", "kuraiir", POS_FIGHTING, do_kura, 0, ADMLVL_NONE, 0},
-    /* do_kyodaika moved to lua/characters/commands/namek/kyodaika.lua */
-
     {"look", "lo", POS_RESTING, do_look, 0, ADMLVL_NONE, SCMD_LOOK},
     {"lag", "la", POS_RESTING, do_lag, 0, 5, 0},
     {"land", "lan", POS_RESTING, do_land, 0, ADMLVL_NONE, 0},
@@ -316,36 +289,28 @@ const struct command_info cmd_info[] = {
     {"last", "last", POS_DEAD, do_last, 0, ADMLVL_GOD, 0},
     {"learn", "lear", POS_RESTING, do_not_here, 0, ADMLVL_NONE, 0},
     {"leave", "lea", POS_STANDING, do_leave, 0, ADMLVL_NONE, 0},
-    /* do_levels moved to lua/characters/pcommands/info/levels.lua */
     {"light", "ligh", POS_STANDING, do_lightgrenade, 0, ADMLVL_NONE, 0},
     {"list", "lis", POS_STANDING, do_not_here, 0, ADMLVL_NONE, 0},
-    /* do_lifeforce moved to lua/characters/pcommands/info/lifeforce.lua */
     {"links", "lin", POS_DEAD, do_oasis, 0, ADMLVL_BUILDER, SCMD_OASIS_LINKS},
     {"liquefy", "liquef", POS_SLEEPING, do_liquefy, 0, ADMLVL_NONE, 0},
     {"lkeep", "lkee", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_LKEEP},
     {"lock", "loc", POS_SITTING, do_gen_door, 0, ADMLVL_NONE, SCMD_LOCK},
     {"lockout", "lock", POS_STANDING, do_hell, 0, ADMLVL_IMMORT, 0},
-    /* do_load moved to lua/characters/pcommands/wizard/load.lua */
     {"lua", "lua", POS_DEAD, do_lua, 0, ADMLVL_IMPL, 0},
-
     {"majinize", "majini", POS_STANDING, do_majinize, 0, ADMLVL_NONE, 0},
     {"malice", "malic", POS_FIGHTING, do_malice, 0, ADMLVL_NONE, 0},
     {"masenko", "masenk", POS_FIGHTING, do_masenko, 0, ADMLVL_NONE, 0},
     {"motd", "motd", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_MOTD},
     {"mail", "mail", POS_STANDING, do_not_here, 2, ADMLVL_NONE, 0},
     {"map", "map", POS_STANDING, do_map, 0, ADMLVL_NONE, 0},
-    /*{ "mcopy"    , "mcopy"	, POS_DEAD    , do_oasis_copy, 0, ADMLVL_GOD
-       , SCMD_MEDIT },*/
     {"medit", "medit", POS_DEAD, do_oasis, 0, ADMLVL_IMMORT, SCMD_OASIS_MEDIT},
     {"meditate", "medita", POS_SITTING, do_meditate, 0, ADMLVL_NONE, 0},
-    /* do_metamorph moved to lua/characters/commands/misc/metamorph.lua */
     {"mimic", "mimi", POS_STANDING, do_mimic, 0, ADMLVL_NONE, 0},
     {"mlist", "mlist", POS_DEAD, do_oasis, 0, ADMLVL_IMMORT, SCMD_OASIS_MLIST},
     {"moondust", "moondus", POS_STANDING, do_moondust, 0, ADMLVL_NONE, 0},
     {"multiform", "multifor", POS_STANDING, do_multiform, 0, ADMLVL_NONE, 0},
     {"mute", "mute", POS_DEAD, do_wizutil, 0, ADMLVL_IMMORT, SCMD_SQUELCH},
     {"music", "musi", POS_RESTING, do_gen_comm, 1, ADMLVL_NONE, SCMD_HOLLER},
-
     {"newbie", "newbie", POS_SLEEPING, do_gen_comm, 0, ADMLVL_NONE,
      SCMD_AUCTION},
     {"news", "news", POS_SLEEPING, do_news, 0, ADMLVL_NONE, 0},
@@ -359,7 +324,6 @@ const struct command_info cmd_info[] = {
     {"noooc", "noooc", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_NOGOSSIP},
     {"nogive", "nogiv", POS_DEAD, do_gen_tog, 0, 0, SCMD_NOGIVE},
     {"nograts", "nograts", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_NOGRATZ},
-    /* do_nogrow moved to lua/characters/commands/misc/nogrow.lua */
     {"nohassle", "nohassle", POS_DEAD, do_gen_tog, 0, ADMLVL_IMMORT,
      SCMD_NOHASSLE},
     {"nomail", "nomail", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_NMWARN},
@@ -375,9 +339,6 @@ const struct command_info cmd_info[] = {
     {"notitle", "notitle", POS_DEAD, do_wizutil, 0, ADMLVL_GOD, SCMD_NOTITLE},
     {"nova", "nov", POS_STANDING, do_nova, 0, ADMLVL_NONE, 0},
     {"nowiz", "nowiz", POS_DEAD, do_gen_tog, 0, ADMLVL_IMMORT, SCMD_NOWIZ},
-
-    /*{ "ocopy"    , "ocopy"	, POS_DEAD    , do_oasis_copy, 0, ADMLVL_GOD
-       , SCMD_OEDIT },*/
     {"ooc", "ooc", POS_SLEEPING, do_gen_comm, 0, ADMLVL_NONE, SCMD_GOSSIP},
     {"offer", "off", POS_STANDING, do_not_here, 1, ADMLVL_NONE, 0},
     {"open", "ope", POS_SITTING, do_gen_door, 0, ADMLVL_NONE, SCMD_OPEN},
@@ -395,7 +356,6 @@ const struct command_info cmd_info[] = {
     {"pickup", "picku", POS_RESTING, do_not_here, 0, 0, 0},
     {"pilot", "pilot", POS_SITTING, do_drive, 0, ADMLVL_NONE, 0},
     {"plant", "plan", POS_STANDING, do_plant, 0, ADMLVL_NONE, 0},
-    /* do_play moved to lua/characters/commands/cardgame/play.lua */
     {"players", "play", POS_DEAD, do_plist, 0, ADMLVL_IMPL, 0},
     {"poofin", "poofi", POS_DEAD, do_poofset, 0, ADMLVL_IMMORT, SCMD_POOFIN},
     {"poofout", "poofo", POS_DEAD, do_poofset, 0, ADMLVL_IMMORT, SCMD_POOFOUT},
@@ -404,7 +364,6 @@ const struct command_info cmd_info[] = {
     {"potential", "poten", POS_STANDING, do_potential, 0, ADMLVL_NONE, 0},
     {"pour", "pour", POS_STANDING, do_pour, 0, ADMLVL_NONE, SCMD_POUR},
     {"powerup", "poweru", POS_FIGHTING, do_powerup, 0, ADMLVL_NONE, 0},
-    /* do_preference moved to lua/characters/commands/misc/preference.lua */
     {"program", "progra", POS_DEAD, do_oasis, 0, ADMLVL_NONE, SCMD_OASIS_REDIT},
     {"prompt", "pro", POS_DEAD, do_display, 0, ADMLVL_NONE, 0},
     {"practice", "pra", POS_RESTING, do_practice, 1, ADMLVL_NONE, 0},
@@ -422,13 +381,11 @@ const struct command_info cmd_info[] = {
     {"refuel", "refue", POS_SITTING, do_refuel, 0, ADMLVL_NONE, 0},
     {"resize", "resiz", POS_STANDING, do_resize, 0, ADMLVL_NONE, 0},
     {"rescue", "rescu", POS_STANDING, do_rescue, 0, ADMLVL_NONE, 0},
-    /* do_rest moved to lua/characters/commands/position/rest.lua */
     {"restring", "restring", POS_STANDING, do_restring, 0, ADMLVL_NONE, 0},
     {"rclone", "rclon", POS_DEAD, do_rcopy, 0, ADMLVL_BUILDER, 0},
     {"rcopy", "rcopy", POS_DEAD, do_rcopy, 0, ADMLVL_BUILDER, 0},
     {"roomdisplay", "roomdisplay", POS_RESTING, do_rdisplay, 0, ADMLVL_NONE, 0},
     {"read", "rea", POS_RESTING, do_look, 0, ADMLVL_NONE, SCMD_READ},
-    /* do_recall moved to lua/characters/pcommands/wizard/recall.lua */
     {"recharge", "rechar", POS_STANDING, do_recharge, 0, ADMLVL_NONE, 0},
     {"regenerate", "regen", POS_RESTING, do_regenerate, 0, ADMLVL_NONE, 0},
     {"renzokou", "renzo", POS_FIGHTING, do_renzo, 0, ADMLVL_NONE, 0},
@@ -442,7 +399,6 @@ const struct command_info cmd_info[] = {
     {"report", "repor", POS_DEAD, do_gen_write, 0, ADMLVL_NONE, SCMD_IDEA},
     {"reroll", "rero", POS_DEAD, do_wizutil, 0, ADMLVL_IMPL, SCMD_REROLL},
     {"respond", "resp", POS_RESTING, do_respond, 1, ADMLVL_NONE, 0},
-    /* do_restore moved to lua/characters/pcommands/wizard/restore.lua */
     {"return", "retu", POS_DEAD, do_return, 0, ADMLVL_NONE, 0},
     {"redit", "redit", POS_DEAD, do_oasis, 0, ADMLVL_IMMORT, SCMD_OASIS_REDIT},
     {"rip", "ri", POS_DEAD, do_rip, 0, ADMLVL_NONE, 0},
@@ -452,8 +408,6 @@ const struct command_info cmd_info[] = {
      SCMD_ROOMFLAGS},
     {"roundhouse", "roundhou", POS_FIGHTING, do_roundhouse, 0, ADMLVL_NONE, 0},
     {"rpp", "rpp", POS_SLEEPING, do_rpp, 0, ADMLVL_NONE, 0},
-    /* runic moved to lua/characters/commands/misc/runic.lua */
-
     {"say", "say", POS_RESTING, do_say, 0, ADMLVL_NONE, 0},
     {"'", "'", POS_RESTING, do_say, 0, ADMLVL_NONE, 0},
     {"save", "sav", POS_SLEEPING, do_save, 0, ADMLVL_NONE, 0},
@@ -461,16 +415,11 @@ const struct command_info cmd_info[] = {
     {"sbc", "sbc", POS_FIGHTING, do_sbc, 0, ADMLVL_NONE, 0},
     {"scan", "sca", POS_FIGHTING, do_scan, 0, ADMLVL_NONE, 0},
     {"scatter", "scatte", POS_FIGHTING, do_scatter, 0, ADMLVL_NONE, 0},
-    /* score is now a Lua pcommand (lua/characters/pcommands/info/score.lua) */
-    /*{ "scopy"    , "scopy"  	, POS_DEAD    , do_oasis_copy, 0, ADMLVL_GOD
-       , CON_SEDIT },*/
     {"scouter", "scou", POS_RESTING, do_scouter, 0, ADMLVL_NONE, 0},
     {"scry", "scr", POS_STANDING, do_scry, 0, ADMLVL_NONE, 0},
     {"seishou", "seisho", POS_FIGHTING, do_seishou, 0, ADMLVL_NONE, 0},
-    /* do_shell moved to lua/characters/commands/misc/shell.lua */
     {"shimmer", "shimme", POS_STANDING, do_shimmer, 0, ADMLVL_NONE, 0},
     {"shogekiha", "shog", POS_STANDING, do_shogekiha, 0, ADMLVL_NONE, 0},
-    /* do_shuffle moved to lua/characters/commands/cardgame/shuffle.lua */
     {"snet", "snet", POS_RESTING, do_snet, 0, ADMLVL_NONE, 0},
     {"search", "sea", POS_STANDING, do_look, 0, ADMLVL_NONE, SCMD_SEARCH},
     {"sell", "sell", POS_STANDING, do_not_here, 0, ADMLVL_NONE, 0},
@@ -480,25 +429,20 @@ const struct command_info cmd_info[] = {
     {"sense", "sense", POS_RESTING, do_track, 0, ADMLVL_NONE, 0},
     {"set", "set", POS_DEAD, do_set, 0, ADMLVL_IMMORT, 0},
     {"shout", "sho", POS_RESTING, do_gen_comm, 0, ADMLVL_NONE, SCMD_SHOUT},
-    /* do_showoff moved to lua/characters/commands/items/show.lua */
     {"shutdow", "shutdow", POS_DEAD, do_shutdown, 0, ADMLVL_IMPL, 0},
     {"shutdown", "shutdown", POS_DEAD, do_shutdown, 0, ADMLVL_IMPL,
      SCMD_SHUTDOWN},
     {"silk", "sil", POS_RESTING, do_silk, 0, ADMLVL_NONE, 0},
-    {"sip", "sip", POS_RESTING, do_drink, 0, ADMLVL_NONE, SCMD_SIP},
-    /* do_sit moved to lua/characters/commands/position/sit.lua */
     {"situp", "situp", POS_STANDING, do_situp, 0, ADMLVL_NONE, 0},
     {"skills", "skills", POS_SLEEPING, do_skills, 0, ADMLVL_NONE, 0},
     {"skillset", "skillset", POS_SLEEPING, do_skillset, 0, 5, 0},
     {"slam", "sla", POS_FIGHTING, do_slam, 0, ADMLVL_NONE, 0},
-    /* do_sleep moved to lua/characters/commands/position/sleep.lua */
     {"slist", "slist", POS_SLEEPING, do_oasis, 0, ADMLVL_IMMORT,
      SCMD_OASIS_SLIST},
     {"slowns", "slowns", POS_DEAD, do_gen_tog, 0, ADMLVL_IMPL, SCMD_SLOWNS},
     {"smote", "sm", POS_RESTING, do_echo, 1, ADMLVL_NONE, SCMD_SMOTE},
     {"sneak", "sneak", POS_STANDING, do_gen_tog, 1, ADMLVL_NONE, SCMD_SNEAK},
     {"snoop", "snoop", POS_DEAD, do_snoop, 0, ADMLVL_IMMORT, 0},
-    /* do_song moved to lua/characters/commands/misc/song.lua */
     {"spiral", "spiral", POS_STANDING, do_spiral, 0, ADMLVL_NONE, 0},
     {"socials", "socials", POS_DEAD, do_commands, 0, ADMLVL_NONE, SCMD_SOCIALS},
     {"solarflare", "solarflare", POS_FIGHTING, do_solar, 0, ADMLVL_NONE, 0},
@@ -506,15 +450,12 @@ const struct command_info cmd_info[] = {
     {"spit", "spi", POS_STANDING, do_spit, 0, ADMLVL_NONE, 0},
     {"spiritball", "spiritball", POS_FIGHTING, do_spiritball, 0, ADMLVL_NONE,
      0},
-    /* do_spiritcontrol moved to lua/characters/commands/misc/spiritcontrol.lua */
     {"split", "split", POS_SITTING, do_split, 1, ADMLVL_IMMORT, 0},
     {"speak", "spe", POS_RESTING, do_languages, 0, ADMLVL_NONE, 0},
     {"spells", "spel", POS_RESTING, do_spells, 0, ADMLVL_IMMORT, 0},
-    /* do_stand moved to lua/characters/commands/position/stand.lua */
     {"starbreaker", "starbr", POS_FIGHTING, do_breaker, 0, ADMLVL_NONE, 0},
     {"stake", "stak", POS_SLEEPING, do_beacon, 0, 0, 0},
     {"stat", "stat", POS_DEAD, do_stat, 0, ADMLVL_IMMORT, 0},
-    /* do_status moved to lua/characters/pcommands/info/status.lua */
     {"steal", "ste", POS_STANDING, do_steal, 1, ADMLVL_NONE, 0},
     {"stone", "ston", POS_STANDING, do_spit, 0, ADMLVL_NONE, 0},
     {"stop", "sto", POS_STANDING, do_stop, 0, ADMLVL_NONE, 0},
@@ -525,17 +466,11 @@ const struct command_info cmd_info[] = {
     {"swallow", "swall", POS_RESTING, do_use, 0, ADMLVL_NONE, SCMD_QUAFF},
     {"switch", "switch", POS_DEAD, do_switch, 0, ADMLVL_VICE, 0},
     {"syslog", "syslog", POS_DEAD, do_syslog, 0, ADMLVL_IMMORT, 0},
-
-    /*{ "tcopy"    , "tcopy"  	, POS_DEAD    , do_oasis_copy, 0, ADMLVL_GOD
-       , SCMD_TEDIT },*/
-    /* do_tailhide moved to lua/characters/commands/misc/tailhide.lua */
-    /* do_table moved to lua/characters/commands/cardgame/table.lua */
     {"teach", "teac", POS_STANDING, do_teach, 0, ADMLVL_NONE, 0},
     {"tell", "tel", POS_DEAD, do_tell, 0, ADMLVL_NONE, 0},
     {"take", "tak", POS_RESTING, do_get, 0, ADMLVL_NONE, 0},
     {"tailwhip", "tailw", POS_FIGHTING, do_tailwhip, 0, ADMLVL_NONE, 0},
     {"taisha", "taish", POS_FIGHTING, do_taisha, 0, ADMLVL_NONE, 0},
-    {"taste", "tas", POS_RESTING, do_eat, 0, ADMLVL_NONE, SCMD_TASTE},
     {"teleport", "tele", POS_DEAD, do_teleport, 0, ADMLVL_IMMORT, 0},
     {"telepathy", "telepa", POS_DEAD, do_telepathy, 0, ADMLVL_NONE, 0},
     {"tedit", "tedit", POS_DEAD, do_tedit, 0, ADMLVL_GRGOD, 0},
@@ -544,7 +479,6 @@ const struct command_info cmd_info[] = {
     {"think", "thin", POS_DEAD, do_think, 0, ADMLVL_NONE, 0},
     {"throw", "thro", POS_FIGHTING, do_throw, 0, ADMLVL_NONE, 0},
     {"title", "title", POS_DEAD, do_title, 0, ADMLVL_NONE, 0},
-    /* do_time moved to lua/characters/pcommands/info/time.lua */
     {"toggle", "toggle", POS_DEAD, do_toggle, 0, ADMLVL_NONE, 0},
     {"toplist", "toplis", POS_DEAD, do_toplist, 0, ADMLVL_NONE, 0},
     {"trackthru", "trackthru", POS_DEAD, do_gen_tog, 0, ADMLVL_IMPL,
@@ -578,16 +512,12 @@ const struct command_info cmd_info[] = {
     {"version", "ver", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_VERSION},
     {"vieworder", "view", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_VIEWORDER},
     {"visible", "vis", POS_RESTING, do_visible, 1, ADMLVL_NONE, 0},
-    /* do_vnum moved to lua/characters/pcommands/wizard/vnum.lua */
     {"voice", "voic", POS_RESTING, do_voice, 0, ADMLVL_NONE, 0},
     {"vstat", "vstat", POS_DEAD, do_vstat, 0, ADMLVL_IMMORT, 0},
-
-    /* do_wake moved to lua/characters/commands/position/wake.lua */
     {"warppool", "warppoo", POS_STANDING, do_warppool, 0, ADMLVL_NONE, 0},
     {"waterrazor", "waterraz", POS_STANDING, do_razor, 0, ADMLVL_NONE, 0},
     {"waterspikes", "waterspik", POS_STANDING, do_spike, 0, ADMLVL_NONE, 0},
     {"wear", "wea", POS_RESTING, do_wear, 0, ADMLVL_NONE, 0},
-    /* do_weather moved to lua/characters/pcommands/info/weather.lua */
     {"who", "who", POS_DEAD, do_who, 0, ADMLVL_NONE, 0},
     {"whoami", "whoami", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_WHOAMI},
     {"whohide", "whohide", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_WHOHIDE},
