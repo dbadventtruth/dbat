@@ -8,9 +8,22 @@ local function modifiers(ch, cond)
 end
 
 return {
-    id = "wither",
-    name = "Wither",
-    tags = { "wither", "healthy_clear" },
+    id         = "wither",
+    name       = "Wither",
+    tags       = { "wither", "healthy_clear" },
     persistent = true,
-    modifiers = modifiers,
+    modifiers  = modifiers,
+    status_line = function(ch, cond) return "You've been withered! You feel so weak..." end,
+    on_apply = function(ch, cond)
+        cond:schedule_expire(800)
+    end,
+    on_game_activate = function(ch, cond)
+        if not cond:event_pending("expire") then
+            cond:schedule_expire(800)
+        end
+    end,
+    on_remove = function(ch, cond, reason)
+        ch:send_line("@wYour body returns to normal and you beat the withering that plagued you.")
+        ch:act_around("@W$n@W's looks more fit now.")
+    end,
 }

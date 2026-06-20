@@ -24,6 +24,7 @@ bool is_soft_cap_mult(char_data *ch, int64_t type, long double mult);
 bool is_soft_cap(char_data *ch, int64_t type);
 int wearing_android_canister(char_data *ch);
 int calcGravCost(char_data *ch, int64_t num);
+int char_slot_count(struct char_data *ch);
 
 int64_t getCurHealth(char_data *ch);
 int64_t getMaxHealth(char_data *ch);
@@ -50,7 +51,6 @@ int64_t getMaxPL(char_data *ch);
 int64_t getMaxPL(char_data *ch);
 int64_t getCurPL(char_data *ch);
 int64_t getBasePL(char_data *ch);
-int64_t getEffBasePL(char_data *ch);
 double getCurPLPercent(char_data *ch);
 int64_t getPercentOfCurPL(char_data *ch, double amt);
 int64_t getPercentOfMaxPL(char_data *ch, double amt);

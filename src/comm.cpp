@@ -225,7 +225,7 @@ void copyover_recover_descriptor(socklen_t desc, const char *name,
     d->connected = CON_PLAYING;
     look_at_room(char_room_get(d->character), d->character, 0);
     if (AFF_FLAGGED(d->character, AFF_HAYASA)) {
-      GET_SPEEDBOOST(d->character) = GET_SPEEDCALC(d->character) * 0.5;
+      char_condition_apply(d->character, "hayasa", "entry", "copyover_sync");
     }
   }
 }
@@ -430,7 +430,6 @@ void game_legacy_post_tick(void) {
 static void ev_wishSYS(int, int64_t, int64_t) { wishSYS(); }
 
 static void ev_char_condition_update(int, int64_t, int64_t) {
-  char_condition_update_all("second", PULSE_1SEC, 1);
   copyover_check();
 }
 
@@ -443,7 +442,7 @@ static void ev_script_trigger_check(int, int64_t, int64_t) {
 }
 
 static void ev_check_auction(int, int64_t, int64_t) { check_auction(); }
-static void ev_handle_songs(int, int64_t, int64_t) { handle_songs(); }
+/* ev_handle_songs removed — song ticking moved to mystic_melody condition */
 static void ev_check_idle_passwords(int, int64_t, int64_t) { check_idle_passwords(); }
 static void ev_check_idle_menu(int, int64_t, int64_t) { check_idle_menu(); }
 static void ev_fight_stack(int, int64_t, int64_t) { fight_stack(); }
@@ -502,7 +501,7 @@ void event_queue_register_heartbeat_events() {
   event_schedule_c(now + EQ_MS_1SEC,  EQ_MS_1SEC,  ev_char_condition_update, EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_2SEC,  EQ_MS_2SEC,  ev_base_update,           EQ_CTX_NONE, 0, 0);
   event_schedule_c(now + EQ_MS_15SEC, EQ_MS_15SEC, ev_check_auction,         EQ_CTX_NONE, 0, 0);
-  event_schedule_c(now + EQ_MS_15SEC, EQ_MS_15SEC, ev_handle_songs,          EQ_CTX_NONE, 0, 0);
+  /* ev_handle_songs removed — song ticking moved to mystic_melody condition */
   event_schedule_c(now + EQ_MS_1MIN,  EQ_MS_1MIN,  ev_check_idle_menu,       EQ_CTX_NONE, 0, 0);
 
   // Config-driven intervals (convert pulse count to ms: pulses * 100)
@@ -632,8 +631,11 @@ static void prompt_status_flags(struct descriptor_data *d, struct char_data *ch,
   if (GET_KAIOKEN(ch) > 0)
     PFLAG("KAIOKEN X%d - ", GET_KAIOKEN(ch));
 
-  if (GET_SONG(ch) > 0)
-    PFLAG("%s - ", song_types[GET_SONG(ch)]);
+  if (char_condition_has(ch, "mystic_melody")) {
+    int64_t song_id = char_condition_number_get(ch, "mystic_melody", "song");
+    if (song_id > 0 && song_id < 12)
+      PFLAG("%s - ", song_types[(int)song_id]);
+  }
 
   if (d->snooping && d->snooping->character)
     PFLAG("Snooping: (%s) - ", GET_NAME(d->snooping->character));
@@ -703,7 +705,7 @@ static void prompt_sitting_status(struct char_data *ch, char *p, size_t max,
 static void prompt_charge_bar(struct char_data *ch, char *p, size_t max,
                                 size_t &len) {
   if (GET_CHARGE(ch) < GET_MAX_MANA(ch) * .01 && GET_CHARGE(ch) > 0)
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
   if (GET_CHARGE(ch) <= 0) return;
 
   int64_t charge = GET_CHARGE(ch), ki_max = GET_MAX_MANA(ch);

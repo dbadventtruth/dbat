@@ -21,4 +21,13 @@ function Condition:apply_modifiers(ch, instance)
   return self.modifiers(ch, instance) or {}
 end
 
+function Condition:dispatch_event(ch, instance, event)
+  if self.on_event then
+    self.on_event(ch, instance, event)
+  end
+  if event == "expire" and ch:condition_has(self.id) then
+    ch:condition_remove(self.id, "expired")
+  end
+end
+
 return Condition

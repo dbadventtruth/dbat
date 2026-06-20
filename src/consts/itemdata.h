@@ -9,205 +9,211 @@ extern "C" {
 /* Character equipment positions: used as index for char_data.equipment[] */
 /* NOTE: Don't confuse these constants with the ITEM_ bitvectors
    which control the valid places you can wear a piece of equipment */
-#define WEAR_UNUSED0 0
-#define WEAR_FINGER_R 1
-#define WEAR_FINGER_L 2
-#define WEAR_NECK_1 3
-#define WEAR_NECK_2 4
-#define WEAR_BODY 5
-#define WEAR_HEAD 6
-#define WEAR_LEGS 7
-#define WEAR_FEET 8
-#define WEAR_HANDS 9
-#define WEAR_ARMS 10
-#define WEAR_UNUSED1 11
-#define WEAR_ABOUT 12
-#define WEAR_WAIST 13
-#define WEAR_WRIST_R 14
-#define WEAR_WRIST_L 15
-#define WEAR_WIELD1 16
-#define WEAR_WIELD2 17
-#define WEAR_BACKPACK 18
-#define WEAR_EAR_R 19
-#define WEAR_EAR_L 20
-#define WEAR_SH 21
-#define WEAR_EYE 22
+typedef enum {
+    WEAR_UNUSED0  = 0,
+    WEAR_FINGER_R = 1,
+    WEAR_FINGER_L = 2,
+    WEAR_NECK_1   = 3,
+    WEAR_NECK_2   = 4,
+    WEAR_BODY     = 5,
+    WEAR_HEAD     = 6,
+    WEAR_LEGS     = 7,
+    WEAR_FEET     = 8,
+    WEAR_HANDS    = 9,
+    WEAR_ARMS     = 10,
+    WEAR_UNUSED1  = 11,
+    WEAR_ABOUT    = 12,
+    WEAR_WAIST    = 13,
+    WEAR_WRIST_R  = 14,
+    WEAR_WRIST_L  = 15,
+    WEAR_WIELD1   = 16,
+    WEAR_WIELD2   = 17,
+    WEAR_BACKPACK = 18,
+    WEAR_EAR_R    = 19,
+    WEAR_EAR_L    = 20,
+    WEAR_SH       = 21,
+    WEAR_EYE      = 22,
+} WearPosition;
 
 #define NUM_WEARS 23 /* This must be the # of eq positions!! */
 
 /* object-related defines ********************************************/
 
 /* Item types: used by obj_data.type_flag */
-#define ITEM_LIGHT 1      /* Item is a light source	*/
-#define ITEM_SCROLL 2     /* Item is a scroll		*/
-#define ITEM_WAND 3       /* Item is a wand		*/
-#define ITEM_STAFF 4      /* Item is a staff		*/
-#define ITEM_WEAPON 5     /* Item is a weapon		*/
-#define ITEM_FIREWEAPON 6 /* Unimplemented		*/
-#define ITEM_CAMPFIRE 7   /* Burn things for fun!		*/
-#define ITEM_TREASURE 8   /* Item is a treasure, not gold	*/
-#define ITEM_ARMOR 9      /* Item is armor		*/
-#define ITEM_POTION 10    /* Item is a potion		*/
-#define ITEM_WORN 11      /* Unimplemented		*/
-#define ITEM_OTHER 12     /* Misc object			*/
-#define ITEM_TRASH 13     /* Trash - shopkeeps won't buy	*/
-#define ITEM_TRAP 14      /* Unimplemented		*/
-#define ITEM_CONTAINER 15 /* Item is a container		*/
-#define ITEM_NOTE 16      /* Item is note 		*/
-#define ITEM_DRINKCON 17  /* Item is a drink container	*/
-#define ITEM_KEY 18       /* Item is a key		*/
-#define ITEM_FOOD 19      /* Item is food			*/
-#define ITEM_MONEY 20     /* Item is money (gold)		*/
-#define ITEM_PEN 21       /* Item is a pen		*/
-#define ITEM_BOAT 22      /* Item is a boat		*/
-#define ITEM_FOUNTAIN 23  /* Item is a fountain		*/
-#define ITEM_VEHICLE 24   /* Item is a vehicle            */
-#define ITEM_HATCH 25     /* Item is a vehicle hatch      */
-#define ITEM_WINDOW 26    /* Item is a vehicle window     */
-#define ITEM_CONTROL 27   /* Item is a vehicle control    */
-#define ITEM_PORTAL 28    /* Item is a portal	        */
-#define ITEM_SPELLBOOK 29 /* Item is a spellbook	        */
-#define ITEM_BOARD 30     /* Item is a message board 	*/
-#define ITEM_CHAIR 31     /* Is a chair                   */
-#define ITEM_BED 32       /* Is a bed                     */
-#define ITEM_YUM 33       /* This was good food           */
-#define ITEM_PLANT 34     /* This will grow!              */
-#define ITEM_FISHPOLE 35  /* FOR FISHING                  */
-#define ITEM_FISHBAIT 36  /* DITTO                        */
+typedef enum {
+    ITEM_LIGHT      = 1,  /* Item is a light source	*/
+    ITEM_SCROLL     = 2,  /* Item is a scroll		*/
+    ITEM_WAND       = 3,  /* Item is a wand		*/
+    ITEM_STAFF      = 4,  /* Item is a staff		*/
+    ITEM_WEAPON     = 5,  /* Item is a weapon		*/
+    ITEM_FIREWEAPON = 6,  /* Unimplemented		*/
+    ITEM_CAMPFIRE   = 7,  /* Burn things for fun!		*/
+    ITEM_TREASURE   = 8,  /* Item is a treasure, not gold	*/
+    ITEM_ARMOR      = 9,  /* Item is armor		*/
+    ITEM_POTION     = 10, /* Item is a potion		*/
+    ITEM_WORN       = 11, /* Unimplemented		*/
+    ITEM_OTHER      = 12, /* Misc object			*/
+    ITEM_TRASH      = 13, /* Trash - shopkeeps won't buy	*/
+    ITEM_TRAP       = 14, /* Unimplemented		*/
+    ITEM_CONTAINER  = 15, /* Item is a container		*/
+    ITEM_NOTE       = 16, /* Item is note 		*/
+    ITEM_DRINKCON   = 17, /* Item is a drink container	*/
+    ITEM_KEY        = 18, /* Item is a key		*/
+    ITEM_FOOD       = 19, /* Item is food			*/
+    ITEM_MONEY      = 20, /* Item is money (gold)		*/
+    ITEM_PEN        = 21, /* Item is a pen		*/
+    ITEM_BOAT       = 22, /* Item is a boat		*/
+    ITEM_FOUNTAIN   = 23, /* Item is a fountain		*/
+    ITEM_VEHICLE    = 24, /* Item is a vehicle            */
+    ITEM_HATCH      = 25, /* Item is a vehicle hatch      */
+    ITEM_WINDOW     = 26, /* Item is a vehicle window     */
+    ITEM_CONTROL    = 27, /* Item is a vehicle control    */
+    ITEM_PORTAL     = 28, /* Item is a portal	        */
+    ITEM_SPELLBOOK  = 29, /* Item is a spellbook	        */
+    ITEM_BOARD      = 30, /* Item is a message board 	*/
+    ITEM_CHAIR      = 31, /* Is a chair                   */
+    ITEM_BED        = 32, /* Is a bed                     */
+    ITEM_YUM        = 33, /* This was good food           */
+    ITEM_PLANT      = 34, /* This will grow!              */
+    ITEM_FISHPOLE   = 35, /* FOR FISHING                  */
+    ITEM_FISHBAIT   = 36, /* DITTO                        */
+} ItemType;
 
 #define NUM_ITEM_TYPES 37
 
 /* Take/Wear flags: used by obj_data.wear_flags */
-#define ITEM_WEAR_TAKE 0   /* Item can be taken         */
-#define ITEM_WEAR_FINGER 1 /* Can be worn on finger     */
-#define ITEM_WEAR_NECK 2   /* Can be worn around neck   */
-#define ITEM_WEAR_BODY 3   /* Can be worn on body       */
-#define ITEM_WEAR_HEAD 4   /* Can be worn on head       */
-#define ITEM_WEAR_LEGS 5   /* Can be worn on legs       */
-#define ITEM_WEAR_FEET 6   /* Can be worn on feet       */
-#define ITEM_WEAR_HANDS 7  /* Can be worn on hands      */
-#define ITEM_WEAR_ARMS 8   /* Can be worn on arms       */
-#define ITEM_WEAR_SHIELD 9 /* Can be used as a shield   */
-#define ITEM_WEAR_ABOUT 10 /* Can be worn about body    */
-#define ITEM_WEAR_WAIST 11 /* Can be worn around waist  */
-#define ITEM_WEAR_WRIST 12 /* Can be worn on wrist      */
-#define ITEM_WEAR_WIELD 13 /* Can be wielded            */
-#define ITEM_WEAR_HOLD 14  /* Can be held               */
-#define ITEM_WEAR_PACK 15  /* Can be worn as a backpack */
-#define ITEM_WEAR_EAR 16   /* Can be worn as an earring */
-#define ITEM_WEAR_SH 17    /* Can be worn as wings      */
-#define ITEM_WEAR_EYE 18   /* Can be worn as a mask     */
+typedef enum {
+    ITEM_WEAR_TAKE   = 0,  /* Item can be taken         */
+    ITEM_WEAR_FINGER = 1,  /* Can be worn on finger     */
+    ITEM_WEAR_NECK   = 2,  /* Can be worn around neck   */
+    ITEM_WEAR_BODY   = 3,  /* Can be worn on body       */
+    ITEM_WEAR_HEAD   = 4,  /* Can be worn on head       */
+    ITEM_WEAR_LEGS   = 5,  /* Can be worn on legs       */
+    ITEM_WEAR_FEET   = 6,  /* Can be worn on feet       */
+    ITEM_WEAR_HANDS  = 7,  /* Can be worn on hands      */
+    ITEM_WEAR_ARMS   = 8,  /* Can be worn on arms       */
+    ITEM_WEAR_SHIELD = 9,  /* Can be used as a shield   */
+    ITEM_WEAR_ABOUT  = 10, /* Can be worn about body    */
+    ITEM_WEAR_WAIST  = 11, /* Can be worn around waist  */
+    ITEM_WEAR_WRIST  = 12, /* Can be worn on wrist      */
+    ITEM_WEAR_WIELD  = 13, /* Can be wielded            */
+    ITEM_WEAR_HOLD   = 14, /* Can be held               */
+    ITEM_WEAR_PACK   = 15, /* Can be worn as a backpack */
+    ITEM_WEAR_EAR    = 16, /* Can be worn as an earring */
+    ITEM_WEAR_SH     = 17, /* Can be worn as wings      */
+    ITEM_WEAR_EYE    = 18, /* Can be worn as a mask     */
+} ItemWearFlag;
 
 #define NUM_ITEM_WEARS 19
 
 /* Extra object flags: used by obj_data.extra_flags */
-#define ITEM_GLOW 0                /* Item is glowing              */
-#define ITEM_HUM 1                 /* Item is humming              */
-#define ITEM_NORENT 2              /* Item cannot be rented        */
-#define ITEM_NODONATE 3            /* Item cannot be donated       */
-#define ITEM_NOINVIS 4             /* Item cannot be made invis    */
-#define ITEM_INVISIBLE 5           /* Item is invisible            */
-#define ITEM_MAGIC 6               /* Item is magical              */
-#define ITEM_NODROP 7              /* Item is cursed: can't drop   */
-#define ITEM_BLESS 8               /* Item is blessed              */
-#define ITEM_ANTI_GOOD 9           /* Not usable by good people    */
-#define ITEM_ANTI_EVIL 10          /* Not usable by evil people    */
-#define ITEM_ANTI_NEUTRAL 11       /* Not usable by neutral people */
-#define ITEM_ANTI_WIZARD 12        /* Not usable by mages          */
-#define ITEM_ANTI_CLERIC 13        /* Not usable by clerics        */
-#define ITEM_ANTI_ROGUE 14         /* Not usable by thieves        */
-#define ITEM_ANTI_FIGHTER 15       /* Not usable by warriors       */
-#define ITEM_NOSELL 16             /* Shopkeepers won't touch it   */
-#define ITEM_ANTI_DRUID 17         /* Not usable by druids         */
-#define ITEM_2H 18                 /* Requires two free hands      */
-#define ITEM_ANTI_BARD 19          /* Not usable by bards          */
-#define ITEM_ANTI_RANGER 20        /* Not usable by rangers        */
-#define ITEM_ANTI_PALADIN 21       /* Not usable by paladins       */
-#define ITEM_ANTI_HUMAN 22         /* Not usable by humans         */
-#define ITEM_ANTI_ICER 23          /* Not usable by dwarves        */
-#define ITEM_ANTI_SAIYAN 24        /* Not usable by elves          */
-#define ITEM_ANTI_KONATSU 25       /* Not usable by gnomes         */
-#define ITEM_UNIQUE_SAVE 26        /* unique object save           */
-#define ITEM_BROKEN 27             /* Item is broken hands         */
-#define ITEM_UNBREAKABLE 28        /* Item is unbreakable          */
-#define ITEM_ANTI_MONK 29          /* Not usable by monks          */
-#define ITEM_ANTI_BARBARIAN 30     /* Not usable by barbarians     */
-#define ITEM_ANTI_SORCERER 31      /* Not usable by sorcerers      */
-#define ITEM_DOUBLE 32             /* Double weapon                */
-#define ITEM_ONLY_WIZARD 33        /* Only usable by mages         */
-#define ITEM_ONLY_CLERIC 34        /* Only usable by clerics       */
-#define ITEM_ONLY_ROGUE 35         /* Only usable by thieves       */
-#define ITEM_ONLY_FIGHTER 36       /* Only usable by warriors      */
-#define ITEM_ONLY_DRUID 37         /* Only usable by druids        */
-#define ITEM_ONLY_BARD 38          /* Only usable by bards         */
-#define ITEM_ONLY_RANGER 39        /* Only usable by rangers       */
-#define ITEM_ONLY_PALADIN 40       /* Only usable by paladins      */
-#define ITEM_ONLY_HUMAN 41         /* Only usable by humans        */
-#define ITEM_ONLY_ICER 42          /* Only usable by dwarves       */
-#define ITEM_ONLY_SAIYAN 43        /* Only usable by elves         */
-#define ITEM_ONLY_KONATSU 44       /* Only usable by gnomes        */
-#define ITEM_ONLY_MONK 45          /* Only usable by monks         */
-#define ITEM_ONLY_BARBARIAN 46     /* Only usable by barbarians    */
-#define ITEM_ONLY_SORCERER 47      /* Only usable by sorcerers     */
-#define ITEM_ANTI_ARCANE_ARCHER 48 /* Not usable by Aracane Archers */
-#define ITEM_ANTI_ARCANE_TRICKSTER                                             \
-  49                            /* Not usable by Aracane tricksters       */
-#define ITEM_ANTI_ARCHMAGE 50   /* Not usable by Archmages                */
-#define ITEM_ANTI_ASSASSIN 51   /* Not usable by Assassins                */
-#define ITEM_ANTI_BLACKGUARD 52 /* Not usable by Blackguards              */
-#define ITEM_ANTI_DRAGON_DISCIPLE                                              \
-  53                         /* Not usable by Dragon disciples         */
-#define ITEM_ANTI_DUELIST 54 /* Not usable by Duelists                 */
-#define ITEM_ANTI_DWARVEN_DEFENDER                                             \
-  55 /* Not usable by Dwarven defenders        */
-#define ITEM_ANTI_ELDRITCH_KNIGHT                                              \
-  56                                /* Not usable by Eldritch knights         */
-#define ITEM_ANTI_HIEROPHANT 57     /* Not usable by Hierophants              */
-#define ITEM_ANTI_HORIZON_WALKER 58 /* Not usable by Horizon walkers */
-#define ITEM_ANTI_LOREMASTER 59     /* Not usable by Loremasters              */
-#define ITEM_ANTI_MYSTIC_THEURGE 60 /* Not usable by Mystic theurges */
-#define ITEM_ANTI_SHADOWDANCER 61   /* Not useable by shadowdancers           */
-#define ITEM_ANTI_THAUMATURGIST 62  /* Not useable by thaumaturgists  */
-#define ITEM_BSCOUTER 63
-#define ITEM_MSCOUTER 64
-#define ITEM_ASCOUTER 65
-#define ITEM_USCOUTER 66
-#define ITEM_WEAPLVL1 67
-#define ITEM_WEAPLVL2 68
-#define ITEM_WEAPLVL3 69
-#define ITEM_WEAPLVL4 70
-#define ITEM_WEAPLVL5 71
-#define ITEM_CBOARD 72
-#define ITEM_FORGED 73
-#define ITEM_SHEATH 74
-#define ITEM_ONLY_JINTO 75
-#define ITEM_BURIED 76
-#define ITEM_SLOT1 77
-#define ITEM_SLOT2 78
-#define ITEM_TOKEN 79
-#define ITEM_SLOT_ONE 80
-#define ITEM_SLOTS_FILLED 81
-#define ITEM_RESTRING 82
-#define ITEM_CUSTOM 83
-#define ITEM_PROTECTED 84
-#define ITEM_NORANDOM 85
-#define ITEM_THROW 86
-#define ITEM_HOT 87
-#define ITEM_PURGE 88
-#define ITEM_ICE 89
-#define ITEM_DUPLICATE 90
-#define ITEM_MATURE 91
-#define ITEM_CARDCASE 92
-#define ITEM_NOPICKUP 93
-#define ITEM_NOSTEAL 94
+typedef enum {
+    ITEM_GLOW                  = 0,  /* Item is glowing              */
+    ITEM_HUM                   = 1,  /* Item is humming              */
+    ITEM_NORENT                = 2,  /* Item cannot be rented        */
+    ITEM_NODONATE              = 3,  /* Item cannot be donated       */
+    ITEM_NOINVIS               = 4,  /* Item cannot be made invis    */
+    ITEM_INVISIBLE             = 5,  /* Item is invisible            */
+    ITEM_MAGIC                 = 6,  /* Item is magical              */
+    ITEM_NODROP                = 7,  /* Item is cursed: can't drop   */
+    ITEM_BLESS                 = 8,  /* Item is blessed              */
+    ITEM_ANTI_GOOD             = 9,  /* Not usable by good people    */
+    ITEM_ANTI_EVIL             = 10, /* Not usable by evil people    */
+    ITEM_ANTI_NEUTRAL          = 11, /* Not usable by neutral people */
+    ITEM_ANTI_WIZARD           = 12, /* Not usable by mages          */
+    ITEM_ANTI_CLERIC           = 13, /* Not usable by clerics        */
+    ITEM_ANTI_ROGUE            = 14, /* Not usable by thieves        */
+    ITEM_ANTI_FIGHTER          = 15, /* Not usable by warriors       */
+    ITEM_NOSELL                = 16, /* Shopkeepers won't touch it   */
+    ITEM_ANTI_DRUID            = 17, /* Not usable by druids         */
+    ITEM_2H                    = 18, /* Requires two free hands      */
+    ITEM_ANTI_BARD             = 19, /* Not usable by bards          */
+    ITEM_ANTI_RANGER           = 20, /* Not usable by rangers        */
+    ITEM_ANTI_PALADIN          = 21, /* Not usable by paladins       */
+    ITEM_ANTI_HUMAN            = 22, /* Not usable by humans         */
+    ITEM_ANTI_ICER             = 23, /* Not usable by dwarves        */
+    ITEM_ANTI_SAIYAN           = 24, /* Not usable by elves          */
+    ITEM_ANTI_KONATSU          = 25, /* Not usable by gnomes         */
+    ITEM_UNIQUE_SAVE           = 26, /* unique object save           */
+    ITEM_BROKEN                = 27, /* Item is broken hands         */
+    ITEM_UNBREAKABLE           = 28, /* Item is unbreakable          */
+    ITEM_ANTI_MONK             = 29, /* Not usable by monks          */
+    ITEM_ANTI_BARBARIAN        = 30, /* Not usable by barbarians     */
+    ITEM_ANTI_SORCERER         = 31, /* Not usable by sorcerers      */
+    ITEM_DOUBLE                = 32, /* Double weapon                */
+    ITEM_ONLY_WIZARD           = 33, /* Only usable by mages         */
+    ITEM_ONLY_CLERIC           = 34, /* Only usable by clerics       */
+    ITEM_ONLY_ROGUE            = 35, /* Only usable by thieves       */
+    ITEM_ONLY_FIGHTER          = 36, /* Only usable by warriors      */
+    ITEM_ONLY_DRUID            = 37, /* Only usable by druids        */
+    ITEM_ONLY_BARD             = 38, /* Only usable by bards         */
+    ITEM_ONLY_RANGER           = 39, /* Only usable by rangers       */
+    ITEM_ONLY_PALADIN          = 40, /* Only usable by paladins      */
+    ITEM_ONLY_HUMAN            = 41, /* Only usable by humans        */
+    ITEM_ONLY_ICER             = 42, /* Only usable by dwarves       */
+    ITEM_ONLY_SAIYAN           = 43, /* Only usable by elves         */
+    ITEM_ONLY_KONATSU          = 44, /* Only usable by gnomes        */
+    ITEM_ONLY_MONK             = 45, /* Only usable by monks         */
+    ITEM_ONLY_BARBARIAN        = 46, /* Only usable by barbarians    */
+    ITEM_ONLY_SORCERER         = 47, /* Only usable by sorcerers     */
+    ITEM_ANTI_ARCANE_ARCHER    = 48, /* Not usable by Aracane Archers */
+    ITEM_ANTI_ARCANE_TRICKSTER = 49, /* Not usable by Aracane tricksters */
+    ITEM_ANTI_ARCHMAGE         = 50, /* Not usable by Archmages      */
+    ITEM_ANTI_ASSASSIN         = 51, /* Not usable by Assassins      */
+    ITEM_ANTI_BLACKGUARD       = 52, /* Not usable by Blackguards    */
+    ITEM_ANTI_DRAGON_DISCIPLE  = 53, /* Not usable by Dragon disciples */
+    ITEM_ANTI_DUELIST          = 54, /* Not usable by Duelists       */
+    ITEM_ANTI_DWARVEN_DEFENDER = 55, /* Not usable by Dwarven defenders */
+    ITEM_ANTI_ELDRITCH_KNIGHT  = 56, /* Not usable by Eldritch knights */
+    ITEM_ANTI_HIEROPHANT       = 57, /* Not usable by Hierophants    */
+    ITEM_ANTI_HORIZON_WALKER   = 58, /* Not usable by Horizon walkers */
+    ITEM_ANTI_LOREMASTER       = 59, /* Not usable by Loremasters    */
+    ITEM_ANTI_MYSTIC_THEURGE   = 60, /* Not usable by Mystic theurges */
+    ITEM_ANTI_SHADOWDANCER     = 61, /* Not useable by shadowdancers */
+    ITEM_ANTI_THAUMATURGIST    = 62, /* Not useable by thaumaturgists */
+    ITEM_BSCOUTER              = 63,
+    ITEM_MSCOUTER              = 64,
+    ITEM_ASCOUTER              = 65,
+    ITEM_USCOUTER              = 66,
+    ITEM_WEAPLVL1              = 67,
+    ITEM_WEAPLVL2              = 68,
+    ITEM_WEAPLVL3              = 69,
+    ITEM_WEAPLVL4              = 70,
+    ITEM_WEAPLVL5              = 71,
+    ITEM_CBOARD                = 72,
+    ITEM_FORGED                = 73,
+    ITEM_SHEATH                = 74,
+    ITEM_ONLY_JINTO            = 75,
+    ITEM_BURIED                = 76,
+    ITEM_SLOT1                 = 77,
+    ITEM_SLOT2                 = 78,
+    ITEM_TOKEN                 = 79,
+    ITEM_SLOT_ONE              = 80,
+    ITEM_SLOTS_FILLED          = 81,
+    ITEM_RESTRING              = 82,
+    ITEM_CUSTOM                = 83,
+    ITEM_PROTECTED             = 84,
+    ITEM_NORANDOM              = 85,
+    ITEM_THROW                 = 86,
+    ITEM_HOT                   = 87,
+    ITEM_PURGE                 = 88,
+    ITEM_ICE                   = 89,
+    ITEM_DUPLICATE             = 90,
+    ITEM_MATURE                = 91,
+    ITEM_CARDCASE              = 92,
+    ITEM_NOPICKUP              = 93,
+    ITEM_NOSTEAL               = 94,
+} ItemExtraFlag;
 
 #define NUM_ITEM_FLAGS 95
 
 /* Container flags - value[1] */
-#define CONT_CLOSEABLE (1 << 0) /* Container can be closed	*/
-#define CONT_PICKPROOF (1 << 1) /* Container is pickproof	*/
-#define CONT_CLOSED (1 << 2)    /* Container is closed		*/
-#define CONT_LOCKED (1 << 3)    /* Container is locked		*/
+typedef enum {
+    CONT_CLOSEABLE = (1 << 0), /* Container can be closed	*/
+    CONT_PICKPROOF = (1 << 1), /* Container is pickproof	*/
+    CONT_CLOSED    = (1 << 2), /* Container is closed		*/
+    CONT_LOCKED    = (1 << 3), /* Container is locked		*/
+} ContainerFlag;
 
 #define NUM_CONT_FLAGS 4
 

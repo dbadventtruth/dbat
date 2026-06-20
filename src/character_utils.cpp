@@ -10,8 +10,8 @@
 
 #include "act.informative.h"
 #include "act.movement.h"
-#include "affect.h"
 #include "class.h"
+#include "guild.h"
 #include "combat.h"
 #include "comm.h"
 #include "consts/affflags.h"
@@ -162,8 +162,7 @@ void resurrect(char_data *ch, int mode) {
             "a weakened state for a few hours (Game time)! Strength, "
             "constitution, wisdom, intelligence, speed, and agility have been "
             "reduced by a fifth for the duration.@n\r\n");
-    char_condition_add(ch, "resurrection_weakness", "resurrection", "normal");
-    char_condition_duration_set(ch, "resurrection_weakness", dur * SECS_PER_MUD_HOUR);
+    char_condition_apply_with_duration(ch, "resurrection_weakness", "resurrection", "normal", dur * SECS_PER_MUD_HOUR);
     if (losschance >= 100) {
       int psloss = rand_number(100, 300);
       char_stat_mod(ch, "practices", -psloss);
@@ -198,8 +197,9 @@ void ghostify(char_data *ch) {
     }
   }
 
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SLEEP);
+  char_condition_remove_tag(ch, "sleep_aff", "ghostify");
+
+  char_condition_remove(ch, "knocked_out", "restored");
   REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_PARALYZE);
 }
 
@@ -406,16 +406,6 @@ int64_t harmCurHealth(char_data *ch, int64_t amt) {
 
 int64_t getCurPL(char_data *ch) {
   return char_meter_current(ch, "powerlevel");
-}
-
-int64_t getEffBasePL(char_data *ch) {
-  if (ch->original)
-    return getEffBasePL(ch->original);
-  if (ch->clones) {
-    return getBasePL(ch) / (ch->clones + 1);
-  } else {
-    return getBasePL(ch);
-  }
 }
 
 int64_t getBasePL(char_data *ch) { return char_stat_get(ch, "powerlevel"); }
@@ -661,7 +651,7 @@ void restoreStatusAnnounced(char_data *ch, bool announce) {
 void restoreStatus(char_data *ch) { restoreStatusAnnounced(ch, true); }
 
 void setStatusKnockedOut(char_data *ch) {
-  SET_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
+  char_condition_apply(ch, "knocked_out", "combat", "knocked_out");
   if (char_condition_has(ch, "flying")) {
     char_condition_remove(ch, "flying", "stop_flying");
   }
@@ -669,23 +659,16 @@ void setStatusKnockedOut(char_data *ch) {
 }
 
 void cureStatusKnockedOutAnnounced(char_data *ch, bool announce) {
-  if (AFF_FLAGGED(ch, AFF_KNOCKED)) {
-    if (announce) {
-      act("@W$n@W is no longer senseless, and wakes up.@n", FALSE, ch, 0, 0,
-          TO_ROOM);
-      send_to_char(ch, "You are no longer knocked out, and wake up!@n\r\n");
-    }
-
-    if (CARRIED_BY(ch)) {
-      if (GET_ALIGNMENT(CARRIED_BY(ch)) > 50) {
-        carry_drop(CARRIED_BY(ch), 0);
+  if (char_condition_has(ch, "knocked_out")) {
+    if (auto cby = CARRIED_BY(ch)) {
+      if (GET_ALIGNMENT(cby) > 50) {
+        carry_drop(cby, 0);
       } else {
-        carry_drop(CARRIED_BY(ch), 1);
+        carry_drop(cby, 1);
       }
     }
 
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    char_position_set(ch, POS_SITTING);
+    char_condition_remove(ch, "knocked_out", announce ? "recovered" : "recovered_silent");
   }
 }
 
@@ -707,7 +690,7 @@ void cureStatusBurn(char_data *ch) { cureStatusBurnAnnounced(ch, true); }
 
 void cureStatusPoisonAnnounced(char_data *ch, bool announce) {
   act("@C$n@W suddenly looks a lot better!@b", FALSE, ch, 0, 0, TO_NOTVICT);
-  affect_from_char(ch, SPELL_POISON);
+  char_condition_remove(ch, "poison", "healing_poisoned");
 }
 
 void cureStatusPoison(char_data *ch) { cureStatusPoisonAnnounced(ch, true); }
@@ -724,7 +707,7 @@ void restoreLimbsAnnounced(char_data *ch, bool announce) {
       else if (GET_LIMBCOND(ch, l.first) < 50)
         send_to_char(ch, "Your %s is no longer broken!\r\n", l.second.c_str());
     }
-    GET_LIMBCOND(ch, l.first) = 100;
+    SET_LIMBCOND(ch, l.first, 100);
   }
 
   char_gain_tail(ch, announce);
@@ -1001,8 +984,8 @@ int has_group(struct char_data *ch) {
       return true;
     });
     if (found) return (TRUE);
-  } else if (ch->master) {
-    if (!char_condition_has(ch->master, "group"))
+  } else if (MASTER(ch)) {
+    if (!char_condition_has(MASTER(ch), "group"))
       return (FALSE);
     else
       return (TRUE);
@@ -1014,7 +997,7 @@ int has_group(struct char_data *ch) {
 const char *report_party_health(struct char_data *ch) {
   if (!char_condition_has(ch, "group"))
     return "";
-  if (!char_follower_count(ch) && !ch->master)
+  if (!char_follower_count(ch) && !MASTER(ch))
     return "";
 
   static const char *plcol[] = {"@r", "@y", "@Y", "@G", ""};
@@ -1048,9 +1031,9 @@ const char *report_party_health(struct char_data *ch) {
         party[n++] = fol;
       return true;
     });
-  } else if (ch->master && char_condition_has(ch->master, "group")) {
-    party[n++] = ch->master;
-    char_followers_iterate(ch->master, [&](struct char_data *fol) {
+  } else if (MASTER(ch) && char_condition_has(MASTER(ch), "group")) {
+    party[n++] = MASTER(ch);
+    char_followers_iterate(MASTER(ch), [&](struct char_data *fol) {
       if (n >= 4) return false;
       if (fol != ch && char_condition_has(fol, "group"))
         party[n++] = fol;
@@ -2487,8 +2470,8 @@ int block_calc(struct char_data *ch) {
       act("$n proves $s great skill and escapes from you!", TRUE, ch, 0, blocker, TO_VICT);
       act("Using your great skill you manage to escape from $N!", TRUE, ch, 0, blocker, TO_CHAR);
     }
-    BLOCKED(ch) = NULL;
-    BLOCKS(blocker) = NULL;
+    char_blocked_by_set(ch, NULL);
+    char_blocking_set(blocker, NULL);
   };
 
   if (GET_SPEEDI(ch) < GET_SPEEDI(blocker) && GET_POS(blocker) > POS_SITTING) {
@@ -2782,7 +2765,7 @@ int mob_respond(struct char_data *ch, struct char_data *vict,
 
   if ((hears("spar") || hears("Spar")) && !FIGHTING(vict)) {
     send_to_room(char_room_get(vict), "\r\n");
-    if (vict->original == ch) {
+    if (GET_ORIGINAL(vict) == ch) {
       say("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n");
       SET_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
       return 0;
@@ -3063,7 +3046,8 @@ void improve_skill(struct char_data *ch, int skill, int num) {
   if (AFF_FLAGGED(ch, AFF_SHOCKED))
     return;
 
-  if (GET_FORGETING(ch) == skill)
+  if (char_condition_has(ch, "forget_skill") &&
+      strcmp(char_condition_string_get(ch, "forget_skill", "skill_name"), spell_info[skill].name) == 0)
     return;
 
   if (GET_SKILL_BASE(ch, skill) >= 90) {
@@ -3220,7 +3204,7 @@ void improve_skill(struct char_data *ch, int skill, int num) {
 bool circle_follow(struct char_data *ch, struct char_data *victim) {
   struct char_data *k;
 
-  for (k = victim; k; k = k->master) {
+  for (k = victim; k; k = MASTER(k)) {
     if (k == ch)
       return (TRUE);
   }
@@ -3231,19 +3215,19 @@ bool circle_follow(struct char_data *ch, struct char_data *victim) {
 /* Called when stop following persons, or stopping charm */
 /* This will NOT do if a character quits/dies!!          */
 void stop_follower(struct char_data *ch) {
-  if (ch->master == NULL) {
+  if (MASTER(ch) == NULL) {
     core_dump();
     return;
   }
 
-  act("You stop following $N.", FALSE, ch, 0, ch->master, TO_CHAR);
-  act("$n stops following $N.", TRUE, ch, 0, ch->master, TO_NOTVICT);
-  if (!(DEAD(ch->master) ||
-        (ch->master->desc && STATE(ch->master->desc) == CON_MENU)))
-    act("$n stops following you.", TRUE, ch, 0, ch->master, TO_VICT);
+  act("You stop following $N.", FALSE, ch, 0, MASTER(ch), TO_CHAR);
+  act("$n stops following $N.", TRUE, ch, 0, MASTER(ch), TO_NOTVICT);
+  if (!(DEAD(MASTER(ch)) ||
+        (MASTER(ch)->desc && STATE(MASTER(ch)->desc) == CON_MENU)))
+    act("$n stops following you.", TRUE, ch, 0, MASTER(ch), TO_VICT);
 
-  char_follower_remove(ch->master, ch);
-  ch->master = NULL;
+  char_follower_remove(MASTER(ch), ch);
+  char_following_set(ch, NULL);
 }
 
 int num_followers_charmed(struct char_data *ch) {
@@ -3253,7 +3237,7 @@ int num_followers_charmed(struct char_data *ch) {
   char_followers_iterate(ch, [&](struct char_data *lackey) {
     if (AFF_FLAGGED(lackey, AFF_CHARM) &&
         !AFF_FLAGGED(lackey, AFF_SUMMONED) &&
-        lackey->master == ch)
+        MASTER(lackey) == ch)
       total++;
     return true;
   });
@@ -3274,7 +3258,7 @@ void switch_leader(struct char_data *old, struct char_data *new_leader) {
 }
 /* Called when a character that follows/is followed dies */
 void die_follower(struct char_data *ch) {
-  if (ch->master)
+  if (MASTER(ch))
     stop_follower(ch);
 
   char_followers_iterate(ch, [&](struct char_data *fol) {
@@ -3286,12 +3270,12 @@ void die_follower(struct char_data *ch) {
 /* Do NOT call this before having checked if a circle of followers */
 /* will arise. CH will follow leader                               */
 void add_follower(struct char_data *ch, struct char_data *leader) {
-  if (ch->master) {
+  if (MASTER(ch)) {
     core_dump();
     return;
   }
 
-  ch->master = leader;
+  char_following_set(ch, leader);
   char_follower_add(leader, ch);
 
   act("You now follow $N.", FALSE, ch, 0, leader, TO_CHAR);
@@ -3759,13 +3743,13 @@ void pcost(struct char_data *ch, double ki, int64_t st) {
       }
     }
     if (GET_CHARGE(ch) <= (GET_MAX_MANA(ch) * ki)) {
-      GET_CHARGE(ch) = 0;
+      char_charge_set(ch, 0);
     }
     if (GET_CHARGE(ch) > (GET_MAX_MANA(ch) * ki)) {
-      GET_CHARGE(ch) -= (GET_MAX_MANA(ch) * ki);
+      char_charge_set(ch, GET_CHARGE(ch) - (int64_t)(GET_MAX_MANA(ch) * ki));
     }
     if (GET_CHARGE(ch) < 0) {
-      GET_CHARGE(ch) = 0;
+      char_charge_set(ch, 0);
     }
     if (GET_KAIOKEN(ch) > 0) {
       st += (st / 20) * GET_KAIOKEN(ch);
@@ -3792,9 +3776,7 @@ void pcost(struct char_data *ch, double ki, int64_t st) {
     if (GET_PREFERENCE(ch) == PREFERENCE_H2H &&
         GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.1) {
       st -= st * 0.5;
-      GET_CHARGE(ch) -= st;
-      if (GET_CHARGE(ch) < 0)
-        GET_CHARGE(ch) = 0;
+      char_charge_set(ch, GET_CHARGE(ch) - (int64_t)st);
     }
     if (IS_NONPTRANS(ch)) {
       if (PLR_FLAGGED(ch, PLR_TRANS1)) {
@@ -3832,7 +3814,7 @@ int limb_ok(struct char_data *ch, int type) {
                      "'escape' to get out of it!\r\n");
     return FALSE;
   }
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return FALSE;
@@ -3852,7 +3834,7 @@ int limb_ok(struct char_data *ch, int type) {
           TO_CHAR);
       act("$n manages to break the silk ensnaring $s arms!", TRUE, ch, 0, 0,
           TO_ROOM);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ENSNARED);
+      char_condition_remove(ch, "ensnared", "equipped");
     }
     if (GET_EQ(ch, WEAR_WIELD1) && GET_EQ(ch, WEAR_WIELD2)) {
       send_to_char(ch, "Your hands are full!\r\n");
@@ -3981,7 +3963,6 @@ void char_lose_tail(char_data *ch) {
   case RACE_BIO:
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);
     remove_limb(ch, 6);
-    GET_TGROWTH(ch) = 0;
     break;
   case RACE_SAIYAN:
   case RACE_HALFBREED:
@@ -3990,8 +3971,10 @@ void char_lose_tail(char_data *ch) {
     if (PLR_FLAGGED(ch, PLR_OOZARU)) {
       oozaru_revert(ch);
     }
-    GET_TGROWTH(ch) = 0;
     break;
+  }
+  if (!IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_NOGROW)) {
+    char_condition_apply(ch, "regrow_tail", "natural", "tail_lost");
   }
 }
 
@@ -4396,13 +4379,36 @@ extern "C" bool release_charge(struct char_data *ch) {
     break;
   }
   incCurKI(ch, GET_CHARGE(ch));
-  GET_CHARGE(ch) = 0;
-  GET_CHARGETO(ch) = 0;
+  char_charge_set(ch, 0);
   REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
+  char_condition_remove(ch, "charge", "released");
   return true;
 }
 
 bool char_is_extracted(struct char_data *ch) {
   if(IS_NPC(ch)) return IS_SET_AR(MOB_FLAGS(ch), MOB_NOTDEADYET);
   else return PLR_FLAGGED(ch, PLR_NOTDEADYET);
+}
+
+extern "C" int64_t char_level_exp(struct char_data *ch, int level) {
+  return level_exp(ch, level);
+}
+
+extern "C" int char_rpp_to_level(struct char_data *ch) {
+  return rpp_to_level(ch);
+}
+
+#include "mail.h"
+#include "config.h"
+
+extern "C" bool char_has_mail(struct char_data *ch) {
+  return has_mail(GET_IDNUM(ch)) != 0;
+}
+
+extern "C" bool char_news_pending(struct char_data *ch) {
+  return NEWSUPDATE > GET_LPLAY(ch);
+}
+
+extern "C" int char_slot_count(struct char_data *ch) {
+  return slot_count(ch);
 }

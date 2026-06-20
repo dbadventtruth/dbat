@@ -5,9 +5,11 @@ extern "C" {
 #endif
 
 /* Player conditions */
-#define DRUNK 0
-#define HUNGER 1
-#define THIRST 2
+typedef enum {
+    DRUNK  = 0,
+    HUNGER = 1,
+    THIRST = 2,
+} PlayerCond;
 
 #define NUM_CONDITIONS 3
 

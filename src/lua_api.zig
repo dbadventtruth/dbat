@@ -8,6 +8,7 @@ const zones_lua = @import("zone_lua.zig");
 const shops_lua = @import("shop_lua.zig");
 const guilds_lua = @import("guild_lua.zig");
 const dgscripts_lua = @import("dgscript_lua.zig");
+const consts_lua = @import("consts_lua.zig");
 const modifiers_api = @import("modifiers_api.zig");
 const intern_mod = @import("intern.zig");
 
@@ -22,17 +23,21 @@ const lua_root = "lua";
 
 const Category = struct { namespace: []const u8, name: []const u8, dir: []const u8 };
 const categories = [_]Category{
-    .{ .namespace = "characters", .name = "commands",        .dir = "characters/commands" },
-    .{ .namespace = "characters", .name = "conditions",      .dir = "characters/conditions" },
-    .{ .namespace = "characters", .name = "derived",         .dir = "characters/derived" },
-    .{ .namespace = "characters", .name = "modifiers",       .dir = "characters/modifiers" },
-    .{ .namespace = "characters", .name = "meters",          .dir = "characters/meters" },
-    .{ .namespace = "characters", .name = "pcommands",       .dir = "characters/pcommands" },
-    .{ .namespace = "characters", .name = "races",           .dir = "characters/races" },
-    .{ .namespace = "characters", .name = "senseis",         .dir = "characters/senseis" },
-    .{ .namespace = "characters", .name = "skills",          .dir = "characters/skills" },
-    .{ .namespace = "characters", .name = "stats",           .dir = "characters/stats" },
-    .{ .namespace = "characters", .name = "transformations", .dir = "characters/transformations" },
+    .{ .namespace = "characters", .name = "commands",          .dir = "characters/commands" },
+    .{ .namespace = "characters", .name = "conditions",        .dir = "characters/conditions" },
+    .{ .namespace = "characters", .name = "derived",           .dir = "characters/derived" },
+    .{ .namespace = "characters", .name = "modifiers",         .dir = "characters/modifiers" },
+    .{ .namespace = "characters", .name = "meters",            .dir = "characters/meters" },
+    .{ .namespace = "characters", .name = "pcommands",         .dir = "characters/pcommands" },
+    .{ .namespace = "characters", .name = "races",             .dir = "characters/races" },
+    .{ .namespace = "characters", .name = "senseis",           .dir = "characters/senseis" },
+    .{ .namespace = "characters", .name = "skills",            .dir = "characters/skills" },
+    .{ .namespace = "characters", .name = "stats",             .dir = "characters/stats" },
+    .{ .namespace = "characters", .name = "transformations",   .dir = "characters/transformations" },
+    .{ .namespace = "characters", .name = "character_scripts", .dir = "characters/scripts" },
+    .{ .namespace = "objects",    .name = "object_scripts",    .dir = "objects/scripts" },
+    .{ .namespace = "rooms",      .name = "room_scripts",      .dir = "rooms/scripts" },
+    .{ .namespace = "zones",      .name = "zone_scripts",      .dir = "zones/scripts" },
 };
 
 var allocator: std.mem.Allocator = undefined;
@@ -49,7 +54,7 @@ pub fn getLuaState() ?*Lua {
 }
 var loaded_entries: usize = 0;
 var active_repl: ?*LuaRepl = null;
-var definition_cache: DefinitionCache = undefined;
+pub var definition_cache: DefinitionCache = undefined;
 var definition_cache_initialized = false;
 
 pub const StatDefinition = struct {
@@ -93,10 +98,17 @@ pub const DerivedDefinition = struct {
 pub const MeterDefinition = struct {
     derived_stat_storage: [64]u8 = undefined,
     derived_stat_len: usize = 0,
+    linked_condition_storage: [64:0]u8 = [_:0]u8{0} ** 64,
+    linked_condition_len: usize = 0,
 
     pub fn derivedStat(self: *const MeterDefinition, fallback: []const u8) []const u8 {
         if (self.derived_stat_len == 0) return fallback;
         return self.derived_stat_storage[0..self.derived_stat_len];
+    }
+
+    pub fn linkedCondition(self: *const MeterDefinition) ?[:0]const u8 {
+        if (self.linked_condition_len == 0) return null;
+        return self.linked_condition_storage[0..self.linked_condition_len :0];
     }
 };
 
@@ -127,11 +139,17 @@ const ConditionMetadata = struct {
     }
 };
 
+pub const ScriptDefinition = struct { persistent: bool };
+
 const DefinitionCache = struct {
     stats: std.StringHashMap(StatDefinition),
     derived: std.StringHashMap(DerivedDefinition),
     meters: std.StringHashMap(MeterDefinition),
     conditions: std.StringHashMap(ConditionMetadata),
+    character_scripts: std.StringHashMap(ScriptDefinition),
+    object_scripts: std.StringHashMap(ScriptDefinition),
+    room_scripts: std.StringHashMap(ScriptDefinition),
+    zone_scripts: std.StringHashMap(ScriptDefinition),
 
     fn init(alloc: std.mem.Allocator) DefinitionCache {
         return .{
@@ -139,6 +157,10 @@ const DefinitionCache = struct {
             .derived = std.StringHashMap(DerivedDefinition).init(alloc),
             .meters = std.StringHashMap(MeterDefinition).init(alloc),
             .conditions = std.StringHashMap(ConditionMetadata).init(alloc),
+            .character_scripts = std.StringHashMap(ScriptDefinition).init(alloc),
+            .object_scripts = std.StringHashMap(ScriptDefinition).init(alloc),
+            .room_scripts = std.StringHashMap(ScriptDefinition).init(alloc),
+            .zone_scripts = std.StringHashMap(ScriptDefinition).init(alloc),
         };
     }
 
@@ -149,6 +171,10 @@ const DefinitionCache = struct {
         var conditions = self.conditions.iterator();
         while (conditions.next()) |entry| entry.value_ptr.deinit();
         self.conditions.clearRetainingCapacity();
+        self.character_scripts.clearRetainingCapacity();
+        self.object_scripts.clearRetainingCapacity();
+        self.room_scripts.clearRetainingCapacity();
+        self.zone_scripts.clearRetainingCapacity();
     }
 
     fn deinit(self: *DefinitionCache) void {
@@ -157,6 +183,10 @@ const DefinitionCache = struct {
         self.derived.deinit();
         self.meters.deinit();
         self.conditions.deinit();
+        self.character_scripts.deinit();
+        self.object_scripts.deinit();
+        self.room_scripts.deinit();
+        self.zone_scripts.deinit();
     }
 };
 
@@ -677,31 +707,194 @@ pub fn callConditionHook(ch: *cdb.char_data, condition: []const u8, comptime hoo
     };
 }
 
-pub fn callConditionUpdateHook(ch: *cdb.char_data, condition: []const u8, kind: []const u8, pulses: i64, seconds: i64) void {
+pub fn callConditionEventHook(ch: *cdb.char_data, condition: []const u8, event_name: []const u8) void {
     if (!initialized or condition.len == 0) return;
     if (!(pushThing("conditions", condition) catch return)) return;
     defer pop(1);
 
     const lua = lua_state.?;
-    if (lua.getField(-1, "on_update") != .function) {
+    if (lua.getField(-1, "on_event") != .function) {
         lua.pop(1);
         return;
     }
-
     characters_lua.pushCharacter(lua, ch.id);
     characters_lua.pushCondition(lua, ch.id, condition);
-
-    lua.newTable();
-    _ = lua.pushString(kind);
-    lua.setField(-2, "kind");
-    lua.pushInteger(pulses);
-    lua.setField(-2, "pulses");
-    lua.pushInteger(seconds);
-    lua.setField(-2, "seconds");
-
+    _ = lua.pushString(event_name);
     lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
         const message = lua.toString(-1) catch @errorName(err);
-        std.log.err("condition {s}.on_update failed: {s}", .{ condition, message });
+        std.log.err("condition {s}.on_event({s}) failed: {s}", .{ condition, event_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callCharScriptHook(ch: *cdb.char_data, script_id: []const u8, comptime hook_name: [:0]const u8, reason: ?[]const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("character_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, hook_name) != .function) {
+        lua.pop(1);
+        return;
+    }
+    characters_lua.pushCharacter(lua, ch.id);
+    characters_lua.pushCharacterScript(lua, ch.id, script_id);
+    const nargs: i32 = if (reason) |r| blk: {
+        _ = lua.pushString(r);
+        break :blk 3;
+    } else 2;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("char script {s}.{s} failed: {s}", .{ script_id, hook_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callCharScriptEventHook(ch: *cdb.char_data, script_id: []const u8, event_name: []const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("character_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "on_event") != .function) {
+        lua.pop(1);
+        return;
+    }
+    characters_lua.pushCharacter(lua, ch.id);
+    characters_lua.pushCharacterScript(lua, ch.id, script_id);
+    _ = lua.pushString(event_name);
+    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("char script {s}.on_event({s}) failed: {s}", .{ script_id, event_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callObjScriptHook(obj: *cdb.obj_data, script_id: []const u8, comptime hook_name: [:0]const u8, reason: ?[]const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("object_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, hook_name) != .function) {
+        lua.pop(1);
+        return;
+    }
+    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    objects_lua.pushObjectScript(lua, cdb.obj_id_get(obj), script_id);
+    const nargs: i32 = if (reason) |r| blk: {
+        _ = lua.pushString(r);
+        break :blk 3;
+    } else 2;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("obj script {s}.{s} failed: {s}", .{ script_id, hook_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callObjScriptEventHook(obj: *cdb.obj_data, script_id: []const u8, event_name: []const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("object_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "on_event") != .function) {
+        lua.pop(1);
+        return;
+    }
+    objects_lua.pushObject(lua, cdb.obj_id_get(obj));
+    objects_lua.pushObjectScript(lua, cdb.obj_id_get(obj), script_id);
+    _ = lua.pushString(event_name);
+    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("obj script {s}.on_event({s}) failed: {s}", .{ script_id, event_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callRoomScriptHook(room: *cdb.room_data, script_id: []const u8, comptime hook_name: [:0]const u8, reason: ?[]const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("room_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, hook_name) != .function) {
+        lua.pop(1);
+        return;
+    }
+    rooms_lua.pushRoom(lua, cdb.room_vnum_get(room));
+    rooms_lua.pushRoomScript(lua, cdb.room_vnum_get(room), script_id);
+    const nargs: i32 = if (reason) |r| blk: {
+        _ = lua.pushString(r);
+        break :blk 3;
+    } else 2;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("room script {s}.{s} failed: {s}", .{ script_id, hook_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callRoomScriptEventHook(room: *cdb.room_data, script_id: []const u8, event_name: []const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("room_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "on_event") != .function) {
+        lua.pop(1);
+        return;
+    }
+    rooms_lua.pushRoom(lua, cdb.room_vnum_get(room));
+    rooms_lua.pushRoomScript(lua, cdb.room_vnum_get(room), script_id);
+    _ = lua.pushString(event_name);
+    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("room script {s}.on_event({s}) failed: {s}", .{ script_id, event_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callZoneScriptHook(zone: *cdb.zone_data, script_id: []const u8, comptime hook_name: [:0]const u8, reason: ?[]const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("zone_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, hook_name) != .function) {
+        lua.pop(1);
+        return;
+    }
+    zones_lua.pushZone(lua, cdb.zone_id_get(zone));
+    zones_lua.pushZoneScript(lua, cdb.zone_id_get(zone), script_id);
+    const nargs: i32 = if (reason) |r| blk: {
+        _ = lua.pushString(r);
+        break :blk 3;
+    } else 2;
+    lua.protectedCall(.{ .args = nargs, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("zone script {s}.{s} failed: {s}", .{ script_id, hook_name, message });
+        lua.pop(1);
+    };
+}
+
+pub fn callZoneScriptEventHook(zone: *cdb.zone_data, script_id: []const u8, event_name: []const u8) void {
+    if (!initialized or script_id.len == 0) return;
+    if (!(pushThing("zone_scripts", script_id) catch return)) return;
+    defer pop(1);
+
+    const lua = lua_state.?;
+    if (lua.getField(-1, "on_event") != .function) {
+        lua.pop(1);
+        return;
+    }
+    zones_lua.pushZone(lua, cdb.zone_id_get(zone));
+    zones_lua.pushZoneScript(lua, cdb.zone_id_get(zone), script_id);
+    _ = lua.pushString(event_name);
+    lua.protectedCall(.{ .args = 3, .results = 0 }) catch |err| {
+        const message = lua.toString(-1) catch @errorName(err);
+        std.log.err("zone script {s}.on_event({s}) failed: {s}", .{ script_id, event_name, message });
         lua.pop(1);
     };
 }
@@ -880,6 +1073,21 @@ fn cacheReturnedValue(category: []const u8, id: []const u8, index: i32) !void {
     if (std.mem.eql(u8, category, "derived")) return cacheDerivedDefinition(id, index);
     if (std.mem.eql(u8, category, "meters")) return cacheMeterDefinition(id, index);
     if (std.mem.eql(u8, category, "conditions")) return cacheConditionDefinition(id, index);
+    if (std.mem.eql(u8, category, "character_scripts")) return cacheScriptDefinition(&definition_cache.character_scripts, id, index);
+    if (std.mem.eql(u8, category, "object_scripts")) return cacheScriptDefinition(&definition_cache.object_scripts, id, index);
+    if (std.mem.eql(u8, category, "room_scripts")) return cacheScriptDefinition(&definition_cache.room_scripts, id, index);
+    if (std.mem.eql(u8, category, "zone_scripts")) return cacheScriptDefinition(&definition_cache.zone_scripts, id, index);
+}
+
+fn cacheScriptDefinition(cache: *std.StringHashMap(ScriptDefinition), id: []const u8, index: i32) !void {
+    const di = lua_state.?.absIndex(index);
+    try cache.put(internString(id), .{
+        .persistent = optionalBoolField(di, "persistent") orelse false,
+    });
+}
+
+pub fn scriptDefinition(comptime field: []const u8, id: []const u8) ?ScriptDefinition {
+    return @field(definition_cache, field).get(id);
 }
 
 pub fn derivedCount() usize {
@@ -961,6 +1169,11 @@ fn cacheMeterDefinition(id: []const u8, index: i32) !void {
         const len = @min(value.len, definition.derived_stat_storage.len);
         @memcpy(definition.derived_stat_storage[0..len], value[0..len]);
         definition.derived_stat_len = len;
+    }
+    if (optionalStringField(definition_index, "linked_condition")) |value| {
+        const len = @min(value.len, definition.linked_condition_storage.len);
+        @memcpy(definition.linked_condition_storage[0..len], value[0..len]);
+        definition.linked_condition_len = len;
     }
     try definition_cache.meters.put(internString(id), definition);
 }
@@ -1051,6 +1264,7 @@ fn openDbat(lua: *Lua) i32 {
     shops_lua.register(lua);
     guilds_lua.register(lua);
     dgscripts_lua.register(lua);
+    consts_lua.register(lua);
 
     lua.pushFunction(zlua.wrap(luaLog));
     lua.setField(-2, "log");
@@ -1068,6 +1282,21 @@ fn openDbat(lua: *Lua) i32 {
     lua.setField(-2, "add_commas");
     lua.pushFunction(zlua.wrap(luaAddCommas));
     lua.setField(-2, "format_number");
+
+    lua.pushFunction(zlua.wrap(luaAxionDice));
+    lua.setField(-2, "axion_dice");
+
+    lua.pushFunction(zlua.wrap(luaSendToImm));
+    lua.setField(-2, "send_to_imm");
+
+    lua.pushFunction(zlua.wrap(luaLogImmAction));
+    lua.setField(-2, "log_imm_action");
+
+    lua.pushFunction(zlua.wrap(luaEachPlayer));
+    lua.setField(-2, "each_player");
+
+    lua.pushBoolean(cdb.config_info.play.load_into_inventory != 0);
+    lua.setField(-2, "load_into_inventory");
 
     registerTestModule(lua);
 
@@ -1168,9 +1397,42 @@ fn luaWeather(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaAxionDice(lua: *Lua) i32 {
+    const adjust: c_int = if (lua.isNoneOrNil(1)) 0 else @intCast(lua.toInteger(1) catch 0);
+    lua.pushInteger(cdb.axion_dice(adjust));
+    return 1;
+}
+
 fn luaLog(lua: *Lua) i32 {
     const message = lua.toString(1) catch "";
     std.log.info("lua: {s}", .{message});
+    return 0;
+}
+
+fn luaSendToImm(lua: *Lua) i32 {
+    const msg = lua.toString(1) catch return 0;
+    cdb.char_send_to_imm(msg.ptr);
+    return 0;
+}
+
+fn luaLogImmAction(lua: *Lua) i32 {
+    const msg = lua.toString(1) catch return 0;
+    cdb.char_log_imm_action(msg.ptr);
+    return 0;
+}
+
+fn luaEachPlayer(lua: *Lua) i32 {
+    if (!lua.isFunction(1)) lua.typeError(1, "function");
+    var desc = cdb.descriptor_list;
+    while (desc != null) {
+        const d: *cdb.descriptor_data = @ptrCast(desc.?);
+        desc = d.next;
+        if (d.connected != cdb.CON_PLAYING) continue;
+        const ch = d.character orelse continue;
+        lua.pushValue(1);
+        characters_lua.pushCharacter(lua, cdb.char_id_get(@ptrCast(ch)));
+        lua.protectedCall(.{ .args = 1, .results = 0 }) catch {};
+    }
     return 0;
 }
 
@@ -1201,10 +1463,7 @@ fn logPrintArguments(lua: *Lua) void {
     }
 }
 
-fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, comptime dir: []const u8) !void {
-    const dir_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lua_root, dir });
-    defer allocator.free(dir_path);
-
+fn loadCategoryDir(namespace: []const u8, name: []const u8, dir_path: []const u8) !void {
     var d = std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound => return,
         else => return err,
@@ -1213,15 +1472,24 @@ fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, compt
 
     var iter = d.iterate();
     while (try iter.next(io)) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.name, ".lua")) continue;
-
-        const slug = entry.name[0 .. entry.name.len - ".lua".len];
-        const path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
-        defer allocator.free(path);
-
-        try loadThing(namespace, name, slug, path);
+        if (entry.kind == .directory) {
+            const sub = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
+            defer allocator.free(sub);
+            try loadCategoryDir(namespace, name, sub);
+        } else if (entry.kind == .file) {
+            if (!std.mem.endsWith(u8, entry.name, ".lua")) continue;
+            const slug = entry.name[0 .. entry.name.len - ".lua".len];
+            const path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, entry.name });
+            defer allocator.free(path);
+            try loadThing(namespace, name, slug, path);
+        }
     }
+}
+
+fn loadCategory(comptime namespace: []const u8, comptime name: []const u8, comptime dir: []const u8) !void {
+    const dir_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lua_root, dir });
+    defer allocator.free(dir_path);
+    try loadCategoryDir(namespace, name, dir_path);
 }
 
 fn loadThing(namespace: []const u8, category: []const u8, slug: []const u8, path: []const u8) !void {
@@ -1232,17 +1500,35 @@ fn loadThing(namespace: []const u8, category: []const u8, slug: []const u8, path
     const path_z = try allocator.dupeZ(u8, path);
     defer allocator.free(path_z);
 
-    switch (zlua.lang) {
-        .lua51, .luajit => try lua.loadFile(path_z),
-        else => try lua.loadFile(path_z, .text),
-    }
+    const load_result = switch (zlua.lang) {
+        .lua51, .luajit => lua.loadFile(path_z),
+        else => lua.loadFile(path_z, .text),
+    };
+    load_result catch |err| {
+        reportLuaError(path, err);
+        return err;
+    };
 
     lua.protectedCall(.{ .results = 1 }) catch |err| {
         reportLuaError(path, err);
         return err;
     };
 
-    try registerReturnedValue(namespace, category, slug, path);
+    // Use the `id` field from the returned table as the registry key if present,
+    // so that subdirectory files with id != filename slug don't collide.
+    const effective_slug = blk: {
+        if (lua.getField(1, "id") == .string) {
+            const id_str = try lua.toString(-1);
+            const owned = try allocator.dupe(u8, id_str);
+            lua.pop(1);
+            break :blk owned;
+        }
+        lua.pop(1);
+        break :blk try allocator.dupe(u8, slug);
+    };
+    defer allocator.free(effective_slug);
+
+    try registerReturnedValue(namespace, category, effective_slug, path);
     loaded_entries += 1;
     lua.setTop(0);
 }

@@ -10,7 +10,7 @@
 #include "players.h"
 
 #include "config_db.h"
-#include "affect.h"
+
 #include "affected_impl.h"
 #include "character_api.h"
 #include "character_impl.h"
@@ -295,7 +295,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_CLAN(ch) = strdup("None.");
     GET_HOME(ch) = PFDEF_HOMETOWN;
     char_meter_set(ch, "powerlevel", 1000000);
-    GET_RELAXCOUNT(ch) = PFDEF_EYE;
     char_meter_set(ch, "lifeforce", 1000000);
     char_position_set(ch, POS_STANDING);
     char_meter_set(ch, "ki", 1000000);
@@ -333,8 +332,6 @@ int load_char(const char *name, struct char_data *ch) {
     GET_ABSORBS(ch) = PFDEF_BANK;
     GET_INGESTLEARNED(ch) = PFDEF_BANK;
     RACIAL_PREF(ch) = PFDEF_BANK;
-    GET_FORGETING(ch) = PFDEF_BANK;
-    GET_FORGET_COUNT(ch) = PFDEF_BANK;
     GET_TRANSCLASS(ch) = PFDEF_EXP;
     SPEAKING(ch) = PFDEF_SPEAKING;
     GET_OLC_ZONE(ch) = PFDEF_OLC;
@@ -476,10 +473,6 @@ int load_char(const char *name, struct char_data *ch) {
         if (!strcmp(tag, "Fisd"));
         else if (!strcmp(tag, "Frez"))
           GET_FREEZE_LEV(ch) = atoi(line);
-        else if (!strcmp(tag, "Forc"))
-          GET_FORGET_COUNT(ch) = atoi(line);
-        else if (!strcmp(tag, "Forg"))
-          GET_FORGETING(ch) = atoi(line);
         else if (!strcmp(tag, "Fury"))
           char_stat_set(ch, "fury", atoi(line));
         break;
@@ -549,13 +542,13 @@ int load_char(const char *name, struct char_data *ch) {
         else if (!strcmp(tag, "LFPC"))
           char_stat_set(ch, "life_percent", atoi(line));
         else if (!strcmp(tag, "Lila"))
-          GET_LIMBCOND(ch, 2) = atoi(line);
+          SET_LIMBCOND(ch, 2, atoi(line));
         else if (!strcmp(tag, "Lill"))
-          GET_LIMBCOND(ch, 4) = atoi(line);
+          SET_LIMBCOND(ch, 4, atoi(line));
         else if (!strcmp(tag, "Lira"))
-          GET_LIMBCOND(ch, 1) = atoi(line);
+          SET_LIMBCOND(ch, 1, atoi(line));
         else if (!strcmp(tag, "Lirl"))
-          GET_LIMBCOND(ch, 3) = atoi(line);
+          SET_LIMBCOND(ch, 3, atoi(line));
         else if (!strcmp(tag, "Lint"))
           GET_LINTEREST(ch) = atoi(line);
         else if (!strcmp(tag, "Lpla"))
@@ -642,8 +635,6 @@ int load_char(const char *name, struct char_data *ch) {
           ;
         else if (!strcmp(tag, "rDis"))
           GET_RDISPLAY(ch) = strdup(line);
-        else if (!strcmp(tag, "Rela"))
-          GET_RELAXCOUNT(ch) = atoi(line);
         else if (!strcmp(tag, "Rtim"))
           GET_RTIME(ch) = atoi(line);
         else if (!strcmp(tag, "Rad1"))
@@ -697,9 +688,7 @@ int load_char(const char *name, struct char_data *ch) {
         break;
 
       case 'T':
-        if (!strcmp(tag, "Tgro"))
-          GET_TGROWTH(ch) = atoi(line);
-        else if (!strcmp(tag, "Tcla"))
+        if (!strcmp(tag, "Tcla"))
           GET_TRANSCLASS(ch) = atoi(line);
         else if (!strcmp(tag, "Tcos")) {
           sscanf(line, "%d %d", &num2, &num3);
@@ -784,7 +773,7 @@ int load_char(const char *name, struct char_data *ch) {
     ch->time.maxage = ch->time.birth + max_age(ch);
   }
 
-  affect_total(ch);
+  char_der_invalidate(ch);
 
   /* initialization for imms */
   if (GET_ADMLEVEL(ch) >= ADMLVL_IMMORT) {
@@ -899,31 +888,12 @@ void save_char(struct char_data *ch) {
     else char_eq[i] = NULL;
   }
 
-  for (aff = ch->affected, i = 0; i < MAX_AFFECT; i++) {
-    if (aff) {
-      tmp_aff[i] = *aff;
-      tmp_aff[i].next = 0;
-      aff = aff->next;
-    } else {
-      tmp_aff[i].type = 0; /* Zero signifies not used */
-      tmp_aff[i].duration = 0;
-      tmp_aff[i].modifier = 0;
-      tmp_aff[i].specific = 0;
-      tmp_aff[i].location = 0;
-      tmp_aff[i].bitvector = 0;
-      tmp_aff[i].next = 0;
-    }
-  }
-
   save_char_vars(ch);
 
   /*
    * remove the affections so that the raw values are stored; otherwise the
    * effects are doubled when the char logs back in.
    */
-
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   if ((i >= MAX_AFFECT) && aff && aff->next)
     mud_log("SYSERR: WARNING: OUT OF STORE ROOM FOR AFFECTED TYPES!!!");
@@ -1086,10 +1056,6 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "INGl: %d\n", GET_INGESTLEARNED(ch));
   if (GET_UP(ch) != PFDEF_GOLD)
     fprintf(fl, "Upgr: %d\n", GET_UP(ch));
-  if (GET_FORGETING(ch) != PFDEF_BANK)
-    fprintf(fl, "Forg: %d\n", GET_FORGETING(ch));
-  if (GET_FORGET_COUNT(ch) != PFDEF_BANK)
-    fprintf(fl, "Forc: %d\n", GET_FORGET_COUNT(ch));
   if (GET_KAIOKEN(ch) != PFDEF_GOLD)
     fprintf(fl, "Kaio: %d\n", GET_KAIOKEN(ch));
   if (GET_GOLD(ch) != PFDEF_GOLD)
@@ -1207,13 +1173,8 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "Mimi: %d\n", GET_MIMIC(ch));
   if (GET_SLOTS(ch) != PFDEF_EYE)
     fprintf(fl, "Slot: %d\n", GET_SLOTS(ch));
-  if (GET_TGROWTH(ch) != PFDEF_EYE)
-    fprintf(fl, "Tgro: %d\n", GET_TGROWTH(ch));
   if (GET_RDISPLAY(ch) != PFDEF_EYE)
     fprintf(fl, "rDis: %s\n", GET_RDISPLAY(ch));
-  if (GET_RELAXCOUNT(ch) != PFDEF_EYE)
-    fprintf(fl, "Rela: %d\n", GET_RELAXCOUNT(ch));
-
   /* Save skills */
   if (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) {
     fprintf(fl, "Skil:\n");
@@ -1252,24 +1213,6 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "0 0\n");
   }
 
-  /* Save affects */
-  fprintf(fl, "Affs:\n");
-  for (i = 0; i < MAX_AFFECT; i++) {
-    aff = &tmp_aff[i];
-    if (aff->type)
-      fprintf(fl, "%d %d %d %d %d %d\n", aff->type, aff->duration,
-              aff->modifier, aff->location, (int)aff->bitvector, aff->specific);
-  }
-  fprintf(fl, "0 0 0 0 0 0\n");
-  fprintf(fl, "Affv:\n");
-  for (i = 0; i < MAX_AFFECT; i++) {
-    aff = &tmp_affv[i];
-    if (aff->type)
-      fprintf(fl, "%d %d %d %d %d %d\n", aff->type, aff->duration,
-              aff->modifier, aff->location, (int)aff->bitvector, aff->specific);
-  }
-  fprintf(fl, "0 0 0 0 0 0\n");
-
   /*fprintf(fl, "LevD:\n");
   write_level_data(ch, fl);*/
 
@@ -1287,11 +1230,6 @@ after_file_write:
 
 restore_state:
 
-  /* add spell and eq affections back in now */
-  for (i = 0; i < MAX_AFFECT; i++) {
-    if (tmp_aff[i].type)
-      affect_to_char(ch, &tmp_aff[i]);
-  }
 
   for (i = 0; i < NUM_WEARS; i++) {
     if (char_eq[i])
@@ -1399,8 +1337,6 @@ void load_affects(FILE *fl, struct char_data *ch, int violence) {
       af.location = num4;
       af.bitvector = num5;
       af.specific = num6;
-      if (!violence)
-        affect_to_char(ch, &af);
       i++;
     }
   } while (num != 0);

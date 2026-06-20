@@ -4,16 +4,18 @@
 extern "C" {
 #endif
 
-#define HIST_ALL 0
-#define HIST_SAY 1
-#define HIST_GOSSIP 2
-#define HIST_WIZNET 3
-#define HIST_TELL 4
-#define HIST_SHOUT 5
-#define HIST_GRATS 6
-#define HIST_HOLLER 7
-#define HIST_AUCTION 8
-#define HIST_SNET 9
+typedef enum {
+    HIST_ALL     = 0,
+    HIST_SAY     = 1,
+    HIST_GOSSIP  = 2,
+    HIST_WIZNET  = 3,
+    HIST_TELL    = 4,
+    HIST_SHOUT   = 5,
+    HIST_GRATS   = 6,
+    HIST_HOLLER  = 7,
+    HIST_AUCTION = 8,
+    HIST_SNET    = 9,
+} HistoryType;
 
 #define NUM_HIST 10
 

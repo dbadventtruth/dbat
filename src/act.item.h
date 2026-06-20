@@ -33,8 +33,6 @@ ACMD(do_put);
 ACMD(do_get);
 ACMD(do_drop);
 ACMD(do_give);
-ACMD(do_drink);
-ACMD(do_eat);
 ACMD(do_pour);
 ACMD(do_wear);
 ACMD(do_wield);
@@ -42,7 +40,6 @@ ACMD(do_grab);
 ACMD(do_twohand);
 ACMD(do_deploy);
 ACMD(do_pack);
-ACMD(do_garden);
 ACMD(do_refuel);
 ACMD(do_sac);
 

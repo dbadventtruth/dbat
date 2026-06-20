@@ -1,4 +1,5 @@
 #pragma once
+#include "character_api.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,8 +91,8 @@ extern "C" {
 #define GET_PC_HEIGHT(ch) char_der_total_get((ch), "height")
 #define GET_PC_WEIGHT(ch) char_der_total_get((ch), "weight")
 #define GET_SEX(ch) ((ch)->sex)
-#define CARRYING(ch) ((ch)->carrying_char)
-#define CARRIED_BY(ch) ((ch)->carried_by_char)
+#define CARRYING(ch) char_carrying_char_get(ch)
+#define CARRIED_BY(ch) char_carried_by_char_get(ch)
 #define RACIAL_PREF(ch) ((ch)->racial_pref)
 #define GET_RP(ch) ((ch)->rp)
 #define GET_TRP(ch) ((ch)->trp)
@@ -105,43 +106,12 @@ extern "C" {
 #define GET_CON(ch) char_der_total_get((ch), "constitution")
 #define GET_CHA(ch) char_der_total_get((ch), "speed")
 
-#define GET_MUTBOOST(ch)                                                       \
-  (IS_MUTANT(ch)                                                               \
-       ? (HAS_GENOME(ch, 1) ? (GET_SPEEDCALC(ch) + GET_SPEEDBONUS(ch) +        \
-                               GET_SPEEDBOOST(ch)) *                           \
-                                  0.3                                          \
-                            : 0)                                               \
-       : 0)
-#define GET_SPEEDI(ch)                                                         \
-  (GET_SPEEDCALC(ch) + GET_SPEEDBONUS(ch) + GET_SPEEDBOOST(ch) +               \
-   GET_MUTBOOST(ch))
-#define GET_SPEEDCALC(ch)                                                      \
-  (IS_GRAP(ch) ? GET_CHA(ch)                                                   \
-               : (IS_INFERIOR(ch) ? (char_condition_has(ch, "flying")               \
-                                         ? (GET_SPEEDVAR(ch) * 1.25)           \
-                                         : GET_SPEEDVAR(ch))                   \
-                                  : GET_SPEEDVAR(ch)))
-#define GET_SPEEDBONUS(ch)                                                     \
-  (IS_ARLIAN(ch) ? AFF_FLAGGED(ch, AFF_SHELL)                                  \
-                       ? GET_SPEEDVAR(ch) * -0.5                               \
-                       : (IS_MALE(ch) ? (char_condition_has(ch, "flying")           \
-                                             ? (GET_SPEEDVAR(ch) * 0.5)        \
-                                             : 0)                              \
-                                      : 0)                                     \
-                 : 0)
-#define GET_SPEEDVAR(ch)                                                       \
-  (GET_SPEEDVEM(ch) > GET_CHA(ch) ? GET_SPEEDVEM(ch) : GET_CHA(ch))
-#define GET_SPEEDVEM(ch) (GET_SPEEDINT(ch) - (GET_SPEEDINT(ch) * speednar(ch)))
-#define IS_GRAP(ch) (GRAPPLING(ch) || GRAPPLED(ch))
-#define GET_SPEEDINT(ch)                                                       \
-  (IS_BIO(ch)                                                                  \
-       ? ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1200) / 1200) +     \
-             (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100))                           \
-       : ((GET_CHA(ch) * GET_DEX(ch)) * (GET_MAX_HIT(ch) / 1000) / 1000) +     \
-             (GET_CHA(ch) * (GET_KAIOKEN(ch) * 100)))
+#define GET_SPEEDI(ch) char_der_total_get((ch), "speed_index")
+
+
 #define IS_INFERIOR(ch) (IS_KONATSU(ch) || IS_DEMON(ch))
 #define IS_WEIGHTED(ch) (getMaxPL(ch) < GET_MAX_HIT(ch))
-
+#define IS_GRAP(ch) (GRAPPLING(ch) || GRAPPLED(ch))
 #define GET_EXP(ch) char_stat_get((ch), "experience")
 /*
  * Changed GET_AC to GET_ARMOR so that code with GET_AC will need to be
@@ -151,10 +121,8 @@ extern "C" {
 #define SPOILED(ch) ((ch)->time.played > 86400)
 #define GET_DEATH_TYPE(ch) ((ch)->death_type)
 #define GET_SLEEPT(ch) ((ch)->sleeptime)
-#define GET_FOODR(ch) ((ch)->foodr)
 #define GET_ALT(ch) char_condition_number_get(ch, "flying", "altitude")
-#define GET_CHARGE(ch) ((ch)->charge)
-#define GET_CHARGETO(ch) ((ch)->chargeto)
+#define GET_CHARGE(ch) char_charge_get(ch)
 #define GET_ARMOR(ch) char_der_total_get((ch), "armor")
 #define GET_HIT(ch) getCurPL(ch)
 #define GET_MAX_HIT(ch) getMaxPL(ch)
@@ -169,11 +137,9 @@ extern "C" {
 #define GET_RTIME(ch) ((ch)->rewtime)
 #define GET_DCOUNT(ch) char_stat_get((ch), "death_count")
 #define GET_BOARD(ch, i) ((ch)->lboard[i])
-#define GET_LIMBS(ch, i) ((ch)->limbs[i])
-// why is this i-1? Because whoever wrote it didn't know how C arrays work.
-// We'll be replacing the limb system anyways so fuck this macro.
-#define GET_LIMBCOND(ch, i) ((ch)->limb_condition[i - 1])
-#define GET_SONG(ch) ((ch)->song)
+#define GET_LIMBCOND(ch, i) char_limbcond_get((ch), (i))
+#define SET_LIMBCOND(ch, i, v) char_limbcond_set((ch), (i), (v))
+/* GET_SONG removed — song tracking moved to mystic_melody condition */
 #define GET_BONUS(ch, i) ((ch)->bonuses[i])
 #define GET_TRANSCOST(ch, i) ((ch)->transcost[i - 1])
 #define GET_CCPOINTS(ch) ((ch)->ccpoints)
@@ -188,20 +154,17 @@ extern "C" {
 #define GET_RADAR3(ch) ((ch)->radar3)
 #define GET_PING(ch) ((ch)->ping)
 #define GET_SLOTS(ch) char_stat_get((ch), "skill_slots")
-#define GET_TGROWTH(ch) ((ch)->tail_growth)
 #define GET_RMETER(ch) ((ch)->rage_meter)
 #define GET_PERSONALITY(ch) ((ch)->personality)
 #define GET_COMBINE(ch) ((ch)->combine)
 #define GET_PREFERENCE(ch) ((ch)->preference)
-#define GET_RELAXCOUNT(ch) ((ch)->relax_count)
 #define GET_ASB(ch) char_der_total_get((ch), "autoskill_bonus")
 #define GET_REGEN(ch) char_der_total_get((ch), "regen_bonus")
 
 #define GET_LIFEPERC(ch) char_stat_get((ch), "life_percent")
-#define GET_SPEEDBOOST(ch) ((ch)->speedboost)
 #define GET_BACKSTAB_COOL(ch) ((ch)->backstabcool)
 #define GET_COOLDOWN(ch) ((ch)->con_cooldown)
-#define GET_BARRIER(ch) ((ch)->barrier)
+#define GET_BARRIER(ch) char_barrier_get(ch)
 #define GET_GOLD(ch) char_stat_get((ch), "money")
 #define GET_KAIOKEN(ch) char_stat_get((ch), "kaioken")
 #define GET_BOOSTS(ch) ((ch)->boosts)
@@ -209,8 +172,6 @@ extern "C" {
 #define GET_MAJINIZED(ch) ((ch)->majinizer)
 #define GET_FURY(ch) char_stat_get((ch), "fury")
 #define GET_UP(ch) char_stat_get((ch), "upgrades")
-#define GET_FORGETING(ch) ((ch)->forgeting)
-#define GET_FORGET_COUNT(ch) ((ch)->forgetcount)
 #define GET_BANK_GOLD(ch) char_stat_get((ch), "money_bank")
 #define GET_POLE_BONUS(ch) char_legacy_modifier(ch, APPLY_ACCURACY, -1)
 #define GET_SPELLFAIL(ch) ((ch)->spellfail)
@@ -225,27 +186,27 @@ extern "C" {
 #define GET_ID(x) ((x)->id)
 #define IS_CARRYING_W(ch) char_der_total_get(ch, "weight_carried")
 #define IS_CARRYING_N(ch) char_inventory_count(ch, false)
-#define FIGHTING(ch) ((ch)->fighting)
+#define FIGHTING(ch) char_fighting_get(ch)
 #define GET_GROUPKILLS(ch) char_condition_number_get(ch, "group", "kills")
 #define GET_ALIGNMENT(ch) char_stat_get((ch), "alignment")
 #define GET_ETHIC_ALIGNMENT(ch) 0
 #define SITS(ch) ((ch)->sits)
-#define MINDLINK(ch) ((ch)->mindlink)
+#define MINDLINK(ch) char_mindlinked_get(ch)
 #define LINKER(ch) ((ch)->linker)
 #define LASTHIT(ch) ((ch)->lasthit)
-#define DRAGGING(ch) ((ch)->drag)
-#define DRAGGED(ch) ((ch)->dragged)
-#define GRAPPLING(ch) ((ch)->grappling)
-#define GRAPPLED(ch) ((ch)->grappled)
-#define GRAPTYPE(ch) ((ch)->grap)
-#define GET_ORIGINAL(ch) ((ch)->original)
-#define GET_CLONES(ch) ((ch)->clones)
-#define GET_DEFENDER(ch) ((ch)->defender)
-#define GET_DEFENDING(ch) ((ch)->defending)
-#define BLOCKS(ch) ((ch)->blocks)
-#define BLOCKED(ch) ((ch)->blocked)
-#define ABSORBING(ch) ((ch)->absorbing)
-#define ABSORBBY(ch) ((ch)->absorbby)
+#define DRAGGING(ch) char_dragging_get(ch)
+#define DRAGGED(ch) char_being_dragged_get(ch)
+#define GRAPPLING(ch) char_grappling_get(ch)
+#define GRAPPLED(ch) char_grappled_get(ch)
+#define GRAPTYPE(ch) char_graptype_get(ch)
+#define GET_ORIGINAL(ch) char_multiform_clone_get(ch)
+#define GET_DEFENDER(ch) char_defending_for_get(ch)
+#define GET_DEFENDING(ch) char_defended_by_get(ch)
+#define BLOCKS(ch) char_blocking_get(ch)
+#define BLOCKED(ch) char_blocked_by_get(ch)
+#define ABSORBING(ch) char_absorbing_get(ch)
+#define ABSORBBY(ch) char_absorbed_by_get(ch)
+#define MASTER(ch) char_following_get(ch)
 #define GET_EAVESDROP(ch) ((ch)->listenroom)
 #define GET_EAVESDIR(ch) ((ch)->eavesdir)
 #define GET_ABSORBS(ch) ((ch)->absorbs)

@@ -36,19 +36,122 @@ local function modifiers(room)
   return mods
 end
 
-local function on_mud_hour(room)
+local function send_text(room, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  for ch in room:people() do
+    ch:send_raw(text)
+  end
 end
 
-local function on_second(room)
+local function send_line(room, msg, ...)
+  local text = select('#', ...) > 0 and string.format(msg, ...) or msg
+  if not text:match("\r\n$") then text = text .. "\r\n" end
+  for ch in room:people() do
+    ch:send_raw(text)
+  end
 end
 
-local function on_heartbeat(room, hb)
+local function on_event(room, kind)
+  local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
+  event_name = (event_name and event_name ~= "") and event_name or "tick"
+  if subsystem == "script" then
+    if not room:script_has(id) then return end
+    local def = require("dbat").get("room_scripts", id)
+    if def and def.on_event then def.on_event(room, room:script(id), event_name) end
+  end
+end
+
+-- Port of check_saveroom_count(ch, NULL) — counts items in a house room for
+-- capacity enforcement. Returns 0 for non-house rooms. Non-cardcase containers
+-- contribute 1 + half their contents (recursively).
+local function saveroom_count(room)
+  local d = require("dbat")
+  local RF = d.consts.room_flags
+  local EF = d.consts.item_extra_flags
+  local IT = d.consts.item_types
+
+  if not room:flagged(RF.HOUSE) then return 0 end
+
+  local function insidebag(obj, mult)
+    local count = 0
+    local containers = 0
+    for inner in obj:inventory() do
+      if inner:type_get() == IT.CONTAINER then
+        count = count + 1 + insidebag(inner, mult)
+        containers = containers + 1
+      else
+        count = count + 1
+      end
+    end
+    return math.floor(count * mult) + containers
+  end
+
+  local count = 0
+  for obj in room:contents() do
+    count = count + 1
+    if not obj:extra_flagged(EF.CARDCASE) then
+      count = count + insidebag(obj, 0.5)
+    end
+  end
+  return count
+end
+
+-- Render the character-list section of a room as seen by viewer.
+-- Returns a string. Mirrors list_char_to_char() in act.informative.cpp.
+local function render_chars_for(room, viewer)
+  local d = require("dbat")
+  local character = d.characters
+  local PRF = d.consts.prf_flags
+
+  -- Collect people in order
+  local people = {}
+  for ch in room:people() do people[#people+1] = ch end
+
+  local shown = {}
+  local t = {}
+
+  for i, ch in ipairs(people) do
+    -- Skip self
+    if ch:id_get() == viewer:id_get() then goto next end
+    -- Skip dot-prefix NPC long_descs unless viewer has HOLYLIGHT
+    if ch:is_npc() and not viewer:pref_flagged(PRF.HOLYLIGHT) then
+      local ld = ch:long_description_get()
+      if ld and ld:sub(1, 1) == "." then goto next end
+    end
+    -- Visibility check
+    if not viewer:can_see_char(ch) then goto next end
+    if shown[i] then goto next end
+
+    -- Stacking for identical idle NPCs
+    local key   = character.stack_key(ch)
+    local count = 1
+    shown[i] = true
+    if key then
+      for j = i + 1, #people do
+        if not shown[j] and viewer:can_see_char(people[j])
+            and character.stack_key(people[j]) == key then
+          count = count + 1
+          shown[j] = true
+        end
+      end
+    end
+
+    if count > 1 then
+      t[#t+1] = string.format("@D(@R%dx@D)@n ", count)
+    end
+    t[#t+1] = character.render_room_line(ch, viewer)
+    ::next::
+  end
+
+  return table.concat(t)
 end
 
 return {
   refs = refs,
   modifiers = modifiers,
-  on_mud_hour = on_mud_hour,
-  on_second = on_second,
-  on_heartbeat = on_heartbeat,
+  send_text = send_text,
+  send_line = send_line,
+  on_event = on_event,
+  render_chars_for = render_chars_for,
+  saveroom_count = saveroom_count,
 }

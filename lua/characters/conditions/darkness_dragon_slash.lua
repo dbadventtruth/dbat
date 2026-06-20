@@ -4,5 +4,5 @@ return {
     tags = { "darkness", "dragon", "slash" },
     persistent = true,
     -- blind
-    legacy_affects = {1,},
+    legacy_affects = {dbat.consts.aff_flags.BLIND,},
 }

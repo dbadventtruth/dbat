@@ -180,9 +180,9 @@ bool tech_handle_android_absorb(char_data *ch, char_data *vict) {
     }
     if (GET_CHARGE(vict) + amot > GET_MAX_MANA(vict)) {
       incCurKI(vict, getMaxKI(vict) - GET_CHARGE(vict));
-      GET_CHARGE(vict) = GET_MAX_MANA(vict);
+      char_charge_set(vict, GET_MAX_MANA(vict));
     } else {
-      GET_CHARGE(vict) += amot;
+      char_charge_set(vict, GET_CHARGE(vict) + amot);
     }
     return true;
   }

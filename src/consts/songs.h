@@ -5,17 +5,19 @@ extern "C" {
 #endif
 
 /* Ocarina Songs */
-#define SONG_SAFETY 1
-#define SONG_SHIELDING 2
-#define SONG_SHADOW_STITCH 3
-#define SONG_TELEPORT_EARTH 4
-#define SONG_TELEPORT_KONACK 5
-#define SONG_TELEPORT_ARLIA 6
-#define SONG_TELEPORT_NAMEK 7
-#define SONG_TELEPORT_VEGETA 8
-#define SONG_TELEPORT_FRIGID 9
-#define SONG_TELEPORT_AETHER 10
-#define SONG_TELEPORT_KANASSA 11
+typedef enum {
+    SONG_SAFETY          = 1,
+    SONG_SHIELDING       = 2,
+    SONG_SHADOW_STITCH   = 3,
+    SONG_TELEPORT_EARTH  = 4,
+    SONG_TELEPORT_KONACK = 5,
+    SONG_TELEPORT_ARLIA  = 6,
+    SONG_TELEPORT_NAMEK  = 7,
+    SONG_TELEPORT_VEGETA = 8,
+    SONG_TELEPORT_FRIGID = 9,
+    SONG_TELEPORT_AETHER = 10,
+    SONG_TELEPORT_KANASSA = 11,
+} OcarinaSong;
 
 extern const char *song_types[];
 

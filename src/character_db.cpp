@@ -52,12 +52,5 @@ int64_t char_legacy_modifier(struct char_data *ch, int location, int specific) {
     return true;
   });
 
-  for (auto af = ch->affected; af; af = af->next) {
-    if (af->location != location)
-      continue;
-    if (af->specific == specific || af->specific == -1) {
-      mod += af->modifier;
-    }
-  }
   return mod;
 }

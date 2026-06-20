@@ -109,6 +109,16 @@ return {
 
 `lua/lib.lua` is the central shared library. `lua/tests/` contains the test suite.
 
+### Lua API Documentation
+
+Full reference docs are in `lua/docs/`:
+- `lua/docs/api-character.md` — Character userdata (127 methods), Condition userdata, MobPrototype userdata
+- `lua/docs/api-objects.md` — Object userdata (77 methods), ObjectPrototype userdata
+- `lua/docs/api-room-zone.md` — Room and Zone userdata
+- `lua/docs/api-global.md` — `dbat.*` global functions, registry access, constants, test utilities
+- `lua/docs/schemas.md` — Definition schemas for conditions, transformations, commands, pcommands, races, senseis, stats, derived stats, meters
+- `lua/docs/libs.md` — Utility libraries: act, comm, text, utils, search, multiform, transforms
+
 ### Affect/Condition Systems
 
 **Legacy:** `struct affected_type` linked list on `char_data`. Functions in `src/affect.h` — `affect_to_char()`, `affect_remove()`, `affect_total()` (recalculates all stats).

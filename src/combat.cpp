@@ -27,7 +27,6 @@
 #include "mobact.h"
 #include "techniques.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "random.h"
 #include "relocate.h"
@@ -64,6 +63,8 @@
 #include "stringutils.h"
 
 #include "iterate.hpp"
+
+#include <initializer_list>
 
 /* local functions */
 void damage_weapon(struct char_data *ch, struct obj_data *obj,
@@ -222,7 +223,7 @@ void handle_multihit(struct char_data *ch, struct char_data *vict) {
   if (IS_KONATSU(ch)) {
     perc *= 1.5;
   }
-  if (IS_BIO(ch) && (GET_GENOME(ch, 0) == 8 || GET_GENOME(ch, 1) == 8)) {
+  if (IS_BIO(ch) && HAS_GENOME(ch, 8)) {
     perc *= 1.4;
   }
 
@@ -237,15 +238,17 @@ void handle_multihit(struct char_data *ch, struct char_data *vict) {
 
   int amt = 70;
 
-  if (GET_SKILL(ch, SKILL_STYLE) >= 100) {
+  auto skill_style = GET_SKILL(ch, SKILL_STYLE);
+
+  if (skill_style >= 100) {
     amt -= amt * 0.1;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 80) {
+  } else if (skill_style >= 80) {
     amt -= amt * 0.08;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 60) {
+  } else if (skill_style >= 60) {
     amt -= amt * 0.06;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 40) {
+  } else if (skill_style >= 40) {
     amt -= amt * 0.04;
-  } else if (GET_SKILL(ch, SKILL_STYLE) >= 20) {
+  } else if (skill_style >= 20) {
     amt -= amt * 0.02;
   }
 
@@ -784,10 +787,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
 
   if (GET_CHARGE(ch) >= GET_MAX_MANA(ch) * maxki) {
     totki += GET_MAX_MANA(ch) * maxki;
-    GET_CHARGE(ch) -= GET_MAX_MANA(ch) * maxki;
+    char_charge_set(ch, GET_CHARGE(ch) - (int64_t)(GET_MAX_MANA(ch) * maxki));
   } else {
     totki += GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
   }
 
   char_followers_iterate(ch, [&](struct char_data *fol) {
@@ -796,10 +799,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
       same = FALSE;
     if (GET_CHARGE(fol) >= GET_MAX_MANA(fol) * maxki) {
       totki += GET_MAX_MANA(fol) * maxki;
-      GET_CHARGE(fol) -= GET_MAX_MANA(fol) * maxki;
+      char_charge_set(fol, GET_CHARGE(fol) - (int64_t)(GET_MAX_MANA(fol) * maxki));
     } else {
       totki += GET_CHARGE(fol);
-      GET_CHARGE(fol) = 0;
+      char_charge_set(fol, 0);
     }
     totalmem += 1;
     attavg += GET_SKILL(fol, attack_skills[GET_COMBINE(fol)]);
@@ -861,7 +864,7 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
         !AFF_FLAGGED(vict, AFF_SANCTUARY)) {
       act("@MYour mind has been shocked!@n", TRUE, vict, 0, 0, TO_CHAR);
       act("@M$n@m's mind has been shocked!@n", TRUE, vict, 0, 0, TO_ROOM);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_SHOCKED);
+      char_condition_apply(vict, "shocked", "combat", "combat");
     }
   }
   hurt(0, 0, ch, vict, NULL, totki, 1);
@@ -1207,7 +1210,7 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl,
     if (!IS_NPC(vict)) {
       if (HAS_ARMS(vict) && rand_number(1, 2) == 2) {
         if (GET_LIMBCOND(vict, 2) > 0) {
-          GET_LIMBCOND(vict, 2) = 0;
+          SET_LIMBCOND(vict, 2, 0);
           if (PLR_FLAGGED(vict, PLR_CLARM)) {
             REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_CLARM);
           }
@@ -1216,7 +1219,7 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl,
           act("@R$N@r loses $s left arm!@n", TRUE, ch, 0, vict, TO_NOTVICT);
           remove_limb(vict, 2);
         } else if (GET_LIMBCOND(vict, 1) > 0) {
-          GET_LIMBCOND(vict, 1) = 100;
+          SET_LIMBCOND(vict, 1, 100);
           if (PLR_FLAGGED(vict, PLR_CRARM)) {
             REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_CRARM);
           }
@@ -1227,7 +1230,7 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl,
         }
       } else { /* It's a leg */
         if (GET_LIMBCOND(vict, 4) > 0) {
-          GET_LIMBCOND(vict, 4) = 100;
+          SET_LIMBCOND(vict, 4, 100);
           if (PLR_FLAGGED(vict, PLR_CLLEG)) {
             REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_CLLEG);
           }
@@ -1236,7 +1239,7 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl,
           act("@R$N@r loses $s left leg!@n", TRUE, ch, 0, vict, TO_NOTVICT);
           remove_limb(vict, 4);
         } else if (GET_LIMBCOND(vict, 3) > 0) {
-          GET_LIMBCOND(vict, 3) = 100;
+          SET_LIMBCOND(vict, 3, 100);
           if (PLR_FLAGGED(vict, PLR_CRLEG)) {
             REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_CRLEG);
           }
@@ -1283,38 +1286,11 @@ void cut_limb(struct char_data *ch, struct char_data *vict, int wlvl,
 int count_physical(struct char_data *ch) {
   int count = 0;
 
-  if (GET_SKILL(ch, SKILL_PUNCH) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KICK) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KNEE) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ELBOW) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ROUNDHOUSE) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_SLAM) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_UPPERCUT) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_TAILWHIP) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_BASH) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEADBUTT) >= 1) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEELDROP) >= 1) {
-    count += 1;
+  for(auto s : {SKILL_PUNCH, SKILL_KICK, SKILL_KNEE, SKILL_ELBOW, SKILL_ROUNDHOUSE, SKILL_SLAM, SKILL_UPPERCUT,
+                SKILL_TAILWHIP, SKILL_BASH, SKILL_HEADBUTT, SKILL_HEELDROP}) {
+    if (GET_SKILL(ch, s) >= 1) {
+      count += 1;
+    }
   }
 
   return (count);
@@ -1324,38 +1300,11 @@ int physical_mastery(struct char_data *ch) {
 
   int count = 22;
 
-  if (GET_SKILL(ch, SKILL_PUNCH) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KICK) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_KNEE) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ELBOW) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_ROUNDHOUSE) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_SLAM) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_UPPERCUT) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_TAILWHIP) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_BASH) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEADBUTT) >= 100) {
-    count += 1;
-  }
-  if (GET_SKILL(ch, SKILL_HEELDROP) >= 100) {
-    count += 1;
+  for(auto s : {SKILL_PUNCH, SKILL_KICK, SKILL_KNEE, SKILL_ELBOW, SKILL_ROUNDHOUSE, SKILL_SLAM, SKILL_UPPERCUT,
+                SKILL_TAILWHIP, SKILL_BASH, SKILL_HEADBUTT, SKILL_HEELDROP}) {
+    if (GET_SKILL(ch, s) >= 100) {
+      count += 1;
+    }
   }
 
   if (count == 26)
@@ -1383,7 +1332,7 @@ int64_t advanced_energy(struct char_data *ch, int64_t dmg) {
       add = dmg * rate;
       if (GET_CHARGE(ch) + add > GET_MAX_MANA(ch)) {
         if (GET_CHARGE(ch) < GET_MAX_MANA(ch)) {
-          GET_CHARGE(ch) = GET_MAX_MANA(ch);
+          char_charge_set(ch, GET_MAX_MANA(ch));
           act("@MYou leech some of the energy away!@n", TRUE, ch, 0, 0,
               TO_CHAR);
           act("@m$n@M leeches some of the energy away!@n", TRUE, ch, 0, 0,
@@ -1393,7 +1342,7 @@ int64_t advanced_energy(struct char_data *ch, int64_t dmg) {
                            "charged energy for you to handle!@n\r\n");
         }
       } else {
-        GET_CHARGE(ch) += add;
+        char_charge_set(ch, GET_CHARGE(ch) + (int64_t)add);
         act("@MYou leech some of the energy away!@n", TRUE, ch, 0, 0, TO_CHAR);
         act("@m$n@M leeches some of the energy away!@n", TRUE, ch, 0, 0,
             TO_ROOM);
@@ -1550,30 +1499,32 @@ int64_t armor_calc(struct char_data *ch, int64_t dmg, int type) {
 
   int64_t reduce = 0;
 
-  if (GET_ARMOR(ch) < 1000) {
-    reduce = GET_ARMOR(ch) * 0.5;
-  } else if (GET_ARMOR(ch) < 2000) {
-    reduce = GET_ARMOR(ch) * .75;
-  } else if (GET_ARMOR(ch) < 5000) {
-    reduce = GET_ARMOR(ch);
-  } else if (GET_ARMOR(ch) < 10000) {
-    reduce = GET_ARMOR(ch) * 2;
-  } else if (GET_ARMOR(ch) < 20000) {
-    reduce = GET_ARMOR(ch) * 4;
-  } else if (GET_ARMOR(ch) < 30000) {
-    reduce = GET_ARMOR(ch) * 8;
-  } else if (GET_ARMOR(ch) < 40000) {
-    reduce = GET_ARMOR(ch) * 12;
-  } else if (GET_ARMOR(ch) < 60000) {
-    reduce = GET_ARMOR(ch) * 25;
-  } else if (GET_ARMOR(ch) < 100000) {
-    reduce = GET_ARMOR(ch) * 50;
-  } else if (GET_ARMOR(ch) < 150000) {
-    reduce = GET_ARMOR(ch) * 75;
-  } else if (GET_ARMOR(ch) < 200000) {
-    reduce = GET_ARMOR(ch) * 150;
-  } else if (GET_ARMOR(ch) >= 200000) {
-    reduce = GET_ARMOR(ch) * 250;
+  auto armor = GET_ARMOR(ch);
+
+  if (armor < 1000) {
+    reduce = armor * 0.5;
+  } else if (armor < 2000) {
+    reduce = armor * .75;
+  } else if (armor < 5000) {
+    reduce = armor;
+  } else if (armor < 10000) {
+    reduce = armor * 2;
+  } else if (armor < 20000) {
+    reduce = armor * 4;
+  } else if (armor < 30000) {
+    reduce = armor * 8;
+  } else if (armor < 40000) {
+    reduce = armor * 12;
+  } else if (armor < 60000) {
+    reduce = armor * 25;
+  } else if (armor < 100000) {
+    reduce = armor * 50;
+  } else if (armor < 150000) {
+    reduce = armor * 75;
+  } else if (armor < 200000) {
+    reduce = armor * 150;
+  } else if (armor >= 200000) {
+    reduce = armor * 250;
   }
 
   /* loc: 0 = Physical Bonus, 1 = Ki Bonus, 2 = Bonus To Both */
@@ -1677,17 +1628,18 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
     ;
   }
 
-  if (GET_ARMOR(vict) > 50000) {
+  auto armor = GET_ARMOR(vict);
+  if (armor > 50000) {
     dmg -= 5;
-  } else if (GET_ARMOR(vict) > 40000) {
+  } else if (armor > 40000) {
     dmg -= 4;
-  } else if (GET_ARMOR(vict) > 30000) {
+  } else if (armor > 30000) {
     dmg -= 3;
-  } else if (GET_ARMOR(vict) > 20000) {
+  } else if (armor > 20000) {
     dmg -= 2;
-  } else if (GET_ARMOR(vict) > 10000) {
+  } else if (armor > 10000) {
     dmg -= 1;
-  } else if (GET_ARMOR(vict) > 5000) {
+  } else if (armor > 5000) {
     dmg -= rand_number(0, 1);
   }
 
@@ -1704,7 +1656,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
             TO_VICT);
         act("@r$n's@R attack @YDESTROYS @r$N's@R left arm!@n", TRUE, ch, 0,
             vict, TO_NOTVICT);
-        GET_LIMBCOND(vict, 2) = 0;
+        SET_LIMBCOND(vict, 2, 0);
         if (PLR_FLAGGED(vict, PLR_THANDW)) {
           REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_THANDW);
         }
@@ -1713,7 +1665,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
         }
         remove_limb(vict, 2);
       } else if (GET_LIMBCOND(vict, 2) > 0) {
-        GET_LIMBCOND(vict, 2) -= dmg;
+        SET_LIMBCOND(vict, 2, GET_LIMBCOND(vict, 2) - (dmg));
         act("@RYour attack hurts @r$N's@R left arm!@n", TRUE, ch, 0, vict,
             TO_CHAR);
         act("@r$n's@R attack hurts YOUR left arm!@n", TRUE, ch, 0, vict,
@@ -1727,7 +1679,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
             TO_VICT);
         act("@r$n's@R attack @YDESTROYS @r$N's@R right arm!@n", TRUE, ch, 0,
             vict, TO_NOTVICT);
-        GET_LIMBCOND(vict, 1) = 0;
+        SET_LIMBCOND(vict, 1, 0);
         if (PLR_FLAGGED(vict, PLR_THANDW)) {
           REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_THANDW);
         }
@@ -1736,7 +1688,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
         }
         remove_limb(vict, 2);
       } else if (GET_LIMBCOND(vict, 1) > 0) {
-        GET_LIMBCOND(vict, 1) -= dmg;
+        SET_LIMBCOND(vict, 1, GET_LIMBCOND(vict, 1) - (dmg));
         act("@RYour attack hurts @r$N's@R right arm!@n", TRUE, ch, 0, vict,
             TO_CHAR);
         act("@r$n's@R attack hurts YOUR right arm!@n", TRUE, ch, 0, vict,
@@ -1752,7 +1704,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
             TO_VICT);
         act("@r$n's@R attack @YDESTROYS @r$N's@R left leg!@n", TRUE, ch, 0,
             vict, TO_NOTVICT);
-        GET_LIMBCOND(vict, 4) = 0;
+        SET_LIMBCOND(vict, 4, 0);
         if (PLR_FLAGGED(vict, PLR_THANDW)) {
           REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_THANDW);
         }
@@ -1761,7 +1713,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
         }
         remove_limb(vict, 2);
       } else if (GET_LIMBCOND(vict, 4) > 0) {
-        GET_LIMBCOND(vict, 4) -= dmg;
+        SET_LIMBCOND(vict, 4, GET_LIMBCOND(vict, 4) - (dmg));
         act("@RYour attack hurts @r$N's@R left leg!@n", TRUE, ch, 0, vict,
             TO_CHAR);
         act("@r$n's@R attack hurts YOUR left leg!@n", TRUE, ch, 0, vict,
@@ -1775,7 +1727,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
             TO_VICT);
         act("@r$n's@R attack @YDESTROYS @r$N's@R right leg!@n", TRUE, ch, 0,
             vict, TO_NOTVICT);
-        GET_LIMBCOND(vict, 3) = 0;
+        SET_LIMBCOND(vict, 3, 0);
         if (PLR_FLAGGED(vict, PLR_THANDW)) {
           REMOVE_BIT_AR(PLR_FLAGS(vict), PLR_THANDW);
         }
@@ -1784,7 +1736,7 @@ void hurt_limb(struct char_data *ch, struct char_data *vict, int chance,
         }
         remove_limb(vict, 2);
       } else if (GET_LIMBCOND(vict, 3) > 0) {
-        GET_LIMBCOND(vict, 3) -= dmg;
+        SET_LIMBCOND(vict, 3, GET_LIMBCOND(vict, 3) - (dmg));
         act("@RYour attack hurts @r$N's@R right leg!@n", TRUE, ch, 0, vict,
             TO_CHAR);
         act("@r$n's@R attack hurts YOUR right leg!@n", TRUE, ch, 0, vict,
@@ -2077,8 +2029,8 @@ static void huge_room_blast(struct obj_data *k, struct char_data *ch,
     if (AFF_FLAGGED(vict, AFF_SPIRIT) && !IS_NPC(vict)) return true;
     if (skip_target && vict == TARGET(k)) return true;
     if (char_condition_has(vict, "group")) {
-      if (vict->master == ch || ch->master == vict) return true;
-      if (skip_target && vict->master == ch->master) return true;
+      if (MASTER(vict) == ch || MASTER(ch) == vict) return true;
+      if (skip_target && MASTER(vict) == MASTER(ch)) return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) return true;
     if (MOB_FLAGGED(vict, MOB_NOKILL)) return true;
@@ -3384,11 +3336,11 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent) {
       if (GET_PREFERENCE(ch) == PREFERENCE_WEAPON &&
           GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.05) {
         dam += GET_MAX_MANA(ch) * 0.05;
-        GET_CHARGE(ch) -= GET_MAX_MANA(ch) * 0.05;
+        char_charge_set(ch, GET_CHARGE(ch) - (int64_t)(GET_MAX_MANA(ch) * 0.05));
       } else if (GET_PREFERENCE(ch) == PREFERENCE_WEAPON &&
                  GET_CHARGE(ch) > 0) {
         dam += GET_CHARGE(ch);
-        GET_CHARGE(ch) = 0;
+        char_charge_set(ch, 0);
       }
       if (group_bonus(ch, 2) == 8) {
         dam += dam * 0.02;
@@ -4069,15 +4021,15 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         act(barr, TRUE, ch, 0, vict, TO_VICT);
         act("@c$N's@C barrier absorbs the damage!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        GET_BARRIER(vict) -= dmg;
+        char_barrier_set(vict, GET_BARRIER(vict) - (int64_t)dmg);
         dmg = 0;
       } else if (GET_BARRIER(vict) - dmg <= 0) {
         dmg -= GET_BARRIER(vict);
-        GET_BARRIER(vict) = 0;
+        char_barrier_set(vict, 0);
         act("@c$N's@C barrier bursts!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@CYour barrier bursts!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$N's@C barrier bursts!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_SANCTUARY);
+        char_condition_remove(vict, "barrier", "burst");
       }
     }
     if (AFF_FLAGGED(vict, AFF_FIRESHIELD) &&
@@ -4092,7 +4044,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         act("@CYour fireshield disappears...@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$N's@C fireshield disappears...@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FIRESHIELD);
+        char_condition_remove(vict, "fireshield", "blocked");
       }
       dmg = 0;
     }
@@ -4243,8 +4195,8 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
       remember(vict, ch);
     if (IS_NPC(vict) && GET_HIT(vict) > ((getMaxPL(vict))) / 4)
       LASTHIT(vict) = GET_IDNUM(ch);
-    if (AFF_FLAGGED(vict, AFF_SLEEP) && rand_number(1, 2) == 2) {
-      affect_from_char(vict, SPELL_SLEEP);
+    if (is_affected(vict, AFF_SLEEP) && rand_number(1, 2) == 2) {
+      char_condition_remove_tag(vict, "sleep_aff", "struck");
       act("@c$N@W seems to be more aware now.@n", TRUE, ch, 0, vict, TO_CHAR);
       act("@WYou are no longer so sleepy.@n", TRUE, ch, 0, vict, TO_VICT);
       act("@c$N@W seems to be more aware now.@n", TRUE, ch, 0, vict,
@@ -4323,7 +4275,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
           stop_fighting(ch);
         char_position_set(vict, POS_SLEEPING);
         if (!IS_NPC(ch))
-          SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
+          char_condition_apply(vict, "knocked_out", "combat", "sparring");
       } else {
         act("@c$N@w admits defeat to you, stops sparring, and stumbles away.@n",
             TRUE, ch, 0, vict, TO_CHAR);
@@ -4359,7 +4311,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         stop_fighting(ch);
       char_position_set(vict, POS_SLEEPING);
       if (!IS_NPC(ch))
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
+        char_condition_apply(vict, "knocked_out", "combat", "sparring");
     } else if (!is_sparring(ch) && is_sparring(vict) && IS_NPC(vict)) {
       act("@w$n@w stops sparring!@n", TRUE, ch, 0, vict, TO_ROOM);
       REMOVE_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);
@@ -4520,8 +4472,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
               "onto @c$n's@C body and begin temporarily hampering $s "
               "actions!@n",
               TRUE, ch, 0, vict, TO_ROOM);
-          char_condition_add(vict, "ethereal_chains", "skill", "ethereal_chains");
-          char_condition_duration_set(vict, "ethereal_chains", 60);
+          char_condition_apply_with_duration(vict, "ethereal_chains", "skill", "ethereal_chains", 60);
         }
       } else {
         send_to_char(ch, "@D[@GDamage@W: @BPitiful...@D]@n\r\n");

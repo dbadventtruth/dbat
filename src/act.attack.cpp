@@ -169,8 +169,8 @@ ACMD(do_lightgrenade) {
       return true;
     }
     if (char_condition_has(vict, "group")) {
-      if (vict->master == ch || ch->master == vict ||
-          ch->master == vict->master) {
+      if (MASTER(vict) == ch || MASTER(ch) == vict ||
+          MASTER(ch) == MASTER(vict)) {
         if (vict == targ) {
           send_to_char(ch, "Leave the group if you want to murder them.\r\n");
         }
@@ -997,23 +997,23 @@ ACMD(do_combine) {
     send_to_char(ch, "You need to be in a group!\r\n");
     return;
   } else {
-    if (!*arg || (!ch->master && !*arg2)) {
+    if (!*arg || (!MASTER(ch) && !*arg2)) {
       send_to_char(ch, "Follower Syntax: combine (attack)\r\n");
       send_to_char(ch, "Leader Syntax: combine (attack) (target)\r\n");
       send_to_char(ch, "Cancel Syntax: combine stop\r\n");
     } else {
-      if (!strcasecmp(arg, "stop") && ch->master) {
+      if (!strcasecmp(arg, "stop") && MASTER(ch)) {
         if (GET_COMBINE(ch) == -1) {
           send_to_char(ch, "You are not trying to combine any attacks...\r\n");
           return;
         } else {
           send_to_char(ch, "You stop your preparations to combine your attack "
                            "with a group attack.\r\n");
-          send_to_char(ch->master,
+          send_to_char(MASTER(ch),
                        "@Y%s@C is no longer prepared to combine an attack with "
                        "the group!@n\r\n",
-                       get_i_name(ch->master, ch));
-          char_followers_iterate(ch->master, [&](struct char_data *fol) {
+                       get_i_name(MASTER(ch), ch));
+          char_followers_iterate(MASTER(ch), [&](struct char_data *fol) {
             if (ch != fol)
               send_to_char(fol,
                            "@Y%s@C is no longer prepared to combine an attack "
@@ -1024,7 +1024,7 @@ ACMD(do_combine) {
           GET_COMBINE(ch) = -1;
           return;
         }
-      } else if (!strcasecmp(arg, "stop") && !ch->master) {
+      } else if (!strcasecmp(arg, "stop") && !MASTER(ch)) {
         send_to_char(
             ch,
             "You do not need to stop as you haven't prepared anything.\r\n");
@@ -1071,7 +1071,7 @@ ACMD(do_combine) {
             "You need to have the minimum of 5%s ki charged to combine.\r\n",
             "%");
       }
-      if (!ch->master) {
+      if (!MASTER(ch)) {
         if (!(vict = get_char_vis(ch, arg2, NULL, FIND_CHAR_ROOM))) {
           send_to_char(ch, "Who will your combined attack be targeting?\r\n");
           return;
@@ -1095,16 +1095,16 @@ ACMD(do_combine) {
                            "anymore to combine said attack.\r\n");
           return;
         }
-      } else if (ch->master) {
+      } else if (MASTER(ch)) {
         if (GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.05) {
           act("@C$n@c appears to be concentrating hard and focusing $s "
               "energy!@n\r\n",
               TRUE, ch, 0, 0, TO_ROOM);
-          send_to_char(ch->master,
+          send_to_char(MASTER(ch),
                        "@BCOMBINE@c: @Y%s@C has prepared to combine a "
                        "@c'@G%s@c'@C with the next group attack!@n\r\n",
-                       get_i_name(ch->master, ch), attack_names[temp]);
-          char_followers_iterate(ch->master, [&](struct char_data *fol) {
+                       get_i_name(MASTER(ch), ch), attack_names[temp]);
+          char_followers_iterate(MASTER(ch), [&](struct char_data *fol) {
             if (ch != fol)
               send_to_char(fol,
                            "@BCOMBINE@c: @Y%s@C has prepared to combine a "
@@ -1421,7 +1421,7 @@ ACMD(do_zen) {
 
   /* Can they do the technique? */
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -1441,7 +1441,7 @@ ACMD(do_zen) {
   } else if (GET_LIMBCOND(ch, 1) > 0 && GET_LIMBCOND(ch, 1) < 50 &&
              GET_LIMBCOND(ch, 2) < 0) {
     send_to_char(ch, "Using your broken right arm has damaged it more!@n\r\n");
-    GET_LIMBCOND(ch, 1) -= rand_number(3, 5);
+    SET_LIMBCOND(ch, 1, GET_LIMBCOND(ch, 1) - (rand_number(3, 5)));
     if (GET_LIMBCOND(ch, 1) < 0) {
       act("@RYour right arm has fallen apart!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@r$n@R's right arm has fallen apart!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -1449,7 +1449,7 @@ ACMD(do_zen) {
   } else if (GET_LIMBCOND(ch, 2) > 0 && GET_LIMBCOND(ch, 2) < 50 &&
              GET_LIMBCOND(ch, 1) < 0) {
     send_to_char(ch, "Using your broken left arm has damaged it more!@n\r\n");
-    GET_LIMBCOND(ch, 2) -= rand_number(3, 5);
+    SET_LIMBCOND(ch, 2, GET_LIMBCOND(ch, 2) - (rand_number(3, 5)));
     if (GET_LIMBCOND(ch, 2) < 0) {
       act("@RYour left arm has fallen apart!@n", TRUE, ch, 0, 0, TO_CHAR);
       act("@r$n@R's left arm has fallen apart!@n", TRUE, ch, 0, 0, TO_ROOM);
@@ -1811,7 +1811,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's left arm is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 2) = 0;
+            SET_LIMBCOND(vict, 2, 0);
             remove_limb(vict, 2);
           } else if (GET_LIMBCOND(vict, 1) > 0 && !is_sparring(ch)) {
             act("@RYour attack severs $N's right arm!@n", TRUE, ch, 0, vict,
@@ -1820,7 +1820,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's right arm is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 1) = 0;
+            SET_LIMBCOND(vict, 1, 0);
             remove_limb(vict, 1);
           }
         }
@@ -1863,7 +1863,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's left leg is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 4) = 0;
+            SET_LIMBCOND(vict, 4, 0);
             remove_limb(vict, 4);
           } else if (GET_LIMBCOND(vict, 3) > 0 && !is_sparring(ch)) {
             act("@RYour attack severs $N's right leg!@n", TRUE, ch, 0, vict,
@@ -1872,7 +1872,7 @@ ACMD(do_zen) {
                 TO_VICT);
             act("@R$N's right leg is severered in the attack!@n", TRUE, ch, 0,
                 vict, TO_VICT);
-            GET_LIMBCOND(vict, 3) = 0;
+            SET_LIMBCOND(vict, 3, 0);
             remove_limb(vict, 3);
           }
         }
@@ -1927,7 +1927,7 @@ ACMD(do_malice) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -2331,7 +2331,7 @@ ACMD(do_nova) {
       return true;
     }
     if (char_condition_has(vict, "group") &&
-        (vict->master == ch || ch->master == vict)) {
+        (MASTER(vict) == ch || MASTER(ch) == vict)) {
       return true;
     }
     if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
@@ -2403,7 +2403,7 @@ ACMD(do_nova) {
         return true;
       }
       if (char_condition_has(vict, "group") &&
-          (vict->master == ch || ch->master == vict)) {
+          (MASTER(vict) == ch || MASTER(ch) == vict)) {
         return true;
       }
       if (GET_LEVEL(vict) <= 8 && !IS_NPC(vict)) {
@@ -2477,7 +2477,7 @@ ACMD(do_head) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -2747,7 +2747,7 @@ ACMD(do_bash) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -3014,7 +3014,7 @@ ACMD(do_seishou) {
     return;
   }
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -3270,7 +3270,7 @@ ACMD(do_throw) {
 
   half_chop(argument, arg, chunk);
 
-  if (GET_SONG(ch) > 0) {
+  if (char_condition_has(ch, "mystic_melody")) {
     send_to_char(ch, "You are currently playing a song! Enter the song command "
                      "in order to stop!\r\n");
     return;
@@ -3888,7 +3888,7 @@ ACMD(do_selfd) {
   } else if (GRAPPLING(ch) != NULL) {
     tch = GRAPPLING(ch);
     dmg += GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
     dmg += (getBasePL(ch)) * 0.6;
     dmg += (getBaseST(ch));
     decCurHealthPercentFloored(ch, 1, 1);
@@ -3924,7 +3924,7 @@ ACMD(do_selfd) {
     return;
   } else {
     dmg += GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
     dmg += (getBasePL(ch)) * 0.6;
     dmg += (getBaseST(ch));
     dmg *= 1.5;
@@ -4098,14 +4098,14 @@ ACMD(do_razor) {
       dmg = damtype(ch, 47, skill, attperc);
       if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
         if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-          GET_BARRIER(ch) += dmg * 0.1;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.1));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-          GET_BARRIER(ch) += dmg * 0.05;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.05));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-          GET_BARRIER(ch) += dmg * 0.02;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.02));
         }
         if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-          GET_BARRIER(ch) = GET_MAX_MANA(ch);
+          char_barrier_set(ch, GET_MAX_MANA(ch));
         }
       }
       int hitspot = 1;
@@ -4481,14 +4481,14 @@ ACMD(do_spike) {
       dmg = damtype(ch, 43, skill, attperc);
       if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
         if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-          GET_BARRIER(ch) += dmg * 0.1;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.1));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-          GET_BARRIER(ch) += dmg * 0.05;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.05));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-          GET_BARRIER(ch) += dmg * 0.02;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.02));
         }
         if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-          GET_BARRIER(ch) = GET_MAX_MANA(ch);
+          char_barrier_set(ch, GET_MAX_MANA(ch));
         }
       }
       int hitspot = 1;
@@ -4813,14 +4813,14 @@ ACMD(do_koteiru) {
       dmg = damtype(ch, 48, skill, attperc);
       if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
         if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-          GET_BARRIER(ch) += dmg * 0.1;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.1));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-          GET_BARRIER(ch) += dmg * 0.05;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.05));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-          GET_BARRIER(ch) += dmg * 0.02;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.02));
         }
         if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-          GET_BARRIER(ch) = GET_MAX_MANA(ch);
+          char_barrier_set(ch, GET_MAX_MANA(ch));
         }
       }
       int hitspot = 1;
@@ -4969,7 +4969,7 @@ ACMD(do_koteiru) {
             act("@CYour body completely freezes!@n", TRUE, vict, 0, 0, TO_CHAR);
             act("@c$n's@C body completely freezes!@n", TRUE, vict, 0, 0,
                 TO_ROOM);
-            SET_BIT_AR(AFF_FLAGS(vict), AFF_FROZEN);
+            char_condition_apply(vict, "frozen", "combat", "frozen");
           }
         }
       }

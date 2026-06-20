@@ -11,7 +11,6 @@
 #include "config.h"
 #include "consts/aligns.h"
 
-#include "affect.h"
 #include "affected_impl.h"
 #include "character_api.h"
 #include "character_db.h"
@@ -138,13 +137,7 @@ int mag_damage(int level, struct char_data *ch, struct char_data *victim,
   return 0;
 }
 
-/*
- * Every spell that does an affect comes through here.  This determines
- * the effect, whether it is added or replacement, whether it is legal or
- * not, etc.
- *
- * affect_join(vict, aff, add_dur, avg_dur, add_mod, avg_mod)
- */
+
 
 #define MAX_SPELL_AFFECTS 5 /* change if more needed */
 
@@ -377,26 +370,8 @@ void mag_affects(int level, struct char_data *ch, struct char_data *victim,
    * perform the affect.  This prevents people from un-sancting mobs
    * by sancting them and waiting for it to fade, for example.
    */
-  if (IS_NPC(victim) && !affected_by_spell(victim, spellnum))
-    for (i = 0; i < MAX_SPELL_AFFECTS; i++)
-      if (AFF_FLAGGED(victim, af[i].bitvector)) {
-        send_to_char(ch, "%s", CONFIG_NOEFFECT);
-        return;
-      }
 
-  /*
-   * If the victim is already affected by this spell, and the spell does
-   * not have an accumulative effect, then fail the spell.
-   */
-  if (affected_by_spell(victim, spellnum) &&
-      !(accum_duration || accum_affect)) {
-    send_to_char(ch, "%s", CONFIG_NOEFFECT);
-    return;
-  }
 
-  for (i = 0; i < MAX_SPELL_AFFECTS; i++)
-    if (af[i].bitvector || (af[i].location != APPLY_NONE))
-      affect_join(victim, af + i, accum_duration, FALSE, accum_affect, FALSE);
 
   if (to_vict != NULL)
     act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
@@ -442,8 +417,8 @@ void mag_groups(int level, struct char_data *ch, int spellnum) {
 
   if (!char_condition_has(ch, "group"))
     return;
-  if (ch->master != NULL)
-    k = ch->master;
+  if (MASTER(ch) != NULL)
+    k = MASTER(ch);
   else
     k = ch;
   char_followers_iterate(k, [&](struct char_data *tch) {
@@ -827,13 +802,7 @@ void mag_unaffects(int level, struct char_data *ch, struct char_data *victim,
     return;
   }
 
-  if (!affected_by_spell(victim, spell)) {
-    if (msg_not_affected)
-      send_to_char(ch, "%s", CONFIG_NOEFFECT);
-    return;
-  }
 
-  affect_from_char(victim, spell);
   if (to_vict != NULL)
     act(to_vict, FALSE, victim, 0, ch, TO_CHAR);
   if (to_room != NULL)
@@ -1036,21 +1005,6 @@ void mag_affectsv(int level, struct char_data *ch, struct char_data *victim,
    * perform the affect.  This prevents people from un-sancting mobs
    * by sancting them and waiting for it to fade, for example.
    */
-  if (IS_NPC(victim) && !affected_by_spell(victim, spellnum))
-    for (i = 0; i < MAX_SPELL_AFFECTS; i++)
-      if (AFF_FLAGGED(victim, af[i].bitvector)) {
-        send_to_char(ch, "%s", CONFIG_NOEFFECT);
-        return;
-      }
-  /*
-   * If the victim is already affected by this spell, and the spell does
-   * not have an accumulative effect, then fail the spell.
-   */
-  if (affected_by_spell(victim, spellnum) &&
-      !(accum_duration || accum_affect)) {
-    send_to_char(ch, "%s", CONFIG_NOEFFECT);
-    return;
-  }
 
   if (to_vict != NULL)
     act(to_vict, FALSE, victim, 0, ch, TO_CHAR);

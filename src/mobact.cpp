@@ -70,8 +70,9 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
         TO_VICT);
     act("@R$n@w releases @R$N@w from $s grip!@n", TRUE, ch, 0, ABSORBING(ch),
         TO_NOTVICT);
-    ABSORBBY(ABSORBING(ch)) = NULL;
-    ABSORBING(ch) = NULL;
+    struct char_data *absorbed = ABSORBING(ch);
+    char_absorbing_set(ch, NULL);
+    char_absorbed_by_set(absorbed, NULL);
     return;
   }
 
@@ -132,8 +133,8 @@ void mob_absorb(struct char_data *ch, struct char_data *vict) {
         0, vict, TO_VICT);
     act("@R$n@r grabs onto @R$N@r and starts to absorb your energy!@n", TRUE,
         ch, 0, vict, TO_NOTVICT);
-    ABSORBING(ch) = vict;
-    ABSORBBY(vict) = ch;
+    char_absorbing_set(ch, vict);
+    char_absorbed_by_set(vict, ch);
     return;
   }
 }
@@ -156,6 +157,9 @@ int player_present(struct char_data *ch) {
 }
 
 void char_game_activate(struct char_data *ch) {
+  char_condition_game_activate(ch);
+  char_meter_conditions_sync(ch);
+  char_limb_healing_sync(ch);
   if (!IS_NPC(ch))
     return;
   char_subscribe_add(ch, "mob_active");
@@ -178,6 +182,7 @@ void char_game_activate(struct char_data *ch) {
 }
 
 void char_game_deactivate(struct char_data *ch) {
+  char_condition_game_deactivate(ch);
   char_unsubscribe_all(ch);
 }
 

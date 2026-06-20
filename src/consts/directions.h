@@ -5,18 +5,20 @@ extern "C" {
 #endif
 
 /* The cardinal directions: used as index to room_data.dir_option[] */
-#define NORTH 0
-#define EAST 1
-#define SOUTH 2
-#define WEST 3
-#define UP 4
-#define DOWN 5
-#define NORTHWEST 6
-#define NORTHEAST 7
-#define SOUTHEAST 8
-#define SOUTHWEST 9
-#define INDIR 10
-#define OUTDIR 11
+typedef enum {
+    NORTH     = 0,
+    EAST      = 1,
+    SOUTH     = 2,
+    WEST      = 3,
+    UP        = 4,
+    DOWN      = 5,
+    NORTHWEST = 6,
+    NORTHEAST = 7,
+    SOUTHEAST = 8,
+    SOUTHWEST = 9,
+    INDIR     = 10,
+    OUTDIR    = 11,
+} Direction;
 
 #define NUM_OF_DIRS 12 /* number of directions in a room (nsewud) */
 

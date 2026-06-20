@@ -4,10 +4,18 @@ const cdb = @import("cdb");
 const characters_lua = @import("character_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const lua_meta = @import("lua_meta.zig");
+const object_api = @import("object_api.zig");
 
 const Lua = zlua.Lua;
 const object_metatable = "dbat.Object";
 const obj_proto_metatable = "dbat.ObjectPrototype";
+const obj_script_metatable = "dbat.ObjectScript";
+
+extern fn event_schedule_lua_obj_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, obj_id: i64) u64;
+extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_count(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
+extern fn event_queue_now_ms() i64;
 
 const ObjectHandle = extern struct {
     id: i64,
@@ -17,9 +25,15 @@ const ObjProtoHandle = extern struct {
     vnum: cdb.obj_vnum,
 };
 
+const ObjScriptHandle = extern struct {
+    obj_id: i64,
+    script: [64:0]u8,
+};
+
 pub fn register(lua: *Lua) void {
     registerObjectMetatable(lua);
     registerObjProtoMetatable(lua);
+    registerObjScriptMetatable(lua);
 
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaObjectById));
@@ -31,6 +45,8 @@ pub fn register(lua: *Lua) void {
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaObjProtoById));
     lua.setField(-2, "by_id");
+    lua.pushFunction(zlua.wrap(luaObjProtosAll));
+    lua.setField(-2, "all");
     lua.setField(-2, "obj_protos");
 }
 
@@ -91,6 +107,9 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "to_room", luaObjectToRoom);
     addMethod(lua, "from_char", luaObjectFromChar);
     addMethod(lua, "to_char", luaObjectToChar);
+    addMethod(lua, "from_container", luaObjectFromContainer);
+    addMethod(lua, "to_container", luaObjectToContainer);
+    addMethod(lua, "show_to", luaObjectShowTo);
     addMethod(lua, "equip", luaObjectEquip);
     addMethod(lua, "value_get", luaObjectValueGet);
     addMethod(lua, "value_set", luaObjectValueSet);
@@ -100,6 +119,7 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "level_get", luaObjectLevelGet);
     addMethod(lua, "level_set", luaObjectLevelSet);
     addMethod(lua, "level_mod", luaObjectLevelMod);
+    addMethod(lua, "affect_set", luaObjectAffectSet);
     addMethod(lua, "wear_flagged", luaObjectWearFlagged);
     addMethod(lua, "wear_flag_set", luaObjectWearFlagSet);
     addMethod(lua, "wear_flag_toggle", luaObjectWearFlagToggle);
@@ -137,9 +157,33 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "worn_on_set", luaObjectWornOnSet);
     addMethod(lua, "in_obj_get", luaObjectInObjGet);
     addMethod(lua, "sitting_get", luaObjectSittingGet);
+    addMethod(lua, "sitting_set", luaObjectSittingSet);
     addMethod(lua, "inventory_count", luaObjectInventoryCount);
     addMethod(lua, "inventory_get", luaObjectInventoryGet);
     addMethod(lua, "inventory", luaObjectInventoryGet);
+    addMethod(lua, "event_schedule", luaObjectEventSchedule);
+    addMethod(lua, "event_cancel", luaObjectEventCancel);
+    addMethod(lua, "event_count", luaObjectEventCount);
+    addMethod(lua, "event_remaining_ms", luaObjectEventRemainingMs);
+    addMethod(lua, "kicharge_get", luaObjectKichargeGet);
+    addMethod(lua, "distance_get", luaObjectDistanceGet);
+    addMethod(lua, "scoutfreq_get", luaObjectScoutfreqGet);
+    addMethod(lua, "room_get", luaObjectRoomGet);
+    addMethod(lua, "post_type_get", luaObjectPostTypeGet);
+    addMethod(lua, "is_posted", luaObjectIsPosted);
+    addMethod(lua, "fellow_wall_has", luaObjectFellowWallHas);
+    addMethod(lua, "foob_get", luaObjectFoobGet);
+    addMethod(lua, "drinkcon_weight_drain", luaObjectDrinkconWeightDrain);
+    addMethod(lua, "drinkcon_name_update", luaObjectDrinkconNameUpdate);
+    addMethod(lua, "script_add", luaObjectScriptAdd);
+    addMethod(lua, "script_remove", luaObjectScriptRemove);
+    addMethod(lua, "script_has", luaObjectScriptHas);
+    addMethod(lua, "script", luaObjectScript);
+    addMethod(lua, "scripts", luaObjectScripts);
+    addMethod(lua, "script_number_get", luaObjectScriptNumberGet);
+    addMethod(lua, "script_number_set", luaObjectScriptNumberSet);
+    addMethod(lua, "script_text_get", luaObjectScriptTextGet);
+    addMethod(lua, "script_text_set", luaObjectScriptTextSet);
 
     lua_meta.mergeMethods(lua, "lua.objects.object");
 
@@ -159,8 +203,33 @@ fn registerObjProtoMetatable(lua: *Lua) void {
     addMethod(lua, "reftype", luaObjProtoRefType);
     addMethod(lua, "valid", luaObjProtoValid);
     addMethod(lua, "vnum_get", luaObjProtoVnumGet);
+    addMethod(lua, "name_get", luaObjProtoNameGet);
+    addMethod(lua, "short_description_get", luaObjProtoShortDescrGet);
+    addMethod(lua, "type_get", luaObjProtoTypeGet);
+    addMethod(lua, "value_get", luaObjProtoValueGet);
+    addMethod(lua, "has_trig", luaObjProtoHasTrig);
     addMethod(lua, "spawn", luaObjProtoSpawn);
 
+    lua.pop(1);
+}
+
+fn registerObjScriptMetatable(lua: *Lua) void {
+    lua.newMetatable(obj_script_metatable) catch {
+        lua.pop(1);
+        return;
+    };
+    lua.pushValue(-1);
+    lua.setField(-2, "__index");
+    addMethod(lua, "id", luaObjScriptId);
+    addMethod(lua, "number_get", luaObjScriptNumberGet);
+    addMethod(lua, "number_set", luaObjScriptNumberSet);
+    addMethod(lua, "number_mod", luaObjScriptNumberMod);
+    addMethod(lua, "text_get", luaObjScriptTextGet);
+    addMethod(lua, "text_set", luaObjScriptTextSet);
+    addMethod(lua, "schedule_event", luaObjScriptScheduleEvent);
+    addMethod(lua, "cancel_event", luaObjScriptCancelEvent);
+    addMethod(lua, "event_pending", luaObjScriptEventPending);
+    addMethod(lua, "event_next_ms", luaObjScriptEventNextMs);
     lua.pop(1);
 }
 
@@ -357,6 +426,25 @@ fn luaObjectToChar(lua: *Lua) i32 {
     return 0;
 }
 
+fn luaObjectFromContainer(lua: *Lua) i32 {
+    cdb.obj_from_container(checkObject(lua));
+    return 0;
+}
+
+fn luaObjectToContainer(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const container = checkObjectAt(lua, 2);
+    cdb.obj_to_container(obj, container);
+    return 0;
+}
+
+fn luaObjectShowTo(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const ch = characters_lua.checkCharacterAt(lua, 2);
+    cdb.obj_show_action_to_char(obj, ch);
+    return 0;
+}
+
 fn luaObjectEquip(lua: *Lua) i32 {
     const obj = checkObject(lua);
     const ch = characters_lua.checkCharacterAt(lua, 2);
@@ -425,6 +513,52 @@ fn luaObjProtoSpawn(lua: *Lua) i32 {
     return 1;
 }
 
+fn luaObjProtoNameGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    if (proto.name) |n| _ = lua.pushString(std.mem.span(n)) else lua.pushNil();
+    return 1;
+}
+fn luaObjProtoShortDescrGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    if (proto.short_description) |s| _ = lua.pushString(std.mem.span(s)) else lua.pushNil();
+    return 1;
+}
+fn luaObjProtoTypeGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    lua.pushInteger(proto.type_flag);
+    return 1;
+}
+fn luaObjProtoValueGet(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    const pos = integer(lua, 2);
+    if (pos < 0 or pos >= cdb.NUM_OBJ_VAL_POSITIONS) {
+        lua.pushInteger(0);
+        return 1;
+    }
+    lua.pushInteger(proto.value[@intCast(pos)]);
+    return 1;
+}
+fn luaObjProtoHasTrig(lua: *Lua) i32 {
+    const proto = checkObjProto(lua);
+    lua.pushBoolean(proto.proto_script != null);
+    return 1;
+}
+fn luaObjProtosAll(lua: *Lua) i32 {
+    lua.newTable();
+    const iterator = cdb.obj_proto_iterator_create();
+    defer cdb.obj_proto_iterator_free(iterator);
+    var index: zlua.Integer = 1;
+    while (true) {
+        const proto_c = cdb.obj_proto_next(iterator);
+        if (proto_c == null) break;
+        const proto: *cdb.obj_proto_data = @ptrCast(@alignCast(proto_c));
+        pushObjProto(lua, proto.id);
+        lua.setIndex(-2, index);
+        index += 1;
+    }
+    return valueIterator(lua);
+}
+
 fn removeObjectFromLocation(obj: *cdb.obj_data) void {
     if (cdb.obj_carried_by_get(obj) != 0) {
         cdb.obj_from_char(obj);
@@ -476,6 +610,20 @@ fn luaObjectLevelMod(lua: *Lua) i32 {
     cdb.obj_level_set(obj, value);
     lua.pushInteger(value);
     return 1;
+}
+
+fn luaObjectAffectSet(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const index = @as(usize, @intCast(integer(lua, 2)));
+    const location = @as(c_int, @intCast(integer(lua, 3)));
+    const specific = @as(c_int, @intCast(integer(lua, 4)));
+    const modifier = @as(c_int, @intCast(integer(lua, 5)));
+    if (index < obj.affected.len) {
+        obj.affected[index].location = location;
+        obj.affected[index].specific = specific;
+        obj.affected[index].modifier = modifier;
+    }
+    return 0;
 }
 
 fn luaObjectWearFlagged(lua: *Lua) i32 {
@@ -665,6 +813,12 @@ fn luaObjectSittingGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.obj_sitting_get(checkObject(lua)));
     return 1;
 }
+fn luaObjectSittingSet(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const ch: ?*cdb.char_data = if (lua.isNoneOrNil(2)) null else characters_lua.checkCharacterAt(lua, 2);
+    cdb.obj_sitting_set(obj, ch);
+    return 0;
+}
 
 fn luaObjectInventoryCount(lua: *Lua) i32 {
     const recursive = if (lua.isNoneOrNil(2)) false else boolean(lua, 2);
@@ -709,4 +863,296 @@ fn valueIterator(lua: *Lua) i32 {
     lua.insert(-2);
     lua.protectedCall(.{ .args = 1, .results = 1 }) catch lua.raiseErrorStr("failed to create value iterator", .{});
     return 1;
+}
+
+fn luaObjectEventSchedule(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind = string(lua, 2);
+    const delay_ms = integer(lua, 3);
+    const interval_ms: i64 = if (lua.typeOf(4) == .number) @intCast(integer(lua, 4)) else 0;
+    const now = event_queue_now_ms();
+    const id = event_schedule_lua_obj_update(now + delay_ms, interval_ms, kind.ptr, cdb.obj_id_get(obj));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaObjectEventCancel(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind = string(lua, 2);
+    const n = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaObjectEventCount(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
+    const n = eq_owner_count(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind);
+    lua.pushInteger(n);
+    return 1;
+}
+
+fn luaObjectEventRemainingMs(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const kind: ?[*:0]const u8 = if (lua.typeOf(2) == .string) string(lua, 2).ptr else null;
+    const ms = eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind);
+    lua.pushInteger(ms);
+    return 1;
+}
+
+fn luaObjectKichargeGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).kicharge);
+    return 1;
+}
+
+fn luaObjectDistanceGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).distance);
+    return 1;
+}
+
+fn luaObjectScoutfreqGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).scoutfreq);
+    return 1;
+}
+
+fn luaObjectRoomGet(lua: *Lua) i32 {
+    const room = cdb.obj_room_get(checkObject(lua));
+    if (room == null) {
+        lua.pushNil();
+        return 1;
+    }
+    rooms_lua.pushRoom(lua, room.*.id);
+    return 1;
+}
+
+fn luaObjectPostTypeGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).posttype);
+    return 1;
+}
+
+fn luaObjectIsPosted(lua: *Lua) i32 {
+    lua.pushBoolean(checkObject(lua).posted_to != null);
+    return 1;
+}
+
+fn luaObjectFellowWallHas(lua: *Lua) i32 {
+    lua.pushBoolean(checkObject(lua).fellow_wall != null);
+    return 1;
+}
+
+fn luaObjectFoobGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).foob);
+    return 1;
+}
+
+fn luaObjectDrinkconWeightDrain(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const amount = intCastOrError(lua, c_int, integer(lua, 2), "amount");
+    cdb.obj_drinkcon_weight_drain(obj, amount);
+    return 0;
+}
+
+fn luaObjectDrinkconNameUpdate(lua: *Lua) i32 {
+    cdb.obj_drinkcon_name_update(checkObject(lua));
+    return 0;
+}
+
+// ---- ObjectScript handle ----
+
+pub fn pushObjectScript(lua: *Lua, obj_id: i64, script_id: []const u8) void {
+    const handle = lua.newUserdata(ObjScriptHandle, 0);
+    handle.obj_id = obj_id;
+    handle.script = std.mem.zeroes([64:0]u8);
+    const len = @min(script_id.len, handle.script.len - 1);
+    @memcpy(handle.script[0..len], script_id[0..len]);
+    _ = lua.getMetatableRegistry(obj_script_metatable);
+    lua.setMetatable(-2);
+}
+
+fn checkObjScriptHandle(lua: *Lua) *ObjScriptHandle {
+    return lua.testUserdata(ObjScriptHandle, 1, obj_script_metatable) catch {
+        lua.raiseErrorStr("expected dbat.ObjectScript", .{});
+    };
+}
+
+fn objScriptObject(lua: *Lua, handle: *ObjScriptHandle) *cdb.obj_data {
+    return cdb.obj_by_id(handle.obj_id) orelse lua.raiseErrorStr("stale dbat.ObjectScript object", .{});
+}
+
+fn objScriptName(handle: *ObjScriptHandle) [*:0]const u8 {
+    return @ptrCast(&handle.script);
+}
+
+fn objScriptEventKind(buf: *[192:0]u8, script: []const u8, event: []const u8) ?[:0]u8 {
+    const prefix = "script:";
+    const total = prefix.len + script.len + 1 + event.len;
+    if (total >= buf.len) return null;
+    @memcpy(buf[0..prefix.len], prefix);
+    @memcpy(buf[prefix.len..][0..script.len], script);
+    buf[prefix.len + script.len] = ':';
+    @memcpy(buf[prefix.len + script.len + 1 ..][0..event.len], event);
+    buf[total] = 0;
+    return buf[0..total :0];
+}
+
+fn luaObjScriptId(lua: *Lua) i32 {
+    _ = lua.pushString(std.mem.span(objScriptName(checkObjScriptHandle(lua))));
+    return 1;
+}
+
+fn luaObjScriptNumberGet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    lua.pushInteger(cdb.obj_script_number_get(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjScriptNumberSet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    cdb.obj_script_number_set(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2), intCastOrError(lua, i64, integer(lua, 3), "script number"));
+    return 0;
+}
+
+fn luaObjScriptNumberMod(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const name = objScriptName(handle);
+    const key = string(lua, 2);
+    const delta = intCastOrError(lua, i64, integer(lua, 3), "script number delta");
+    const old = cdb.obj_script_number_get(obj, name, key);
+    cdb.obj_script_number_set(obj, name, key, old + delta);
+    lua.pushInteger(old + delta);
+    return 1;
+}
+
+fn luaObjScriptTextGet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    pushCString(lua, cdb.obj_script_text_get(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjScriptTextSet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    cdb.obj_script_text_set(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2), string(lua, 3));
+    return 0;
+}
+
+fn luaObjScriptScheduleEvent(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const delay_ms = integer(lua, 3);
+    const interval_ms: i64 = if (lua.isNoneOrNil(4)) 0 else @intCast(integer(lua, 4));
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse {
+        lua.pushInteger(0);
+        return 1;
+    };
+    _ = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr);
+    const id = event_schedule_lua_obj_update(event_queue_now_ms() + delay_ms, interval_ms, kind.ptr, cdb.obj_id_get(obj));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaObjScriptCancelEvent(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse return 0;
+    _ = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr);
+    return 0;
+}
+
+fn luaObjScriptEventPending(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    lua.pushBoolean(eq_owner_count(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr) > 0);
+    return 1;
+}
+
+fn luaObjScriptEventNextMs(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse {
+        lua.pushInteger(-1);
+        return 1;
+    };
+    lua.pushInteger(eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr));
+    return 1;
+}
+
+// ---- Object-level script entity methods ----
+
+fn luaObjectScriptAdd(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.obj_script_add(checkObject(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjectScriptRemove(lua: *Lua) i32 {
+    const reason: [*:0]const u8 = if (lua.isNoneOrNil(3)) "removed" else string(lua, 3);
+    lua.pushBoolean(cdb.obj_script_remove(checkObject(lua), string(lua, 2), reason));
+    return 1;
+}
+
+fn luaObjectScriptHas(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.obj_script_has(checkObject(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjectScript(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const script_id = string(lua, 2);
+    if (!cdb.obj_script_has(obj, script_id)) {
+        lua.pushNil();
+        return 1;
+    }
+    pushObjectScript(lua, cdb.obj_id_get(obj), script_id);
+    return 1;
+}
+
+fn luaObjectScripts(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    lua.newTable();
+    var maybe_iter = object_api.objectScriptIterator(obj);
+    if (maybe_iter) |*iter| {
+        var i: zlua.Integer = 1;
+        while (iter.next()) |entry| {
+            pushObjectScript(lua, cdb.obj_id_get(obj), entry.name);
+            lua.setIndex(-2, i);
+            i += 1;
+        }
+    }
+    return valueIterator(lua);
+}
+
+fn luaObjectScriptNumberGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.obj_script_number_get(checkObject(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaObjectScriptNumberSet(lua: *Lua) i32 {
+    cdb.obj_script_number_set(checkObject(lua), string(lua, 2), string(lua, 3), intCastOrError(lua, i64, integer(lua, 4), "script number"));
+    return 0;
+}
+
+fn luaObjectScriptTextGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.obj_script_text_get(checkObject(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaObjectScriptTextSet(lua: *Lua) i32 {
+    cdb.obj_script_text_set(checkObject(lua), string(lua, 2), string(lua, 3), string(lua, 4));
+    return 0;
 }

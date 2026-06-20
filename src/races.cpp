@@ -2143,7 +2143,6 @@ void Race::loseTail(char_data *ch) const {
   case bio:
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);
     remove_limb(ch, 6);
-    GET_TGROWTH(ch) = 0;
     break;
   case saiyan:
   case halfbreed:
@@ -2152,7 +2151,6 @@ void Race::loseTail(char_data *ch) const {
     if (PLR_FLAGGED(ch, PLR_OOZARU)) {
       oozaru_revert(ch);
     }
-    GET_TGROWTH(ch) = 0;
     break;
   }
 }

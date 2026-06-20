@@ -39,7 +39,6 @@
 #include "time.h"
 #include "time_info.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "fileop.h"
 #include "relocate.h"
@@ -874,20 +873,8 @@ ACMD(do_finddoor) {
   }
 }
 
-ACMD(do_recall) {
-  if (GET_ADMLEVEL(ch) < 1) {
-    send_to_char(ch, "You are not an immortal!\r\n");
-  } else {
-    send_to_char(ch, "You disappear in a burst of light!\r\n");
-    act("$n disappears in a burst of light!", FALSE, ch, 0, 0, TO_ROOM);
-    if (room_by_id(2)) {
-      char_from_room(ch);
-      char_to_room(ch, room_by_id(2));
-      look_at_room(char_room_get(ch), ch, 0);
-      GET_LOADROOM(ch) = char_room_vnum_get(ch);
-    }
-  }
-}
+/* do_recall moved to lua/characters/pcommands/wizard/recall.lua */
+ACMD(do_recall) { (void)ch; (void)argument; (void)cmd; (void)subcmd; }
 
 ACMD(do_hell) {
   struct char_data *vict;
@@ -1146,31 +1133,7 @@ ACMD(do_at) {
   }
 }
 
-ACMD(do_goto) {
-  char buf[MAX_STRING_LENGTH];
-  struct room_data *location;
-
-  if ((location = find_target_room(ch, argument)) == NULL)
-    return;
-  if (PLR_FLAGGED(ch, PLR_HEALT)) {
-    send_to_char(ch, "They are inside a healing tank!\r\n");
-    return;
-  }
-
-  snprintf(buf, sizeof(buf), "$n %s",
-           POOFOUT(ch) ? POOFOUT(ch) : "disappears in a puff of smoke.");
-  act(buf, TRUE, ch, 0, 0, TO_ROOM);
-
-  char_from_room(ch);
-  char_to_room(ch, location);
-
-  snprintf(buf, sizeof(buf), "$n %s",
-           POOFIN(ch) ? POOFIN(ch) : "appears with an ear-splitting bang.");
-  act(buf, TRUE, ch, 0, 0, TO_ROOM);
-
-  look_at_room(char_room_get(ch), ch, 0);
-  enter_wtrigger(char_room_get(ch), ch, -1);
-}
+/* do_goto moved to lua/characters/pcommands/wizard/goto.lua */
 
 ACMD(do_trans) {
   char buf[MAX_INPUT_LENGTH];
@@ -1258,39 +1221,7 @@ ACMD(do_teleport) {
   }
 }
 
-ACMD(do_vnum) {
-  char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
-
-  half_chop(argument, buf, buf2);
-
-  if (!*buf || !*buf2 ||
-      (!is_abbrev(buf, "mob") && !is_abbrev(buf, "obj") &&
-       !is_abbrev(buf, "mat") && !is_abbrev(buf, "wtype") &&
-       !is_abbrev(buf, "atype"))) {
-    send_to_char(
-        ch, "Usage: vnum { atype | material | mob | obj | wtype } <name>\r\n");
-    return;
-  }
-  if (is_abbrev(buf, "mob"))
-    if (!vnum_mobile(buf2, ch))
-      send_to_char(ch, "No mobiles by that name.\r\n");
-
-  if (is_abbrev(buf, "obj"))
-    if (!vnum_object(buf2, ch))
-      send_to_char(ch, "No objects by that name.\r\n");
-
-  if (is_abbrev(buf, "mat"))
-    if (!vnum_material(buf2, ch))
-      send_to_char(ch, "No materials by that name.\r\n");
-
-  if (is_abbrev(buf, "wtype"))
-    if (!vnum_weapontype(buf2, ch))
-      send_to_char(ch, "No weapon types by that name.\r\n");
-
-  if (is_abbrev(buf, "atype"))
-    if (!vnum_armortype(buf2, ch))
-      send_to_char(ch, "No armor types by that name.\r\n");
-}
+/* do_vnum moved to lua/characters/pcommands/wizard/vnum.lua */
 
 void list_zone_commands_room(struct char_data *ch, room_vnum rvnum) {
 
@@ -1913,7 +1844,7 @@ static void do_stat_character(struct char_data *ch, struct char_data *k) {
                  (int)char_stat_get(k, "drunk"));
 
   column = send_to_char(ch, "Master is: %s, Followers are:",
-                        k->master ? GET_NAME(k->master) : "<none>");
+                        MASTER(k) ? GET_NAME(MASTER(k)) : "<none>");
   {
     size_t fol_count;
     auto fol_ids = char_follower_ids(k, &fol_count);
@@ -2308,78 +2239,7 @@ ACMD(do_return) {
   }
 }
 
-ACMD(do_load) {
-  char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH], buf3[MAX_INPUT_LENGTH];
-  int i = 0, n = 1;
-
-  one_argument(two_arguments(argument, buf, buf2), buf3);
-
-  if (!*buf || !*buf2 || !isdigit(*buf2)) {
-    send_to_char(ch, "Usage: load { obj | mob } <vnum> (amt)\r\n");
-    return;
-  }
-  if (!is_number(buf2) || !is_number(buf3)) {
-    send_to_char(ch, "That is not a number.\r\n");
-    return;
-  }
-
-  if (atoi(buf3) > 0) {
-    if (atoi(buf3) >= 100) {
-      n = 100;
-    } else if (atoi(buf3) < 100) {
-      n = atoi(buf3);
-    }
-  } else {
-    n = 1;
-  }
-
-  if (is_abbrev(buf, "mob")) {
-    struct char_data *mob = NULL;
-    struct mob_proto_data *proto = NULL;
-    mob_vnum v_num = atoi(buf2);
-
-    if (!(proto = mob_proto_by_id(v_num))) {
-      send_to_char(ch, "There is no monster with that number.\r\n");
-      return;
-    }
-    for (i = 0; i < n; i++) {
-      mob = read_mobile(v_num, VIRTUAL);
-      char_to_room(mob, char_room_get(ch));
-
-      act("$n makes a quaint, magical gesture with one hand.", TRUE, ch, 0, 0,
-          TO_ROOM);
-      act("$n has created $N!", FALSE, ch, 0, mob, TO_ROOM);
-      act("You create $N.", FALSE, ch, 0, mob, TO_CHAR);
-      load_mtrigger(mob);
-    }
-  } else if (is_abbrev(buf, "obj")) {
-    struct obj_data *obj;
-    struct obj_proto_data *proto;
-
-    if (!(proto = obj_proto_by_id(atoi(buf2)))) {
-      send_to_char(ch, "There is no object with that number.\r\n");
-      return;
-    }
-    for (i = 0; i < n; i++) {
-      obj = read_object(proto->id, VIRTUAL);
-      if (GET_ADMLEVEL(ch) > 0) {
-        send_to_imm("LOAD: %s has loaded a %s", GET_NAME(ch),
-                    obj->short_description);
-        log_imm_action("LOAD: %s has loaded a %s", GET_NAME(ch),
-                       obj->short_description);
-      }
-      if (CONFIG_LOAD_INVENTORY)
-        obj_to_char(obj, ch);
-      else
-        obj_to_room(obj, char_room_get(ch));
-      act("$n makes a strange magical gesture.", TRUE, ch, 0, 0, TO_ROOM);
-      act("$n has created $p!", FALSE, ch, obj, 0, TO_ROOM);
-      act("You create $p.", FALSE, ch, obj, 0, TO_CHAR);
-      load_otrigger(obj);
-    }
-  } else
-    send_to_char(ch, "That'll have to be either 'obj' or 'mob'.\r\n");
-}
+/* do_load moved to lua/characters/pcommands/wizard/load.lua */
 
 ACMD(do_vstat) {
   char buf[MAX_INPUT_LENGTH], buf2[MAX_INPUT_LENGTH];
@@ -2789,38 +2649,7 @@ ACMD(do_handout) {
   log_imm_action("HANDOUT: %s has handed out 10 PS to everyone.", GET_NAME(ch));
 }
 
-ACMD(do_restore) {
-  char buf[MAX_INPUT_LENGTH];
-  struct char_data *vict;
-  struct descriptor_data *j;
-  int i;
-
-  one_argument(argument, buf);
-  if (!*buf)
-    send_to_char(ch, "Whom do you wish to restore?\r\n");
-  else if (is_abbrev(buf, "all")) {
-    send_to_imm("[Log: %s restored all.]", GET_NAME(ch));
-    log_imm_action("RESTORE: %s has restored all players.", GET_NAME(ch));
-    for (j = descriptor_list; j; j = j->next) {
-      if (!IS_PLAYING(j) || !(vict = j->character))
-        continue;
-      restore_by(vict, ch);
-    }
-    send_to_char(ch, "Okay.\r\n");
-  } else if (!(vict = get_char_vis(ch, buf, NULL, FIND_CHAR_WORLD)))
-    send_to_char(ch, "%s", CONFIG_NOPERSON);
-  else if (!IS_NPC(vict) && ch != vict &&
-           GET_ADMLEVEL(vict) >= GET_ADMLEVEL(ch))
-    send_to_char(ch, "They don't need your help.\r\n");
-  else {
-    restore_by(vict, ch);
-    send_to_char(ch, "%s", CONFIG_OK);
-    send_to_imm("[Log: %s restored %s.]", GET_NAME(ch), GET_NAME(vict));
-    log_imm_action("RESTORE: %s has restored %s.", GET_NAME(ch),
-                   GET_NAME(vict));
-  }
-}
-
+/* do_restore moved to lua/characters/pcommands/wizard/restore.lua */
 void perform_immort_vis(struct char_data *ch) { GET_INVIS_LEV(ch) = 0; }
 
 static void perform_immort_invis(struct char_data *ch, int level) {
@@ -3420,18 +3249,8 @@ ACMD(do_wizutil) {
           0, TO_ROOM);
       break;
     case SCMD_UNAFFECT:
-      if (vict->affected || AFF_FLAGS(vict)) {
-        while (vict->affected)
-          affect_remove(vict, vict->affected);
-        for (taeller = 0; taeller < AF_ARRAY_MAX; taeller++)
-          AFF_FLAGS(ch)[taeller] = 0;
-        send_to_char(vict, "There is a brief flash of light!\r\nYou feel "
-                           "slightly different.\r\n");
-        send_to_char(ch, "All spells removed.\r\n");
-      } else {
-        send_to_char(ch, "Your victim does not have any affections!\r\n");
+      send_to_char(ch, "Your victim does not have any affections!\r\n");
         return;
-      }
       break;
     default:
       mud_log("SYSERR: Unknown subcmd %d passed to do_wizutil (%s)", subcmd,
@@ -4078,7 +3897,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
   case 8:
     // vict->mana = value;
-    affect_total(vict);
+    char_der_invalidate(vict);
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set ki for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set ki for %s.", GET_NAME(ch), GET_NAME(vict));
@@ -4095,7 +3914,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set align for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set align for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 11:
     RANGE(0, 100);
@@ -4103,7 +3922,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set str for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set str for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 12:
     send_to_char(ch, "Setting str_add does nothing now.\r\n");
@@ -4114,7 +3933,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set intel for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set intel for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 14:
     RANGE(0, 100);
@@ -4122,7 +3941,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set wis for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set wis for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 15:
     RANGE(0, 100);
@@ -4130,7 +3949,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set dex for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set dex for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 16:
     RANGE(0, 100);
@@ -4138,7 +3957,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     mudlog(NRM, MAX(ADMLVL_GOD, GET_INVIS_LEV(ch)), TRUE,
            "SET: %s has set con for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set con for %s.", GET_NAME(ch), GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 17:
     RANGE(0, 100);
@@ -4147,7 +3966,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set speed for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set speed for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 18:
     char_stat_set(vict, "armor", RANGE(-100, 500));
@@ -4155,7 +3974,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
            "SET: %s has set armor index for %s.", GET_NAME(ch), GET_NAME(vict));
     log_imm_action("SET: %s has set armor index for %s.", GET_NAME(ch),
                    GET_NAME(vict));
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
   case 19:
     char_stat_set(vict, "money", RANGE(0, 100000000));
@@ -4182,7 +4001,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
   case 23:
     // vict->damage_mod = RANGE(-20, 20);
-    // affect_total(vict);
+    // char_der_invalidate(vict);
     break;
   case 24:
     if (GET_ADMLEVEL(ch) < ADMLVL_IMPL && ch != vict) {
@@ -4362,12 +4181,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
 
   case 49: /* Blame/Thank Rick Glover. :) */
     char_stat_set(vict, "height", value);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 50:
     char_stat_set(vict, "weight", value);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 51:
@@ -4412,12 +4231,12 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
 
   case 56:
     //vict->max_ki = RANGE(1, 5000);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 57:
     //vict->ki = RANGE(0, vict->max_ki);
-    affect_total(vict);
+    char_der_invalidate(vict);
     break;
 
   case 58:
@@ -4583,8 +4402,7 @@ static int perform_set(struct char_data *ch, struct char_data *vict, int mode,
     break;
 
   case 81:
-    GET_CLONES(vict) = RANGE(1, 3);
-    send_to_char(ch, "Done.\r\n");
+    send_to_char(ch, "Unsupported.\r\n");
     break;
 
   case 82:

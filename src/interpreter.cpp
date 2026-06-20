@@ -52,6 +52,7 @@
 #include "log.h"
 #include "lua.h"
 #include "mail.h"
+#include "mobact.h"
 #include "oasis.h"
 #include "obj_edit.h"
 #include "objsave.h"
@@ -445,6 +446,7 @@ int enter_player_game(struct descriptor_data *d) {
 
   game_active_player_enter();
   char_to_room(ch, load_room);
+  char_game_activate(ch);
   load_result = Crash_load(ch);
   if (ch->host) {
     free(ch->host);
@@ -456,8 +458,9 @@ int enter_player_game(struct descriptor_data *d) {
   (void)char_register_id(GET_ID(ch), ch);
   char_subscribe_add(ch, "player");
   read_saved_vars(ch);
+  char_apply_entry_conditions(ch);
   char_iterate_all([&](struct char_data *check) {
-    if (!check->master && IS_NPC(check) &&
+    if (!MASTER(check) && IS_NPC(check) &&
         check->master_id == GET_IDNUM(ch) &&
         AFF_FLAGGED(check, AFF_CHARM) && !circle_follow(check, ch))
       add_follower(check, ch);
@@ -471,24 +474,23 @@ int enter_player_game(struct descriptor_data *d) {
   }
 
   if (PLR_FLAGGED(ch, PLR_RARM)) {
-    GET_LIMBCOND(ch, 1) = 100;
+    SET_LIMBCOND(ch, 1, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_RARM);
   }
   if (PLR_FLAGGED(ch, PLR_LARM)) {
-    GET_LIMBCOND(ch, 2) = 100;
+    SET_LIMBCOND(ch, 2, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_LARM);
   }
   if (PLR_FLAGGED(ch, PLR_LLEG)) {
-    GET_LIMBCOND(ch, 4) = 100;
+    SET_LIMBCOND(ch, 4, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_LLEG);
   }
   if (PLR_FLAGGED(ch, PLR_RLEG)) {
-    GET_LIMBCOND(ch, 3) = 100;
+    SET_LIMBCOND(ch, 3, 100);
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_RLEG);
   }
   GET_COMBINE(ch) = -1;
   GET_SLEEPT(ch) = 8;
-  GET_FOODR(ch) = 2;
   if (AFF_FLAGGED(ch, AFF_POSITION)) {
     REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_POSITION);
   }
@@ -504,19 +506,14 @@ int enter_player_game(struct descriptor_data *d) {
   if (IS_ANDROID(ch) && !AFF_FLAGGED(ch, AFF_INFRAVISION)) {
     SET_BIT_AR(AFF_FLAGS(ch), AFF_INFRAVISION);
   }
-  ABSORBING(ch) = NULL;
-  ABSORBBY(ch) = NULL;
+  char_absorbing_set(ch, NULL);
+  char_absorbed_by_set(ch, NULL);
   SITS(ch) = NULL;
-  BLOCKED(ch) = NULL;
-  BLOCKS(ch) = NULL;
+  char_blocked_by_set(ch, NULL);
+  char_blocking_set(ch, NULL);
   GET_SPAM(ch) = 0;
   GET_RMETER(ch) = 0;
 
-  if (AFF_FLAGGED(ch, AFF_HAYASA)) {
-    GET_SPEEDBOOST(ch) = GET_SPEEDCALC(ch) * 0.5;
-  } else {
-    GET_SPEEDBOOST(ch) = 0;
-  }
   if (GET_TRP(ch) < GET_RP(ch)) {
     GET_TRP(ch) = GET_RP(ch);
   }

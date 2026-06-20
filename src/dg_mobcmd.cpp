@@ -1023,16 +1023,13 @@ ACMD(do_mtransform) {
       tmpmob.description = strdup(m->description);
 
     tmpmob.id = ch->id;
-    tmpmob.affected = ch->affected;
     tmpmob.proto_script = ch->proto_script;
     tmpmob.script = ch->script;
     tmpmob.memory = ch->memory;
-    tmpmob.master = ch->master;
-
     GET_WAS_IN(&tmpmob) = GET_WAS_IN(ch);
     char_stat_set(&tmpmob, "money", GET_GOLD(ch));
     char_position_set(&tmpmob, GET_POS(ch));
-    FIGHTING(&tmpmob) = FIGHTING(ch);
+    char_fighting_set(&tmpmob, FIGHTING(ch));
     memcpy(ch, &tmpmob, sizeof(*ch));
 
     for (pos = 0; pos < NUM_WEARS; pos++) {
@@ -1162,16 +1159,16 @@ ACMD(do_mfollow) {
     return;
   }
 
-  if (ch->master == leader) /* already following */
+  if (MASTER(ch) == leader) /* already following */
     return;
 
-  if (AFF_FLAGGED(ch, AFF_CHARM) && (ch->master)) /* can't override charm */
+  if (AFF_FLAGGED(ch, AFF_CHARM) && (MASTER(ch))) /* can't override charm */
     return;
 
   /* stop following someone else first */
-  if (ch->master) {
-    char_follower_remove(ch->master, ch);
-    ch->master = NULL;
+  if (MASTER(ch)) {
+    char_follower_remove(MASTER(ch), ch);
+    char_following_set(ch, NULL);
   }
 
   if (ch == leader)
@@ -1182,7 +1179,7 @@ ACMD(do_mfollow) {
     return;
   }
 
-  ch->master = leader;
+  char_following_set(ch, leader);
   char_follower_add(leader, ch);
 }
 

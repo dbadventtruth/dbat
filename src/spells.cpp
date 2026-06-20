@@ -12,7 +12,6 @@
 #include "act.informative.h"
 #include "act.item.h"
 #include "act.movement.h"
-#include "affect.h"
 #include "character_api.h"
 #include "character_impl.h"
 #include "character_macros.h"
@@ -198,7 +197,7 @@ ASPELL(spell_charm) {
   else if (mag_newsaves(ch, victim, SPELL_CHARM, level, GET_INT(ch)))
     send_to_char(ch, "Your victim resists!\r\n");
   else {
-    if (victim->master)
+    if (MASTER(victim))
       stop_follower(victim);
 
     add_follower(victim, ch);
@@ -213,7 +212,7 @@ ASPELL(spell_charm) {
     af.modifier = 0;
     af.location = 0;
     af.bitvector = AFF_CHARM;
-    affect_to_char(victim, &af);
+    //affect_to_char(victim, &af);
 
     act("Isn't $n just such a nice fellow?", FALSE, ch, 0, victim, TO_VICT);
     if (IS_NPC(victim))

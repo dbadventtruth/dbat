@@ -4,15 +4,19 @@
 extern "C" {
 #endif
 
-#define ALIGN_SAINT 0
-#define ALIGN_VALIANT 1
-#define ALIGN_HERO 2
-#define ALIGN_DOGOOD 3
-#define ALIGN_NEUTRAL 4
-#define ALIGN_CROOK 5
-#define ALIGN_VILLAIN 6
-#define ALIGN_TERRIBLE 7
-#define ALIGN_HORRIBLE 8
+// ENUM: Alignments
+typedef enum {
+    ALIGN_SAINT    = 0,
+    ALIGN_VALIANT  = 1,
+    ALIGN_HERO     = 2,
+    ALIGN_DOGOOD   = 3,
+    ALIGN_NEUTRAL  = 4,
+    ALIGN_CROOK    = 5,
+    ALIGN_VILLAIN  = 6,
+    ALIGN_TERRIBLE = 7,
+    ALIGN_HORRIBLE = 8,
+} Alignments;
+// End Enum: Alignments
 
 #define NUM_ALIGNS 9
 

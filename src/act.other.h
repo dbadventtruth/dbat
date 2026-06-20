@@ -11,7 +11,6 @@ extern const room_vnum freeres[NUM_ALIGNS];
 
 // functions
 void log_imm_action(char *messg, ...);
-void hint_system(struct char_data *ch, int num);
 int dball_count(struct char_data *ch);
 void log_custom(struct descriptor_data *d, struct obj_data *obj);
 void wishSYS(void);
@@ -21,13 +20,11 @@ void load_shadow_dragons();
 int is_innate(struct char_data *ch, int spellnum);
 int is_innate_ready(struct char_data *ch, int spellnum);
 void add_innate_timer(struct char_data *ch, int spellnum);
-void add_innate_affects(struct char_data *ch);
 void update_innate(struct char_data *ch);
 
 // commands
 ACMD(do_skills);
 ACMD(do_gen_comm);
-ACMD(do_charge);
 ACMD(do_wear);
 ACMD(do_quit);
 ACMD(do_save);
@@ -75,7 +72,7 @@ ACMD(do_ingest);
 ACMD(do_upgrade);
 ACMD(do_srepair);
 ACMD(do_recharge);
-ACMD(do_form);
+/* do_form/create moved to lua/characters/commands/misc/create.lua */
 ACMD(do_spit);
 ACMD(do_majinize);
 ACMD(do_potential);
@@ -108,7 +105,6 @@ ACMD(do_visible);
 ACMD(do_compare);
 ACMD(do_break);
 ACMD(do_fix);
-ACMD(do_resurrect);
 ACMD(do_clan);
 ACMD(do_aid);
 

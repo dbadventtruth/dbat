@@ -5,10 +5,12 @@ extern "C" {
 #endif
 
 /* Fishing Defines */
-#define FISH_NOFISH 0
-#define FISH_BITE 1
-#define FISH_HOOKED 2
-#define FISH_REELING 3
+typedef enum {
+    FISH_NOFISH  = 0,
+    FISH_BITE    = 1,
+    FISH_HOOKED  = 2,
+    FISH_REELING = 3,
+} FishState;
 
 #ifdef __cplusplus
 }

@@ -21,8 +21,9 @@ return {
         end
         return modifiers
     end,
-    on_remove = function(ch, cond) 
+    on_remove = function(ch, cond)
         ch:act_self("You feel slightly less confident now.")
         ch:act_around("$n looks slightly less confident now.", {hide_invisible = true})
     end,
+    status_line = function(ch, cond) return "You are feeling confident from your pose earlier." end,
 }

@@ -81,6 +81,15 @@ int64_t eq_remaining_ms(uint64_t id);
 // Current wall time in milliseconds. Use as base for fire_at calculations.
 int64_t event_queue_now_ms(void);
 
+// Schedule a lua_entity_update event: fires entity:on_event(kind) on the target entity.
+// kind is the colon-delimited routing string (e.g. "condition:bonus_healthy:tick").
+// It doubles as the owner-index tag, so eq_cancel_owner / eq_owner_count / eq_owner_next_ms
+// all work with the same string.
+uint64_t event_schedule_lua_char_update(int64_t fire_at, int64_t interval, const char *kind, int64_t char_id);
+uint64_t event_schedule_lua_room_update(int64_t fire_at, int64_t interval, const char *kind, int32_t room_id);
+uint64_t event_schedule_lua_obj_update (int64_t fire_at, int64_t interval, const char *kind, int64_t obj_id);
+uint64_t event_schedule_lua_zone_update(int64_t fire_at, int64_t interval, const char *kind, int32_t zone_id);
+
 // Register all heartbeat sub-functions as recurring events.
 // Called once at startup after config and Lua are loaded.
 void event_queue_register_heartbeat_events(void);

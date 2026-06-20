@@ -520,7 +520,7 @@ int cast_spell(struct char_data *ch, struct char_data *tch,
     }
     return (0);
   }
-  if (AFF_FLAGGED(ch, AFF_CHARM) && (ch->master == tch)) {
+  if (AFF_FLAGGED(ch, AFF_CHARM) && (MASTER(ch) == tch)) {
     send_to_char(ch, "You are afraid you might hurt your master!\r\n");
     return (0);
   }

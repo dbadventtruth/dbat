@@ -10,12 +10,12 @@ local function display_transformations(ctx)
         local name = transforms.display_name(def, ctx.ch) or id
         local active = transforms.active(def, ctx.ch) and " @G(active)@n" or ""
         local unlocked = transforms.is_unlocked(def, ctx.ch) and "@Gunlocked@n" or "@rlocked@n"
-        ctx.ch:send(string.format("  @C%s@n - %s%s\r\n", name, unlocked, active))
+        ctx.ch:send_line("  @C%s@n - %s%s", name, unlocked, active)
         shown = shown + 1
     end
 
     if shown == 0 then
-        ctx.ch:send("  None.\r\n")
+        ctx.ch:send_line("  None.")
     end
 end
 
@@ -30,16 +30,16 @@ local function transform_revert(ctx)
             local ok, why = transforms.revert(def, ctx.ch, "reverted")
             if ok then
                 local name = transforms.display_name(def, ctx.ch) or def.id
-                ctx.ch:send(string.format("You revert from @C%s@n.\r\n", name))
+                ctx.ch:send_line("You revert from @C%s@n.", name)
                 reverted = reverted + 1
             elseif why then
-                ctx.ch:send(why .. "\r\n")
+                ctx.ch:send_line(why)
             end
         end
     end
 
     if reverted == 0 then
-        ctx.ch:send("You are not transformed.\r\n")
+        ctx.ch:send_line("You are not transformed.")
     end
 end
 
@@ -54,21 +54,21 @@ local function transform_apply(ctx)
 
     local def = transforms.resolve(ctx.ch, form)
     if def == nil then
-        ctx.ch:send("No such transformation.\r\n")
+        ctx.ch:send_line("No such transformation.")
         return
     end
 
     local ok, why = transforms.enter(def, ctx.ch, "command", "transform")
     if not ok then
-        ctx.ch:send((why or "You cannot transform into that form.") .. "\r\n")
+        ctx.ch:send_line(why or "You cannot transform into that form.")
         return
     end
 
     local name = transforms.display_name(def, ctx.ch) or def.id
     local msg_context = { actor = ctx.ch }
-    local msg_self = def.msg_transform_self or string.format("You transform into @C%s@n.\r\n", name)
+    local msg_self = def.msg_transform_self or string.format("You transform into @C%s@n.", name)
     dbat.lib.act.to_char(ctx.ch, msg_self, msg_context)
-    local msg_others = def.msg_transform_others or string.format("@C$n@W transforms into @C%s@n.\r\n", name)
+    local msg_others = def.msg_transform_others or string.format("@C$n@W transforms into @C%s@n.", name)
     dbat.lib.act.around(ctx.ch, msg_others, msg_context)
 
     ctx.ch:reveal_hiding(0)

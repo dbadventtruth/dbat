@@ -16,8 +16,6 @@ pub const DeserializeOptions = struct {
 };
 
 extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
-extern fn affect_to_char(ch: *cdb.char_data, af: *cdb.affected_type) void;
-extern fn affectv_to_char(ch: *cdb.char_data, af: *cdb.affected_type) void;
 
 pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode: CharacterJsonMode) !JsonValue {
     var object = jsonx.newObject(allocator);
@@ -52,7 +50,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "eye", ch.eye);
         try jsonx.putInt(&object, allocator, "distinguishing_feature", ch.distfea);
         try jsonx.putInt(&object, allocator, "aura", ch.aura);
-        try jsonx.putInt(&object, allocator, "tail_growth", ch.tail_growth);
         try jsonx.putInt(&object, allocator, "rage_meter", ch.rage_meter);
         try jsonx.putInt(&object, allocator, "mimic", ch.mimic);
         try jsonx.putInt(&object, allocator, "hometown", ch.hometown);
@@ -97,8 +94,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putString(&object, allocator, "rdisplay", ch.rdisplay);
         try jsonx.putString(&object, allocator, "voice", ch.voice);
         try jsonx.put(&object, allocator, "time", try serializeTime(allocator, ch));
-        try jsonx.putInt(&object, allocator, "forgeting", ch.forgeting);
-        try jsonx.putInt(&object, allocator, "forgetcount", ch.forgetcount);
         try jsonx.putInt(&object, allocator, "lastint", ch.lastint);
         try jsonx.putInt(&object, allocator, "sleeptime", ch.sleeptime);
         try jsonx.putInt(&object, allocator, "cooldown", ch.cooldown);
@@ -112,7 +107,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "reward_time", ch.rewtime);
         try jsonx.putInt(&object, allocator, "transclass", ch.transclass);
         try jsonx.putInt(&object, allocator, "preference", ch.preference);
-        try jsonx.putInt(&object, allocator, "relax_count", ch.relax_count);
         try jsonx.putInt(&object, allocator, "rp", ch.rp);
         try jsonx.putInt(&object, allocator, "total_rp", ch.trp);
         try jsonx.putInt(&object, allocator, "clank_rank", ch.crank);
@@ -124,10 +118,9 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "radar2", ch.radar2);
         try jsonx.putInt(&object, allocator, "radar3", ch.radar3);
         try jsonx.putNonEmpty(&object, allocator, "player_flags", try jsonx.serializeFlags(allocator, ch, cdb.NUM_PLR_FLAGS, actFlagged));
-        try jsonx.putNonEmpty(&object, allocator, "affects", try serializeAffects(allocator, ch.affected));
         try jsonx.putNonEmpty(&object, allocator, "skills", try serializeSkills(allocator, ch));
         try jsonx.put(&object, allocator, "lboard", try serializeIntArray(allocator, ch.lboard[0..]));
-        try jsonx.put(&object, allocator, "limbs", try serializeIntArray(allocator, ch.limb_condition[0..]));
+        // limbs are now stored as stats (limb_right_arm, limb_left_arm, etc.)
         try jsonx.put(&object, allocator, "genome", try serializeIntArray(allocator, ch.genome[0..]));
         try jsonx.put(&object, allocator, "bonuses", try serializeIntArray(allocator, ch.bonuses[0..]));
         try jsonx.put(&object, allocator, "transcost", try serializeIntArray(allocator, ch.transcost[0..]));
@@ -136,6 +129,7 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
     try jsonx.putNonEmpty(&object, allocator, "stats", try serializeStats(allocator, ch));
     if (meters.object.count() > 0) try jsonx.put(&object, allocator, "meters", meters);
     try jsonx.putNonEmpty(&object, allocator, "conditions", try serializeConditions(allocator, ch));
+    try jsonx.putNonEmpty(&object, allocator, "scripts", try serializeCharScripts(allocator, ch));
     try jsonx.putNonEmpty(&object, allocator, "transformations", try serializeTransformations(allocator, ch));
 
     return object;
@@ -220,13 +214,13 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "eye", i8)) |v| ch.eye = v;
         if (try jsonx.intField(value, "distinguishing_feature", i8)) |v| ch.distfea = v;
         if (try jsonx.intField(value, "aura", c_int)) |v| ch.aura = v;
-        if (try jsonx.intField(value, "tail_growth", c_int)) |v| ch.tail_growth = v;
         if (try jsonx.intField(value, "rage_meter", c_int)) |v| ch.rage_meter = v;
         if (try jsonx.intField(value, "mimic", c_int)) |v| ch.mimic = v;
         if (try jsonx.intField(value, "hometown", cdb.room_vnum)) |v| ch.hometown = v;
         if (jsonx.field(value, "bodyparts")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, bodypartFlagSet);
         if (jsonx.field(value, "affected_by")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, affectedFlagSet);
         if (jsonx.field(value, "conditions")) |conditions| try deserializeConditions(ch, conditions);
+        if (jsonx.field(value, "scripts")) |scripts| try deserializeCharScripts(ch, scripts);
         if (jsonx.field(value, "transformations")) |transformations| try deserializeTransformations(ch, transformations);
     }
 
@@ -267,8 +261,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         try setPointerStringField(options.c_allocator, value, "rdisplay", &ch.rdisplay, setRawString);
         try setPointerStringField(options.c_allocator, value, "voice", &ch.voice, setRawString);
         if (jsonx.field(value, "time")) |time| try deserializeTime(ch, time);
-        if (try jsonx.intField(value, "forgeting", c_int)) |v| ch.forgeting = v;
-        if (try jsonx.intField(value, "forgetcount", c_int)) |v| ch.forgetcount = v;
         if (try jsonx.intField(value, "lastint", cdb.time_t)) |v| ch.lastint = v;
         if (try jsonx.intField(value, "sleeptime", c_int)) |v| ch.sleeptime = v;
         if (try jsonx.intField(value, "cooldown", c_int)) |v| ch.cooldown = v;
@@ -282,7 +274,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "reward_time", cdb.time_t)) |v| ch.rewtime = v;
         if (try jsonx.intField(value, "transclass", c_int)) |v| ch.transclass = v;
         if (try jsonx.intField(value, "preference", c_int)) |v| ch.preference = v;
-        if (try jsonx.intField(value, "relax_count", c_int)) |v| ch.relax_count = v;
         if (try jsonx.intField(value, "rp", c_int)) |v| ch.rp = v;
         if (try jsonx.intField(value, "total_rp", c_int)) |v| ch.trp = v;
         if (try jsonx.intField(value, "clank_rank", c_int)) |v| ch.crank = v;
@@ -294,10 +285,9 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "radar2", cdb.room_vnum)) |v| ch.radar2 = v;
         if (try jsonx.intField(value, "radar3", cdb.room_vnum)) |v| ch.radar3 = v;
         if (jsonx.field(value, "player_flags")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_PLR_FLAGS, actFlagSet);
-        if (jsonx.field(value, "affects")) |items| try deserializeAffects(ch, items);
         if (jsonx.field(value, "skills")) |skills| try deserializeSkills(ch, skills);
         if (jsonx.field(value, "lboard")) |items| try deserializeIntArray(ch.lboard[0..], items);
-        if (jsonx.field(value, "limbs")) |items| try deserializeIntArray(ch.limb_condition[0..], items);
+        if (jsonx.field(value, "limbs")) |items| try migrateOldLimbs(ch, items);
         if (jsonx.field(value, "genome")) |items| try deserializeIntArray(ch.genome[0..], items);
         if (jsonx.field(value, "bonuses")) |items| try deserializeIntArray(ch.bonuses[0..], items);
         if (jsonx.field(value, "transcost")) |items| try deserializeIntArray(ch.transcost[0..], items);
@@ -324,9 +314,11 @@ fn setPointerStringField(allocator: std.mem.Allocator, object: JsonValue, key: [
 
 fn serializeStats(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
     var object = jsonx.newObject(allocator);
-    for (0..characters_api.characterStatCount()) |index| {
-        const entry = characters_api.characterStatEntry(ch, index) orelse continue;
-        try jsonx.putInt(&object, allocator, entry.name, entry.value);
+    var maybe_iter = characters_api.characterStatIterator(ch);
+    if (maybe_iter) |*iter| {
+        while (iter.next()) |entry| {
+            try jsonx.putInt(&object, allocator, entry.name, entry.value);
+        }
     }
     return object;
 }
@@ -358,15 +350,17 @@ fn serializeConditions(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonVa
         const cname = intern_mod.nameOf(entry.key_ptr.*);
         const definition = lua_api.conditionDefinition(cname) orelse continue;
         if (!definition.persistent) continue;
-        try jsonx.put(&object, allocator, cname, try serializeCondition(allocator, entry.value_ptr));
+        try jsonx.put(&object, allocator, cname, try serializeCondition(allocator, ch, cname, entry.value_ptr));
     }
     return object;
 }
 
-fn serializeCondition(allocator: std.mem.Allocator, condition: *characters_api.ConditionInstance) !JsonValue {
+fn serializeCondition(allocator: std.mem.Allocator, ch: *cdb.char_data, name: []const u8, condition: *characters_api.ConditionInstance) !JsonValue {
     var object = jsonx.newObject(allocator);
     try jsonx.putInt(&object, allocator, "stacks", condition.stacks);
-    try jsonx.putInt(&object, allocator, "duration", condition.duration);
+    const name_z = try std.heap.page_allocator.dupeZ(u8, name);
+    defer std.heap.page_allocator.free(name_z);
+    try jsonx.putInt(&object, allocator, "duration", cdb.char_condition_duration_get(ch, name_z.ptr));
 
     var sources = jsonx.JsonArray.init(allocator);
     for (condition.sources.items) |source| {
@@ -398,19 +392,22 @@ fn deserializeConditions(ch: *cdb.char_data, conditions: JsonValue) !void {
         if (item != .object) return error.ExpectedObject;
         const id_z = try std.heap.page_allocator.dupeZ(u8, id);
         defer std.heap.page_allocator.free(id_z);
+        // Add silently so on_apply fires AFTER variables are restored below.
         if (jsonx.field(item, "sources")) |sources| {
             if (sources == .array and sources.array.items.len > 0) {
                 try deserializeConditionSources(ch, id_z.ptr, sources);
             } else {
-                _ = cdb.char_condition_add(ch, id_z.ptr, "json", "conditions");
+                _ = cdb.char_condition_add_silent(ch, id_z.ptr, "json", "conditions");
             }
         } else {
-            _ = cdb.char_condition_add(ch, id_z.ptr, "json", "conditions");
+            _ = cdb.char_condition_add_silent(ch, id_z.ptr, "json", "conditions");
         }
         if (try jsonx.intField(item, "stacks", i64)) |v| _ = cdb.char_condition_stacks_set(ch, id_z.ptr, v);
         if (try jsonx.intField(item, "duration", i64)) |v| _ = cdb.char_condition_duration_set(ch, id_z.ptr, v);
         if (jsonx.field(item, "numbers")) |numbers| try deserializeConditionNumbers(ch, id, numbers);
         if (jsonx.field(item, "strings")) |strings| try deserializeConditionStrings(ch, id, strings);
+        // Fire on_apply now that all variables are set.
+        cdb.char_condition_notify_applied(ch, id_z.ptr);
     }
 }
 
@@ -426,7 +423,7 @@ fn deserializeConditionSources(ch: *cdb.char_data, id_z: [*:0]const u8, sources:
         defer std.heap.page_allocator.free(category_z);
         const source_z = try std.heap.page_allocator.dupeZ(u8, source_id);
         defer std.heap.page_allocator.free(source_z);
-        _ = cdb.char_condition_add(ch, id_z, category_z.ptr, source_z.ptr);
+        _ = cdb.char_condition_add_silent(ch, id_z, category_z.ptr, source_z.ptr);
     }
 }
 
@@ -531,6 +528,20 @@ fn serializeIntArray(allocator: std.mem.Allocator, values: anytype) !JsonValue {
     return .{ .array = array };
 }
 
+const limb_stat_names = [4][*:0]const u8{
+    "limb_right_arm", "limb_left_arm", "limb_right_leg", "limb_left_leg",
+};
+
+fn migrateOldLimbs(ch: *cdb.char_data, json: JsonValue) !void {
+    if (json != .array) return error.ExpectedArray;
+    for (json.array.items, 0..) |item, index| {
+        if (index >= 4) break;
+        if (item != .integer) return error.ExpectedInteger;
+        const val: i64 = @intCast(item.integer);
+        _ = characters_api.char_stat_set(ch, limb_stat_names[index], val);
+    }
+}
+
 fn deserializeIntArray(values: anytype, json: JsonValue) !void {
     if (json != .array) return error.ExpectedArray;
     for (json.array.items, 0..) |item, index| {
@@ -580,38 +591,6 @@ fn deserializeTime(ch: *cdb.char_data, value: JsonValue) !void {
     if (try jsonx.intField(value, "max_age", cdb.time_t)) |v| ch.time.maxage = v;
     if (try jsonx.intField(value, "played", cdb.time_t)) |v| ch.time.played = v;
     if (try jsonx.intField(value, "logon", cdb.time_t)) |v| ch.time.logon = v;
-}
-
-fn serializeAffects(allocator: std.mem.Allocator, head: ?*cdb.affected_type) !JsonValue {
-    var array = jsonx.JsonArray.init(allocator);
-    var current = head;
-    while (current) |af| : (current = af.next) {
-        var object = jsonx.newObject(allocator);
-        try jsonx.putInt(&object, allocator, "type", af.type);
-        try jsonx.putInt(&object, allocator, "duration", af.duration);
-        try jsonx.putInt(&object, allocator, "modifier", af.modifier);
-        try jsonx.putInt(&object, allocator, "location", af.location);
-        try jsonx.putInt(&object, allocator, "bitvector", af.bitvector);
-        try jsonx.putInt(&object, allocator, "specific", af.specific);
-        try array.append(object);
-    }
-    return .{ .array = array };
-}
-
-fn deserializeAffects(ch: *cdb.char_data, value: JsonValue) !void {
-    if (value != .array) return error.ExpectedArray;
-    for (value.array.items) |item| {
-        if (item != .object) return error.ExpectedObject;
-        var af: cdb.affected_type = std.mem.zeroes(cdb.affected_type);
-        if (try jsonx.intField(item, "type", i16)) |v| af.type = v;
-        if (try jsonx.intField(item, "duration", i16)) |v| af.duration = v;
-        if (try jsonx.intField(item, "modifier", c_int)) |v| af.modifier = v;
-        if (try jsonx.intField(item, "location", c_int)) |v| af.location = v;
-        if (try jsonx.intField(item, "bitvector", cdb.bitvector_t)) |v| af.bitvector = v;
-        if (try jsonx.intField(item, "specific", c_int)) |v| af.specific = v;
-        if (af.type == 0) continue;
-        affect_to_char(ch, &af);
-    }
 }
 
 fn serializeSkills(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
@@ -694,4 +673,71 @@ fn prefFlagged(ch: *cdb.char_data, pos: c_int) bool {
 
 fn prefFlagSet(ch: *cdb.char_data, pos: c_int, value: bool) void {
     bitflags.set(ch.pref[0..], pos, value);
+}
+
+fn serializeCharScripts(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
+    var object = jsonx.newObject(allocator);
+    if (ch.zigdata == null) return object;
+    const data: *characters_api.CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var it = data.scripts.iterator();
+    while (it.next()) |entry| {
+        const sname = intern_mod.nameOf(entry.key_ptr.*);
+        const definition = lua_api.scriptDefinition("character_scripts", sname) orelse continue;
+        if (!definition.persistent) continue;
+        try jsonx.put(&object, allocator, sname, try serializeScriptInstance(allocator, entry.value_ptr));
+    }
+    return object;
+}
+
+fn serializeScriptInstance(allocator: std.mem.Allocator, instance: *const characters_api.ScriptInstance) !JsonValue {
+    var object = jsonx.newObject(allocator);
+    var numbers = jsonx.newObject(allocator);
+    var number_it = instance.numbers.iterator();
+    while (number_it.next()) |entry| try jsonx.putInt(&numbers, allocator, entry.key_ptr.*, entry.value_ptr.*);
+    if (numbers.object.count() > 0) try jsonx.put(&object, allocator, "numbers", numbers);
+
+    var strings = jsonx.newObject(allocator);
+    var string_it = instance.strings.iterator();
+    while (string_it.next()) |entry| try jsonx.putSlice(&strings, allocator, entry.key_ptr.*, entry.value_ptr.*);
+    if (strings.object.count() > 0) try jsonx.put(&object, allocator, "strings", strings);
+    return object;
+}
+
+fn deserializeCharScripts(ch: *cdb.char_data, scripts: JsonValue) !void {
+    if (scripts != .object) return error.ExpectedObject;
+    var it = scripts.object.iterator();
+    while (it.next()) |entry| {
+        const id = entry.key_ptr.*;
+        const item = entry.value_ptr.*;
+        const id_z = try std.heap.page_allocator.dupeZ(u8, id);
+        defer std.heap.page_allocator.free(id_z);
+        _ = cdb.char_script_add(ch, id_z.ptr);
+        if (item != .object) continue;
+        if (jsonx.field(item, "numbers")) |nums| {
+            if (nums == .object) {
+                var nit = nums.object.iterator();
+                while (nit.next()) |ne| {
+                    if (ne.value_ptr.* == .integer) {
+                        const kz = try std.heap.page_allocator.dupeZ(u8, ne.key_ptr.*);
+                        defer std.heap.page_allocator.free(kz);
+                        cdb.char_script_number_set(ch, id_z.ptr, kz.ptr, ne.value_ptr.*.integer);
+                    }
+                }
+            }
+        }
+        if (jsonx.field(item, "strings")) |strs| {
+            if (strs == .object) {
+                var sit = strs.object.iterator();
+                while (sit.next()) |se| {
+                    if (se.value_ptr.* == .string) {
+                        const kz = try std.heap.page_allocator.dupeZ(u8, se.key_ptr.*);
+                        defer std.heap.page_allocator.free(kz);
+                        const vz = try std.heap.page_allocator.dupeZ(u8, se.value_ptr.*.string);
+                        defer std.heap.page_allocator.free(vz);
+                        cdb.char_script_text_set(ch, id_z.ptr, kz.ptr, vz.ptr);
+                    }
+                }
+            }
+        }
+    }
 }

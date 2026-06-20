@@ -14,42 +14,42 @@ void ash_burn(struct char_data *ch);
 
 // commands
 ACMD(do_restring);
-ACMD(do_tailhide);
-ACMD(do_nogrow);
+/* do_tailhide moved to lua/characters/commands/misc/tailhide.lua */
+/* do_nogrow moved to lua/characters/commands/misc/nogrow.lua */
 ACMD(do_follow);
 ACMD(do_spoil);
 ACMD(do_feed);
 ACMD(do_beacon);
-ACMD(do_dimizu);
+/* do_dimizu moved to lua/characters/commands/misc/dimizu.lua */
 ACMD(do_obstruct);
 ACMD(do_warppool);
 ACMD(do_fireshield);
 ACMD(do_cook);
-ACMD(do_adrenaline);
+/* do_adrenaline moved to lua/characters/commands/misc/adrenaline.lua */
 ACMD(do_ensnare);
 ACMD(do_arena);
 ACMD(do_bury);
-ACMD(do_hayasa);
+/* do_hayasa moved to lua/characters/commands/misc/hayasa.lua */
 ACMD(do_instill);
 ACMD(do_hydromancy);
 ACMD(do_channel);
 ACMD(do_shimmer);
-ACMD(do_metamorph);
-ACMD(do_healglow);
+/* do_metamorph moved to lua/characters/commands/misc/metamorph.lua */
+/* do_healglow moved to lua/characters/commands/misc/healglow.lua */
 ACMD(do_resize);
 ACMD(do_scry);
-ACMD(do_runic);
-ACMD(do_extract);
-ACMD(do_fish);
-ACMD(do_defend);
-ACMD(do_lifeforce);
+/* do_runic moved to lua/characters/commands/misc/runic.lua */
+/* do_extract moved to lua/characters/commands/misc/extract.lua */
+/* do_fish moved to lua/characters/commands/misc/fish.lua */
+/* do_defend moved to lua/characters/commands/misc/defend.lua */
+/* do_lifeforce moved to lua/characters/pcommands/info/lifeforce.lua */
 ACMD(do_liquefy);
-ACMD(do_shell);
+/* do_shell moved to lua/characters/commands/misc/shell.lua */
 ACMD(do_moondust);
-ACMD(do_preference);
-ACMD(do_song);
+/* do_preference moved to lua/characters/commands/misc/preference.lua */
+/* do_song moved to lua/characters/commands/misc/song.lua */
 ACMD(do_multiform);
-ACMD(do_spiritcontrol);
+/* do_spiritcontrol moved to lua/characters/commands/misc/spiritcontrol.lua */
 ACMD(do_ashcloud);
 ACMD(do_silk);
 

@@ -83,8 +83,8 @@ fn parseRuntimeOptions(init: std.process.Init, test_options: *test_mode.Options,
 }
 
 pub fn main(init: std.process.Init) u8 {
-    db.init(init.gpa, init.io) catch {
-        std.process.fatal("failed to initialize database", .{});
+    db.init(init.gpa, init.io) catch |err| {
+        std.process.fatal("failed to initialize database: {s}", .{@errorName(err)});
     };
     defer db.deinit();
 

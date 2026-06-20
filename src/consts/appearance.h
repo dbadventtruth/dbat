@@ -5,102 +5,122 @@ extern "C" {
 #endif
 
 /* Distinguishing Feature */
-#define DISTFEA_EYE 0
-#define DISTFEA_HAIR 1
-#define DISTFEA_SKIN 2
-#define DISTFEA_HEIGHT 3
-#define DISTFEA_WEIGHT 4
+// ENUM: DistinguishingFeatures
+typedef enum {
+    DISTFEA_EYE    = 0,
+    DISTFEA_HAIR   = 1,
+    DISTFEA_SKIN   = 2,
+    DISTFEA_HEIGHT = 3,
+    DISTFEA_WEIGHT = 4,
+} DistinguishingFeatures;
+// End Enum: DistinguishingFeatures
 
 /* Custom Aura */
-#define AURA_WHITE 0
-#define AURA_BLUE 1
-#define AURA_RED 2
-#define AURA_GREEN 3
-#define AURA_PINK 4
-#define AURA_PURPLE 5
-#define AURA_YELLOW 6
-#define AURA_BLACK 7
-#define AURA_ORANGE 8
+// ENUM: AuraColors
+typedef enum {
+    AURA_WHITE  = 0,
+    AURA_BLUE   = 1,
+    AURA_RED    = 2,
+    AURA_GREEN  = 3,
+    AURA_PINK   = 4,
+    AURA_PURPLE = 5,
+    AURA_YELLOW = 6,
+    AURA_BLACK  = 7,
+    AURA_ORANGE = 8,
+} AuraColors;
+// End Enum: AuraColors
 
-/* Eye Color */
-#define EYE_UNDEFINED -1
-#define EYE_BLUE 0
-#define EYE_BLACK 1
-#define EYE_GREEN 2
-#define EYE_BROWN 3
-#define EYE_RED 4
-#define EYE_AQUA 5
-#define EYE_PINK 6
-#define EYE_PURPLE 7
-#define EYE_CRIMSON 8
-#define EYE_GOLD 9
-#define EYE_AMBER 10
-#define EYE_EMERALD 11
+// ENUM: EyeColors
+typedef enum {
+    EYE_UNDEFINED = -1,
+    EYE_BLUE      = 0,
+    EYE_BLACK     = 1,
+    EYE_GREEN     = 2,
+    EYE_BROWN     = 3,
+    EYE_RED       = 4,
+    EYE_AQUA      = 5,
+    EYE_PINK      = 6,
+    EYE_PURPLE    = 7,
+    EYE_CRIMSON   = 8,
+    EYE_GOLD      = 9,
+    EYE_AMBER     = 10,
+    EYE_EMERALD   = 11,
+} EyeColors;
+// End Enum: EyeColors
 
 /*Hair Length */
-#define HAIRL_UNDEFINED -1
-#define HAIRL_BALD 0
-#define HAIRL_SHORT 1
-#define HAIRL_MEDIUM 2
-#define HAIRL_LONG 3
-#define HAIRL_RLONG 4
+typedef enum {
+    HAIRL_UNDEFINED = -1,
+    HAIRL_BALD      = 0,
+    HAIRL_SHORT     = 1,
+    HAIRL_MEDIUM    = 2,
+    HAIRL_LONG      = 3,
+    HAIRL_RLONG     = 4,
+} HairLength;
 
 /*Hair Color */
-#define HAIRC_UNDEFINED -1
-#define HAIRC_NONE 0
-#define HAIRC_BLACK 1
-#define HAIRC_BROWN 2
-#define HAIRC_BLONDE 3
-#define HAIRC_GREY 4
-#define HAIRC_RED 5
-#define HAIRC_ORANGE 6
-#define HAIRC_GREEN 7
-#define HAIRC_BLUE 8
-#define HAIRC_PINK 9
-#define HAIRC_PURPLE 10
-#define HAIRC_SILVER 11
-#define HAIRC_CRIMSON 12
-#define HAIRC_WHITE 13
+typedef enum {
+    HAIRC_UNDEFINED = -1,
+    HAIRC_NONE      = 0,
+    HAIRC_BLACK     = 1,
+    HAIRC_BROWN     = 2,
+    HAIRC_BLONDE    = 3,
+    HAIRC_GREY      = 4,
+    HAIRC_RED       = 5,
+    HAIRC_ORANGE    = 6,
+    HAIRC_GREEN     = 7,
+    HAIRC_BLUE      = 8,
+    HAIRC_PINK      = 9,
+    HAIRC_PURPLE    = 10,
+    HAIRC_SILVER    = 11,
+    HAIRC_CRIMSON   = 12,
+    HAIRC_WHITE     = 13,
+} HairColor;
 
 /* Hair Style */
-#define HAIRS_UNDEFINED -1
-#define HAIRS_NONE 0
-#define HAIRS_PLAIN 1
-#define HAIRS_MOHAWK 2
-#define HAIRS_SPIKY 3
-#define HAIRS_CURLY 4
-#define HAIRS_UNEVEN 5
-#define HAIRS_PONYTAIL 6
-#define HAIRS_AFRO 7
-#define HAIRS_FADE 8
-#define HAIRS_CREW 9
-#define HAIRS_FEATHERED 10
-#define HAIRS_DRED 11
+typedef enum {
+    HAIRS_UNDEFINED = -1,
+    HAIRS_NONE      = 0,
+    HAIRS_PLAIN     = 1,
+    HAIRS_MOHAWK    = 2,
+    HAIRS_SPIKY     = 3,
+    HAIRS_CURLY     = 4,
+    HAIRS_UNEVEN    = 5,
+    HAIRS_PONYTAIL  = 6,
+    HAIRS_AFRO      = 7,
+    HAIRS_FADE      = 8,
+    HAIRS_CREW      = 9,
+    HAIRS_FEATHERED = 10,
+    HAIRS_DRED      = 11,
+} HairStyle;
 
 /* Skin Color */
-#define SKIN_UNDEFINED -1
-#define SKIN_WHITE 0
-#define SKIN_BLACK 1
-#define SKIN_GREEN 2
-#define SKIN_ORANGE 3
-#define SKIN_YELLOW 4
-#define SKIN_RED 5
-#define SKIN_GREY 6
-#define SKIN_BLUE 7
-#define SKIN_AQUA 8
-#define SKIN_PINK 9
-#define SKIN_PURPLE 10
-#define SKIN_TAN 11
+typedef enum {
+    SKIN_UNDEFINED = -1,
+    SKIN_WHITE     = 0,
+    SKIN_BLACK     = 1,
+    SKIN_GREEN     = 2,
+    SKIN_ORANGE    = 3,
+    SKIN_YELLOW    = 4,
+    SKIN_RED       = 5,
+    SKIN_GREY      = 6,
+    SKIN_BLUE      = 7,
+    SKIN_AQUA      = 8,
+    SKIN_PINK      = 9,
+    SKIN_PURPLE    = 10,
+    SKIN_TAN       = 11,
+} SkinColor;
 
 /* Annual Sign Phase */
-
-#define PHASE_PURITY 0
-#define PHASE_BRAVERY 1
-#define PHASE_HATRED 2
-#define PHASE_DOMINANCE 3
-#define PHASE_GUARDIAN 4
-#define PHASE_LOVE 5
-#define PHASE_STRENGTH 6
+typedef enum {
+    PHASE_PURITY    = 0,
+    PHASE_BRAVERY   = 1,
+    PHASE_HATRED    = 2,
+    PHASE_DOMINANCE = 3,
+    PHASE_GUARDIAN  = 4,
+    PHASE_LOVE      = 5,
+    PHASE_STRENGTH  = 6,
+} AnnualPhase;
 
 extern const char *hairl_types[];
 extern const char *eye_types[];

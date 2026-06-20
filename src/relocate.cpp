@@ -1,6 +1,5 @@
 #include "relocate.h"
 
-#include "affect.h"
 #include "character_api.h"
 #include "character_db.h"
 #include "character_impl.h"

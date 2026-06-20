@@ -1,5 +1,7 @@
 #include "object_utils.h"
 #include "object_impl.h"
+#include "act.item.h"
+#include "util_macros.h"
 
 #include "consts/directions.h"
 #include "consts/itemdata.h"
@@ -496,4 +498,14 @@ bool obj_planet_zenith(struct obj_data *obj) {
     return false;
   return ((v >= 3400 && v <= 3599) || (v >= 62900 && v <= 62999) ||
           (v == 19600));
+}
+
+void obj_drinkcon_weight_drain(struct obj_data *obj, int amount) {
+  if (GET_OBJ_VAL(obj, 0) <= 0) return;  // eternal capacity, no weight change
+  int w = MIN(amount, (int)GET_OBJ_WEIGHT(obj));
+  weight_change_object(obj, -w);
+}
+
+void obj_drinkcon_name_update(struct obj_data *obj) {
+  name_from_drinkcon(obj);
 }

@@ -28,7 +28,7 @@
 #include "consts/skills.h"
 #include "consts/songs.h"
 
-#include "affect.h"
+
 #include "extract.h"
 #include "interpreter.h"
 #include "iterate.hpp"
@@ -48,7 +48,6 @@
 #include "comm.h"
 #include "spells.h"
 
-#include "affect.h"
 #include "character_api.h"
 #include "character_db.h"
 #include "character_macros.h"
@@ -86,90 +85,15 @@
 
 /* local functions  */
 static void generate_multiform(struct char_data *ch, int count);
-static void resolve_song(struct char_data *ch);
-static int campfire_cook(int recipe);
 static int valid_recipe(struct char_data *ch, int recipe, int type);
 static int has_pole(struct char_data *ch);
 static void catch_fish(struct char_data *ch, int quality);
 static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b);
 static int valid_silk(struct obj_data *obj);
 
-ACMD(do_spiritcontrol) {
-
-  if (!GET_SKILL(ch, SKILL_SPIRITCONTROL)) {
-    send_to_char(ch, "You do not know how to perform that technique.\r\n");
-    return;
-  } else {
-    if (char_condition_has(ch, "spirit_control")) {
-      send_to_char(ch, "You have already concentrated and have full control of "
-                       "your spirit.\r\n");
-      return;
-    } else {
-      int64_t cost = GET_MAX_MANA(ch) * 0.2;
-      if ((getCurST(ch)) < cost) {
-        send_to_char(ch,
-                     "You need at least 20%s of your max ki in stamina to "
-                     "prepare this skill.\r\n",
-                     "%");
-        return;
-      } else {
-        decCurST(ch, cost);
-        act("@YYou concentrate and quantify every last bit of your spiritual "
-            "and mental energies. You have full control of them and can bring "
-            "them forth in an instant.@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@y$n@Y seems to concentrate hard for a moment.@n", TRUE, ch, 0, 0,
-            TO_ROOM);
-        int duration = rand_number(2, 4);
-        char_condition_add(ch, "spirit_control", "spirit", "control");
-        char_condition_duration_set(ch, "spirit_control", duration * SECS_PER_MUD_HOUR);
-      }
-    }
-  }
-}
-
-ACMD(do_tailhide) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!(IS_SAIYAN(ch)) && !(IS_HALFBREED(ch))) {
-    send_to_char(ch, "You have no need to hide your tail!\r\n");
-    return;
-  }
-
-  if (!(PLR_FLAGGED(ch, PLR_TAILHIDE))) {
-    SET_BIT_AR(PLR_FLAGS(ch), PLR_TAILHIDE);
-    act("You tuck your tail away, hiding it from view.", FALSE, ch, 0, 0,
-        TO_CHAR);
-    act("$n tucks $s tail away, hiding it from view.", FALSE, ch, 0, 0,
-        TO_ROOM);
-  } else {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TAILHIDE);
-    act("You have decided to display your tail for all to see!", FALSE, ch, 0,
-        0, TO_CHAR);
-    act("$n has decided to display $s tail for all to see!", FALSE, ch, 0, 0,
-        TO_ROOM);
-  }
-}
-
-ACMD(do_nogrow) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!(IS_SAIYAN(ch)) && !(IS_HALFBREED(ch))) {
-    send_to_char(ch, "What do you mean?\r\n");
-  }
-  if ((IS_SAIYAN(ch) || IS_HALFBREED(ch)) && !(PLR_FLAGGED(ch, PLR_NOGROW))) {
-    SET_BIT_AR(PLR_FLAGS(ch), PLR_NOGROW);
-    send_to_char(ch, "You have decided to halt your tail growth!\r\n");
-  } else if ((IS_SAIYAN(ch) || IS_HALFBREED(ch)) &&
-             PLR_FLAGGED(ch, PLR_NOGROW)) {
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_NOGROW);
-    send_to_char(ch, "You have decided to regrow your tail!\r\n");
-  }
-}
+/* do_spiritcontrol moved to lua/characters/commands/misc/spiritcontrol.lua */
+/* do_tailhide moved to lua/characters/commands/misc/tailhide.lua */
+/* do_nogrow moved to lua/characters/commands/misc/nogrow.lua */
 
 ACMD(do_restring) {
 
@@ -322,7 +246,9 @@ static void generate_multiform(struct char_data *ch, int count) {
   }
 
   if (char_condition_has(ch, "multiform_original")) {
-    char_condition_number_mod(ch, "multiform_original", "clones", count);
+    auto clone_count = char_condition_number_get(ch, "multiform_original", "clones");
+    clone_count += count;
+    char_condition_number_set(ch, "multiform_original", "clones", clone_count);
   } else {
     char_condition_apply_with_number(ch, "multiform_original", "skill",
                                      "multiform", "clones", count);
@@ -368,7 +294,6 @@ static void generate_multiform(struct char_data *ch, int count) {
 
     clone->time = ch->time;
 
-    clone->tail_growth = ch->tail_growth;
     ch->transclass = ch->transclass;
 
     // Copying these values, but it shouldn't matter because clones no longer
@@ -378,15 +303,7 @@ static void generate_multiform(struct char_data *ch, int count) {
     clone->genome[0] = ch->genome[0];
     clone->genome[1] = ch->genome[1];
 
-    // Limb copy...
-    for (int l = 0; l < 3; l++) {
-      clone->limbs[l] = ch->limbs[l];
-      clone->limb_condition[l] = ch->limb_condition[l];
-    }
-
-    GET_CLONES(ch) += 1;
-
-    GET_ORIGINAL(clone) = ch;
+    char_multiform_clone_set(clone, ch);
     char_condition_apply_with_number(clone, "multiform", "skill", "multiform",
                                      "original_id", char_id_get(ch));
     char_to_room(clone, char_room_get(ch));
@@ -403,445 +320,26 @@ void handle_multi_merge(struct char_data *form) {
   send_to_char(ch, "@YYou merge with one of your forms!@n\r\n");
   act("@y$n@Y merges with one of his multiforms!@n\r\n", TRUE, ch, 0, 0,
       TO_ROOM);
+  
+  auto count = char_condition_number_get(ch, "multiform_original", "clones");
+  count--;
+  char_condition_number_set(ch, "multiform_original", "clones", count);
 
-  ch->clones = MAX(0, ch->clones - 1);
   extract_char(form);
 }
 
-void handle_songs() {
-  struct descriptor_data *d;
+/* song system moved to lua/characters/conditions/mystic_melody.lua */
+void handle_songs() {}
 
-  for (d = descriptor_list; d; d = d->next) {
-    if (!IS_PLAYING(d))
-      continue;
-    if (!d->character)
-      continue;
-    if (GET_SONG(d->character) > 0) {
-      resolve_song(d->character);
-    }
-  }
-}
 
-static void apply_shadow_sitch(struct char_data *ch, struct char_data *vict,
-                               int skill) {
-  act("@CYour forboding music has caused @c$N's@C shadows to stitch into $S "
-      "body, slowing $S actions!@n",
-      TRUE, ch, 0, vict, TO_CHAR);
-  act("@c$n's@C forboding music has caused YOUR shadows to stitch into YOUR "
-      "body, slow YOUR actions down!@n",
-      TRUE, ch, 0, vict, TO_VICT);
-  act("@c$n's@C forboding music has caused @c$N's@C shadows to stitch into $S "
-      "body, slowing $S actions!@n",
-      TRUE, ch, 0, vict, TO_NOTVICT);
-  decCurKI(ch, getPercentOfMaxKI(ch, .001) + skill);
-  char_condition_apply(vict, "shadow_stitch", "song", "shadow_stitch");
-  char_condition_duration_set(vict, "shadow_stitch", 60);
-}
 
-static const char *song_name(int song) {
-  switch (song) {
-  case SONG_SAFETY:        return "Song of Safety";
-  case SONG_SHIELDING:     return "Song of Shielding";
-  case SONG_SHADOW_STITCH: return "Shadow Stitch Minuet";
-  default:                 return "Teleportation Melody";
-  }
-}
 
-struct TeleportDest {
-  int song_id;
-  int room_id;
-  const char *planet;
-};
 
-static constexpr TeleportDest teleport_dests[] = {
-    {SONG_TELEPORT_EARTH,   300,   "Earth"  },
-    {SONG_TELEPORT_KONACK,  8003,  "Konack" },
-    {SONG_TELEPORT_ARLIA,   16087, "Arlia"  },
-    {SONG_TELEPORT_NAMEK,   10182, "Namek"  },
-    {SONG_TELEPORT_VEGETA,  2234,  "Vegeta" },
-    {SONG_TELEPORT_FRIGID,  4047,  "Frigid" },
-    {SONG_TELEPORT_AETHER,  12025, "Aether" },
-    {SONG_TELEPORT_KANASSA, 14910, "Kanassa"},
-};
 
-static void resolve_song(struct char_data *ch) {
-  if (GET_SONG(ch) <= 0)
-    return;
+/* do_song moved to lua/characters/commands/misc/song.lua */
+ACMD(do_song) { (void)ch; (void)argument; (void)cmd; (void)subcmd; }
 
-  auto *instr_obj =
-      dbat::game::search::character_inventory_find_vnum(ch, {8802, 8807});
-  if (!instr_obj) {
-    send_to_char(ch, "You do not have an instrument.\r\n");
-    act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_SONG(ch) = 0;
-    return;
-  }
-
-  int diceroll = axion_dice(0);
-  int skill    = GET_SKILL(ch, SKILL_MYSTICMUSIC);
-
-  if (skill > diceroll) {
-    char buf[MAX_INPUT_LENGTH];
-    sprintf(buf, "@c$n@C continues playing @y'@Y%s@y'@C.@n",
-            song_name(GET_SONG(ch)));
-    act("@CYou continue playing your song.@n", TRUE, ch, 0, 0, TO_CHAR);
-    act(buf, TRUE, ch, 0, 0, TO_ROOM);
-  } else {
-    act("@CYou mess up a portion of the song, but continue playing.@n", TRUE,
-        ch, 0, 0, TO_CHAR);
-    act("@c$n@C messes up a portion of $s song, but continues to play.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    return;
-  }
-
-  /* true when vict is a group ally of ch (excludes ch == vict) */
-  auto is_group_ally = [&](char_data *vict) {
-    return (char_condition_has(ch, "group") && char_condition_has(vict, "group")) &&
-           (ch == vict->master || ch->master == vict || ch->master == vict->master);
-  };
-
-  /* stop the song because ch ran out of ki; returns true if it happened */
-  auto ki_exhausted = [&]() -> bool {
-    if (getCurKI(ch) > 0) return false;
-    send_to_char(ch, "You no longer have the ki necessary to play your song.\r\n");
-    act("@c$n@C stops playing $s song.@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_SONG(ch) = 0;
-    return true;
-  };
-
-  const TeleportDest *tdest = nullptr;
-  for (auto &td : teleport_dests)
-    if (td.song_id == GET_SONG(ch)) { tdest = &td; break; }
-
-  bool stop_song = false;
-  room_people_iterate(char_room_get(ch), [&](auto vict) -> bool {
-    if (stop_song) return false;
-
-    /* all teleport songs share the same per-vict logic; only destination differs */
-    if (tdest) {
-      if (vict == ch) return true;
-      if (is_group_ally(vict)) {
-        char buf[MAX_INPUT_LENGTH];
-        snprintf(buf, sizeof(buf),
-                 "@CYour Teleportation Melody has transported @c$N@C to %s in a flash!@n",
-                 tdest->planet);
-        act(buf, TRUE, ch, 0, vict, TO_CHAR);
-        snprintf(buf, sizeof(buf),
-                 "@c$n's@C Teleportation Melody has transported you to %s in a flash!@n",
-                 tdest->planet);
-        act(buf, TRUE, ch, 0, vict, TO_VICT);
-        act("@c$n's@C Teleportation Melody has transported @c$N@C away in a flash!@n",
-            TRUE, ch, 0, vict, TO_NOTVICT);
-        char_from_room(vict);
-        char_to_room(vict, room_by_id(tdest->room_id));
-      }
-      return true;
-    }
-
-    switch (GET_SONG(ch)) {
-    case SONG_SAFETY: {
-      if (vict != ch && !is_group_ally(vict)) return true;
-      int64_t restore = (10 * skill) + (GET_MAX_MANA(ch) * 0.0004 * skill);
-      if (vict != ch) {
-        act("@CYour skillfully playing of the Song of Safety has an effect on @c$N@C.@n",
-            TRUE, ch, 0, vict, TO_CHAR);
-        act("@c$n's@C soothing Song of Safety has recovered some of your "
-            "powerlevel, stamina, and limb condition.",
-            TRUE, ch, 0, vict, TO_VICT);
-      } else {
-        act("@CYour skillfully playing of the Song of Safety has an effect on "
-            "your own body@C.@n",
-            TRUE, ch, 0, vict, TO_CHAR);
-      }
-      act("@c$n@C continues playing $s ocarina!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-      incCurHealth(vict, restore);
-      incCurST(vict, restore * .5);
-      auto heal_limb = [&](int idx, const char *msg) {
-        if (GET_LIMBCOND(vict, idx) < 100) {
-          GET_LIMBCOND(vict, idx) += 1 + (skill * 0.1);
-          if (GET_LIMBCOND(vict, idx) > 100) {
-            send_to_char(vict, "%s", msg);
-            GET_LIMBCOND(vict, idx) = 100;
-          }
-        }
-      };
-      heal_limb(1, "Your right arm is no longer broken!@n\r\n");
-      heal_limb(2, "Your left arm is no longer broken!@n\r\n");
-      heal_limb(3, "Your right leg is no longer broken!@n\r\n");
-      heal_limb(4, "Your left leg is no longer broken!@n\r\n");
-      improve_skill(ch, SKILL_MYSTICMUSIC, 2);
-      decCurKI(ch, (getMaxKI(ch) * .0003) + skill);
-      if (ki_exhausted()) { stop_song = true; return false; }
-      break;
-    }
-    case SONG_SHADOW_STITCH:
-      /* skip allies; both must have an explicit master for the group check to apply */
-      if (ch->master && vict->master && is_group_ally(vict)) return true;
-      if (skill > diceroll + 10)
-        apply_shadow_sitch(ch, vict, skill);
-      if (ki_exhausted()) { stop_song = true; return false; }
-      break;
-    case SONG_SHIELDING:
-      if (vict != ch && !is_group_ally(vict)) return true;
-      if (vict != ch) {
-        act("@CYour triumphant and soaring music has powered a barrier around @c$N@C!@n",
-            TRUE, ch, 0, vict, TO_CHAR);
-        act("@c$n's@C triumphant and soaring music has powered a barrier around you!@n",
-            TRUE, ch, 0, vict, TO_VICT);
-      } else {
-        act("@CYour triumphant and soaring music has powered a barrier around yourself@C!@n",
-            TRUE, ch, 0, vict, TO_CHAR);
-      }
-      act("@c$n's@C triumphant and soaring music has powered a barrier around @c$N@C!@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      GET_BARRIER(vict) += ((GET_MAX_MANA(ch) * 0.005) * (skill * 0.25)) + skill;
-      if (GET_BARRIER(vict) >= GET_MAX_MANA(vict) * 0.75)
-        GET_BARRIER(vict) = GET_MAX_MANA(vict) * 0.75;
-      if (!AFF_FLAGGED(vict, AFF_SANCTUARY))
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_SANCTUARY);
-      decCurKI(ch, getPercentOfMaxKI(ch, .02) + skill);
-      if (ki_exhausted()) { stop_song = true; return false; }
-      break;
-    }
-    return true;
-  });
-
-  if (stop_song) return;
-
-  if (tdest) {
-    char buf[MAX_INPUT_LENGTH];
-    snprintf(buf, sizeof(buf),
-             "@CFinally as the last of your comrades has been teleported you "
-             "teleport yourself to %s and stop your song.@n",
-             tdest->planet);
-    char_from_room(ch);
-    char_to_room(ch, room_by_id(tdest->room_id));
-    GET_SONG(ch) = 0;
-    act(buf, TRUE, ch, 0, 0, TO_CHAR);
-  }
-}
-
-ACMD(do_song) {
-
-  if (!GET_SKILL(ch, SKILL_MYSTICMUSIC)) {
-    send_to_char(ch, "You do not know how to play mystical music.\r\n");
-    return;
-  }
-
-  struct obj_data *obj2 = NULL, *next_obj;
-  int instrument = 0;
-
-  if ((obj2 = dbat::game::search::character_inventory_find_vnum(
-           ch, {8802, 8807})) != nullptr) {
-    instrument = GET_OBJ_VNUM(obj2);
-  }
-
-  if (instrument == 0) {
-    send_to_char(ch, "You do not have an instrument.\r\n");
-    return;
-  }
-
-  if (GET_SONG(ch)) {
-    act("@cYou stop playing your ocarina.@n", TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n stops playing their ocarina.@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_SONG(ch) = 0;
-    return;
-  } else {
-
-    char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-    int skill = GET_SKILL(ch, SKILL_MYSTICMUSIC);
-
-    two_arguments(argument, arg, arg2);
-    if (!*arg) {
-      send_to_char(ch, "@YSongs Known\n@c-------------------@n\r\n");
-      send_to_char(ch, "@W%s%s%sSong of Safety\r\n",
-                   skill > 99 ? "Song of Shielding\n" : "",
-                   skill > 80 ? "Melody of Teleportation\n" : "",
-                   skill > 50 ? "Shadow Stitch Minuet\n" : "");
-      send_to_char(
-          ch, "@wSyntax: song (shielding | safety | teleport | shadow )\r\n");
-      return;
-    } else {
-      int64_t cost = GET_MAX_MANA(ch) * 0.01;
-      int modifier = 1;
-      if (!strcasecmp(arg, "shielding")) {
-        modifier = 20;
-        cost *= modifier;
-      } else if (!strcasecmp(arg, "teleport")) {
-        modifier = 50;
-        cost *= modifier;
-      } else if (!strcasecmp(arg, "shadow")) {
-        modifier = 8;
-        cost *= modifier;
-      } else if (!strcasecmp(arg, "safety")) {
-        modifier = 3;
-        cost *= modifier;
-      }
-
-      if (instrument == 8802) {
-        cost -= cost * 0.5;
-      }
-
-      if (modifier == 0) {
-        send_to_char(
-            ch, "@wSyntax: song (shielding | safety | teleport | shadow )\r\n");
-        return;
-      } else if (modifier == 3 && (getCurKI(ch)) < cost) {
-        send_to_char(ch, "@wYou do not have enough ki to power the instrument "
-                         "for that song!@n\r\n");
-        return;
-      } else if (modifier == 3) {
-        act("@CYou begin to play the Song of Safety! Your fingers lightly "
-            "glide over the ocarina and as you blow into it sweet music "
-            "similar to a lullaby issues forth from the intrument.@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@c$n@C begins to play a song on $s ocarina. The music seems to be "
-            "some sort of lullaby.@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        GET_SONG(ch) = SONG_SAFETY;
-        decCurKI(ch, cost);
-        return;
-      } else if (modifier == 8 && (getCurKI(ch)) < cost) {
-        send_to_char(ch, "@wYou do not have enough ki to power the instrument "
-                         "for that song!@n\r\n");
-        return;
-      } else if (modifier == 8 && skill <= 49) {
-        send_to_char(ch,
-                     "You do not posess the skill to play such a song!\r\n");
-        return;
-      } else if (modifier == 8) {
-        act("@CYou begin to play the Shadow Stitch Minuet! Your fingers "
-            "lightly glide over the ocarina and as you blow into it forboding "
-            "low toned music issues forth.@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@c$n@C begins to play a song on $s ocarina. Depressing low toned "
-            "music issues forth from the ocarina.@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        GET_SONG(ch) = SONG_SHADOW_STITCH;
-        decCurKI(ch, cost);
-        return;
-      } else if (modifier == 50 && (getCurKI(ch)) < cost) {
-        send_to_char(ch, "@wYou do not have enough ki to power the instrument "
-                         "for that song!@n\r\n");
-        return;
-      } else if (modifier == 50 && skill <= 79) {
-        send_to_char(ch,
-                     "You do not posess the skill to play such a song!\r\n");
-        return;
-      } else if (modifier == 50) {
-        if (!*arg2) {
-          send_to_char(ch, "Where would you like to teleport to?\nSyntax: song "
-                           "teleport (earth | vegeta | kanassa | arlia | "
-                           "aether | namek | konack| frigid)\r\n");
-          return;
-        } else if (AFF_FLAGGED(ch, AFF_SPIRIT)) {
-          send_to_char(ch, "Not while you're dead!\r\n");
-          return;
-        } else if (!strcasecmp(arg2, "earth")) {
-          GET_SONG(ch) = SONG_TELEPORT_EARTH;
-        } else if (!strcasecmp(arg2, "frigid")) {
-          GET_SONG(ch) = SONG_TELEPORT_FRIGID;
-        } else if (!strcasecmp(arg2, "vegeta")) {
-          GET_SONG(ch) = SONG_TELEPORT_VEGETA;
-        } else if (!strcasecmp(arg2, "namek")) {
-          GET_SONG(ch) = SONG_TELEPORT_NAMEK;
-        } else if (!strcasecmp(arg2, "arlia")) {
-          GET_SONG(ch) = SONG_TELEPORT_ARLIA;
-        } else if (!strcasecmp(arg2, "kanassa")) {
-          GET_SONG(ch) = SONG_TELEPORT_KANASSA;
-        } else if (!strcasecmp(arg2, "konack")) {
-          GET_SONG(ch) = SONG_TELEPORT_KONACK;
-        } else if (!strcasecmp(arg2, "aether")) {
-          GET_SONG(ch) = SONG_TELEPORT_AETHER;
-        } else {
-          send_to_char(ch, "Syntax: song teleport (earth | vegeta | namek | "
-                           "aether | konack | kanassa | arlia | frigid)\r\n");
-          return;
-        }
-        act("@CYou begin to play the Melody of Teleportation! Your fingers "
-            "lightly glide over the ocarina and as you blow into it a "
-            "repeating light hearted melody issues forth.@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@c$n@C begins to play a song on $s ocarina. A light hearted "
-            "melody can be heard sounding from the ocarina as it is played.@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        decCurKI(ch, cost);
-        return;
-      } else if (modifier == 20 && (getCurKI(ch)) < cost) {
-        send_to_char(ch, "@wYou do not have enough ki to power the instrument "
-                         "for that song!@n\r\n");
-        return;
-      } else if (modifier == 20 && skill <= 98) {
-        send_to_char(ch,
-                     "You do not posess the skill to play such a song!\r\n");
-        return;
-      } else if (modifier == 20) {
-        act("@CYou begin to play the Song of Shielding! Your fingers lightly "
-            "glide over the ocarina and as you blow into it a triumphant "
-            "series of notes issues forth.@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@c$n@C begins to play a song on $s ocarina. A triumphant song "
-            "full of soaring sounds from the ocarina as it is played.@n",
-            TRUE, ch, 0, 0, TO_ROOM);
-        GET_SONG(ch) = SONG_SHIELDING;
-        decCurKI(ch, cost);
-        return;
-      }
-    }
-  }
-}
-
-ACMD(do_preference) {
-
-  if (IS_NPC(ch))
-    return;
-
-  char arg[MAX_INPUT_LENGTH];
-
-  one_argument(argument, arg);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: preference (throw | weapon | hand | ki)\r\n");
-    return;
-  }
-
-  if (GET_PREFERENCE(ch) > 0) {
-    send_to_char(ch,
-                 "You've already chosen a specialization. No going back.\r\n");
-    return;
-  }
-
-  if (!strcasecmp(arg, "throw")) {
-    send_to_char(ch, "You will now favor throwing weapons as fighting "
-                     "specialization. You're sure to nail it.\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_THROWING;
-    if (GET_SKILL_BASE(ch, SKILL_THROW) <= 90) {
-      GET_SKILL_BASE(ch, SKILL_THROW) += 10;
-    } else if (GET_SKILL_BASE(ch, SKILL_THROW) < 100) {
-      GET_SKILL_BASE(ch, SKILL_THROW) = 100;
-    }
-    return;
-  } else if (!strcasecmp(arg, "hand")) {
-    send_to_char(ch, "You will now favor your body as your fighting "
-                     "specialization. Your body is ready.\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_H2H;
-    return;
-  } else if (!strcasecmp(arg, "ki")) {
-    send_to_char(
-        ch, "You will now favor your ki energy as your fighting "
-            "specialization. I expect more than a few smoldering craters.\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_KI;
-    return;
-  } else if (!strcasecmp(arg, "weapon")) {
-    send_to_char(ch, "You will now favor your weapons as your fighting "
-                     "specialization. Let the blood fly!\r\n");
-    GET_PREFERENCE(ch) = PREFERENCE_WEAPON;
-    return;
-  } else {
-    send_to_char(ch, "Syntax: preference (throw | weapon | hand | ki)\r\n");
-    return;
-  }
-}
+/* do_preference moved to lua/characters/commands/misc/preference.lua */
 
 ACMD(do_moondust) {
   int64_t cost = GET_MAX_MOVE(ch) * 0.02, heal = 0;
@@ -912,8 +410,8 @@ ACMD(do_moondust) {
       return true;
     }
     if (char_condition_has(vict, "group")) {
-      if (ch->master == vict->master || vict->master == ch ||
-          ch->master == vict) {
+      if (MASTER(ch) == MASTER(vict) || MASTER(vict) == ch ||
+          MASTER(ch) == vict) {
         incCurHealth(vict, heal);
         act("@CYou breathe in the dust and are healed by it somewhat!@n", TRUE,
             vict, 0, 0, TO_CHAR);
@@ -926,57 +424,7 @@ ACMD(do_moondust) {
   });
 }
 
-ACMD(do_shell) {
-
-  if (!IS_ARLIAN(ch)) {
-    send_to_char(ch, "You are not capable of doing that!\r\n");
-    return;
-  }
-
-  if (GET_SEX(ch) == SEX_FEMALE) {
-    send_to_char(ch, "Sorry, you can't do that.\r\n");
-    return;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_SHELL)) {
-    act("@mYou quickly absorb the armor carapace covering your body back "
-        "inside.@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@M$n's@m armored carapce retreats back to its original size.@n", TRUE,
-        ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SHELL);
-    return;
-  }
-
-  if ((getCurST(ch)) < GET_MAX_MOVE(ch) * 0.2) {
-    send_to_char(
-        ch,
-        "You do not have enough stamina to grow your armored carapace.@n\r\n");
-    return;
-  } else if (axion_dice(0) > GET_CON(ch) + rand_number(1, 10)) {
-    act("@mYou crouch down and begin to focus on your body's carapace cells "
-        "encouraging them to multiply! However your control is lacking and you "
-        "ultimately fail to grow your armor very much.@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@M$n@m crouches down and seems to strain for a moment before giving "
-        "up and resuming $s normal stance.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    return;
-  } else {
-    act("@mYou crouch down and begin to focus on your body's carapace cells, "
-        "encouraging them to multiply! Very quickly millions of new carapace "
-        "cells have been born and your armored carapace extends over all parts "
-        "of your body!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@M$n@m crouches down and after a few moments of straining $s body's "
-        "carapace armor starts to grow thicker and extends to cover all parts "
-        "of $s body!@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    decCurSTPercent(ch, .2);
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_SHELL);
-    return;
-  }
-}
+/* do_shell moved to lua/characters/commands/misc/shell.lua */
 
 ACMD(do_liquefy) {
 
@@ -1025,16 +473,18 @@ ACMD(do_liquefy) {
 
   if (!strcasecmp(arg, "hide")) {
     if (GRAPPLED(ch)) {
-      GRAPPLING(GRAPPLED(ch)) = NULL;
-      GRAPPLED(ch) = NULL;
+      struct char_data *other = GRAPPLED(ch);
+      char_grappling_set(other, NULL, 0);
+      char_grappled_set(ch, NULL, 0);
     }
     if (GRAPPLING(ch)) {
-      GRAPPLED(GRAPPLING(ch)) = NULL;
-      GRAPPLING(ch) = NULL;
+      struct char_data *other = GRAPPLING(ch);
+      char_grappling_set(ch, NULL, 0);
+      char_grappled_set(other, NULL, 0);
     }
     if (DRAGGING(ch)) {
-      DRAGGED(DRAGGING(ch)) = NULL;
-      DRAGGING(ch) = NULL;
+      char_being_dragged_set(DRAGGING(ch), NULL);
+      char_dragging_set(ch, NULL);
     }
     if (axion_dice(0) > GET_LEVEL(ch)) {
       act("@MYour body starts to become loose and sag, but you lose focus and "
@@ -1061,16 +511,18 @@ ACMD(do_liquefy) {
   } else if (!strcasecmp(arg, "explode")) {
     struct char_data *vict;
     if (GRAPPLED(ch)) {
-      GRAPPLING(GRAPPLED(ch)) = NULL;
-      GRAPPLED(ch) = NULL;
+      struct char_data *other = GRAPPLED(ch);
+      char_grappling_set(other, NULL, 0);
+      char_grappled_set(ch, NULL, 0);
     }
     if (GRAPPLING(ch)) {
-      GRAPPLED(GRAPPLING(ch)) = NULL;
-      GRAPPLING(ch) = NULL;
+      struct char_data *other = GRAPPLING(ch);
+      char_grappling_set(ch, NULL, 0);
+      char_grappled_set(other, NULL, 0);
     }
     if (DRAGGING(ch)) {
-      DRAGGED(DRAGGING(ch)) = NULL;
-      DRAGGING(ch) = NULL;
+      char_being_dragged_set(DRAGGING(ch), NULL);
+      char_dragging_set(ch, NULL);
     }
     if (!*arg2) {
       send_to_char(
@@ -1162,951 +614,19 @@ ACMD(do_liquefy) {
   }
 }
 
-ACMD(do_lifeforce) {
-
-  char arg[MAX_INPUT_LENGTH];
-  int setting = 0;
-
-  one_argument(argument, arg);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: life (0 - 99)\n0 is off.\r\n");
-    return;
-  }
-
-  setting = atoi(arg);
-
-  if (setting > 99) {
-    send_to_char(ch,
-                 "Syntax: life (1 - 99)\n%s isn't an acceptable percent.\r\n",
-                 add_commas(setting));
-    return;
-  } else if (setting <= 0) {
-    send_to_char(ch, "Your will just isn't in the fight, huh?\nYou will not "
-                     "use up life force to maintain your PL period.\r\n");
-    char_stat_set(ch, "life_percent", 0);
-    return;
-  } else {
-    send_to_char(ch,
-                 "Your life force will automatically kick in at %d%s of your "
-                 "optimal PL.\r\n",
-                 setting, "%");
-    char_stat_set(ch, "life_percent", setting);
-    return;
-  }
-}
-
-ACMD(do_defend) {
-  struct char_data *vict;
-  char arg[MAX_INPUT_LENGTH];
-
-  one_argument(argument, arg);
-
-  if (!*arg && GET_DEFENDING(ch) == NULL) {
-    send_to_char(ch, "Defend who?\r\n");
-    return;
-  } else if (!*arg && GET_DEFENDING(ch)) {
-    act("@YYou stop defending @y$N@Y.@n", TRUE, ch, 0, GET_DEFENDING(ch),
-        TO_CHAR);
-    act("@y$n@Y stops defending you.@n", TRUE, ch, 0, GET_DEFENDING(ch),
-        TO_VICT);
-    act("@y$n@Y stops defending @y$N@Y.@n", TRUE, ch, 0, GET_DEFENDING(ch),
-        TO_NOTVICT);
-    GET_DEFENDER(GET_DEFENDING(ch)) = NULL;
-    GET_DEFENDING(ch) = NULL;
-    return;
-  }
-
-  if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
-    send_to_char(ch, "You can't seem to find that person.\r\n");
-    return;
-  } else if (vict == ch) {
-    send_to_char(ch,
-                 "Well hopefully you are smart enough to defend yourself.\r\n");
-    return;
-  } else {
-    act("@YYou start defending @y$N@Y.@n", TRUE, ch, 0, vict, TO_CHAR);
-    act("@y$n@Y starts defending you.@n", TRUE, ch, 0, vict, TO_VICT);
-    act("@y$n@Y starts defending @y$N@Y.@n", TRUE, ch, 0, vict, TO_NOTVICT);
-    GET_DEFENDER(vict) = ch;
-    GET_DEFENDING(ch) = vict;
-    return;
-  }
-}
-
-ACMD(do_fish) {
-
-  if (IS_NPC(ch))
-    return;
-
-  char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-
-  two_arguments(argument, arg, arg2);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: fish ( cast | hook | reel | apply | stop)\r\n");
-    return;
-  }
-
-  struct room_data *room = char_room_get(ch);
-
-  if (!strcasecmp(arg, "cast")) {
-    if (char_condition_has(ch, "fishing")) {
-      send_to_char(ch, "You are already fishing! Syntax: fish stop\r\n");
-      return;
-    } else if (!room_flagged(room, ROOM_FISHING)) {
-      send_to_char(ch, "This is not an area you can fish at.\r\n");
-      return;
-    } else if (char_condition_has(ch, "flying")) {
-      send_to_char(ch, "You can't fish while flying.\r\n");
-      return;
-    } else if (FIGHTING(ch)) {
-      send_to_char(ch, "You can't fish while fighting!\r\n");
-      return;
-    } else if (!GET_EQ(ch, WEAR_WIELD2)) {
-      send_to_char(ch, "You are not holding a fishing pole.\r\n");
-      return;
-    } else {
-      struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
-      if (GET_OBJ_TYPE(pole) != ITEM_FISHPOLE) {
-        send_to_char(ch, "You do not have a fishing pole in your hand!\r\n");
-        return;
-      } else if (GET_OBJ_VAL(pole, 0) == 0) {
-        send_to_char(ch, "There is no bait on your line!\r\n");
-        return;
-      }
-      reveal_hiding(ch, 0);
-      act("@CYou pull your arm back and then spring it forward, casting the "
-          "baited line. A moment later there is a splash as the hook enters "
-          "the water.@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@c$n@C pulls $s arm back and then springs it foward, casting the "
-          "line of $s fishing pole into the water.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      int distance = rand_number(30, 80);
-      char_condition_add(ch, "fishing", "command", "fish");
-      char_condition_number_set(ch, "fishing", "distance", distance);
-      event_schedule_c_owned(event_queue_now_ms() + EQ_MS_2SEC, 0,
-                             ev_fish_tick, EQ_CTX_CHAR_ID, GET_ID(ch), 0,
-                             EQ_OWNER_CHAR, GET_ID(ch), "fish_tick");
-      send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n", distance);
-      return;
-    }
-  } else if (!strcasecmp(arg, "hook")) {
-    if (!char_condition_has(ch, "fishing")) {
-      send_to_char(ch, "You are not even fishing!\r\n");
-      return;
-    }
-    auto state = char_condition_number_get(ch, "fishing", "state");
-    if (state == FISH_NOFISH) {
-      send_to_char(ch, "You do not have a fish biting on your line.\r\n");
-      return;
-    }
-    
-    if (state == FISH_REELING) {
-      send_to_char(ch, "You are already trying to reel the fish in!\r\n");
-      return;
-    }
-    
-    if (state == FISH_HOOKED) {
-      send_to_char(ch, "You already have the fish hooked! Reel it in!\r\n");
-      return;
-    }
-    
-    if (axion_dice(-18) > GET_POLE_BONUS(ch)) {
-      reveal_hiding(ch, 0);
-      act("@CYou pull hard but the fish spits the hook out a second before you "
-          "pull! You return to waiting for a bite...@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@c$n@C pulls hard on $s fishing line, but a moment later $e frowns "
-          "and returns to fishing.@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_condition_number_set(ch, "fishing", "state", FISH_NOFISH);
-      return;
-    } else {
-      reveal_hiding(ch, 0);
-      act("@CYou pull hard on your line and feel that you have managed to hook "
-          "the fish and start reeling it in!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@c$n@C pulls hard on $s fishing line and starts to struggle with "
-          "the fish on the other end!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_condition_number_set(ch, "fishing", "state", FISH_REELING);
-      return;
-    }
-  } else if (!strcasecmp(arg, "apply")) {
-    if (!GET_EQ(ch, WEAR_WIELD2)) {
-      send_to_char(ch, "You are not holding a fishing pole.\r\n");
-      return;
-    } else {
-      struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
-      if (GET_OBJ_TYPE(pole) != ITEM_FISHPOLE) {
-        send_to_char(ch, "You do not have a fishing pole in your hand!\r\n");
-        return;
-      } else if (GET_OBJ_VAL(pole, 0) != 0) {
-        send_to_char(ch, "Your fishing pole already has bait on its hook.\r\n");
-        return;
-      } else {
-        struct obj_data *bait;
-
-        if (!*arg2) {
-          send_to_char(ch, "Syntax: fish apply (bait)\r\n");
-          return;
-        }
-        if (!(bait = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
-          send_to_char(ch, "You don't have that bait.\r\n");
-          return;
-        } else if (GET_OBJ_TYPE(bait) != ITEM_FISHBAIT) {
-          send_to_char(ch, "That isn't fishing bait!\r\n");
-          return;
-        } else {
-          reveal_hiding(ch, 0);
-          act("@CYou carefully apply the $p@C to your hook.@n", TRUE, ch, bait,
-              0, TO_CHAR);
-          act("@c$n@C carefully applies $p@C to $s fishing pole's hook.@n",
-              TRUE, ch, bait, 0, TO_ROOM);
-          GET_OBJ_VAL(pole, 0) = GET_OBJ_COST(bait);
-          extract_obj(bait);
-          return;
-        } /* End we applied bait */
-      } /* End Applying bait */
-    } /* end has pole */
-  } else if (!strcasecmp(arg, "stop")) {
-    if (!char_condition_has(ch, "fishing")) {
-      send_to_char(ch, "You are not even fishing!\r\n");
-      return;
-    } else {
-      reveal_hiding(ch, 0);
-      act("@CYou reel in your line and stop fishing.@n", TRUE, ch, 0, 0,
-          TO_CHAR);
-      act("@c$n@C reels in $s fishing line and stops fishing.@n", TRUE, ch, 0,
-          0, TO_ROOM);
-      eq_cancel_owner(EQ_OWNER_CHAR, GET_ID(ch), "fish_tick");
-      char_condition_remove(ch, "fishing", "fish_stop");
-      return;
-    }
-  } else {
-    send_to_char(ch, "Syntax: fish ( cast | hook | reel | apply | stop )\r\n");
-    return;
-  }
-} /* End fish */
-
-static int has_pole(struct char_data *ch) {
-
-  if (GET_EQ(ch, WEAR_WIELD2)) {
-    struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
-    if (GET_OBJ_TYPE(pole) == ITEM_FISHPOLE) {
-      return (TRUE);
-    }
-  }
-
-  return (FALSE);
-}
-
-/* Runs one fishing tick. Returns true if ch is still fishing afterwards. */
-static bool handle_fishing(struct char_data *ch) {
-  auto end_fishing = [&]() {
-    char_condition_remove(ch, "fishing", "end_fishing");
-  };
-
-  if(!char_condition_has(ch, "fishing")) {
-    return false;
-  }
-
-  if(!has_pole(ch)) {
-    end_fishing();
-    return false;
-  }
-
-  int quality = 0;
-  auto room = char_room_get(ch);
-
-  auto pole_bonus = GET_POLE_BONUS(ch);
-  auto state = char_condition_number_get(ch, "fishing", "state");
-  auto distance = char_condition_number_get(ch, "fishing", "distance");
-
-  if (distance <= 0 && state == FISH_REELING) { /* We've caught it */
-    if (pole_bonus >= rand_number(60, 100)) {
-      quality = rand_number(0, 3) + rand_number(0, 3) + rand_number(0, 3);
-    } else if (pole_bonus >= rand_number(45, 60)) {
-      quality = rand_number(0, 3) + rand_number(0, 3);
-    } else {
-      quality = rand_number(0, 3);
-    }
-    catch_fish(ch, quality);
-    end_fishing();
-    return false;
-  }
-
-  if(rand_number(1, 5) <= 2) {
-    // still waiting...
-    return true;
-  }
-  
-  if (state == FISH_REELING && rand_number(1, 100) <= 80) {
-    int distance_delta = distance;
-    if (pole_bonus >= 80) {
-      distance_delta -= rand_number(6, 10);
-    } else if (pole_bonus >= 40) {
-      distance_delta -= rand_number(5, 8);
-    } else {
-      distance_delta -= rand_number(1, 4);
-    }
-    if(distance_delta != distance) {
-      char_condition_number_set(ch, "fishing", "distance", distance_delta);
-    }
-    act("@CYou reel the line on your pole some.@n", TRUE, ch, 0, 0,
-        TO_CHAR);
-    act("@c$n@C reels the line on $s pole slowly.@n", TRUE, ch, 0, 0,
-        TO_ROOM);
-    send_to_char(ch, "@D[@wDistance@D: @Y%d@D]@n\r\n",
-                  distance_delta > 0 ? distance_delta : 0);
-  } else if (state == FISH_REELING &&
-              rand_number(1, 58) <= 55) {
-    act("@CYou struggle as the fish fights against your attempts to "
-        "reel it in!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C struggles with the fish on the end of $s pole!@n", TRUE,
-        ch, 0, 0, TO_ROOM);
-  } else if (state == FISH_REELING) { /* Lose the fish */
-    act("@CYou feel the line go slack and realize you've lost the "
-        "fish! You reel your line back in...@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
-        0, 0, TO_ROOM);
-    end_fishing();
-    if (has_pole(ch) == TRUE) {
-      struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
-      GET_OBJ_VAL(pole, 0) = 0;
-    }
-    return false;
-  } else if (state == FISH_HOOKED &&
-              rand_number(1, 20) >= 12) {
-    act("@CYou feel the line go slack and realize you've lost the "
-        "fish! You reel your line back in...@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C frowns and then begins to reel in $s line.@n", TRUE, ch,
-        0, 0, TO_ROOM);
-    end_fishing();
-    return false;
-  } else if (state == FISH_BITE &&
-              rand_number(1, 20) >= 12) {
-    act("@CYou feel as if the fish has stopped biting...@n", TRUE, ch,
-        0, 0, TO_CHAR);
-    char_condition_number_set(ch, "fishing", "state", FISH_NOFISH);
-  } else if (char_condition_number_get(ch, "fishing", "state") != FISH_HOOKED &&
-              char_condition_number_get(ch, "fishing", "state") != FISH_BITE &&
-              ((room_flagged(room, ROOM_FISHFRESH) &&
-                rand_number(1, 10) >= 8) ||
-              (!room_flagged(room, ROOM_FISHFRESH) &&
-                rand_number(1, 20) >= 18))) {
-    act("@CYou feel a fish biting on your line! Better @Ghook@C it!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    char_condition_number_set(ch, "fishing", "state", FISH_BITE);
-  }
-
-  return true;
-}
-
-/*
- * Per-fisher tick: a self-rescheduling one-shot chain started by 'fish cast'.
- * The character is re-resolved by id, so a stale event after extraction or
- * logout is a harmless no-op and the chain dies with the fishing condition.
- */
-static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b) {
-  (void)ctx_type;
-  (void)ctx_b;
-  struct char_data *ch = char_by_id(ctx_a);
-  if (!ch)
-    return;
-
-  if (!handle_fishing(ch))
-    return;
-
-  event_schedule_c_owned(event_queue_now_ms() + EQ_MS_2SEC, 0,
-                         ev_fish_tick, EQ_CTX_CHAR_ID, ctx_a, 0,
-                         EQ_OWNER_CHAR, ctx_a, "fish_tick");
-}
-
-static void catch_fish(struct char_data *ch, int quality) {
-  struct obj_data *fish = NULL;
-  int num = 1000;
-
-  struct room_data *room = char_room_get(ch);
-
-  if (room_flagged(room, ROOM_FISHFRESH)) {
-    if (room_flagged(room, ROOM_EARTH)) {
-      switch (rand_number(1, 10)) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        num = 1000;
-        break;
-      case 5:
-      case 6:
-      case 7:
-        num = 1001;
-        break;
-      case 8:
-      case 9:
-        num = 1002;
-        break;
-      case 10:
-        num = 1003;
-        break;
-      }
-    } else if (room_flagged(room, ROOM_AETHER)) {
-      switch (rand_number(1, 10)) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        num = 1012;
-        break;
-      case 5:
-      case 6:
-      case 7:
-        num = 1013;
-        break;
-      case 8:
-      case 9:
-        num = 1014;
-        break;
-      case 10:
-        num = 1015;
-        break;
-      }
-    }
-  } else {
-    if (room_flagged(room, ROOM_EARTH)) {
-      switch (rand_number(1, 10)) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        num = 1004;
-        break;
-      case 5:
-      case 6:
-      case 7:
-        num = 1005;
-        break;
-      case 8:
-      case 9:
-        num = 1006;
-        break;
-      case 10:
-        num = 1007;
-        break;
-      }
-    } else if (room_flagged(room, ROOM_NAMEK)) {
-      switch (rand_number(1, 10)) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        num = 1008;
-        break;
-      case 5:
-      case 6:
-      case 7:
-        num = 1009;
-        break;
-      case 8:
-      case 9:
-        num = 1010;
-        break;
-      case 10:
-        num = 1011;
-        break;
-      }
-    }
-  }
-
-  fish = read_object(num, VIRTUAL);
-
-  if (!fish) {
-    send_to_imm("Error: Fish success with no fish! Report to Iovan!\r\n");
-    return;
-  }
-
-  act("@CYou manage to pull a $p@C from the water and onto the ground in front "
-      "of you!@n",
-      TRUE, ch, fish, 0, TO_CHAR);
-  act("@c$n@C manages to pull a $p@C from the water and onto the ground in "
-      "front of $m!@n",
-      TRUE, ch, fish, 0, TO_ROOM);
-
-  int weight = 1;
-
-  if (quality <= 0 && rand_number(1, 20) >= 17) {
-    quality += rand_number(2, 7);
-  }
-
-  struct obj_data *pole = GET_EQ(ch, WEAR_WIELD2);
-
-  if (GET_OBJ_VAL(pole, 0) * 2 >= axion_dice(0)) {
-    quality += 2;
-  } else if (GET_OBJ_VAL(pole, 0) >= axion_dice(0)) {
-    quality += 1;
-  }
-
-  switch (quality) {
-  case 0:
-  case 1:
-    weight = rand_number(0, 2);
-    break;
-  case 2:
-  case 3:
-    weight = rand_number(3, 4);
-    GET_OBJ_COST(fish) += GET_OBJ_COST(fish) * 0.20;
-    GET_OBJ_VAL(fish, 0) += 1;
-    break;
-  case 4:
-  case 5:
-  case 6:
-    weight = rand_number(5, 9);
-    GET_OBJ_COST(fish) += GET_OBJ_COST(fish) * 0.5;
-    GET_OBJ_VAL(fish, 0) += 3;
-    break;
-  default:
-    weight = rand_number(10, 15);
-    GET_OBJ_COST(fish) += GET_OBJ_COST(fish) * 2;
-    GET_OBJ_VAL(fish, 0) += 5;
-    break;
-  }
-
-  GET_OBJ_WEIGHT(fish) += weight;
-
-  GET_OBJ_VAL(pole, 0) = 0;
-  obj_to_room(fish, char_room_get(ch));
-  do_get(ch, "fish", 0, 0);
-  send_to_char(ch, "@D[@cFish Weight@D: @G%" I64T "@D]@n\r\n",
-               GET_OBJ_WEIGHT(fish));
-}
-
-ACMD(do_extract) {
-
-  if (!GET_SKILL(ch, SKILL_EXTRACT)) {
-    send_to_char(ch, "You do not know how to extract!\r\n");
-    return;
-  }
-
-  char arg[MAX_INPUT_LENGTH], argu[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH],
-      arg3[MAX_INPUT_LENGTH];
-  struct obj_data *obj = NULL, *obj2 = NULL;
-  int skill = GET_SKILL(ch, SKILL_EXTRACT), chance = axion_dice(0);
-
-  half_chop(argument, arg, argu);
-  two_arguments(argu, arg2, arg3);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: extract (object)\r\n");
-    send_to_char(ch, "Syntax: extract combine (bottle1) (bottle2)\r\n");
-    return;
-  }
-
-  if (!strcasecmp(arg, "combine")) {
-    if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
-      send_to_char(ch, "You do not have the first bottle that you were wanting "
-                       "to combine.\r\n");
-      return;
-    }
-    if (!(obj2 = get_obj_in_list_vis(ch, arg3, NULL, inv_for_char(ch)))) {
-      send_to_char(ch, "You do not have the second bottle that you were "
-                       "wanting to combine.\r\n");
-      return;
-    }
-    if (obj && obj2) {
-      if (GET_OBJ_VNUM(obj) != 3424) {
-        send_to_char(ch, "That is not an ink bottle!\r\n");
-        return;
-      } else if (GET_OBJ_VNUM(obj2) != 3424) {
-        send_to_char(ch, "That is not an ink bottle!\r\n");
-        return;
-      } else if (GET_OBJ_VAL(obj, 6) <= 0) {
-        send_to_char(ch, "There isn't any ink in the first bottle!\r\n");
-        return;
-      } else if (GET_OBJ_VAL(obj2, 6) <= 0) {
-        send_to_char(ch, "There isn't any ink in the second bottle!\r\n");
-        return;
-      } else {
-        if (GET_OBJ_VAL(obj, 6) >= GET_OBJ_VAL(obj2, 6)) {
-          GET_OBJ_VAL(obj, 6) += GET_OBJ_VAL(obj2, 6);
-          if (GET_OBJ_VAL(obj, 6) > 24) {
-            GET_OBJ_VAL(obj, 6) = 24;
-          }
-          send_to_char(ch, "You combine the ink of the two bottles into one "
-                           "bottle, and discard the leftovers.\r\n");
-          extract_obj(obj2);
-        } else if (GET_OBJ_VAL(obj2, 6) > GET_OBJ_VAL(obj, 6)) {
-          GET_OBJ_VAL(obj2, 6) += GET_OBJ_VAL(obj, 6);
-          if (GET_OBJ_VAL(obj2, 6) > 24) {
-            GET_OBJ_VAL(obj2, 6) = 24;
-          }
-          send_to_char(ch, "You combine the ink of the two bottles into one "
-                           "bottle, and discard the leftovers.\r\n");
-          extract_obj(obj);
-        }
-        return;
-      }
-    }
-  }
-
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
-    send_to_char(ch, "You do not have that item.\r\n");
-    return;
-  } else {
-    if (GET_OBJ_VNUM(obj) == 3425) {
-      if (GET_OBJ_VAL(obj, VAL_MAXMATURE) != 0 &&
-          GET_OBJ_VAL(obj, VAL_MATURITY) < GET_OBJ_VAL(obj, VAL_MAXMATURE)) {
-        send_to_char(ch, "It's not mature enough to extract from!\r\n");
-        return;
-      }
-      struct obj_data *bottle = char_inventory_search_vnum(ch, 3423, FALSE, 0);
-
-      int64_t cost = ((GET_MAX_MANA(ch) * 0.35) + 500);
-
-      if (!bottle) {
-        send_to_char(
-            ch,
-            "You do not have an empty bottle to put the extracted ink in.\r\n");
-        return;
-      }
-
-      int64_t extra = 0;
-
-      if (GET_OBJ_VAL(bottle, 6) + 4 >= 24)
-        extra = GET_MAX_MANA(ch) * 0.5;
-
-      cost += extra;
-
-      if ((getCurKI(ch)) < cost) {
-        send_to_char(ch,
-                     "You do not have enough ki! @D[@rNeeded@D: @R%s@D]@n\r\n",
-                     add_commas(cost));
-        return;
-      } else if (skill < chance) {
-        decCurKI(ch, cost);
-        act("@WWith your ki flowing carefully into your hands you take a hold "
-            "of the @G$p@W and begin to strip it of its leaves. Once it has "
-            "been stripped you go to squeeze the ink carefully from the leaves "
-            "into the bottle, but unfortunately the ink explodes into a mess "
-            "instead!@n",
-            TRUE, ch, obj, 0, TO_CHAR);
-        act("@C$n@W takes a hold of the @G$p@W and begins to strip it of its "
-            "leaves. Once it has been stripped $e bundles up the leaves in $s "
-            "hands and begins to squeeze. A nasty explosion of a mess is all "
-            "that follows!@n",
-            TRUE, ch, obj, 0, TO_ROOM);
-        improve_skill(ch, SKILL_EXTRACT, 0);
-        extract_obj(obj);
-        WAIT_STATE(ch, PULSE_3SEC);
-        return;
-      } else {
-        decCurKI(ch, cost);
-        act("@WWith your ki flowing carefully into your hands you take a hold "
-            "of the @G$p@W and begin to strip it of its leaves. Once it has "
-            "been stripped you go to squeeze the ink carefully from the leaves "
-            "into the bottle, and manage to get every last drop of ink into "
-            "it.@n",
-            TRUE, ch, obj, 0, TO_CHAR);
-        act("@C$n@W takes a hold of the @G$p@W and begins to strip it of its "
-            "leaves. Once it has been stripped $e bundles up the leaves in $s "
-            "hands and begins to squeeze ink carefully from the leaves into a "
-            "bottle.@n",
-            TRUE, ch, obj, 0, TO_ROOM);
-        extract_obj(obj);
-        GET_OBJ_VAL(bottle, 6) += rand_number(4, 6);
-        if (GET_OBJ_VAL(bottle, 6) >= 24) {
-          struct obj_data *filled = read_object(3424, VIRTUAL);
-          extract_obj(bottle);
-          GET_OBJ_VAL(filled, 6) = 24;
-          obj_to_char(filled, ch);
-          decCurKI(ch, 0);
-          act("@GAs the last of the ink fills the bottle you infuse a final "
-              "burst of ki into the bottle.@n",
-              TRUE, ch, filled, 0, TO_CHAR);
-          act("@GAs the last of the ink fills the bottle @g$n@G infuses a "
-              "final burst of ki into the bottle.@n ",
-              TRUE, ch, filled, 0, TO_ROOM);
-        } else {
-          send_to_char(ch,
-                       "You will need to fill the bottle before giving it a "
-                       "final infusion of ki to complete the process.\r\n");
-        }
-        improve_skill(ch, SKILL_EXTRACT, 0);
-        WAIT_STATE(ch, PULSE_3SEC);
-      }
-    } else {
-      send_to_char(ch, "That is not something you can extract from.\r\n");
-      return;
-    }
-  }
-}
-
-ACMD(do_runic) {
-
-  if (!GET_SKILL(ch, SKILL_RUNIC)) {
-    send_to_char(ch, "You do not know how to write down runes.\r\n");
-    return;
-  }
-
-  char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-  int skill = GET_SKILL(ch, SKILL_RUNIC), bonus = 0;
-
-  two_arguments(argument, arg, arg2);
-
-  if (FIGHTING(ch)) {
-    send_to_char(ch, "You are too busy fighting to write runes!\r\n");
-    return;
-  }
-
-  auto show_help = [&]() {
-    send_to_char(ch, "Syntax: runic (target) (skill)\r\n");
-    send_to_char(ch, "@D----@GRunic Skills@D----@n\r\n");
-    send_to_char(ch, "@Rkenaz\n%s\n%s\n%s\n%s\n%s\n%s@n\n",
-                 skill >= 40  ? "@Galgiz"   : "",
-                 skill >= 40  ? "@moagaz"   : "",
-                 skill >= 50  ? "@CLaguz"   : "",
-                 skill >= 60  ? "@Ywunjo"   : "",
-                 skill >= 80  ? "@rpurisaz" : "",
-                 skill >= 100 ? "@mgebo"    : "");
-  };
-
-  if (!*arg || !*arg2) {
-    show_help();
-    return;
-  }
-
-  auto *bottle =
-      dbat::game::search::character_inventory_find(ch, FALSE, [&](auto it) {
-        return GET_OBJ_VNUM(it) == 3424 && GET_OBJ_VAL(it, 6) > 0;
-      });
-
-  if (!bottle) {
-    send_to_char(ch, "You do not have a bottle with enough ink in it.\r\n");
-    return;
-  }
-  int amount = GET_OBJ_VAL(bottle, 6);
-
-  if (!char_inventory_search_vnum(ch, 3427, FALSE, 0)) {
-    send_to_char(ch, "You do not have a brush!\r\n");
-    return;
-  }
-
-  int64_t cost = GET_MAX_MANA(ch) * 0.05;
-  int inkcost = 0;
-
-  if (IS_HOSHIJIN(ch))
-    bonus = 10;
-  else
-    inkcost += 2;
-
-  struct char_data *vict;
-  if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
-    send_to_char(ch, "You can't seem to find that person.\r\n");
-    return;
-  } else if (getCurKI(ch) < cost) {
-    send_to_char(ch, "You do not have enough ki to write runes.\r\n");
-    return;
-  } else if (skill + bonus < axion_dice(0) && rand_number(1, 5) == 5) {
-    act("@BYou dip your brush into the ink, but as you infuse your ki you "
-        "balance the flow wrong and end up destroying the ink bottle!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@b$n@B dips $s runic brush into a bottle filled with shimmering ink. "
-        "@b$n@B appears to concentrate for a moment before a look of panic "
-        "dons $s face. Just at that moment the bottle of ink explodes! "
-        "Strange...@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    extract_obj(bottle);
-    improve_skill(ch, SKILL_RUNIC, 1);
-    decCurKI(ch, cost);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (skill + bonus < axion_dice(0)) {
-    decCurKI(ch, cost);
-    act("@BYou dip your brush into the ink, but as you infuse your ki you "
-        "balance the flow wrong and end up evaporating some ink!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@b$n@B dips $s runic brush into a bottle filled with shimmering ink. "
-        "@b$n@B appears to concentrate for a moment before some ink "
-        "evaporates. Strange...@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    improve_skill(ch, SKILL_RUNIC, 1);
-    GET_OBJ_VAL(bottle, 6) -= rand_number(1, 3);
-    if (GET_OBJ_VAL(bottle, 6) < 0)
-      GET_OBJ_VAL(bottle, 6) = 0;
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  }
-
-  /* deduct ink and replace bottle with empty when drained */
-  auto spend_ink = [&]() {
-    GET_OBJ_VAL(bottle, 6) -= inkcost;
-    if (GET_OBJ_VAL(bottle, 6) <= 0) {
-      extract_obj(bottle);
-      obj_to_char(read_object(3423, VIRTUAL), ch);
-    }
-  };
-
-  /* returns false and prints error if ink insufficient */
-  auto ink_ok = [&]() -> bool {
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. "
-                   "@D[@bInkcost@D: @R%d@D]@n\r\n",
-                   inkcost);
-      return false;
-    }
-    return true;
-  };
-
-  /* clamp skill * mult to minimum 1 */
-  auto calc_dur = [&](double mult) -> int {
-    int d = (int)(skill * mult);
-    return d < 1 ? 1 : d;
-  };
-
-  /* core rune application: ki drain, act messages (self or other), ink report,
-     vict effect message, condition application, bottle deduction */
-  auto apply_rune = [&](const char *rune_name, const char *condition,
-                         int duration, const char *vict_msg) {
-    decCurKI(ch, cost);
-    char buf[512];
-    if (vict == ch) {
-      snprintf(buf, sizeof(buf),
-               "@BYou dip your brush into the ink and infuse your ki skillfully "
-               "into it. You pull the brush out and paint the @D'@C%s@D'@B rune "
-               "on your skin!@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, 0, TO_CHAR);
-      snprintf(buf, sizeof(buf),
-               "@b$n@B dips $s brush into a bottle of ink and at the same time "
-               "the ink starts to glow. Skillfully $e then writes the "
-               "@D'@C%s@D'@B rune on $s skin.@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, 0, TO_ROOM);
-    } else {
-      snprintf(buf, sizeof(buf),
-               "@BYou dip your brush into the ink and infuse your ki skillfully "
-               "into it. You pull the brush out and paint the @D'@C%s@D'@B rune "
-               "on @b$N's@B skin!@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, vict, TO_CHAR);
-      snprintf(buf, sizeof(buf),
-               "@b$n@B dips $s brush into a bottle of ink and at the same time "
-               "the ink starts to glow. Skillfully $e then writes the "
-               "@D'@C%s@D'@B rune on @RYOUR@B skin.@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, vict, TO_VICT);
-      snprintf(buf, sizeof(buf),
-               "@b$n@B dips $s brush into a bottle of ink and at the same time "
-               "the ink starts to glow. Skillfully $e then writes the "
-               "@D'@C%s@D'@B rune on @b$N's@B skin.@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, vict, TO_NOTVICT);
-    }
-    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-    send_to_char(vict, "%s", vict_msg);
-    if (condition && duration > 0) {
-      char_condition_add(vict, condition, "skill", "runic");
-      char_condition_duration_set(vict, condition, duration * SECS_PER_MUD_HOUR);
-    }
-    spend_ink();
-  };
-
-  char vict_msg[256];
-
-  if (!strcasecmp(arg2, "kenaz")) {
-    inkcost += 1;
-    /* kenaz skips the ink_ok check — small cost, always permitted */
-    int dur = calc_dur(0.16);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou can now see in the dark! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Kenaz", "rune_kenaz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "algiz")) {
-    inkcost += 2;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.05);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Algiz", "ethereal_armor", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "oagaz")) {
-    inkcost += 3;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.04);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou now are protected by Ethereal Chains! "
-             "@D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Oagaz", "rune_oagaz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "laguz")) {
-    inkcost += 4;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.04);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou now have water breathing! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Laguz", "rune_laguz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "wunjo")) {
-    inkcost += 4;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.08);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou are now blessed with a deeper understanding of things you "
-             "experience! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Wunjo", "rune_wunjo", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "purisaz")) {
-    inkcost += 4;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.06);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou feel as if your inner energy is more potent! "
-             "@D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Purisaz", "rune_purisaz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "gebo")) {
-    inkcost += 10;
-    if (!ink_ok()) return;
-    /* gebo is instant: no condition/duration, but unique "flash" flavor in acts */
-    decCurKI(ch, cost);
-    char buf[512];
-    if (vict == ch) {
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CGebo@D'@B rune "
-          "on your skin! The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on $s skin. The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-    } else {
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CGebo@D'@B rune "
-          "on @b$N's@B skin! The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on @RYOUR@B skin. The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on @b$N's@B skin. The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-    }
-    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-    char_stat_mod(vict, "practices", 125);
-    send_to_char(vict,
-                 "@GYou feel like you've just gained a lot of knowledge. "
-                 "Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
-    spend_ink();
-  } else {
-    show_help();
-    return;
-  }
-
-  improve_skill(ch, SKILL_RUNIC, 1);
-  WAIT_STATE(ch, PULSE_3SEC);
-}
+/* do_lifeforce moved to lua/characters/pcommands/info/lifeforce.lua */
+/* do_defend moved to lua/characters/commands/misc/defend.lua */
+
+/* fishing system moved to lua/characters/conditions/fishing.lua
+   and lua/characters/commands/misc/fish.lua */
+static int has_pole(struct char_data *ch) { (void)ch; return FALSE; }
+static void catch_fish(struct char_data *ch, int quality) { (void)ch; (void)quality; }
+static bool handle_fishing(struct char_data *ch) { (void)ch; return false; }
+static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b) { (void)ctx_type; (void)ctx_a; (void)ctx_b; }
+ACMD(do_fish) { (void)ch; (void)argument; (void)cmd; (void)subcmd; }
+
+/* do_extract moved to lua/characters/commands/misc/extract.lua */
+/* do_runic moved to lua/characters/commands/misc/runic.lua */
 
 ACMD(do_scry) {
 
@@ -2220,8 +740,7 @@ void ash_burn(struct char_data *ch) {
               act("@r$n@D eyes appear to have been hurt by the ash!@n", TRUE,
                   ch, 0, 0, TO_ROOM);
               int duration = 1;
-              char_condition_add(ch, "ash_blinded", "skill", "ash_burn");
-              char_condition_duration_set(ch, "ash_blinded", duration * SECS_PER_MUD_HOUR);
+              char_condition_apply_with_duration(ch, "ash_blinded", "skill", "ash_burn", duration * SECS_PER_MUD_HOUR);
 
             }
           }
@@ -2452,157 +971,9 @@ ACMD(do_resize) {
   }
 }
 
-ACMD(do_healglow) {
-  struct char_data *vict;
-  char arg[MAX_INPUT_LENGTH];
-  one_argument(argument, arg);
+/* do_healglow moved to lua/characters/commands/misc/healglow.lua */
 
-  if (!GET_SKILL(ch, SKILL_HEALGLOW)) {
-    send_to_char(ch, "You do not know how to perform that technique.\r\n");
-    return;
-  }
-
-  if (!*arg) {
-    vict = ch;
-  } else if (GET_SKILL(ch, SKILL_HEALGLOW) < 100) {
-    send_to_char(ch, "You can not target anyone except yourself unless you are "
-                     "a master of this technique.\nSyntax: healingglow\r\n");
-    return;
-  } else if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
-    send_to_char(ch, "Nobody around by that name.\r\n");
-    return;
-  }
-
-  if (char_condition_has(vict, "healing_glow") && vict == ch) {
-    send_to_char(ch,
-                 "You already have a healing glow surrounding your body.\r\n");
-    return;
-  } else if (char_condition_has(vict, "healing_glow")) {
-    send_to_char(
-        ch, "They already have a healing glow surrounding their body.\r\n");
-    return;
-  }
-
-  if (FIGHTING(vict) && vict == ch) {
-    send_to_char(ch, "You are too busy fighting!@n\r\n");
-    return;
-  } else if (FIGHTING(vict)) {
-    send_to_char(ch, "They are too busy fighting!@n\r\n");
-    return;
-  }
-
-  int64_t cost = GET_MAX_MANA(ch) * 0.5;
-
-  if ((getCurKI(ch)) < cost) {
-    send_to_char(ch,
-                 "You do not have enough ki. It requires at least 50%s of your "
-                 "ki in cost.\r\n",
-                 "%");
-    return;
-  } else {
-    if (vict == ch) {
-      act("@CPlacing your hands on your body you begin to focus your energies. "
-          "Slowly a strong blue glow glistens and shines across your skin!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@c$n@C places $s hands on $s body. Slowly a strong blue glow "
-          "glistens and shines across $s skin!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-      char_condition_add(vict, "healing_glow", "skill", "healing glow");
-      int duration = (GET_SKILL(ch, SKILL_HEALGLOW) * 0.1);
-      if (duration <= 0)
-        duration = 1;
-      char_condition_duration_set(vict, "healing_glow", duration * SECS_PER_MUD_HOUR);
-      decCurKI(ch, cost);
-    } else {
-      act("@CPlacing your hands on @c$N's@C body you begin to focus your "
-          "energies. Slowly a strong blue glow glistens and shines across $S "
-          "skin!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@c$n@C places $s hands on YOUR body. Slowly a strong blue glow "
-          "glistens and shines across your skin!@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@c$n@C places $s hands on @c$N's@C body. Slowly a strong blue glow "
-          "glistens and shines across $S skin!@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-      int duration = (GET_SKILL(ch, SKILL_HEALGLOW) * 0.1);
-      duration += rand_number(-2, 1);
-      if (duration <= 0)
-        duration = 1;
-      char_condition_add(vict, "healing_glow", "skill", "healing glow");
-      char_condition_duration_set(vict, "healing_glow", duration * SECS_PER_MUD_HOUR);
-      decCurKI(ch, cost);
-    }
-  }
-}
-
-/* Demon's lame skill */
-ACMD(do_metamorph) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!know_skill(ch, SKILL_METAMORPH)) {
-    return;
-  }
-
-  if (GET_ALIGNMENT(ch) >= 51) {
-    send_to_char(ch, "Your heart is too pure to use that technique!\r\n");
-    return;
-  }
-
-  int64_t cost = (GET_MAX_MANA(ch) * 0.16);
-
-  if (char_condition_has(ch, "dark_metamorphosis")) {
-    send_to_char(ch, "You are already surrounded by a dark aura!\r\n");
-    return;
-  }
-
-  if ((getCurKI(ch)) < cost) {
-    send_to_char(ch, "You do not have enough ki. You need %s.\r\n",
-                 add_commas(cost));
-    return;
-  }
-
-  int chance = axion_dice(0), perc = (GET_WIS(ch) * 2);
-
-  if (perc < 100 && perc > 60)
-    perc += 100 - perc;
-  else if (perc < 100)
-    perc += 10;
-
-  decCurKI(ch, cost / 2);
-  if (perc < chance) {
-    act("@WYou focus your energies and prepare your @RDark Metamorphisis@W but "
-        "screw up your focus!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@WA dark @Rred@W glow starts to surround @C$n@W, but it fades "
-        "quickly.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-
-    return;
-  }
-
-  act("'@RDark@W...' An explosion of sanguine aura erupts over the surface "
-        "of your body, your eyes darkening to a bleeding crimson. The flaring "
-        "glow emanating from your body pronounces the shadows cast, a "
-        "darkening umbrage that threatens a malicious promise. Fists clench "
-        "tightly, muscles bulking as you hiss; You complete the transition, "
-        "relaxing visibly, '...@RMetamorphosis@W'@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("'@RDark@W...' An explosion of sanguine aura erupts over the surface "
-        "of @C$n@W's body, $s eyes darkening to a bleeding crimson. The "
-        "flaring glow emanating from $s body pronounces the shadows cast, a "
-        "darkening umbrage that threatens a malicious promise. Fists clench "
-        "tightly, muscles bulking as $e hisses; $e completes the transition, "
-        "relaxing visibly, '...@RMetamorphosis@W'@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-
-    int duration = (GET_INT(ch) / 12) * SECS_PER_MUD_HOUR;
-    char_condition_add(ch, "dark_metamorphosis", "affect",
-                         "dark_metamorphosis");
-    char_condition_duration_set(ch, "dark_metamorphosis", duration);
-    incCurHealthPercent(ch, .6);
-}
+/* do_metamorph moved to lua/characters/commands/misc/metamorph.lua */
 
 ACMD(do_shimmer) {
 
@@ -3194,73 +1565,7 @@ ACMD(do_instill) {
   }
 }
 
-ACMD(do_hayasa) {
-
-  if (!IS_NPC(ch) && !GET_SKILL(ch, SKILL_HAYASA)) {
-    send_to_char(ch, "You do not know how to perform this technique!\r\n");
-    return;
-  }
-
-  if (AFF_FLAGGED(ch, AFF_HAYASA)) {
-    send_to_char(ch, "You are already focusing ki to continually speed up your "
-                     "movements.\r\n");
-    return;
-  }
-
-  int skill = GET_SKILL(ch, SKILL_HAYASA), prob = axion_dice(0);
-  int64_t cost = GET_MAX_MANA(ch) / (skill / 2);
-  int duration = 1;
-
-  if (skill >= 100) {
-    duration = 6;
-  } else if (skill >= 80) {
-    duration = 5;
-  } else if (skill >= 50) {
-    duration = 4;
-  } else if (skill >= 25) {
-    duration = 3;
-  } else {
-    duration = 2;
-  }
-
-  if ((getCurKI(ch)) < cost) {
-    send_to_char(ch, "You do not have enough ki.\r\n");
-    return;
-  } else if (skill < prob) {
-    decCurKI(ch, cost);
-    act("@CYou close your eyes for a brief moment and focus your ki around "
-        "your body as a soft blue glow. The glow disappears though as you fail "
-        "to maintain the effect...@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C closes $s eyes for a brief moment and a soft blue glow begins "
-        "to form around $s body. The glow disappears a second later though and "
-        "$e frowns.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    improve_skill(ch, SKILL_HAYASA, 1);
-    WAIT_STATE(ch, PULSE_2SEC);
-  } else {
-    struct affected_type af;
-
-    decCurKI(ch, cost);
-    af.type = SPELL_HAYASA;
-    af.duration = duration;
-    af.modifier = 0;
-    af.location = APPLY_NONE;
-    af.bitvector = AFF_HAYASA;
-    affect_join(ch, &af, FALSE, FALSE, FALSE, FALSE);
-    GET_SPEEDBOOST(ch) = GET_SPEEDCALC(ch) * 0.5;
-    reveal_hiding(ch, 0);
-    act("@CYou close your eyes for a brief moment and focus your ki around "
-        "your body as a soft blue glow. All your movements are faster now!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C closes $s eyes for a brief moment and a soft blue glow begins "
-        "to form around $s body. The glow pulsates gently as $e opens his eyes "
-        "and smiles.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    improve_skill(ch, SKILL_HAYASA, 1);
-    WAIT_STATE(ch, PULSE_2SEC);
-  }
-}
+/* do_hayasa moved to lua/characters/commands/misc/hayasa.lua */
 
 /* This is the mortal dig command. */
 ACMD(do_bury) {
@@ -3595,7 +1900,7 @@ ACMD(do_ensnare) {
             "$S arms with the silk!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
         extract_obj(obj);
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_ENSNARED);
+        char_condition_apply(vict, "ensnared", "skill", "ensnare");
         WAIT_STATE(ch, PULSE_3SEC);
         improve_skill(ch, SKILL_ENSNARE, 0);
         char_condition_remove(vict, "zanzoken", "zanzoken_over");
@@ -3622,7 +1927,7 @@ ACMD(do_ensnare) {
           "with the silk!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       extract_obj(obj);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_ENSNARED);
+      char_condition_apply(vict, "ensnared", "skill", "ensnare");
       WAIT_STATE(ch, PULSE_3SEC);
       improve_skill(ch, SKILL_ENSNARE, 0);
       char_condition_remove(ch, "zanzoken", "zanzoken_over");
@@ -3664,7 +1969,7 @@ ACMD(do_ensnare) {
           "silk!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       extract_obj(obj);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_ENSNARED);
+      char_condition_apply(vict, "ensnared", "skill", "ensnare");
       WAIT_STATE(ch, PULSE_3SEC);
       improve_skill(ch, SKILL_ENSNARE, 0);
     }
@@ -4055,70 +2360,7 @@ ACMD(do_silk) {
   }
 }
 
-/* Let's an Arlian trade Stamina for either PL or Ki*/
-ACMD(do_adrenaline) {
-
-  if (!IS_ARLIAN(ch) &&
-      (!IS_BIO(ch) ||
-       (IS_BIO(ch) && (GET_GENOME(ch, 0) != 6 && GET_GENOME(ch, 1) != 6)))) {
-    send_to_char(ch,
-                 "You are not an arlian and do not possess this ability\r\n");
-    return;
-  } else {
-    char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-    two_arguments(argument, arg, arg2);
-
-    if (!*arg || !*arg2) {
-      send_to_char(ch, "Syntax: adrenaline (pl or ki) (percent)\r\nExample: "
-                       "adrenaline pl 10\r\n");
-      return;
-    } else {
-      if (atoi(arg2) < 0 || atoi(arg2) > 100) {
-        send_to_char(ch, "The percent must be between 1 and 100%s.\r\n", "%");
-        return;
-      }
-
-      double percent = atoi(arg2) * 0.01;
-
-      if ((getCurST(ch) - (getBasePL(ch) * percent)) < 0) {
-        send_to_char(
-            ch, "You do not have enough stamina to trade for adrenaline!\r\n");
-        return;
-      }
-
-      int64_t trade = getBaseST(ch) * percent;
-
-      if (!strcasecmp(arg, "pl")) {
-        act("@GYou focus your mind and begin to overwork your powerful adrenal "
-            "glands and your wounds begin to heal!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@g$n@G seems to concentrate and $s wounds begin to heal!@n", TRUE,
-            ch, 0, 0, TO_ROOM);
-
-        if (GET_HIT(ch) + trade > getMaxPL(ch))
-          send_to_char(ch, "Some of your stamina was wasted because your "
-                           "powerlevel maxed out.\r\n");
-        incCurHealth(ch, trade);
-        decCurST(ch, trade);
-
-      } else if (!strcasecmp(arg, "ki")) {
-        act("@GYou focus your mind and begin to overwork your powerful adrenal "
-            "glands and you feel your ki replenish!@n",
-            TRUE, ch, 0, 0, TO_CHAR);
-        act("@g$n@G seems to concentrate and $e appears energized!@n", TRUE, ch,
-            0, 0, TO_ROOM);
-
-        if ((getCurKI(ch)) + trade > GET_MAX_MANA(ch))
-          send_to_char(
-              ch,
-              "Some of your stamina was wasted because your ki maxed out.\r\n");
-        incCurKI(ch, trade);
-        decCurST(ch, trade);
-      }
-    } /* End inner else */
-
-  } /* end main else */
-}
+/* do_adrenaline moved to lua/characters/commands/misc/adrenaline.lua */
 
 /* This handles displaying the rpp item store to a player. */
 void disp_rpp_store(struct char_data *ch) {
@@ -5297,7 +3539,7 @@ ACMD(do_fireshield) {
         TRUE, ch, 0, 0, TO_ROOM);
     improve_skill(ch, SKILL_FIRESHIELD, 0);
     decCurKI(ch, cost);
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_FIRESHIELD);
+    char_condition_apply(ch, "fireshield", "skill", "fireshield");
     return;
   }
 }
@@ -5768,72 +4010,7 @@ ACMD(do_obstruct) {
   }
 }
 
-/* This allows a player to flood a room. */
-ACMD(do_dimizu) {
-
-  if (IS_NPC(ch))
-    return;
-
-  if (!know_skill(ch, SKILL_DIMIZU)) {
-    return;
-  }
-
-  int skill = GET_SKILL(ch, SKILL_DIMIZU);
-  int prob = axion_dice(0);
-
-  struct room_data *room = char_room_get(ch);
-
-  if (room_geffect_get(room) < 0) {
-    act("@CYou concentrate and distabilie the water, separating the hydrogen "
-        "and oxygen. The gases dissipate quickly.",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C concentrates and the water filling the area seems to shudder. "
-        "Suddenly the water begins to evaporate as the hydrogen and oxygen are "
-        "separated.",
-        TRUE, ch, 0, 0, TO_ROOM);
-    room_geffect_set(room, 0);
-    WAIT_STATE(ch, PULSE_1SEC);
-    return;
-  } else if (room_sector_type_get(room) == SECT_UNDERWATER) {
-    send_to_char(ch, "The area is already underwater!\r\n");
-    return;
-  } else if (room_sector_type_get(room) == SECT_SPACE ||
-             (char_room_get(ch) &&
-              room_flagged(char_room_get(ch), ROOM_SPACE))) {
-    send_to_char(ch, "You can't flood space!\r\n");
-    return;
-  } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 12) {
-    send_to_char(ch, "You do not have enough ki to perform the technique.\r\n");
-    return;
-  } else if (skill < prob) {
-    act("@CYou gather your ki and concentrate on creating water from it. Water "
-        "begins to flow upward around the entire area, but you lose your "
-        "concentration and it all goes flooding away!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C gathers $s ki and concentrates on creating water from it. "
-        "Water begins to flow upward around the entire area, but $e loses $s "
-        "concentration and all the water goes flooding away!@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    decCurKI(ch, getMaxKI(ch) / 12);
-    improve_skill(ch, SKILL_DIMIZU, 0);
-    return;
-  } else {
-    act("@CYou gather your ki and concentrate on creating water from it. Water "
-        "begins to flow upward around the entire area. You form the water into "
-        "a perfect cube with barely any ripples in its walls. It will maintain "
-        "this form for a while.@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@C gathers $s ki and concentrates on creating water from it. "
-        "Water begins to flow upward around the entire area. @c$n@C forms the "
-        "water into a perfect cube with barely any ripples in its walls. It "
-        "appears the water will maintain this form for a while.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    decCurKI(ch, getMaxKI(ch) / 12);
-    room_geffect_set(room, -3);
-    improve_skill(ch, SKILL_DIMIZU, 0);
-    return;
-  }
-}
+/* do_dimizu moved to lua/characters/commands/misc/dimizu.lua */
 
 /* Allows a player to place a "beacon" on a room they want to return to if
  * they revive from death. */
@@ -5910,7 +4087,7 @@ ACMD(do_feed) {
     return;
   }
 
-  if (vict->master != ch && ch->master != vict && ch->master != vict->master) {
+  if (MASTER(vict) != ch && MASTER(ch) != vict && MASTER(ch) != MASTER(vict)) {
     send_to_char(ch, "You need to be grouped with them first.\r\n");
     return;
   }

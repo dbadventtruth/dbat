@@ -61,7 +61,6 @@
 
 #include "help.h"
 
-#include "affect.h"
 #include "extract.h"
 #include "fileop.h"
 #include "json.h"
@@ -484,8 +483,6 @@ ACMD(do_reboot) {
   one_argument(argument, arg);
 
   if (!strcasecmp(arg, "all") || *arg == '*') {
-    if (load_levels() < 0)
-      send_to_char(ch, "Cannot read level configurations\r\n");
     if (file_to_string_alloc(GREETINGS_FILE, &GREETINGS) == 0)
       prune_crlf(GREETINGS);
     if (file_to_string_alloc(GREETANSI_FILE, &GREETANSI) == 0)
@@ -515,9 +512,6 @@ ACMD(do_reboot) {
     if (help_table)
       free_help_table();
     index_boot(DB_BOOT_HLP);
-  } else if (!strcasecmp(arg, "levels")) {
-    if (load_levels() < 0)
-      send_to_char(ch, "Cannot read level configurations\r\n");
   } else if (!strcasecmp(arg, "wizlist")) {
     if (file_to_string_alloc(WIZLIST_FILE, &wizlist) < 0)
       send_to_char(ch, "Cannot read wizlist\r\n");
@@ -577,9 +571,6 @@ ACMD(do_reboot) {
 }
 
 void boot_world(void) {
-  mud_log("Loading level tables.");
-  load_levels();
-
   mud_log("Loading zone table.");
   index_boot(DB_BOOT_ZON);
 
@@ -637,7 +628,7 @@ void destroy_db(void) {
 
   /* Active Mobiles & Players (snapshot: free_char unregisters as we go) */
   char_iterate_all([](struct char_data *chtmp) {
-    if (chtmp->master)
+    if (MASTER(chtmp))
       stop_follower(chtmp);
     free_char(chtmp);
     return true;
@@ -872,9 +863,6 @@ void boot_db(void) {
 
   mud_log("Loading feats.");
   assign_feats();
-
-  mud_log("Loading level tables.");
-  load_levels();
 
   mud_log("Loading disabled commands list...");
   load_disabled();
@@ -2696,77 +2684,6 @@ int hsort(const void *a, const void *b) {
  *  procedures for resetting, both play-time and boot-time	 	 *
  *************************************************************************/
 
-int vnum_mobile(char *searchname, struct char_data *ch) {
-  int found = 0;
-
-  mob_proto_iterate([&](auto mob) {
-    if (isname(searchname, mob->name))
-      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, mob->id,
-                   mob->short_descr, mob->proto_script ? "[TRIG]" : "");
-    return true;
-  });
-
-  return (found);
-}
-
-int vnum_object(char *searchname, struct char_data *ch) {
-  int found = 0;
-
-  obj_proto_iterate([&](auto obj) {
-    if (isname(searchname, obj->name))
-      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
-                   obj->short_description, obj->proto_script ? "[TRIG]" : "");
-    return true;
-  });
-
-  return (found);
-}
-
-int vnum_material(char *searchname, struct char_data *ch) {
-  int found = 0;
-
-  obj_proto_iterate([&](auto obj) {
-    if (isname(searchname, material_names[obj->value[VAL_ALL_MATERIAL]])) {
-      send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
-                   obj->short_description, obj->proto_script ? "[TRIG]" : "");
-    }
-    return true;
-  });
-
-  return (found);
-}
-
-int vnum_weapontype(char *searchname, struct char_data *ch) {
-  int found = 0;
-
-  obj_proto_iterate([&](auto obj) {
-    if (obj->type_flag == ITEM_WEAPON) {
-      if (isname(searchname, weapon_type[obj->value[VAL_WEAPON_SKILL]])) {
-        send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
-                     obj->short_description, obj->proto_script ? "[TRIG]" : "");
-      }
-    }
-    return true;
-  });
-
-  return (found);
-}
-
-int vnum_armortype(char *searchname, struct char_data *ch) {
-  int found = 0;
-
-  obj_proto_iterate([&](auto obj) {
-    if (obj->type_flag == ITEM_ARMOR) {
-      if (isname(searchname, armor_type[obj->value[VAL_ARMOR_SKILL]])) {
-        send_to_char(ch, "%3d. [%5d] %-40s %s\r\n", ++found, obj->id,
-                     obj->short_description, obj->proto_script ? "[TRIG]" : "");
-      }
-    }
-    return true;
-  });
-
-  return (found);
-}
 
 /* create a character, and add it to the char list */
 struct char_data *create_char(void) {
@@ -2817,11 +2734,11 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   mob->eye = rand_number(0, 11);
 
   GET_ABSORBS(mob) = 0;
-  ABSORBING(mob) = NULL;
-  ABSORBBY(mob) = NULL;
+  char_absorbing_set(mob, NULL);
+  char_absorbed_by_set(mob, NULL);
   SITS(mob) = NULL;
-  BLOCKED(mob) = NULL;
-  BLOCKS(mob) = NULL;
+  char_blocked_by_set(mob, NULL);
+  char_blocking_set(mob, NULL);
 
   if (!IS_HUMAN(mob) && !IS_SAIYAN(mob) && !IS_HALFBREED(mob) &&
       !IS_NAMEK(mob)) {
@@ -4199,8 +4116,6 @@ void char_free_instance(struct char_data *ch) {
     if (ch->proto_script)
       free_proto_script(ch, MOB_TRIGGER);
   }
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   /* free any assigned scripts */
   if (SCRIPT(ch))
@@ -4242,9 +4157,6 @@ void char_free_prototype(struct char_data *ch) {
 
   if (ch->proto_script)
     free_proto_script(ch, MOB_TRIGGER);
-
-  while (ch->affected)
-    affect_remove(ch, ch->affected);
 
   if (SCRIPT(ch))
     extract_script(ch, MOB_TRIGGER);
@@ -4374,9 +4286,7 @@ void reset_char(struct char_data *ch) {
   for (i = 0; i < NUM_WEARS; i++)
     GET_EQ(ch, i) = NULL;
 
-  ch->master = NULL;
   IN_ROOM(ch) = NOWHERE;
-  FIGHTING(ch) = NULL;
   ch->mob_specials.default_pos = POS_STANDING;
   ch->time.logon = time(0);
 
@@ -4457,6 +4367,8 @@ void init_char(struct char_data *ch) {
     }
     char_stat_set(ch, cond_name, (GET_ADMLEVEL(ch) == ADMLVL_IMPL ? -1 : 48));
   }
+
+  char_condition_add(ch, "system_hints", "init", "character");
 
   GET_LOADROOM(ch) = NOWHERE;
   SPEAKING(ch) = SKILL_LANG_COMMON;

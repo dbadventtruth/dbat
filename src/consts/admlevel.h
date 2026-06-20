@@ -8,14 +8,17 @@ extern "C" {
  * ADMLVL_IMPL should always be the HIGHEST possible admin level, and
  * ADMLVL_IMMORT should always be the LOWEST immortal level.
  */
-#define ADMLVL_NONE 0
-#define ADMLVL_IMMORT 1
-#define ADMLVL_BUILDER 2
-#define ADMLVL_GOD 3
-#define ADMLVL_VICE 4
-#define ADMLVL_GRGOD 5
-#define ADMLVL_IMPL 6
-
+ // ENUM: AdminLevels
+typedef enum {
+    ADMLVL_NONE   = 0,
+    ADMLVL_IMMORT = 1,
+    ADMLVL_BUILDER = 2,
+    ADMLVL_GOD    = 3,
+    ADMLVL_VICE   = 4,
+    ADMLVL_GRGOD  = 5,
+    ADMLVL_IMPL   = 6,
+} AdminLevels;
+// End Enum: AdminLevels
 extern const char *admin_level_names[ADMLVL_IMPL + 2];
 
 #ifdef __cplusplus
