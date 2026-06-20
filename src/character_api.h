@@ -453,6 +453,11 @@ void    char_land(struct char_data *ch);
 int     char_arena_idnum_get(struct char_data *ch);
 void    char_arena_idnum_set(struct char_data *ch, int idnum);
 
+/* Intro / name system */
+int         char_intro_known(struct char_data *ch, struct char_data *vict);
+const char *char_intro_name_get(struct char_data *ch, struct char_data *vict);
+const char *char_introd_calc(struct char_data *ch);
+
 /* Wizard commands */
 const char *char_poofin_get(struct char_data *ch);
 const char *char_poofout_get(struct char_data *ch);

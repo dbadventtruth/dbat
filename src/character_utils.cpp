@@ -4408,3 +4408,7 @@ extern "C" bool char_has_mail(struct char_data *ch) {
 extern "C" bool char_news_pending(struct char_data *ch) {
   return NEWSUPDATE > GET_LPLAY(ch);
 }
+
+extern "C" int char_slot_count(struct char_data *ch) {
+  return slot_count(ch);
+}

@@ -4335,38 +4335,16 @@ int perf_skill(int skill) {
 
   switch (skill) {
   case 464:
-    return 1;
-    break;
   case 441:
-    return 1;
-    break;
   case 444:
-    return 1;
-    break;
   case 475:
-    return 1;
-    break;
   case 474:
-    return 1;
-    break;
   case 476:
-    return 1;
-    break;
   case 488:
-    return 1;
-    break;
   case 472:
-    return 1;
-    break;
   case 485:
-    return 1;
-    break;
   case 442:
-    return 1;
-    break;
   case 510:
-    return 1;
-    break;
   case 533:
     return 1;
     break;

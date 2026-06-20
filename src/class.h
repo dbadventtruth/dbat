@@ -15,7 +15,6 @@ extern const int class_hit_die_size[NUM_CLASSES];
 void do_start(struct char_data *ch);
 int invalid_class(struct char_data *ch, struct obj_data *obj);
 int64_t level_exp(struct char_data *ch, int level);
-int load_levels();
 void cedit_creation(struct char_data *ch);
 void advance_level(struct char_data *ch, int whichclass);
 int8_t ability_mod_value(int abil);

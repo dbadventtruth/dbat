@@ -64,8 +64,6 @@
 
 #include "iterate.hpp"
 
-#include <initializer_list>
-
 #include <cstring>
 #include <unistd.h>
 
@@ -571,11 +569,6 @@ static void check_idling(struct char_data *ch) {
 }
 
 
-static void tick_char_needs(struct char_data *i) {
-  if (rand_number(1, 2) == 2) gain_condition(i, HUNGER, -1);
-  if (rand_number(1, 2) == 2) gain_condition(i, THIRST, -1);
-  if (rand_number(1, 2) == 2) gain_condition(i, DRUNK, -1);
-}
 
 static void tick_char_sleep(struct char_data *i) {
   if (GET_SLEEPT(i) > 0 && GET_POS(i) != POS_SLEEPING)
@@ -586,89 +579,6 @@ static void tick_char_sleep(struct char_data *i) {
   }
 }
 
-/* Returns true if any die() was called (caller should continue to next char). */
-static bool tick_char_survival(struct char_data *i) {
-  bool died = false;
-
-  if (room_sector_type_get(char_room_get(i)) == SECT_WATER_NOSWIM &&
-      !CARRIED_BY(i) && !IS_KANASSAN(i)) {
-    if (getCurST(i) >= getCurCarriedWeight(i)) {
-      act("@bYou swim in place.@n", TRUE, i, 0, 0, TO_CHAR);
-      act("@C$n@b swims in place.@n", TRUE, i, 0, 0, TO_ROOM);
-      decCurST(i, getCurCarriedWeight(i));
-    } else {
-      decCurST(i, getCurCarriedWeight(i));
-      act("@RYou are drowning!@n", TRUE, i, 0, 0, TO_CHAR);
-      act("@C$n@b gulps water as $e struggles to stay above the water line.@n",
-          TRUE, i, 0, 0, TO_ROOM);
-      if (GET_HIT(i) - (getMaxPL(i) / 3) <= 0) {
-        act("@rYou drown!@n", TRUE, i, 0, 0, TO_CHAR);
-        act("@R$n@r drowns!@n", TRUE, i, 0, 0, TO_ROOM);
-        die(i, NULL);
-        died = true;
-      } else {
-        decCurHealth(i, getMaxPL(i) / 3);
-      }
-    }
-  }
-
-  auto ki_regen_rate   = char_der_total_get(i, "ki_regen");
-  auto pl_regen_rate   = char_der_total_get(i, "powerlevel_regen");
-
-  if (!has_o2(i) && room_is_sunken(char_room_get(i)) &&
-      !room_flagged(char_room_get(i), ROOM_SPACE)) {
-    if (getCurKI(i) - ki_regen_rate > GET_MAX_MANA(i) / 200) {
-      send_to_char(i, "Your ki holds an atmosphere around you.\r\n");
-      decCurKI(i, ki_regen_rate + getPercentOfMaxKI(i, .005));
-    } else {
-      if (GET_HIT(i) - pl_regen_rate > getMaxPL(i) * 0.05) {
-        send_to_char(i, "You struggle trying to hold your breath!\r\n");
-        decCurHealth(i, pl_regen_rate + getPercentOfMaxHealth(i, .05));
-      } else if (GET_HIT(i) <= GET_MAX_HIT(i) / 20) {
-        send_to_char(i, "You have drowned!\r\n");
-        act("@W$n@W drowns right in front of you.@n", FALSE, i, 0, 0, TO_ROOM);
-        die(i, NULL);
-        died = true;
-      }
-    }
-  }
-
-  if (!has_o2(i) && room_flagged(char_room_get(i), ROOM_SPACE)) {
-    if (getCurKI(i) - ki_regen_rate > GET_MAX_MANA(i) * 0.005) {
-      send_to_char(i, "Your ki holds an atmosphere around you.\r\n");
-      decCurKI(i, ki_regen_rate + getPercentOfMaxKI(i, .005));
-    } else {
-      if (GET_HIT(i) - pl_regen_rate > getMaxPL(i) * 0.05) {
-        send_to_char(i, "You struggle trying to hold your breath!\r\n");
-        decCurHealth(i, pl_regen_rate + getPercentOfMaxHealth(i, .05));
-      } else if (GET_HIT(i) <= GET_MAX_HIT(i) / 20) {
-        send_to_char(i, "You have drowned!\r\n");
-        decCurHealthPercentFloored(i, 1, 1);
-        act("@W$n@W drowns right in front of you.@n", FALSE, i, 0, 0, TO_ROOM);
-        die(i, NULL);
-        died = true;
-      }
-    }
-  }
-
-  if (!char_condition_has(i, "flying") &&
-      room_geffect_get(char_room_get(i)) == 6 &&
-      !MOB_FLAGGED(i, MOB_NOKILL) && !IS_DEMON(i)) {
-    act("@rYour legs are burned by the lava!@n", TRUE, i, 0, 0, TO_CHAR);
-    act("@R$n@r's legs are burned by the lava!@n", TRUE, i, 0, 0, TO_ROOM);
-    if (IS_NPC(i) && IS_HUMANOID(i) && rand_number(1, 2) == 2)
-      do_fly(i, 0, 0, 0);
-    decCurHealthPercent(i, .05);
-    if (GET_HIT(i) < 0) {
-      act("@rYou have burned to death!@n", TRUE, i, 0, 0, TO_CHAR);
-      act("@R$n@r has burned to death!@n", TRUE, i, 0, 0, TO_ROOM);
-      die(i, NULL);
-      died = true;
-    }
-  }
-
-  return died;
-}
 
 static void tick_char_heal_messages(struct char_data *i, bool change) {
   if (!change || char_condition_has(i, "poison")) return;
@@ -728,7 +638,6 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
   ++t.count;
 
   struct timespec tp = pu_now();
-  tick_char_needs(i);
   if (IS_NPC(i)) i->aggtimer = 0;
   t.relax += pu_elapsed(tp, pu_now());
 
@@ -740,11 +649,6 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
     if (!IS_NPC(i) && !isFullVitals(i)) change = true;
     tick_char_sleep(i);
     t.flags += pu_elapsed(tp, pu_now());
-
-    tp = pu_now();
-    bool dead = tick_char_survival(i);
-    t.vitals += pu_elapsed(tp, pu_now());
-    if (dead) return;
 
     tp = pu_now();
     tick_char_heal_messages(i, change);

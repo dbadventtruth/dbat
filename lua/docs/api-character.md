@@ -261,6 +261,16 @@ Transformation state is tracked separately from conditions. A transformation may
 | `reveal_hiding` | `ch:reveal_hiding([reveal_type])` | — | |
 | `release_charge` | `ch:release_charge()` | bool | |
 | `command_queue_clear` | `ch:command_queue_clear()` | — | |
+| `fighting_get` | `ch:fighting_get()` | Character\|nil | Current fight target |
+| `grappling_get` | `ch:grappling_get()` | Character\|nil | Who ch is grappling |
+| `grappled_get` | `ch:grappled_get()` | Character\|nil | Who is grappling ch |
+| `absorbing_get` | `ch:absorbing_get()` | Character\|nil | Who ch is absorbing from |
+| `absorbed_by_get` | `ch:absorbed_by_get()` | Character\|nil | Who is absorbing from ch |
+| `timer_get` | `ch:timer_get()` | integer | Idle timer (>3 = idle) |
+| `has_connection` | `ch:has_connection()` | bool | Has live descriptor (false = blank stare) |
+| `default_position_get` | `ch:default_position_get()` | integer | NPC default position |
+| `eavesdrop_get` | `ch:eavesdrop_get()` | integer | Eavesdrop target room (0 = none) |
+| `eavesdrop_dir_get` | `ch:eavesdrop_dir_get()` | integer | Eavesdrop direction index |
 
 ---
 
@@ -283,6 +293,9 @@ These are merged into the Character metatable at load time:
 | `act_self` | `ch:act_self(msg [, ctx])` | Send rendered message to self |
 | `act_around` | `ch:act_around(msg [, ctx])` | Send rendered message to room excluding self |
 | `on_event` | `ch:on_event(kind)` | Entity event dispatch hook; routes by subsystem prefix in `kind` |
+| `is_transformed` | `ch:is_transformed()` | Returns true if any TRANS1-6 or OOZARU player flag is set |
+| `stack_key` | `ch:stack_key()` | string\|nil — key for grouping identical idle NPCs in room display |
+| `render_room_line` | `ch:render_room_line(viewer)` | Render this character's room-listing line as seen by viewer |
 | `event_schedule` | `ch:event_schedule(kind, delay_ms [, interval_ms])` | Schedule an entity-update event; returns event id |
 | `event_cancel` | `ch:event_cancel(kind)` | Cancel all events matching `kind`; returns count cancelled |
 | `event_count` | `ch:event_count([kind])` | Count pending events (all if `kind` omitted) |

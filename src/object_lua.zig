@@ -158,6 +158,13 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "kicharge_get", luaObjectKichargeGet);
     addMethod(lua, "distance_get", luaObjectDistanceGet);
     addMethod(lua, "scoutfreq_get", luaObjectScoutfreqGet);
+    addMethod(lua, "room_get", luaObjectRoomGet);
+    addMethod(lua, "post_type_get", luaObjectPostTypeGet);
+    addMethod(lua, "is_posted", luaObjectIsPosted);
+    addMethod(lua, "fellow_wall_has", luaObjectFellowWallHas);
+    addMethod(lua, "foob_get", luaObjectFoobGet);
+    addMethod(lua, "drinkcon_weight_drain", luaObjectDrinkconWeightDrain);
+    addMethod(lua, "drinkcon_name_update", luaObjectDrinkconNameUpdate);
 
     lua_meta.mergeMethods(lua, "lua.objects.object");
 
@@ -816,4 +823,46 @@ fn luaObjectDistanceGet(lua: *Lua) i32 {
 fn luaObjectScoutfreqGet(lua: *Lua) i32 {
     lua.pushInteger(checkObject(lua).scoutfreq);
     return 1;
+}
+
+fn luaObjectRoomGet(lua: *Lua) i32 {
+    const room = cdb.obj_room_get(checkObject(lua));
+    if (room == null) {
+        lua.pushNil();
+        return 1;
+    }
+    rooms_lua.pushRoom(lua, room.*.id);
+    return 1;
+}
+
+fn luaObjectPostTypeGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).posttype);
+    return 1;
+}
+
+fn luaObjectIsPosted(lua: *Lua) i32 {
+    lua.pushBoolean(checkObject(lua).posted_to != null);
+    return 1;
+}
+
+fn luaObjectFellowWallHas(lua: *Lua) i32 {
+    lua.pushBoolean(checkObject(lua).fellow_wall != null);
+    return 1;
+}
+
+fn luaObjectFoobGet(lua: *Lua) i32 {
+    lua.pushInteger(checkObject(lua).foob);
+    return 1;
+}
+
+fn luaObjectDrinkconWeightDrain(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const amount = intCastOrError(lua, c_int, integer(lua, 2), "amount");
+    cdb.obj_drinkcon_weight_drain(obj, amount);
+    return 0;
+}
+
+fn luaObjectDrinkconNameUpdate(lua: *Lua) i32 {
+    cdb.obj_drinkcon_name_update(checkObject(lua));
+    return 0;
 }

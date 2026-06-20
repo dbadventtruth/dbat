@@ -97,78 +97,43 @@ fn condExpireKind(buf: *[192:0]u8, cond_name: []const u8) ?[:0]u8 {
     return buf[0..total :0];
 }
 
-const stat_names = [_][]const u8{
-    "agility",
-    "alignment",
-    "armor",
-    "constitution",
-    "death_count",
-    "drunk",
-    "experience",
-    "fury",
-    "height",
-    "hunger",
-    "intelligence",
-    "kaioken",
-    "ki",
-    "level",
-    "life_percent",
-    "money",
-    "money_bank",
-    "molt_experience",
-    "molt_level",
-    "powerlevel",
-    "practices",
-    "skill_slots",
-    "speed",
-    "stamina",
-    "strength",
-    "suppression",
-    "thirst",
-    "train_agility",
-    "train_constitution",
-    "train_intelligence",
-    "train_speed",
-    "train_strength",
-    "train_wisdom",
-    "upgrades",
-    "weight",
-    "wisdom",
-};
-
-const StatId = std.math.IntFittingRange(0, stat_names.len - 1);
+const StatId = intern_mod.InternedId;
 const DerivedId = intern_mod.InternedId;
 
 const StatStorage = struct {
-    values: [stat_names.len]i64 = [_]i64{0} ** stat_names.len,
-    present: std.StaticBitSet(stat_names.len) = std.StaticBitSet(stat_names.len).initEmpty(),
+    cache: std.AutoHashMap(StatId, i64),
+
+    fn init(alloc: std.mem.Allocator) StatStorage {
+        return .{ .cache = std.AutoHashMap(StatId, i64).init(alloc) };
+    }
+
+    fn deinit(self: *StatStorage) void {
+        self.cache.deinit();
+    }
 
     fn get(self: *const StatStorage, id: StatId) ?i64 {
-        if (!self.present.isSet(id)) return null;
-        return self.values[id];
+        return self.cache.get(id);
     }
 
     fn set(self: *StatStorage, id: StatId, value: i64) void {
-        self.values[id] = value;
-        self.present.set(id);
+        self.cache.put(id, value) catch @panic("stat OOM");
     }
 
     fn clear(self: *StatStorage) void {
-        self.values = [_]i64{0} ** stat_names.len;
-        self.present = std.StaticBitSet(stat_names.len).initEmpty();
+        self.cache.clearRetainingCapacity();
     }
 
     fn copyFrom(self: *StatStorage, other: *const StatStorage) void {
-        self.values = other.values;
-        self.present = other.present;
+        self.cache.clearRetainingCapacity();
+        var iter = other.cache.iterator();
+        while (iter.next()) |kv| {
+            self.cache.put(kv.key_ptr.*, kv.value_ptr.*) catch @panic("stat OOM");
+        }
     }
 };
 
 fn statId(name: []const u8) ?StatId {
-    inline for (stat_names, 0..) |stat_name, index| {
-        if (std.mem.eql(u8, name, stat_name)) return @intCast(index);
-    }
-    return null;
+    return intern_mod.lookup(name);
 }
 
 const DerivedStorage = struct {
@@ -212,7 +177,7 @@ pub const CharacterData = struct {
 
     pub fn init(alloc: std.mem.Allocator) CharacterData {
         return CharacterData{
-            .stats = .{},
+            .stats = StatStorage.init(alloc),
             .deriveds = DerivedStorage.init(alloc),
             .modifiers = modifiers_api.ModifierCache.init(alloc),
             .deriveds_dirty = true,
@@ -225,6 +190,7 @@ pub const CharacterData = struct {
     }
 
     pub fn deinit(self: *CharacterData) void {
+        self.stats.deinit();
         self.modifiers.deinit();
         var transforms = self.transforms.iterator();
         while (transforms.next()) |entry| {
@@ -247,29 +213,30 @@ pub const CharacterStatEntry = struct {
     value: i64,
 };
 
-pub fn characterStatEntry(ch: *const cdb.char_data, index: usize) ?CharacterStatEntry {
-    if (index >= stat_names.len) return null;
+pub const CharStatIterator = struct {
+    inner: std.AutoHashMap(StatId, i64).Iterator,
+
+    pub fn next(self: *CharStatIterator) ?CharacterStatEntry {
+        const kv = self.inner.next() orelse return null;
+        return .{ .name = intern_mod.nameOf(kv.key_ptr.*), .value = kv.value_ptr.* };
+    }
+};
+
+pub fn characterStatIterator(ch: *const cdb.char_data) ?CharStatIterator {
     const ptr = ch.zigdata orelse return null;
     const data: *const CharacterData = @ptrCast(@alignCast(ptr));
-    const id: StatId = @intCast(index);
-    if (!data.stats.present.isSet(id)) return null;
-    return .{ .name = stat_names[index], .value = data.stats.values[index] };
-}
-
-pub fn characterStatCount() usize {
-    return stat_names.len;
+    return .{ .inner = data.stats.cache.iterator() };
 }
 
 const MobProtoData = struct {
     stats: StatStorage,
 
     pub fn init(alloc: std.mem.Allocator) MobProtoData {
-        _ = alloc;
-        return .{ .stats = .{} };
+        return .{ .stats = StatStorage.init(alloc) };
     }
 
     pub fn deinit(self: *MobProtoData) void {
-        _ = self;
+        self.stats.deinit();
     }
 };
 
@@ -1616,6 +1583,9 @@ pub export fn char_apply_entry_conditions(ch: *cdb.char_data) void {
     // Hayasa sync (AFF_HAYASA = 57)
     if (bitflags.get(ch.affected_by[0..], cdb.AFF_HAYASA))
         _ = cdb.char_condition_apply(ch, "hayasa", "entry", "hayasa_sync");
+
+    // Fire "activate" event so Lua can schedule recurring needs/timers
+    _ = event_schedule_lua_char_update(event_queue_now_ms(), 0, "activate", cdb.char_id_get(ch));
 }
 
 // ---- Status display bindings ----
@@ -1712,6 +1682,15 @@ pub export fn char_cooldown_get(ch: *cdb.char_data) c_int {
 pub export fn char_cooldown_set(ch: *cdb.char_data, val: c_int) void {
     ch.con_cooldown = val;
 }
+pub export fn char_intro_known(ch: *cdb.char_data, vict: *cdb.char_data) c_int {
+    return readIntro(ch, vict);
+}
+pub export fn char_intro_name_get(ch: *cdb.char_data, vict: *cdb.char_data) ?[*:0]const u8 {
+    return get_i_name(ch, vict);
+}
+pub export fn char_introd_calc(ch: *cdb.char_data) ?[*:0]u8 {
+    return introd_calc(ch);
+}
 pub export fn char_know_skill(ch: *cdb.char_data, skill_name: ?[*:0]const u8) bool {
     const index = skillIndex(skill_name) orelse return false;
     return cdb.know_skill(ch, @intCast(index)) != 0;
@@ -1753,6 +1732,9 @@ pub export fn char_soft_cap(ch: *cdb.char_data) i64 {
 }
 
 // extern declarations for C functions not in zig_api.h
+extern fn readIntro(ch: *cdb.char_data, vict: *cdb.char_data) c_int;
+extern fn get_i_name(ch: *cdb.char_data, vict: *cdb.char_data) ?[*:0]const u8;
+extern fn introd_calc(ch: *cdb.char_data) ?[*:0]u8;
 extern fn carry_drop(ch: *cdb.char_data, @"type": c_int) void;
 extern fn look_at_room(room: *cdb.room_data, ch: *cdb.char_data, mode: c_int) void;
 extern fn do_fly(ch: *cdb.char_data, arg: ?[*:0]u8, cmd: c_int, subcmd: c_int) void;

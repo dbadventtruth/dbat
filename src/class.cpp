@@ -409,50 +409,21 @@ void do_start(struct char_data *ch) {
     mud_log("Unknown character class %d in do_start, resetting.", GET_CLASS(ch));
     // GET_CLASS(ch) = 0;
   }
-  if (GET_ALIGNMENT(ch) < 51 && GET_ALIGNMENT(ch) > -51) {
-    set_title(ch, "the Warrior");
-  }
-  if (GET_ALIGNMENT(ch) >= 51) {
-    set_title(ch, "the Hero");
-  }
-  if (GET_ALIGNMENT(ch) <= -51) {
-    set_title(ch, "The Villain");
-  }
+
   if (GET_GOLD(ch) <= 0) {
     char_stat_set(ch, "money", dice(3, 6) * 10);
   }
 
   /* Derived from the SRD under OGL, see ../doc/srd.txt for information */
   switch (GET_RACE(ch)) {
-  case RACE_HUMAN:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
-  case RACE_SAIYAN:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
-  case RACE_HALFBREED:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
-  case RACE_ICER:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
-  case RACE_KONATSU:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
-  case RACE_NAMEK:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
-  case RACE_MUTANT:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
-    break;
   case RACE_ANDROID:
     SET_BIT_AR(AFF_FLAGS(ch), AFF_INFRAVISION);
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
     break;
   default:
-    SET_SKILL(ch, SKILL_LANG_COMMON, 1);
     break;
   }
+
+  SET_SKILL(ch, SKILL_LANG_COMMON, 1);
 
   SPEAKING(ch) = SKILL_LANG_COMMON;
 
@@ -1664,109 +1635,6 @@ static int comp_rank(const void *a, const void *b) {
   first = *(const int *)a;
   second = *(const int *)b;
   return cabbr_ranktable[second] - cabbr_ranktable[first];
-}
-
-int load_levels() {
-  FILE *fp;
-  char line[READ_SIZE], sect_name[READ_SIZE] = {'\0'}, *ptr;
-  int linenum = 0, tp, cls, sect_type = -1;
-
-  if (!(fp = fopen(LEVEL_CONFIG, "r"))) {
-    mud_log("SYSERR: Could not open level configuration file, error: %s!",
-        strerror(errno));
-    return -1;
-  }
-
-  for (cls = 0; cls < NUM_CLASSES; cls++) {
-    for (tp = 0; tp <= SAVING_WILL; tp++) {
-      save_classes[tp][cls] = 0;
-    }
-    basehit_classes[cls] = 0;
-  }
-
-  for (;;) {
-    linenum++;
-    if (!fgets(line, READ_SIZE, fp)) { /* eof check */
-      mud_log("SYSERR: Unexpected EOF in file %s.", LEVEL_CONFIG);
-      return -1;
-    } else if (*line == '$') { /* end of file */
-      break;
-    } else if (*line == '*') { /* comment line */
-      continue;
-    } else if (*line == '#') { /* start of a section */
-      if ((tp = sscanf(line, "#%s", sect_name)) != 1) {
-        mud_log("SYSERR: Format error in file %s, line number %d - text: %s.",
-            LEVEL_CONFIG, linenum, line);
-        return -1;
-      } else if ((sect_type = search_block(sect_name, config_sect, FALSE)) ==
-                 -1) {
-        mud_log("SYSERR: Invalid section in file %s, line number %d: %s.",
-            LEVEL_CONFIG, linenum, sect_name);
-        return -1;
-      }
-    } else {
-      if (sect_type == CONFIG_LEVEL_VERSION) {
-        if (!strncmp(line, "Suntzu", 6)) {
-          mud_log("SYSERR: Suntzu %s config files are not compatible with rasputin",
-              LEVEL_CONFIG);
-          return -1;
-        } else {
-          strcpy(level_version, line); /* OK - both are READ_SIZE */
-        }
-      } else if (sect_type == CONFIG_LEVEL_VERNUM) {
-        level_vernum = atoi(line);
-      } else if (sect_type == CONFIG_LEVEL_EXPERIENCE) {
-        tp = atoi(line);
-        exp_multiplier = tp;
-      } else if ((sect_type >= CONFIG_LEVEL_FORTITUDE &&
-                  sect_type <= CONFIG_LEVEL_WILL) ||
-                 sect_type == CONFIG_LEVEL_BASEHIT) {
-        for (ptr = line; ptr && *ptr && !isdigit(*ptr); ptr++)
-          ;
-        if (!ptr || !*ptr || !isdigit(*ptr)) {
-          mud_log("SYSERR: Cannot find class number in file %s, line number %d, "
-              "section %s.",
-              LEVEL_CONFIG, linenum, sect_name);
-          return -1;
-        }
-        cls = atoi(ptr);
-        for (; ptr && *ptr && isdigit(*ptr); ptr++)
-          ;
-        for (; ptr && *ptr && !isdigit(*ptr); ptr++)
-          ;
-        if (ptr && *ptr && !isdigit(*ptr)) {
-          mud_log("SYSERR: Non-numeric entry in file %s, line number %d, section "
-              "%s.",
-              LEVEL_CONFIG, linenum, sect_name);
-          return -1;
-        }
-        if (ptr && *ptr) /* There's a value */
-          tp = atoi(ptr);
-        else {
-          mud_log("SYSERR: Need 1 value in %s, line number %d, section %s.",
-              LEVEL_CONFIG, linenum, sect_name);
-          return -1;
-        }
-        if (cls < 0 || cls >= NUM_CLASSES) {
-          mud_log("SYSERR: Invalid class number %d in file %s, line number %d.",
-              cls, LEVEL_CONFIG, linenum);
-          return -1;
-        } else {
-          if (sect_type == CONFIG_LEVEL_BASEHIT) {
-            basehit_classes[cls] = tp;
-          } else {
-            save_classes[SAVING_FORTITUDE + sect_type - CONFIG_LEVEL_FORTITUDE]
-                        [cls] = tp;
-          }
-        }
-      } else {
-        mud_log("Unsupported level config option");
-      }
-    }
-  }
-  fclose(fp);
-
-  return 0;
 }
 
 /* Derived from the SRD under OGL, see ../doc/srd.txt for information */

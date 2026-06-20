@@ -535,14 +535,6 @@ local function execute(ctx)
     end
 
     -- Relaxation
-    local relax = ch:relax_count_get()
-    if relax > 464 then
-        t[#t+1] = "You are far too at ease to train hard like you should. Get out of the house more often.\r\n"
-    elseif relax > 232 then
-        t[#t+1] = "You are too at ease to train hard like you should. Get out of the house more often.\r\n"
-    elseif relax > 116 then
-        t[#t+1] = "You are a bit at ease and your training suffers. Get out of the house more often.\r\n"
-    end
 
     -- Eyes closed
     if ch:player_flagged(PLR.EYEC) then
@@ -562,13 +554,6 @@ local function execute(ctx)
     -- Piloting
     if ch:player_flagged(PLR.PILOTING) then
         t[#t+1] = "You are busy piloting a ship.\r\n"
-    end
-
-    -- Song
-    local song = ch:song_get()
-    if song > 0 then
-        t[#t+1] = string.format("You are playing @y'@Y%s@y'@n.\r\n",
-            SONG_NAMES[song] or "Unknown Song")
     end
 
     -- Infuse (legacy AFF flag — not yet a condition)

@@ -312,9 +312,11 @@ fn setPointerStringField(allocator: std.mem.Allocator, object: JsonValue, key: [
 
 fn serializeStats(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
     var object = jsonx.newObject(allocator);
-    for (0..characters_api.characterStatCount()) |index| {
-        const entry = characters_api.characterStatEntry(ch, index) orelse continue;
-        try jsonx.putInt(&object, allocator, entry.name, entry.value);
+    var maybe_iter = characters_api.characterStatIterator(ch);
+    if (maybe_iter) |*iter| {
+        while (iter.next()) |entry| {
+            try jsonx.putInt(&object, allocator, entry.name, entry.value);
+        }
     }
     return object;
 }

@@ -12,6 +12,9 @@ local function C()
         AF  = d.consts.aff_flags,
         MAT = d.consts.materials,
         CF  = d.consts.container_flags,
+        RF  = d.consts.room_flags,
+        ST  = d.consts.sector_types,
+        dirs = d.consts.direction_names,
     }
     return _C
 end
@@ -241,11 +244,198 @@ local function render_inventory_line(obj, viewer)
   return table.concat(t)
 end
 
+-- ---------------------------------------------------------------------------
+-- Room rendering
+-- ---------------------------------------------------------------------------
+
+local SEE_PLANT_STAGES = {
+  [0] = "@wA @G%s@y seed@w has been planted here. @D(@C%d Water Hours@D)@n\r\n",
+  [1] = "@wA very young @G%s@w has sprouted from a planter here. @D(@C%d Water Hours@D)@n\r\n",
+  [2] = "@wA half grown @G%s@w is in a planter here. @D(@C%d Water Hours@D)@n\r\n",
+  [3] = "@wA mature @G%s@w is growing in a planter here. @D(@C%d Water Hours@D)@n\r\n",
+  [4] = "@wA mature @G%s@w is flowering in a planter here. @D(@C%d Water Hours@D)@n\r\n",
+  [5] = "@wA mature @G%s@w that is close to harvestable is here. @D(@C%d Water Hours@D)@n\r\n",
+  [6] = "@wA @Rharvestable @G%s@w is in the planter here. @D(@C%d Water Hours@D)@n\r\n",
+}
+
+local function see_plant(obj)
+  local water = obj:value_get(6)  -- VAL_WATERLEVEL
+  local sdesc = obj:short_description_get() or ""
+  if water >= 0 then
+    local tmpl = SEE_PLANT_STAGES[obj:value_get(2)]  -- VAL_MATURITY
+    if tmpl then return string.format(tmpl, sdesc, water) end
+    return ""
+  elseif water > -4 then
+    return string.format("@yA @G%s@y that is looking a bit @rdry@y, is here.@n\r\n", sdesc)
+  elseif water > -10 then
+    return string.format("@yA @G%s@y that is looking extremely @rdry@y, is here.@n\r\n", sdesc)
+  else
+    return string.format("@yA @G%s@y that is completely @rdead@y and @rwithered@y, is here.@n\r\n", sdesc)
+  end
+end
+
+-- Key for grouping identical objects in a room listing.
+-- Extends stack_key with room-specific exclusions from list_obj_to_char.
+local function room_stack_key(obj)
+  if obj:sitting_get() ~= 0 then return nil end   -- occupied furniture never stacks
+  if obj:post_type_get() ~= 0 then return nil end  -- posted notes never stack
+  if obj:fellow_wall_has() then return nil end      -- Glacian Walls never stack
+  return stack_key(obj)
+end
+
+-- Port of show_obj_to_char(SHOW_OBJ_LONG) + show_obj_modifiers.
+-- Returns a fully formatted string with trailing \r\n, or nil to skip.
+local function render_room_line(obj, viewer)
+  local c = C()
+  local EF, IT, PRF, AF, CF, RF, ST =
+        c.EF, c.IT, c.PRF, c.AF, c.CF, c.RF, c.ST
+
+  local desc = obj:description_get() or ""
+
+  -- Hidden objects: dot-prefix desc hidden unless viewer has HOLYLIGHT
+  if desc:sub(1, 1) == "." and not viewer:pref_flagged(PRF.HOLYLIGHT) then
+    return nil
+  end
+
+  -- Vehicle: skip if viewer is inside this vehicle
+  if obj:type_get() == IT.VEHICLE then
+    if viewer:room_vnum_get() == obj:value_get(0) then return nil end
+  end
+
+  -- Occupied furniture
+  local t = {}
+  if obj:sitting_get() ~= 0 then
+    if viewer:admin_level_get() < 1 then return nil end
+    t[#t+1] = "@D(@YBeing Used@D)@w"
+  end
+
+  -- Garden room plant: detailed water-level display
+  local room = obj:room_get()
+  if obj:type_get() == IT.PLANT and room then
+    if room:flagged(RF.GARDEN1) or room:flagged(RF.GARDEN2) then
+      return table.concat(t) .. see_plant(obj)
+    end
+  end
+
+  -- Buried object
+  if obj:extra_flagged(EF.BURIED) then
+    local spotted = viewer:skill_get("spot") > math.random(20, 110)
+    if not spotted then return nil end
+    local w = obj:weight_get()
+    local label
+    if obj:value_get(3) == 1 then  -- IS_CORPSE: value[3] == 1
+      label = "recent grave covered by"
+    elseif w < 10 then
+      label = "small mound of"
+    elseif w < 50 then
+      label = "medium sized mound of"
+    elseif w < 1000 then
+      label = "large mound of"
+    else
+      label = "gigantic mound of"
+    end
+    local medium = (room and room:sector_type_get() == ST.DESERT) and "sand" or "dirt"
+    return string.format("@yA %s soft %s is here.@n\r\n", label, medium)
+  end
+
+  -- Special VNUMs
+  local vid = obj:proto_id_get()
+  local text = require("dbat").lib.text
+
+  if vid == 11 then
+    t[#t+1] = string.format(
+      "@wA gravity generator, set to %sx gravity, is built here",
+      text.add_commas(obj:weight_get()))
+  elseif vid == 79 then
+    local dir = c.dirs[obj:cost_get() + 1] or "?"
+    t[#t+1] = string.format(
+      "@wA @cG@Cl@wa@cc@Ci@wa@cl @wW@ca@Cl@wl @D[@C%s@D]@w is blocking access to the @G%s@w direction",
+      text.add_commas(obj:weight_get()), dir)
+  else
+    t[#t+1] = "@w"
+    -- ROOMFLAGS vnum prefix (only for non-posted objects)
+    if viewer:pref_flagged(PRF.ROOMFLAGS) and obj:post_type_get() == 0 then
+      t[#t+1] = string.format("@D[@G%d@D]@w ", vid)
+    end
+
+    local ptype = obj:post_type_get()
+    if ptype > 0 then
+      if obj:is_posted() then
+        return nil  -- posted to a specific target, don't show
+      else
+        t[#t+1] = string.format("%s@w, has been posted here.@n", obj:short_description_get() or "")
+      end
+    else
+      t[#t+1] = desc .. "@n"
+
+      local otype = obj:type_get()
+
+      -- Vehicle door/hatch open indicator
+      if otype == IT.VEHICLE then
+        if (obj:value_get(1) & CF.CLOSED) == 0 then
+          if vid > 19199 then
+            t[#t+1] = "\r\n@c...its outer hatch is open@n"
+          else
+            t[#t+1] = "\r\n@c...its door is open@n"
+          end
+        end
+      end
+
+      -- Container open/closed (skip sheaths and corpses)
+      if otype == IT.CONTAINER and obj:value_get(3) ~= 1 and not obj:extra_flagged(EF.SHEATH) then
+        if (obj:value_get(1) & CF.CLOSED) == 0 then
+          t[#t+1] = ". @D[@G-open-@D]@n"
+        else
+          t[#t+1] = ". @D[@rclosed@D]@n"
+        end
+      end
+
+      -- Hatch open/closed/locked
+      if otype == IT.HATCH then
+        if (obj:value_get(1) & CF.CLOSED) == 0 then
+          t[#t+1] = ", it is open"
+        else
+          t[#t+1] = ", it is closed"
+        end
+        if (obj:value_get(1) & CF.LOCKED) ~= 0 then
+          t[#t+1] = " and locked@n"
+        else
+          t[#t+1] = "@n"
+        end
+      end
+
+      -- Food: partially eaten
+      if otype == IT.FOOD then
+        if obj:value_get(0) < obj:foob_get() then
+          t[#t+1] = ", and it has been ate on@n"
+        end
+      end
+    end
+  end
+
+  -- show_obj_modifiers
+  if obj:extra_flagged(EF.INVISIBLE) then t[#t+1] = " (invisible)" end
+  if obj:extra_flagged(EF.BLESS) and viewer:aff_flagged(AF.DETECT_ALIGN) then
+    t[#t+1] = " ..It glows blue!"
+  end
+  if obj:extra_flagged(EF.MAGIC) and viewer:aff_flagged(AF.DETECT_MAGIC) then
+    t[#t+1] = " ..It glows yellow!"
+  end
+  if obj:extra_flagged(EF.GLOW) then t[#t+1] = " @D(@GGlowing@D)@n" end
+  if obj:extra_flagged(EF.HOT)  then t[#t+1] = " @D(@RHOT@D)@n"     end
+  if obj:extra_flagged(EF.HUM)  then t[#t+1] = " @D(@RHumming@D)@n" end
+
+  t[#t+1] = "\r\n"
+  return table.concat(t)
+end
+
 return {
   keywords_for = keywords_for,
   display_name_for = display_name_for,
   stack_key = stack_key,
+  room_stack_key = room_stack_key,
   render_inventory_line = render_inventory_line,
+  render_room_line = render_room_line,
   modifiers = modifiers,
   on_mud_hour = on_mud_hour,
   on_second = on_second,

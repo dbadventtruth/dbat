@@ -3,6 +3,39 @@
 -- are detected via the modifier_gen counter from Zig.
 local der_caches = {}
 
+-- Lazy-loaded constants and libraries for room display functions.
+local _C
+local function C()
+  if _C then return _C end
+  local d = require("dbat")
+  _C = {
+    AF   = d.consts.aff_flags,
+    PLR  = d.consts.player_flags,
+    PRF  = d.consts.prf_flags,
+    dirs = d.consts.direction_names,
+    aura = d.consts.aura_color_names,
+    skin = d.consts.skin_color_names,
+  }
+  return _C
+end
+
+local function get_act()
+  return require("dbat").lib.act
+end
+
+-- Position suffix strings indexed by position integer (0-based → +1 for Lua).
+local ROOM_POSITIONS = {
+  " is dead",
+  " is mortally wounded",
+  " is lying here, incapacitated",
+  " is lying here, stunned",
+  " is sleeping here",
+  " is resting here",
+  " is sitting here",
+  "!FIGHTING!",
+  " is standing here",
+}
+
 local scale = 10000
 
 local function der_total(ch, name)
@@ -116,33 +149,62 @@ local function apparent_race(ch, viewer)
   return ch:race_get()
 end
 
+-- Returns the name viewer uses for ch: real name for NPCs/admins, intro
+-- nickname if known, or a race/sex placeholder ("a male saiyan") if not.
 local function display_name_for(ch, viewer)
   viewer = viewer or ch
 
-  -- viewer is looking at an NPC, so we just have short descriptions.
-  if(ch:is_npc()) then
+  if ch:is_npc() then
     return ch:short_description_get()
   end
 
-  -- Okay so ch is a player then.
-
-  -- NPCs and admins can always see player names.
-  if(viewer:is_npc() or viewer:admin_level_get() > 0) then
+  -- Admins and NPCs always see the real name.
+  if viewer:is_npc() or viewer:admin_level_get() > 0 then
     return ch:name_get()
   end
 
-  -- If we reached this far, we're a player looking at another player.
-  -- TODO: use the dub system! For now, just show the name.
-  return ch:name_get()
+  -- Admin PCs are always known by real name regardless.
+  if ch:admin_level_get() > 0 then
+    return ch:name_get()
+  end
+
+  -- Player-to-player: use intro system.
+  -- intro_known returns 1 if viewer knows ch, 0 if not, 2 if no file.
+  local known = viewer:intro_known(ch)
+  if known == 1 then
+    return viewer:get_intro_name(ch) or ch:name_get()
+  end
+
+  -- Viewer hasn't been introduced: show descriptive placeholder.
+  return ch:introd_calc() or ch:race_get()
 end
 
 local function keywords_for(ch, viewer)
   viewer = viewer or ch
   local keywords = {}
 
-  local name = ch:name_get()
-  for word in string.gmatch(name or "", "%S+") do
-    keywords[#keywords + 1] = word
+  local function add_words(str)
+    for word in string.gmatch(str or "", "%S+") do
+      keywords[#keywords + 1] = word
+    end
+  end
+
+  if ch:is_npc() then
+    add_words(ch:short_description_get())
+    return keywords
+  end
+
+  if viewer:is_npc() or viewer:admin_level_get() > 0 or ch:admin_level_get() > 0 then
+    add_words(ch:name_get())
+    return keywords
+  end
+
+  local known = viewer:intro_known(ch)
+  if known == 1 then
+    add_words(viewer:get_intro_name(ch))
+  else
+    -- Unknown player: keywords come from the descriptive calc.
+    add_words(ch:introd_calc())
   end
 
   return keywords
@@ -210,7 +272,136 @@ local function modifiers(ch)
   return all
 end
 
+local NEEDS_INTERVAL_MS    = 150000
+local SURVIVAL_INTERVAL_MS = 100000  -- SECS_PER_MUD_HOUR(300) / 3 * 1000
+
+local function decrement_needs(ch)
+  local PC = dbat.consts.player_conds
+  for _, cond in ipairs({ PC.DRUNK, PC.HUNGER, PC.THIRST }) do
+    if math.random(1, 2) == 2 then
+      ch:gain_condition(cond, -1)
+    end
+  end
+end
+
+-- Port of tick_char_survival() from local_limits.cpp (PC path only; NPCs handled in C++).
+-- Returns true if the character died and should not be further processed.
+local function survival_check(ch)
+  local room = ch:room_get()
+  if not room then return false end
+
+  local ST  = dbat.consts.sector_types
+  local RF  = dbat.consts.room_flags
+  local MF  = dbat.consts.mob_flags
+  local act = get_act()
+
+  -- 1. WATER_NOSWIM: swimming stamina drain
+  if room:sector_type_get() == ST.WATER_NOSWIM
+      and not ch:carried_by_char_get()
+      and ch:race_get() ~= "kanassan" then
+    local cur_st   = ch:meter_current("stamina")
+    local carry_wt = ch:der_total("weight_carried")
+    ch:meter_mod_int("stamina", -carry_wt)
+    if cur_st >= carry_wt then
+      act.to_char(ch, "@bYou swim in place.@n")
+      act.around(ch, "@C$n@b swims in place.@n")
+    else
+      act.to_char(ch, "@RYou are drowning!@n")
+      act.around(ch, "@C$n@b gulps water as $e struggles to stay above the water line.@n")
+      local max_pl = ch:meter_max("powerlevel")
+      if ch:meter_current("powerlevel") - (max_pl // 3) <= 0 then
+        act.to_char(ch, "@rYou drown!@n")
+        act.around(ch, "@R$n@r drowns!@n")
+        ch:die()
+        return true
+      else
+        ch:meter_mod_int("powerlevel", -(max_pl // 3))
+      end
+    end
+  end
+
+  local ki_regen = ch:der_total("ki_regen")
+  local pl_regen = ch:der_total("powerlevel_regen")
+
+  -- 2. Sunken room (not space), no O2: ki drain then health drain
+  if not ch:has_o2() and room:is_sunken() and not room:flagged(RF.SPACE) then
+    local max_ki = ch:meter_max("ki")
+    if ch:meter_current("ki") - ki_regen > max_ki // 200 then
+      ch:send_line("Your ki holds an atmosphere around you.")
+      ch:meter_mod_int("ki", -(ki_regen + math.floor(max_ki * 0.005)))
+    else
+      local max_pl = ch:meter_max("powerlevel")
+      if ch:meter_current("powerlevel") - pl_regen > math.floor(max_pl * 0.05) then
+        ch:send_line("You struggle trying to hold your breath!")
+        ch:meter_mod_int("powerlevel", -(pl_regen + math.floor(max_pl * 0.05)))
+      elseif ch:meter_current("powerlevel") <= max_pl // 20 then
+        ch:send_line("You have drowned!")
+        act.around(ch, "@W$n@W drowns right in front of you.@n")
+        ch:die()
+        return true
+      end
+    end
+  end
+
+  -- 3. Space, no O2: same pattern with slightly different ki threshold
+  if not ch:has_o2() and room:flagged(RF.SPACE) then
+    local max_ki = ch:meter_max("ki")
+    if ch:meter_current("ki") - ki_regen > math.floor(max_ki * 0.005) then
+      ch:send_line("Your ki holds an atmosphere around you.")
+      ch:meter_mod_int("ki", -(ki_regen + math.floor(max_ki * 0.005)))
+    else
+      local max_pl = ch:meter_max("powerlevel")
+      if ch:meter_current("powerlevel") - pl_regen > math.floor(max_pl * 0.05) then
+        ch:send_line("You struggle trying to hold your breath!")
+        ch:meter_mod_int("powerlevel", -(pl_regen + math.floor(max_pl * 0.05)))
+      elseif ch:meter_current("powerlevel") <= max_pl // 20 then
+        ch:send_line("You have drowned!")
+        ch:meter_mod("powerlevel", -math.floor(1000000 * 0.01))
+        act.around(ch, "@W$n@W drowns right in front of you.@n")
+        ch:die()
+        return true
+      end
+    end
+  end
+
+  -- 4. Lava (geffect==6): burn 5% health
+  if not ch:condition_has("flying")
+      and room:geffect_get() == 6
+      and not ch:mob_flagged(MF.NOKILL)
+      and ch:race_get() ~= "demon" then
+    act.to_char(ch, "@rYour legs are burned by the lava!@n")
+    act.around(ch, "@R$n@r's legs are burned by the lava!@n")
+    ch:meter_mod("powerlevel", -math.floor(1000000 * 0.05))
+    if ch:meter_current("powerlevel") < 0 then
+      act.to_char(ch, "@rYou have burned to death!@n")
+      act.around(ch, "@R$n@r has burned to death!@n")
+      ch:die()
+      return true
+    end
+  end
+
+  return false
+end
+
 local function on_event(ch, kind)
+  if kind == "activate" then
+    ch:event_cancel("decrement_needs")
+    ch:event_schedule("decrement_needs", NEEDS_INTERVAL_MS, NEEDS_INTERVAL_MS)
+    ch:event_cancel("survival_check")
+    ch:event_schedule("survival_check", SURVIVAL_INTERVAL_MS, SURVIVAL_INTERVAL_MS)
+    return
+  end
+
+  if kind == "decrement_needs" then
+    decrement_needs(ch)
+    return
+  end
+
+  if kind == "survival_check" then
+    survival_check(ch)
+    return
+  end
+
   local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
   event_name = (event_name and event_name ~= "") and event_name or "tick"
 
@@ -356,6 +547,410 @@ local function send_line_around(ch, msg, ...)
   end
 end
 
+-- Returns true if ch has any active player transformation.
+local function is_transformed(ch)
+  local PLR = C().PLR
+  return ch:player_flagged(PLR.TRANS1) or ch:player_flagged(PLR.TRANS2)
+      or ch:player_flagged(PLR.TRANS3) or ch:player_flagged(PLR.TRANS4)
+      or ch:player_flagged(PLR.TRANS5) or ch:player_flagged(PLR.TRANS6)
+      or ch:player_flagged(PLR.OOZARU)
+end
+
+-- Name viewer uses for a combat target (intro-aware).
+local function combat_name_for(viewer, target)
+  if viewer:intro_known(target) == 1 then
+    return viewer:get_intro_name(target) or target:introd_calc() or ""
+  end
+  return target:introd_calc() or ""
+end
+
+-- Append charge/transform aura lines (mirrors lines 2979-3011 of list_one_char).
+local function append_charge_aura(t, ch, viewer, ctx, c)
+  local act = get_act()
+  local PLR = c.PLR
+  local race     = ch:race_get()
+  local is_saiyan = (race == "saiyan" or race == "halfbreed")
+  local in_oozaru = ch:player_flagged(PLR.OOZARU)
+  local charged   = ch:charge_get() > 0
+  local xformed   = is_transformed(ch)
+  local aura_name = c.aura[ch:aura_get() + 1] or "white"
+
+  if is_saiyan then
+    if not in_oozaru and charged and xformed then
+      t[#t+1] = act.render_for(viewer, "@w...$e has a @Ybright @Yg@yo@Yl@yd@Ye@yn@w aura around $s body!\r\n", ctx)
+    elseif not in_oozaru and charged and not xformed then
+      t[#t+1] = act.render_for(viewer, "@w...$e has a @Ybright@w " .. aura_name .. " aura around $s body!\r\n", ctx)
+    elseif not in_oozaru and not charged and xformed then
+      t[#t+1] = act.render_for(viewer, "@w...$e has energy crackling around $s body!\r\n", ctx)
+    elseif in_oozaru and charged then
+      t[#t+1] = act.render_for(viewer, "@w...$e is in the form of a @rgreat ape@w!\r\n", ctx)
+    elseif in_oozaru and not charged then
+      t[#t+1] = act.render_for(viewer, "@w...$e has energy crackling around $s @rgreat ape@w body!\r\n", ctx)
+    end
+  else
+    if xformed and race ~= "android" then
+      t[#t+1] = act.render_for(viewer, "@w...$e has energy crackling around $s body!\r\n", ctx)
+    end
+    if charged then
+      t[#t+1] = act.render_for(viewer, "@w...$e has a @Ybright@w " .. aura_name .. " aura around $s body!\r\n", ctx)
+    end
+  end
+end
+
+-- Append the effect/aura lines that appear after the main character line.
+local function append_effects(t, ch, viewer, ctx, c)
+  local act = get_act()
+  local AF, PLR = c.AF, c.PLR
+
+  if ch:condition_has("fishing") and not ch:is_npc() then
+    t[#t+1] = act.render_for(viewer, "@w...$e is @Cfishing@w.@n\r\n", ctx)
+  end
+  if not viewer:is_npc() and ch:player_flagged(PLR.AURALIGHT) then
+    local aura_name = c.aura[ch:aura_get() + 1] or "white"
+    t[#t+1] = act.render_for(viewer, "...is surrounded by a bright " .. aura_name .. " aura.@n\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.SANCTUARY) and not ch:know_skill("aqua_barrier") then
+    t[#t+1] = act.render_for(viewer, "@w...$e has a @bbarrier@w around $s body!\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.FIRESHIELD) then
+    t[#t+1] = act.render_for(viewer, "@w...$e has @rf@Rl@Ya@rm@Re@Ys@w around $s body!\r\n", ctx)
+  end
+  if ch:condition_has("healing_glow") then
+    t[#t+1] = act.render_for(viewer, "@w...$e has a serene @Cblue@Y glow@w around $s body.\r\n", ctx)
+  end
+  if ch:condition_has("ethereal_armor") then
+    t[#t+1] = act.render_for(viewer, "@w...$e has ghostly @Ggreen@w ethereal armor around $s body.\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.SANCTUARY) and ch:know_skill("aqua_barrier") then
+    t[#t+1] = act.render_for(viewer, "@w...$e has a @bbarrier@w of @cwater@w and @CKi@w around $s body!\r\n", ctx)
+  end
+  if ch:condition_has("flying") then
+    local alt = ch:condition_number_get("flying", "altitude")
+    if alt == 1 then
+      t[#t+1] = act.render_for(viewer, "@w...$e is in the air!\r\n", ctx)
+    elseif alt == 2 then
+      t[#t+1] = act.render_for(viewer, "@w...$e is high in the air!\r\n", ctx)
+    end
+  end
+  if ch:stat_get("kaioken") > 0 then
+    t[#t+1] = act.render_for(viewer, "@w...@r$e has a red aura around $s body!\r\n", ctx)
+  end
+  if not ch:is_npc() and ch:player_flagged(PLR.SPIRAL) then
+    t[#t+1] = act.render_for(viewer, "@w...$e is spinning in a vortex!\r\n", ctx)
+  end
+  append_charge_aura(t, ch, viewer, ctx, c)
+  if ch:condition_has("kyodaika") then
+    t[#t+1] = act.render_for(viewer, "@w...$e has expanded $s body size@w!\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.HAYASA) then
+    t[#t+1] = act.render_for(viewer, "@w...$e has a soft @cblue@w glow around $s body!\r\n", ctx)
+  end
+  local feat = ch:feature_get()
+  if feat then
+    t[#t+1] = act.render_for(viewer, "@C" .. feat .. "@n\r\n", ctx)
+  end
+  local rdis = ch:rdisplay_get()
+  if rdis and rdis ~= "Empty" then
+    t[#t+1] = act.render_for(viewer, "..." .. rdis .. "\r\n", ctx)
+  end
+end
+
+-- Subset of effect lines used on NPC path-1 (long_descr, mirrors C++ lines 2570-2600).
+local function append_npc_path1_effects(t, ch, viewer, ctx, c)
+  local act = get_act()
+  local AF, PLR = c.AF, c.PLR
+
+  if ch:condition_has("flying") then
+    local alt = ch:condition_number_get("flying", "altitude")
+    if alt == 1 then t[#t+1] = act.render_for(viewer, "...$e is in the air!\r\n", ctx)
+    elseif alt == 2 then t[#t+1] = act.render_for(viewer, "...$e is high in the air!\r\n", ctx)
+    end
+  end
+  if ch:aff_flagged(AF.SANCTUARY) and not ch:know_skill("aqua_barrier") then
+    t[#t+1] = act.render_for(viewer, "...$e has a barrier around $s body!\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.FIRESHIELD) then
+    t[#t+1] = act.render_for(viewer, "...$e has @rf@Rl@Ya@rm@Re@Ys@w around $s body!\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.SANCTUARY) and ch:know_skill("aqua_barrier") then
+    t[#t+1] = act.render_for(viewer, "...$e has a @Gbarrier@w of @cwater@w and @Cki@w around $s body!\r\n", ctx)
+  end
+  if not ch:is_npc() and ch:player_flagged(PLR.SPIRAL) then
+    t[#t+1] = act.render_for(viewer, "...$e is spinning in a vortex!\r\n", ctx)
+  end
+  if ch:charge_get() > 0 then
+    local aura_name = c.aura[ch:aura_get() + 1] or "white"
+    t[#t+1] = act.render_for(viewer, "...$e has a bright " .. aura_name .. " aura around $s body!\r\n", ctx)
+  end
+  if ch:condition_has("dark_metamorphosis") then
+    t[#t+1] = act.render_for(viewer, "@w...$e has a dark, @rred@w aura and menacing presence.\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.HAYASA) then
+    t[#t+1] = act.render_for(viewer, "...$e has a soft @cblue@w glow around $s body!\r\n", ctx)
+  end
+  if ch:aff_flagged(AF.BLIND) then
+    t[#t+1] = act.render_for(viewer, "...$e is groping around blindly!\r\n", ctx)
+  end
+  local feat = ch:feature_get()
+  if feat then
+    t[#t+1] = act.render_for(viewer, "@C" .. feat .. "@n\r\n", ctx)
+  end
+end
+
+-- Stacking key for identical idle NPCs in a room listing.
+-- Returns nil for players, fighting NPCs, or NPCs not at full health.
+local function stack_key(ch)
+  if not ch:is_npc() then return nil end
+  if ch:is_fighting() then return nil end
+  if ch:meter_current("powerlevel") ~= ch:meter_max("powerlevel") then return nil end
+  local AF = C().AF
+  local flags = (ch:aff_flagged(AF.INVISIBLE) and 1  or 0)
+              + (ch:aff_flagged(AF.HIDE)       and 2  or 0)
+              + (ch:aff_flagged(AF.SANCTUARY)  and 4  or 0)
+              + (ch:aff_flagged(AF.FIRESHIELD) and 8  or 0)
+              + (ch:aff_flagged(AF.BLIND)      and 16 or 0)
+              + (ch:aff_flagged(AF.HAYASA)     and 32 or 0)
+              + (ch:aff_flagged(AF.ETHEREAL)   and 64 or 0)
+  return table.concat({
+    tostring(ch:proto_id_get()),
+    tostring(ch:position_get()),
+    tostring(flags),
+    (ch:name_get() or ""):lower(),
+  }, "\0")
+end
+
+-- Render one character's room-listing line as seen by viewer.
+-- Returns a string (may be multi-line; trailing \r\n always present).
+-- Mirrors list_one_char() in act.informative.cpp.
+local function render_room_line(ch, viewer)
+  local c   = C()
+  local act = get_act()
+  local AF, PLR, PRF = c.AF, c.PLR, c.PRF
+  local ctx = {actor = ch}
+  local t   = {}
+
+  -- ROOMFLAGS vnum prefix (viewer pref, NPC targets only)
+  if not viewer:is_npc() and viewer:pref_flagged(PRF.ROOMFLAGS) and ch:is_npc() then
+    t[#t+1] = string.format("@D[@G%d@D]@w ", ch:proto_id_get())
+  end
+
+  -- PATH 1: NPC with long_descr at default position, not fighting
+  if ch:is_npc() and ch:long_description_get()
+      and ch:position_get() == ch:default_position_get()
+      and not ch:is_fighting() then
+    t[#t+1] = ch:long_description_get()
+    local health = ch:meter_current("powerlevel") / 1000000.0
+    if     health <= 0.1 then t[#t+1] = act.render_for(viewer, "@R...Should be DEAD soon.@w\r\n", ctx)
+    elseif health <= 0.2 then t[#t+1] = act.render_for(viewer, "@R...Is on $s last leg.@w\r\n", ctx)
+    elseif health <= 0.3 then t[#t+1] = act.render_for(viewer, "@R...Is absolutely covered in wounds.@w\r\n", ctx)
+    elseif health <= 0.4 then t[#t+1] = act.render_for(viewer, "@R...$s body is in terrible shape.@w\r\n", ctx)
+    elseif health <= 0.5 then t[#t+1] = act.render_for(viewer, "@R...Blood is seeping from the wounds on $s body.@w\r\n", ctx)
+    elseif health <= 0.6 then t[#t+1] = act.render_for(viewer, "@R...Horrible wounds on $s body.@w\r\n", ctx)
+    elseif health <= 0.7 then t[#t+1] = act.render_for(viewer, "@R...Quite a few wounds on $s body.@w\r\n", ctx)
+    elseif health <= 0.8 then t[#t+1] = act.render_for(viewer, "@R...Many wounds on $s body.@w\r\n", ctx)
+    elseif health <= 0.9 then t[#t+1] = act.render_for(viewer, "@R...A few wounds on $s body.@w\r\n", ctx)
+    elseif health  < 1.0 then t[#t+1] = act.render_for(viewer, "@R...Some slight wounds on $s body.@w\r\n", ctx)
+    end
+    if ch:eavesdrop_get() > 0 then
+      local dir = c.dirs[ch:eavesdrop_dir_get() + 1] or "?"
+      t[#t+1] = act.render_for(viewer, "@w...$e is spying on everything to the @c" .. dir .. "@w.\r\n", ctx)
+    end
+    append_npc_path1_effects(t, ch, viewer, ctx, c)
+    return table.concat(t)
+  end
+
+  -- PATH 2: NPC (not on path 1)
+  if ch:is_npc() then
+    local short = ch:short_description_get() or ""
+    local head  = "@w" .. short:sub(1,1):upper() .. short:sub(2)
+    local grappled  = ch:grappled_get()
+    local absorbby  = ch:absorbed_by_get()
+    local fighting  = ch:fighting_get()
+    local pos       = ch:position_get()
+
+    if grappled and grappled:id_get() == viewer:id_get() then
+      t[#t+1] = head .. " is being grappled with by YOU!"
+    elseif grappled then
+      -- C++ copy-paste: says "absorbed from" but it's actually the grappled case
+      t[#t+1] = head .. " is being absorbed from by " .. combat_name_for(viewer, grappled) .. "!"
+    elseif absorbby and absorbby:id_get() == viewer:id_get() then
+      t[#t+1] = head .. " is being absorbed from by YOU!"
+    elseif absorbby then
+      t[#t+1] = head .. " is being absorbed from by " .. combat_name_for(viewer, absorbby) .. "!"
+    elseif fighting and fighting:id_get() ~= viewer:id_get() and pos ~= 6 and pos ~= 4 then
+      t[#t+1] = head .. " is fighting " .. combat_name_for(viewer, fighting) .. "!"
+    elseif fighting and fighting:id_get() == viewer:id_get() and pos ~= 6 and pos ~= 4 then
+      t[#t+1] = head .. " is fighting YOU!"
+    elseif fighting and pos == 6 then
+      t[#t+1] = head .. " is sitting here."
+    elseif fighting and pos == 4 then
+      t[#t+1] = head .. " is sleeping here."
+    else
+      t[#t+1] = head
+    end
+
+    -- Invisible/hide/position for non-fighting NPCs
+    if not fighting then
+      if ch:aff_flagged(AF.INVISIBLE) then t[#t+1] = ", is invisible" end
+      if ch:aff_flagged(AF.ETHEREAL)  then t[#t+1] = ", has a halo" end
+      if ch:aff_flagged(AF.HIDE) and ch:id_get() ~= viewer:id_get() then
+        t[#t+1] = ", is hiding"
+      end
+      t[#t+1] = "@w" .. (ROOM_POSITIONS[pos + 1] or "")
+    end
+    t[#t+1] = "@n\r\n"
+
+    if ch:eavesdrop_get() > 0 then
+      local dir = c.dirs[ch:eavesdrop_dir_get() + 1] or "?"
+      t[#t+1] = act.render_for(viewer, "@w...$e is spying on everything to the @c" .. dir .. "@w.\r\n", ctx)
+    end
+    append_effects(t, ch, viewer, ctx, c)
+    return table.concat(t)
+  end
+
+  -- PATH 3: Player
+  -- Liquefied majin: special blob display
+  if ch:race_get() == "majin" and ch:aff_flagged(AF.LIQUEFIED) then
+    local skin_name = c.skin[ch:skin_get() + 1] or "colorless"
+    return "@wSeveral blobs of " .. skin_name .. " colored goo spread out here.@n\r\n"
+  end
+
+  -- Display name (intro-aware, handles admin/disguise)
+  t[#t+1] = "@w" .. display_name_for(ch, viewer)
+
+  -- State indicators (comma-separated, tracks whether any were added)
+  local had_state = false
+  local function state(str)
+    t[#t+1] = str
+    had_state = true
+  end
+
+  local fighting = ch:fighting_get()
+  -- Invisible / hide / etc. (only when not fighting, same as C++)
+  if not fighting then
+    if ch:aff_flagged(AF.INVISIBLE) then state(", is invisible") end
+    if ch:aff_flagged(AF.ETHEREAL)  then state(", has a halo") end
+    if ch:aff_flagged(AF.HIDE) and ch:id_get() ~= viewer:id_get() then
+      state(", is hiding")
+    end
+    if not ch:has_connection()         then state(", has a blank stare") end
+    if ch:player_flagged(PLR.WRITING)  then state(", is writing") end
+    if ch:pref_flagged(PRF.BUILDWALK)  then state(", is buildwalking") end
+
+    local absorbing = ch:absorbing_get()
+    local grappling = ch:grappling_get()
+    local carrying  = ch:carrying_char_get()
+    local carried   = ch:carried_by_char_get()
+
+    if absorbing and absorbing:id_get() ~= viewer:id_get() then
+      state(", is absorbing from " .. absorbing:name_get())
+    end
+    if grappling and grappling:id_get() ~= viewer:id_get() then
+      state(", is grappling with " .. combat_name_for(viewer, grappling))
+    end
+    if carrying and carrying:id_get() ~= viewer:id_get() then
+      state(", is carrying " .. combat_name_for(viewer, carrying))
+    end
+    if carried and carried:id_get() ~= viewer:id_get() then
+      state(", is being carried by " .. combat_name_for(viewer, carried))
+    end
+    if grappling and grappling:id_get() == viewer:id_get() then
+      state(", is grappling with YOU")
+    end
+    if absorbing and absorbing:id_get() == viewer:id_get() then
+      state(", is absorbing from YOU")
+    end
+    -- viewer's pointers targeting ch
+    local v_absorbing = viewer:absorbing_get()
+    if v_absorbing and v_absorbing:id_get() == ch:id_get() then
+      state(", is being absorbed from by YOU")
+    end
+    local v_grappling = viewer:grappling_get()
+    if v_grappling and v_grappling:id_get() == ch:id_get() then
+      state(", is being grappled with by YOU")
+    end
+    local v_carrying = viewer:carrying_char_get()
+    if v_carrying and v_carrying:id_get() == ch:id_get() then
+      state(", is being carried by you")
+    end
+  end
+
+  -- Fighting state (player vs player, including viewer as target)
+  if not viewer:is_npc() and not ch:is_npc() and fighting then
+    local is_spar = ch:player_flagged(PLR.SPAR)
+        and not viewer:is_npc() and fighting:player_flagged(PLR.SPAR)
+    if is_spar then
+      t[#t+1] = ", is here sparring "
+    else
+      t[#t+1] = ", is here fighting "
+    end
+    if fighting:id_get() == viewer:id_get() then
+      t[#t+1] = "@rYOU@w"
+    else
+      local f_room = fighting:room_get()
+      local c_room = ch:room_get()
+      if f_room and c_room and f_room:id_get() == c_room:id_get() then
+        if viewer:admin_level_get() > 0 then
+          t[#t+1] = fighting:name_get()
+        else
+          t[#t+1] = combat_name_for(viewer, fighting)
+        end
+      else
+        t[#t+1] = "someone who has already left!"
+      end
+    end
+    had_state = true
+  end
+
+  -- Position / chair / piloting suffix
+  local pos   = ch:position_get()
+  local chair = ch:sits_get()
+  if chair then
+    local cname = chair:short_description_get() or "something"
+    if ch:player_flagged(PLR.HEALT) then
+      t[#t+1] = "@w is floating inside a healing tank."
+    elseif had_state then
+      t[#t+1] = ",@w and" .. (ROOM_POSITIONS[pos + 1] or "") .. " on " .. cname .. "."
+    else
+      t[#t+1] = "@w" .. (ROOM_POSITIONS[pos + 1] or "") .. " on " .. cname .. "."
+    end
+  elseif ch:player_flagged(PLR.PILOTING) then
+    t[#t+1] = "@w, is sitting in the pilot's chair.\r\n"
+  elseif not fighting then
+    if had_state then
+      t[#t+1] = "@w, and" .. (ROOM_POSITIONS[pos + 1] or "") .. "."
+    else
+      t[#t+1] = "@w" .. (ROOM_POSITIONS[pos + 1] or "") .. "."
+    end
+  end
+
+  -- detect_align aura badge
+  if viewer:aff_flagged(AF.DETECT_ALIGN) then
+    local align = ch:stat_get("alignment")
+    if align <= -50  then t[#t+1] = " (@rRed@[3] Aura)"
+    elseif align >= 50 then t[#t+1] = " (@bBlue@[3] Aura)"
+    end
+  end
+
+  -- AFK / IDLE badge
+  if not ch:is_npc() and ch:pref_flagged(PRF.AFK) then
+    t[#t+1] = " @D(@RAFK@D)"
+  elseif not ch:is_npc() and ch:timer_get() > 3 then
+    t[#t+1] = " @D(@RIDLE@D)"
+  end
+
+  t[#t+1] = "@n\r\n"
+
+  -- Post-line effect rows
+  if ch:eavesdrop_get() > 0 then
+    local dir = c.dirs[ch:eavesdrop_dir_get() + 1] or "?"
+    t[#t+1] = act.render_for(viewer, "@w...$e is spying on everything to the @c" .. dir .. "@w.\r\n", ctx)
+  end
+  append_effects(t, ch, viewer, ctx, c)
+
+  return table.concat(t)
+end
+
 return {
   meter_is_full = meter_is_full,
   can_see = can_see,
@@ -374,4 +969,7 @@ return {
   send_around = send_around,
   send_line = send_line,
   send_line_around = send_line_around,
+  is_transformed = is_transformed,
+  stack_key = stack_key,
+  render_room_line = render_room_line,
 }

@@ -102,6 +102,11 @@ Access: `dbat.objects.all()` → iterator of all objects
 | `worn_on_set` | `obj:worn_on_set(position)` | — | |
 | `in_obj_get` | `obj:in_obj_get()` | integer | Container object id (0 if none) |
 | `sitting_get` | `obj:sitting_get()` | integer | Character id sitting on it (0 if none) |
+| `room_get` | `obj:room_get()` | Room\|nil | Room the object is in |
+| `post_type_get` | `obj:post_type_get()` | integer | 0 = normal, >0 = posted note |
+| `is_posted` | `obj:is_posted()` | bool | True if posted_to target is set |
+| `fellow_wall_has` | `obj:fellow_wall_has()` | bool | True if part of a Glacian Wall set |
+| `foob_get` | `obj:foob_get()` | integer | Original food value (for eaten-check) |
 
 ---
 
@@ -123,6 +128,10 @@ These are merged into the Object metatable at load time:
 |--------|-----------|-------|
 | `keywords_for` | `obj:keywords_for([viewer])` | Returns keyword list for search |
 | `display_name_for` | `obj:display_name_for([viewer [, prefix]])` | Rendered display name |
+| `stack_key` | `obj:stack_key()` | string\|nil — key for grouping identical objects in inventory display |
+| `room_stack_key` | `obj:room_stack_key()` | string\|nil — like stack_key but also excludes occupied furniture and posted notes |
+| `render_inventory_line` | `obj:render_inventory_line(viewer)` | SHOW_OBJ_SHORT line with trailing newline |
+| `render_room_line` | `obj:render_room_line(viewer)` | SHOW_OBJ_LONG line with trailing \\r\\n, or nil to skip |
 | `modifiers` | `obj:modifiers()` | Returns modifier list (used for furniture stat bonuses) |
 | `on_mud_hour` | `obj:on_mud_hour()` | Hourly hook |
 | `on_second` | `obj:on_second()` | Per-second hook |

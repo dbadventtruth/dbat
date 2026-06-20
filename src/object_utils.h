@@ -15,6 +15,9 @@ struct room_direction_data *obj_exit_dir_3rd(struct obj_data *obj, int dir);
 
 bool obj_planet_zenith(struct obj_data *obj);
 
+void obj_drinkcon_weight_drain(struct obj_data *obj, int amount);
+void obj_drinkcon_name_update(struct obj_data *obj);
+
 #ifdef __cplusplus
 }
 #endif

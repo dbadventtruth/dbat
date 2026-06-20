@@ -483,8 +483,6 @@ ACMD(do_reboot) {
   one_argument(argument, arg);
 
   if (!strcasecmp(arg, "all") || *arg == '*') {
-    if (load_levels() < 0)
-      send_to_char(ch, "Cannot read level configurations\r\n");
     if (file_to_string_alloc(GREETINGS_FILE, &GREETINGS) == 0)
       prune_crlf(GREETINGS);
     if (file_to_string_alloc(GREETANSI_FILE, &GREETANSI) == 0)
@@ -514,9 +512,6 @@ ACMD(do_reboot) {
     if (help_table)
       free_help_table();
     index_boot(DB_BOOT_HLP);
-  } else if (!strcasecmp(arg, "levels")) {
-    if (load_levels() < 0)
-      send_to_char(ch, "Cannot read level configurations\r\n");
   } else if (!strcasecmp(arg, "wizlist")) {
     if (file_to_string_alloc(WIZLIST_FILE, &wizlist) < 0)
       send_to_char(ch, "Cannot read wizlist\r\n");
@@ -576,9 +571,6 @@ ACMD(do_reboot) {
 }
 
 void boot_world(void) {
-  mud_log("Loading level tables.");
-  load_levels();
-
   mud_log("Loading zone table.");
   index_boot(DB_BOOT_ZON);
 
@@ -871,9 +863,6 @@ void boot_db(void) {
 
   mud_log("Loading feats.");
   assign_feats();
-
-  mud_log("Loading level tables.");
-  load_levels();
 
   mud_log("Loading disabled commands list...");
   load_disabled();

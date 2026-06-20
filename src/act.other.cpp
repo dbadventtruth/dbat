@@ -8220,117 +8220,6 @@ static void tick_player_geoeffect(struct char_data *ch) {
   }
 }
 
-static void tick_player_android_absorb(struct char_data *ch) {
-  if (ABSORBING(ch) && char_room_get(ch) != char_room_get(ABSORBING(ch))) {
-    send_to_char(ch, "You stop absorbing %s!\r\n", GET_NAME(ABSORBING(ch)));
-    struct char_data *absorbed8755 = ABSORBING(ch);
-    char_absorbing_set(ch, NULL);
-    char_absorbed_by_set(absorbed8755, NULL);
-  }
-  if (!IS_ANDROID(ch) || !ABSORBING(ch)) return;
-
-  auto *target = ABSORBING(ch);
-  auto stop_absorbing = [&]() {
-    act("@WYou stop absorbing stamina and ki from @c$N as they don't have "
-        "enough for you to take@W!@n",
-        TRUE, ch, 0, target, TO_CHAR);
-    act("@C$n@W stops absorbing stamina and ki from you!@n", TRUE, ch, 0, target, TO_VICT);
-    act("@C$n@W stops absorbing stamina and ki from @c$N@w!@n", TRUE, ch, 0, target, TO_NOTVICT);
-    if (!FIGHTING(ch) || FIGHTING(ch) != target)
-      set_fighting(ch, ABSORBBY(target));
-    if (!FIGHTING(ABSORBBY(target)) || FIGHTING(ABSORBBY(target)) != ch)
-      set_fighting(ABSORBBY(target), ch);
-    char_absorbed_by_set(target, NULL);
-    char_absorbing_set(ch, NULL);
-  };
-
-  if (getCurST(target) < (GET_MAX_MOVE(ch) / 15) &&
-      getCurKI(target) < (GET_MAX_MANA(ch) / 15)) {
-    stop_absorbing();
-    return;
-  }
-
-  if (rand_number(1, 9) < 6) return;
-  if (getCurST(target) <= (GET_MAX_MOVE(ch) / 15) &&
-      getCurKI(target) <= (GET_MAX_MANA(ch) / 15))
-    return;
-
-  incCurKI(ch, getMaxKI(ch) * .08);
-  incCurST(ch, getMaxST(ch) * .08);
-  decCurKIFloored(target, getMaxKI(ch) / 20, 1);
-  decCurSTFloored(target, getMaxST(ch) / 20, 1);
-  act("@WYou absorb stamina and ki from @c$N@W!@n", TRUE, ch, 0, target, TO_CHAR);
-  act("@C$n@W absorbs stamina and ki from you!@n", TRUE, ch, 0, target, TO_VICT);
-  send_to_char(target, "@wTry 'escape'!@n\r\n");
-  act("@C$n@W absorbs stamina and ki from @c$N@w!@n", TRUE, ch, 0, target, TO_NOTVICT);
-  if (GET_HIT(ch) < getMaxPL(ch)) {
-    incCurHealth(ch, getMaxKI(ch) * .04);
-    send_to_char(ch, "@CYou convert a portion of the absorbed energy into "
-                     "refilling your powerlevel.@n\r\n");
-  }
-
-  if (isFullST(ch) && isFullKI(ch)) {
-    act("@WYou stop absorbing stamina and ki from @c$N as you are full@W!@n",
-        TRUE, ch, 0, target, TO_CHAR);
-    act("@C$n@W stops absorbing stamina and ki from you!@n", TRUE, ch, 0, target, TO_VICT);
-    act("@C$n@W stops absorbing stamina and ki from @c$N@w!@n", TRUE, ch, 0, target, TO_NOTVICT);
-    if (!FIGHTING(ch) || FIGHTING(ch) != target)
-      set_fighting(ch, ABSORBBY(target));
-    if (!FIGHTING(ABSORBBY(target)) || FIGHTING(ABSORBBY(target)) != ch)
-      set_fighting(ABSORBBY(target), ch);
-    char_absorbed_by_set(target, NULL);
-    char_absorbing_set(ch, NULL);
-    return;
-  }
-
-  /* Passive stat gains while absorbing */
-  bool sum    = !is_soft_cap(ch, 0);
-  bool mum    = !is_soft_cap(ch, 2);
-  bool ium    = !is_soft_cap(ch, 1);
-  auto *leader = MASTER(ch) ? MASTER(ch) : ch;
-
-  auto absorb_gain = [&](bool under_cap, bool is_ki_check, const char *msg,
-                          int64_t (*gain_fn)(struct char_data *, int64_t)) {
-    if (rand_number(1, 8) < 6) return;
-    int gain = 1;
-    if (under_cap) {
-      gain = rand_number(GET_LEVEL(ch) / 2, GET_LEVEL(ch) * 3) +
-             GET_LEVEL(ch) * 18;
-      if (GET_LEVEL(ch) > 30)
-        gain += rand_number(GET_LEVEL(ch) * 2, GET_LEVEL(ch) * 4) +
-                GET_LEVEL(ch) * 50;
-      if (GET_LEVEL(ch) > 60) gain *= 2;
-      if (GET_LEVEL(ch) > 80) gain *= 3;
-      if (GET_LEVEL(ch) > 90) gain *= 4;
-      send_to_char(ch, msg, gain);
-      if (group_bonus(ch, 2) == 7 &&
-          (!is_ki_check || MASTER(ch)) &&
-          PLR_FLAGGED(leader, PLR_SENSEM)) {
-        int gbonus = gain * 0.15;
-        gain += gbonus;
-        send_to_char(ch, "The leader of your group conveys an extra bonus! "
-                         "@D[@G+%s@D]@n \r\n",
-                     add_commas(gbonus));
-      }
-    } else {
-      send_to_char(ch, msg, gain);
-    }
-    gain_fn(ch, gain);
-  };
-
-  absorb_gain(sum, false,
-              sum ? "@gYou gain +@G%d@g permanent powerlevel!@n\r\n"
-                  : "@gYou gain +@G%d@g permanent powerlevel. You may need to level.@n\r\n",
-              gainBasePL);
-  absorb_gain(mum, false,
-              mum ? "@gYou gain +@G%d@g permanent stamina!@n\r\n"
-                  : "@gYou gain +@G%d@g permanent stamina. You may need to level.@n\r\n",
-              gainBaseST);
-  absorb_gain(ium, true,
-              ium ? "@gYou gain +@G%d@g permanent ki!@n\r\n"
-                  : "@gYou gain +@G%d@g permanent ki. You may need to level.@n\r\n",
-              gainBaseKI);
-}
 
 /* This handles many player specific routines. */
 void base_update(void) {
@@ -8363,7 +8252,6 @@ void base_update(void) {
     if (cash) tick_player_bank_interest(ch);
     check_eq(ch);
     tick_player_geoeffect(ch);
-    tick_player_android_absorb(ch);
     GET_SPAM(ch) = 0;
     return true;
   });
@@ -8400,7 +8288,9 @@ ACMD(do_snet) {
   struct obj_data *obj = NULL;
   struct obj_data *obj2 = NULL;
 
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_HBTC))) {
+  auto room = char_room_get(ch);
+
+  if ((room && room_flagged(room, ROOM_HBTC))) {
     send_to_char(ch, "This is a different dimension!\r\n");
     return;
   }
@@ -8408,15 +8298,16 @@ ACMD(do_snet) {
     send_to_char(ch, "Lol, no.\r\n");
     return;
   }
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_PAST))) {
+  if ((room && room_flagged(room, ROOM_PAST))) {
     send_to_char(ch, "This is the past, you can't talk on scouter net!\r\n");
     return;
   }
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_HELL))) {
+  if ((room && room_flagged(room, ROOM_HELL))) {
     send_to_char(ch, "The fire eats your transmission!\r\n");
     return;
   }
-  if (char_room_vnum_get(ch) >= 19800 && char_room_vnum_get(ch) <= 19899) {
+  auto rv = room_vnum_get(room);
+  if (rv >= 19800 && rv <= 19899) {
     send_to_char(ch, "Your signal will not be able to escape the walls of the "
                      "pocket dimension.\r\n");
     return;
@@ -8532,31 +8423,33 @@ ACMD(do_snet) {
       continue;
     }
 
-    if (char_room_get(i->character) == char_room_get(ch)) {
+    auto recp_room = char_room_get(i->character);
+
+    if (recp_room == room) {
       continue;
     }
-    if ((char_room_get(i->character) &&
-         room_flagged(char_room_get(i->character), ROOM_HBTC))) {
+    if ((recp_room &&
+         room_flagged(recp_room, ROOM_HBTC))) {
       continue;
     }
-    if ((char_room_get(i->character) &&
-         room_flagged(char_room_get(i->character), ROOM_PAST))) {
+    if ((recp_room &&
+         room_flagged(recp_room, ROOM_PAST))) {
       continue;
     }
-    if (((char_room_get(i->character) &&
-          room_flagged(char_room_get(i->character), ROOM_RHELL)) &&
-         !(char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_RHELL))) ||
-        ((char_room_get(i->character) &&
-          room_flagged(char_room_get(i->character), ROOM_AL)) &&
-         !(char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_AL)))) {
+    if (((recp_room &&
+          room_flagged(recp_room, ROOM_RHELL)) &&
+         !(room && room_flagged(room, ROOM_RHELL))) ||
+        ((recp_room &&
+          room_flagged(recp_room, ROOM_AL)) &&
+         !(room && room_flagged(room, ROOM_AL)))) {
       continue;
     }
-    if ((!(char_room_get(i->character) &&
-           room_flagged(char_room_get(i->character), ROOM_RHELL)) &&
-         (char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_RHELL))) ||
-        (!(char_room_get(i->character) &&
-           room_flagged(char_room_get(i->character), ROOM_AL)) &&
-         (char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_AL)))) {
+    if ((!(recp_room &&
+           room_flagged(recp_room, ROOM_RHELL)) &&
+         (room && room_flagged(room, ROOM_RHELL))) ||
+        (!(recp_room &&
+           room_flagged(recp_room, ROOM_AL)) &&
+         (room && room_flagged(room, ROOM_AL)))) {
       continue;
     }
     if (GET_POS(i->character) == POS_SLEEPING) {
@@ -8658,8 +8551,8 @@ ACMD(do_snet) {
       sprintf(over, "@C$n@W says into $s scouter, '@G@G%s %s@W'@n\r\n",
               CAP(arg), !*arg2 ? "" : arg2);
       act(over, TRUE, ch, 0, 0, TO_ROOM);
-      if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_RHELL)) ||
-          (char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_AL))) {
+      if ((room && room_flagged(room, ROOM_RHELL)) ||
+          (room && room_flagged(room, ROOM_AL))) {
         send_to_char(ch, "@mThe transmission only reaches those who are in the "
                          "afterlife.@n\r\n");
       }
@@ -8675,8 +8568,8 @@ ACMD(do_snet) {
       sprintf(over, "@C$n@W says into $s scouter, '@G@G%s@W'@n\r\n",
               !*arg2 ? "" : CAP(arg2));
       act(over, TRUE, ch, 0, 0, TO_ROOM);
-      if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_RHELL)) ||
-          (char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_AL))) {
+      if ((room && room_flagged(room, ROOM_RHELL)) ||
+          (room && room_flagged(room, ROOM_AL))) {
         send_to_char(ch, "@mThe transmission only reaches those who are in the "
                          "afterlife.@n\r\n");
       }
@@ -8996,23 +8889,26 @@ ACMD(do_quit) {
   if (IS_NPC(ch) || !ch->desc)
     return;
 
-  if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_PAST))) {
+  auto room = char_room_get(ch);
+
+  if ((room && room_flagged(room, ROOM_PAST))) {
     send_to_char(ch, "This is the past, you can't quit here!\r\n");
     return;
   }
-  if (char_room_vnum_get(ch) >= 2002 && char_room_vnum_get(ch) <= 2011) {
+  auto rv = room_vnum_get(room);
+  if (rv >= 2002 && rv <= 2011) {
     send_to_char(ch, "You can't quit in the arena!\r\n");
     return;
   }
-  if (char_room_vnum_get(ch) >= 101 && char_room_vnum_get(ch) <= 139) {
+  if (rv >= 101 && rv <= 139) {
     send_to_char(ch, "You can't quit in the mud school!\r\n");
     return;
   }
-  if (char_room_vnum_get(ch) >= 19800 && char_room_vnum_get(ch) <= 19899) {
+  if (rv >= 19800 && rv <= 19899) {
     send_to_char(ch, "You can't quit in a pocket dimension!\r\n");
     return;
   }
-  if (char_room_vnum_get(ch) == 2069) {
+  if (rv == 2069) {
     send_to_char(ch, "You can't quit here!\r\n");
     return;
   }
@@ -9026,7 +8922,7 @@ ACMD(do_quit) {
     }
     return;
   }
-  if (char_room_vnum_get(ch) == 2070) {
+  if (rv == 2070) {
     send_to_char(ch, "You can't quit here!\r\n");
     return;
   }
@@ -9060,16 +8956,16 @@ ACMD(do_quit) {
      */
 
     /* If someone is quitting in their house, let them load back here. */
-    if (!(char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_PAST)) &&
-        (char_room_vnum_get(ch) < 19800 || char_room_vnum_get(ch) > 19899)) {
-      if (char_room_vnum_get(ch) != NOWHERE && char_room_vnum_get(ch) != 0 &&
-          char_room_vnum_get(ch) != 1) {
-        GET_LOADROOM(ch) = char_room_vnum_get(ch);
+    if (!(room && room_flagged(room, ROOM_PAST)) &&
+        (rv < 19800 || rv > 19899)) {
+      if (rv != NOWHERE && rv != 0 &&
+          rv != 1) {
+        GET_LOADROOM(ch) = rv;
       }
     }
-    if ((char_room_get(ch) && room_flagged(char_room_get(ch), ROOM_PAST))) {
-      if (char_room_vnum_get(ch) != NOWHERE && char_room_vnum_get(ch) != 0 &&
-          char_room_vnum_get(ch) != 1) {
+    if ((room && room_flagged(room, ROOM_PAST))) {
+      if (rv != NOWHERE && rv != 0 &&
+          rv != 1) {
         GET_LOADROOM(ch) = room_by_id(1561) ? 1561 : NOTHING;
       }
     }
