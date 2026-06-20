@@ -319,6 +319,10 @@ local function visible_commands(ch, cmd_class)
     return visible
 end
 
+local function meter_is_full(ch, name)
+    return ch:meter_current(name) >= ch:meter_max(name)
+end
+
 local function send_text(ch, msg, ...)
   local text = select('#', ...) > 0 and string.format(msg, ...) or msg
   ch:send_raw(text)
@@ -353,6 +357,7 @@ local function send_line_around(ch, msg, ...)
 end
 
 return {
+  meter_is_full = meter_is_full,
   can_see = can_see,
   keywords_for = keywords_for,
   modifiers = modifiers,

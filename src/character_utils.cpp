@@ -199,7 +199,7 @@ void ghostify(char_data *ch) {
 
   char_condition_remove_tag(ch, "sleep_aff", "ghostify");
 
-  REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
+  char_condition_remove(ch, "knocked_out", "restored");
   REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_PARALYZE);
 }
 
@@ -651,7 +651,7 @@ void restoreStatusAnnounced(char_data *ch, bool announce) {
 void restoreStatus(char_data *ch) { restoreStatusAnnounced(ch, true); }
 
 void setStatusKnockedOut(char_data *ch) {
-  SET_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
+  char_condition_apply(ch, "knocked_out", "combat", "knocked_out");
   if (char_condition_has(ch, "flying")) {
     char_condition_remove(ch, "flying", "stop_flying");
   }
@@ -659,23 +659,16 @@ void setStatusKnockedOut(char_data *ch) {
 }
 
 void cureStatusKnockedOutAnnounced(char_data *ch, bool announce) {
-  if (AFF_FLAGGED(ch, AFF_KNOCKED)) {
-    if (announce) {
-      act("@W$n@W is no longer senseless, and wakes up.@n", FALSE, ch, 0, 0,
-          TO_ROOM);
-      send_to_char(ch, "You are no longer knocked out, and wake up!@n\r\n");
-    }
-
-    if (CARRIED_BY(ch)) {
-      if (GET_ALIGNMENT(CARRIED_BY(ch)) > 50) {
-        carry_drop(CARRIED_BY(ch), 0);
+  if (char_condition_has(ch, "knocked_out")) {
+    if (auto cby = CARRIED_BY(ch)) {
+      if (GET_ALIGNMENT(cby) > 50) {
+        carry_drop(cby, 0);
       } else {
-        carry_drop(CARRIED_BY(ch), 1);
+        carry_drop(cby, 1);
       }
     }
 
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_KNOCKED);
-    char_position_set(ch, POS_SITTING);
+    char_condition_remove(ch, "knocked_out", announce ? "recovered" : "recovered_silent");
   }
 }
 
@@ -3750,13 +3743,13 @@ void pcost(struct char_data *ch, double ki, int64_t st) {
       }
     }
     if (GET_CHARGE(ch) <= (GET_MAX_MANA(ch) * ki)) {
-      GET_CHARGE(ch) = 0;
+      char_charge_set(ch, 0);
     }
     if (GET_CHARGE(ch) > (GET_MAX_MANA(ch) * ki)) {
-      GET_CHARGE(ch) -= (GET_MAX_MANA(ch) * ki);
+      char_charge_set(ch, GET_CHARGE(ch) - (int64_t)(GET_MAX_MANA(ch) * ki));
     }
     if (GET_CHARGE(ch) < 0) {
-      GET_CHARGE(ch) = 0;
+      char_charge_set(ch, 0);
     }
     if (GET_KAIOKEN(ch) > 0) {
       st += (st / 20) * GET_KAIOKEN(ch);
@@ -3783,9 +3776,7 @@ void pcost(struct char_data *ch, double ki, int64_t st) {
     if (GET_PREFERENCE(ch) == PREFERENCE_H2H &&
         GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.1) {
       st -= st * 0.5;
-      GET_CHARGE(ch) -= st;
-      if (GET_CHARGE(ch) < 0)
-        GET_CHARGE(ch) = 0;
+      char_charge_set(ch, GET_CHARGE(ch) - (int64_t)st);
     }
     if (IS_NONPTRANS(ch)) {
       if (PLR_FLAGGED(ch, PLR_TRANS1)) {
@@ -3843,7 +3834,7 @@ int limb_ok(struct char_data *ch, int type) {
           TO_CHAR);
       act("$n manages to break the silk ensnaring $s arms!", TRUE, ch, 0, 0,
           TO_ROOM);
-      REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ENSNARED);
+      char_condition_remove(ch, "ensnared", "equipped");
     }
     if (GET_EQ(ch, WEAR_WIELD1) && GET_EQ(ch, WEAR_WIELD2)) {
       send_to_char(ch, "Your hands are full!\r\n");
@@ -3972,7 +3963,6 @@ void char_lose_tail(char_data *ch) {
   case RACE_BIO:
     REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_TAIL);
     remove_limb(ch, 6);
-    GET_TGROWTH(ch) = 0;
     break;
   case RACE_SAIYAN:
   case RACE_HALFBREED:
@@ -3981,8 +3971,10 @@ void char_lose_tail(char_data *ch) {
     if (PLR_FLAGGED(ch, PLR_OOZARU)) {
       oozaru_revert(ch);
     }
-    GET_TGROWTH(ch) = 0;
     break;
+  }
+  if (!IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_NOGROW)) {
+    char_condition_apply(ch, "regrow_tail", "natural", "tail_lost");
   }
 }
 
@@ -4387,9 +4379,9 @@ extern "C" bool release_charge(struct char_data *ch) {
     break;
   }
   incCurKI(ch, GET_CHARGE(ch));
-  GET_CHARGE(ch) = 0;
-  GET_CHARGETO(ch) = 0;
+  char_charge_set(ch, 0);
   REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
+  char_condition_remove(ch, "charge", "released");
   return true;
 }
 

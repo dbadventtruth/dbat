@@ -40,8 +40,7 @@ local function execute(ctx)
             ch:send_line("You have a barrier around you and can't rest.")
             return
         else
-            ch:barrier_set(0)
-            ch:aff_flag_set(AFF.SANCTUARY, false)
+            ch:condition_remove("barrier", "rest")
         end
     end
 

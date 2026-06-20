@@ -858,7 +858,7 @@ static void tick_grapple_damage(struct char_data *ch) {
           GRAPPLING(ch), TO_VICT);
       act("@C$n@W chokes @c$N@W, and $E passes out!@n", TRUE, ch, 0,
           GRAPPLING(ch), TO_NOTVICT);
-      SET_BIT_AR(AFF_FLAGS(GRAPPLING(ch)), AFF_KNOCKED);
+      char_condition_apply(GRAPPLING(ch), "knocked_out", "combat", "choke");
       char_position_set(GRAPPLING(ch), POS_SLEEPING);
       {
         struct char_data *other = GRAPPLING(ch);
@@ -1163,148 +1163,6 @@ static void tick_player_powerup(struct char_data *ch) {
   dispel_ash(ch);
 }
 
-static void tick_charge(struct char_data *ch) {
-  if (!PLR_FLAGGED(ch, PLR_CHARGE) && GET_CHARGE(ch) <= 0)
-    return;
-
-  int64_t maxki = GET_MAX_MANA(ch);
-
-  auto release_charge = [&]() {
-    switch (rand_number(1, 3)) {
-    case 1:  act("$n@w's aura disappears.@n", TRUE, ch, 0, 0, TO_ROOM); break;
-    case 2:  act("$n@w's aura fades.@n", TRUE, ch, 0, 0, TO_ROOM); break;
-    default: act("$n@w's aura flickers brightly before disappearing.@n", TRUE, ch, 0, 0, TO_ROOM); break;
-    }
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    incCurKI(ch, GET_CHARGE(ch));
-    GET_CHARGE(ch) = 0;
-    GET_CHARGETO(ch) = 0;
-  };
-
-  if ((GET_POS(ch) == POS_SLEEPING || GET_POS(ch) == POS_RESTING) &&
-      (PLR_FLAGGED(ch, PLR_CHARGE) || GET_CHARGE(ch) >= 1)) {
-    send_to_char(ch, "You stop charging and release all your pent up energy!\r\n");
-    release_charge();
-    return;
-  }
-
-  if (PLR_FLAGGED(ch, PLR_CHARGE) && GET_BONUS(ch, BONUS_UNFOCUSED) > 0 &&
-      rand_number(1, 80) >= 70) {
-    send_to_char(ch, "You lose concentration due to your unfocused mind and "
-                     "release your charged energy!\r\n");
-    release_charge();
-    return;
-  }
-
-  if (GET_CHARGE(ch) >= getMaxKI(ch) / 2)
-    improve_skill(ch, SKILL_CONCENTRATION, 1);
-
-  if (!PLR_FLAGGED(ch, PLR_CHARGE)) {
-    if (rand_number(1, 40) >= 38 && !FIGHTING(ch) &&
-        (GET_PREFERENCE(ch) != PREFERENCE_KI ||
-         GET_CHARGE(ch) > maxki * 0.1)) {
-      if (GET_CHARGE(ch) >= maxki / 100) {
-        send_to_char(ch, "You lose some of your energy slowly.\r\n");
-        switch (rand_number(1, 3)) {
-        case 1:  act("$n@w's aura flickers weakly.@n", TRUE, ch, 0, 0, TO_ROOM); break;
-        case 2:  act("$n@w's aura sheds energy.@n", TRUE, ch, 0, 0, TO_ROOM); break;
-        default: act("$n@w's aura flickers brightly before growing dimmer.@n", TRUE, ch, 0, 0, TO_ROOM); break;
-        }
-        GET_CHARGE(ch) -= GET_CHARGE(ch) / 20;
-      } else if (GET_CHARGE(ch) != 0) {
-        send_to_char(ch, "Your charged energy is completely gone as your aura fades.\r\n");
-        act("$n@w's aura fades away dimmly.@n", TRUE, ch, 0, 0, TO_ROOM);
-        GET_CHARGE(ch) = 0;
-      }
-    }
-    return;
-  }
-
-  // Compute charge rate per tick (Truffle gets bonus, Mutant gets penalty, H2H halves)
-  int conc = GET_SKILL(ch, SKILL_CONCENTRATION);
-  int perc;
-  if      (conc > 74) perc = 10;
-  else if (conc > 49) perc = 5;
-  else if (conc > 24) perc = 2;
-  else                perc = 1;
-
-  if (IS_TRUFFLE(ch)) {
-    if      (perc == 10) perc += 10;
-    else if (perc == 5)  perc += 5;
-    else if (perc == 2)  perc += 3;
-    else                 perc += 1;
-  }
-  if (IS_MUTANT(ch) && perc > 1) perc -= 1;
-  if (GET_PREFERENCE(ch) == PREFERENCE_H2H && perc > 1) perc /= 2;
-
-  int64_t base = (int64_t)(maxki * 0.01 * perc);
-  int64_t step = base + 1;
-  int64_t cur_ki = getCurKI(ch);
-
-  if (cur_ki <= 0) {
-    send_to_char(ch, "You can not charge anymore, you have charged all your energy!\r\n");
-    act("$n@w's aura grows calm.@n", TRUE, ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    return;
-  }
-
-  if (base >= cur_ki) {
-    send_to_char(ch, "You have charged the last that you can.\r\n");
-    act("$n@w's aura @Yflashes@w spectacularly, rushing upwards in torrents!@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    GET_CHARGE(ch) += cur_ki;
-    decCurKIPercent(ch, 1);
-    GET_CHARGETO(ch) = 0;
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    return;
-  }
-
-  if (GET_CHARGE(ch) >= GET_CHARGETO(ch)) {
-    send_to_char(ch, "You have already reached the maximum that you wished to charge.\r\n");
-    act("$n@w's aura burns steadily.@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_CHARGETO(ch) = 0;
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    return;
-  }
-
-  if (GET_CHARGE(ch) + step >= GET_CHARGETO(ch)) {
-    decCurKI(ch, GET_CHARGETO(ch) - GET_CHARGE(ch));
-    GET_CHARGE(ch) = GET_CHARGETO(ch);
-    send_to_char(ch, "You stop charging as you reach the maximum that you wished to charge.\r\n");
-    act("$n@w's aura flares up brightly and then burns steadily.@n", TRUE, ch, 0, 0, TO_ROOM);
-    GET_CHARGETO(ch) = 0;
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    return;
-  }
-
-  decCurKI(ch, step);
-  GET_CHARGE(ch) += step;
-  switch (rand_number(1, 3)) {
-  case 1:
-    act("$n@w's aura ripples magnificantly while growing brighter!@n", TRUE, ch, 0, 0, TO_ROOM);
-    send_to_char(ch, "Your aura grows bright as you charge more ki.\r\n");
-    break;
-  case 2:
-    act("$n@w's aura ripples with power as it grows larger!@n", TRUE, ch, 0, 0, TO_ROOM);
-    send_to_char(ch, "Your aura ripples with power as you charge more ki.\r\n");
-    break;
-  default:
-    act("$n@w's aura throws sparks off violently!.@n", TRUE, ch, 0, 0, TO_ROOM);
-    send_to_char(ch, "Your aura throws sparks off violently as you charge more ki.\r\n");
-    break;
-  }
-  if (GET_CHARGE(ch) >= GET_CHARGETO(ch)) {
-    GET_CHARGE(ch) = GET_CHARGETO(ch);
-    GET_CHARGE(ch) += GET_LEVEL(ch);
-    send_to_char(ch, "You have finished charging!\r\n");
-    act("$n@w's aura burns brightly and then evens out.@n", TRUE, ch, 0, 0, TO_ROOM);
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    GET_CHARGETO(ch) = 0;
-  }
-  if (conc)
-    improve_skill(ch, SKILL_CONCENTRATION, 1);
-}
-
 static void fight_stack_one(struct char_data *ch) {
   reset_fighting_position(ch);
 
@@ -1342,7 +1200,6 @@ static void fight_stack_one(struct char_data *ch) {
 
   tick_barrier_skill(ch);
   tick_player_powerup(ch);
-  tick_charge(ch);
 }
 
 void fight_stack() {

@@ -135,7 +135,7 @@ const struct command_info cmd_info[] = {
     {"carve", "carv", POS_SLEEPING, do_gen_tog, 0, 0, SCMD_CARVE},
     {"cedit", "cedit", POS_DEAD, do_oasis, 0, ADMLVL_IMPL, SCMD_OASIS_CEDIT},
     {"channel", "channe", POS_FIGHTING, do_channel, 0, 0, 0},
-    {"charge", "char", POS_FIGHTING, do_charge, 0, 0, 0},
+    /* do_charge moved to lua/characters/commands/misc/charge.lua */
     {"check", "ch", POS_STANDING, do_not_here, 1, ADMLVL_NONE, 0},
     {"checkload", "checkl", POS_DEAD, do_checkloadstatus, 0, ADMLVL_GOD, 0},
     {"chown", "cho", POS_DEAD, do_chown, 1, ADMLVL_IMPL, 0},
@@ -154,7 +154,7 @@ const struct command_info cmd_info[] = {
     {"compact", "compact", POS_DEAD, do_gen_tog, 0, ADMLVL_NONE, SCMD_COMPACT},
     {"cook", "coo", POS_RESTING, do_cook, 0, ADMLVL_NONE, 0},
     {"copyover", "copyover", POS_DEAD, do_copyover, 0, ADMLVL_GOD, 0},
-    {"create", "crea", POS_STANDING, do_form, 0, ADMLVL_NONE, 0},
+    /* create moved to lua/characters/commands/misc/create.lua */
     {"credits", "cred", POS_DEAD, do_gen_ps, 0, ADMLVL_NONE, SCMD_CREDITS},
     {"crusher", "crushe", POS_FIGHTING, do_crusher, 0, 0, 0},
 
@@ -198,7 +198,7 @@ const struct command_info cmd_info[] = {
     {"exchange", "exchan", POS_RESTING, do_rptrans, 0, ADMLVL_NONE, 0},
     {"exits", "ex", POS_RESTING, do_exits, 0, ADMLVL_NONE, 0},
     {"examine", "exa", POS_SITTING, do_examine, 0, ADMLVL_NONE, 0},
-    {"extract", "extrac", POS_STANDING, do_extract, 0, ADMLVL_NONE, 0},
+    /* extract moved to lua/characters/commands/misc/extract.lua */
 
     {"feed", "fee", POS_STANDING, do_feed, 0, ADMLVL_NONE, 0},
     {"fill", "fil", POS_STANDING, do_pour, 0, ADMLVL_NONE, SCMD_FILL},
@@ -452,7 +452,7 @@ const struct command_info cmd_info[] = {
      SCMD_ROOMFLAGS},
     {"roundhouse", "roundhou", POS_FIGHTING, do_roundhouse, 0, ADMLVL_NONE, 0},
     {"rpp", "rpp", POS_SLEEPING, do_rpp, 0, ADMLVL_NONE, 0},
-    {"runic", "runi", POS_STANDING, do_runic, 0, ADMLVL_NONE, 0},
+    /* runic moved to lua/characters/commands/misc/runic.lua */
 
     {"say", "say", POS_RESTING, do_say, 0, ADMLVL_NONE, 0},
     {"'", "'", POS_RESTING, do_say, 0, ADMLVL_NONE, 0},

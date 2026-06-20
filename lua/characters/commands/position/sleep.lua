@@ -68,8 +68,7 @@ local function execute(ctx)
             ch:send_line("You have a barrier around you and can't sleep.")
             return
         else
-            ch:barrier_set(0)
-            ch:aff_flag_set(AFF.SANCTUARY, false)
+            ch:condition_remove("barrier", "sleep")
         end
     end
     if ch:stat_get("kaioken") > 0 then

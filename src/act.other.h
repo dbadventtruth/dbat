@@ -25,7 +25,6 @@ void update_innate(struct char_data *ch);
 // commands
 ACMD(do_skills);
 ACMD(do_gen_comm);
-ACMD(do_charge);
 ACMD(do_wear);
 ACMD(do_quit);
 ACMD(do_save);
@@ -73,7 +72,7 @@ ACMD(do_ingest);
 ACMD(do_upgrade);
 ACMD(do_srepair);
 ACMD(do_recharge);
-ACMD(do_form);
+/* do_form/create moved to lua/characters/commands/misc/create.lua */
 ACMD(do_spit);
 ACMD(do_majinize);
 ACMD(do_potential);

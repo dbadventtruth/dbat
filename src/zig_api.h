@@ -99,3 +99,4 @@
 #include "http_olc_bridge.h"
 #include "http_user_auth.h"
 #include "http_meta.h"
+#include "fight.h"

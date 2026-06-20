@@ -294,7 +294,6 @@ static void generate_multiform(struct char_data *ch, int count) {
 
     clone->time = ch->time;
 
-    clone->tail_growth = ch->tail_growth;
     ch->transclass = ch->transclass;
 
     // Copying these values, but it shouldn't matter because clones no longer
@@ -626,426 +625,8 @@ static bool handle_fishing(struct char_data *ch) { (void)ch; return false; }
 static void ev_fish_tick(int ctx_type, int64_t ctx_a, int64_t ctx_b) { (void)ctx_type; (void)ctx_a; (void)ctx_b; }
 ACMD(do_fish) { (void)ch; (void)argument; (void)cmd; (void)subcmd; }
 
-ACMD(do_extract) {
-
-  if (!GET_SKILL(ch, SKILL_EXTRACT)) {
-    send_to_char(ch, "You do not know how to extract!\r\n");
-    return;
-  }
-
-  char arg[MAX_INPUT_LENGTH], argu[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH],
-      arg3[MAX_INPUT_LENGTH];
-  struct obj_data *obj = NULL, *obj2 = NULL;
-  int skill = GET_SKILL(ch, SKILL_EXTRACT), chance = axion_dice(0);
-
-  half_chop(argument, arg, argu);
-  two_arguments(argu, arg2, arg3);
-
-  if (!*arg) {
-    send_to_char(ch, "Syntax: extract (object)\r\n");
-    send_to_char(ch, "Syntax: extract combine (bottle1) (bottle2)\r\n");
-    return;
-  }
-
-  if (!strcasecmp(arg, "combine")) {
-    if (!(obj = get_obj_in_list_vis(ch, arg2, NULL, inv_for_char(ch)))) {
-      send_to_char(ch, "You do not have the first bottle that you were wanting "
-                       "to combine.\r\n");
-      return;
-    }
-    if (!(obj2 = get_obj_in_list_vis(ch, arg3, NULL, inv_for_char(ch)))) {
-      send_to_char(ch, "You do not have the second bottle that you were "
-                       "wanting to combine.\r\n");
-      return;
-    }
-    if (obj && obj2) {
-      if (GET_OBJ_VNUM(obj) != 3424) {
-        send_to_char(ch, "That is not an ink bottle!\r\n");
-        return;
-      } else if (GET_OBJ_VNUM(obj2) != 3424) {
-        send_to_char(ch, "That is not an ink bottle!\r\n");
-        return;
-      } else if (GET_OBJ_VAL(obj, 6) <= 0) {
-        send_to_char(ch, "There isn't any ink in the first bottle!\r\n");
-        return;
-      } else if (GET_OBJ_VAL(obj2, 6) <= 0) {
-        send_to_char(ch, "There isn't any ink in the second bottle!\r\n");
-        return;
-      } else {
-        if (GET_OBJ_VAL(obj, 6) >= GET_OBJ_VAL(obj2, 6)) {
-          GET_OBJ_VAL(obj, 6) += GET_OBJ_VAL(obj2, 6);
-          if (GET_OBJ_VAL(obj, 6) > 24) {
-            GET_OBJ_VAL(obj, 6) = 24;
-          }
-          send_to_char(ch, "You combine the ink of the two bottles into one "
-                           "bottle, and discard the leftovers.\r\n");
-          extract_obj(obj2);
-        } else if (GET_OBJ_VAL(obj2, 6) > GET_OBJ_VAL(obj, 6)) {
-          GET_OBJ_VAL(obj2, 6) += GET_OBJ_VAL(obj, 6);
-          if (GET_OBJ_VAL(obj2, 6) > 24) {
-            GET_OBJ_VAL(obj2, 6) = 24;
-          }
-          send_to_char(ch, "You combine the ink of the two bottles into one "
-                           "bottle, and discard the leftovers.\r\n");
-          extract_obj(obj);
-        }
-        return;
-      }
-    }
-  }
-
-  if (!(obj = get_obj_in_list_vis(ch, arg, NULL, inv_for_char(ch)))) {
-    send_to_char(ch, "You do not have that item.\r\n");
-    return;
-  } else {
-    if (GET_OBJ_VNUM(obj) == 3425) {
-      if (GET_OBJ_VAL(obj, VAL_MAXMATURE) != 0 &&
-          GET_OBJ_VAL(obj, VAL_MATURITY) < GET_OBJ_VAL(obj, VAL_MAXMATURE)) {
-        send_to_char(ch, "It's not mature enough to extract from!\r\n");
-        return;
-      }
-      struct obj_data *bottle = char_inventory_search_vnum(ch, 3423, FALSE, 0);
-
-      int64_t cost = ((GET_MAX_MANA(ch) * 0.35) + 500);
-
-      if (!bottle) {
-        send_to_char(
-            ch,
-            "You do not have an empty bottle to put the extracted ink in.\r\n");
-        return;
-      }
-
-      int64_t extra = 0;
-
-      if (GET_OBJ_VAL(bottle, 6) + 4 >= 24)
-        extra = GET_MAX_MANA(ch) * 0.5;
-
-      cost += extra;
-
-      if ((getCurKI(ch)) < cost) {
-        send_to_char(ch,
-                     "You do not have enough ki! @D[@rNeeded@D: @R%s@D]@n\r\n",
-                     add_commas(cost));
-        return;
-      } else if (skill < chance) {
-        decCurKI(ch, cost);
-        act("@WWith your ki flowing carefully into your hands you take a hold "
-            "of the @G$p@W and begin to strip it of its leaves. Once it has "
-            "been stripped you go to squeeze the ink carefully from the leaves "
-            "into the bottle, but unfortunately the ink explodes into a mess "
-            "instead!@n",
-            TRUE, ch, obj, 0, TO_CHAR);
-        act("@C$n@W takes a hold of the @G$p@W and begins to strip it of its "
-            "leaves. Once it has been stripped $e bundles up the leaves in $s "
-            "hands and begins to squeeze. A nasty explosion of a mess is all "
-            "that follows!@n",
-            TRUE, ch, obj, 0, TO_ROOM);
-        improve_skill(ch, SKILL_EXTRACT, 0);
-        extract_obj(obj);
-        WAIT_STATE(ch, PULSE_3SEC);
-        return;
-      } else {
-        decCurKI(ch, cost);
-        act("@WWith your ki flowing carefully into your hands you take a hold "
-            "of the @G$p@W and begin to strip it of its leaves. Once it has "
-            "been stripped you go to squeeze the ink carefully from the leaves "
-            "into the bottle, and manage to get every last drop of ink into "
-            "it.@n",
-            TRUE, ch, obj, 0, TO_CHAR);
-        act("@C$n@W takes a hold of the @G$p@W and begins to strip it of its "
-            "leaves. Once it has been stripped $e bundles up the leaves in $s "
-            "hands and begins to squeeze ink carefully from the leaves into a "
-            "bottle.@n",
-            TRUE, ch, obj, 0, TO_ROOM);
-        extract_obj(obj);
-        GET_OBJ_VAL(bottle, 6) += rand_number(4, 6);
-        if (GET_OBJ_VAL(bottle, 6) >= 24) {
-          struct obj_data *filled = read_object(3424, VIRTUAL);
-          extract_obj(bottle);
-          GET_OBJ_VAL(filled, 6) = 24;
-          obj_to_char(filled, ch);
-          decCurKI(ch, 0);
-          act("@GAs the last of the ink fills the bottle you infuse a final "
-              "burst of ki into the bottle.@n",
-              TRUE, ch, filled, 0, TO_CHAR);
-          act("@GAs the last of the ink fills the bottle @g$n@G infuses a "
-              "final burst of ki into the bottle.@n ",
-              TRUE, ch, filled, 0, TO_ROOM);
-        } else {
-          send_to_char(ch,
-                       "You will need to fill the bottle before giving it a "
-                       "final infusion of ki to complete the process.\r\n");
-        }
-        improve_skill(ch, SKILL_EXTRACT, 0);
-        WAIT_STATE(ch, PULSE_3SEC);
-      }
-    } else {
-      send_to_char(ch, "That is not something you can extract from.\r\n");
-      return;
-    }
-  }
-}
-
-ACMD(do_runic) {
-
-  if (!GET_SKILL(ch, SKILL_RUNIC)) {
-    send_to_char(ch, "You do not know how to write down runes.\r\n");
-    return;
-  }
-
-  char arg[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
-  int skill = GET_SKILL(ch, SKILL_RUNIC), bonus = 0;
-
-  two_arguments(argument, arg, arg2);
-
-  if (FIGHTING(ch)) {
-    send_to_char(ch, "You are too busy fighting to write runes!\r\n");
-    return;
-  }
-
-  auto show_help = [&]() {
-    send_to_char(ch, "Syntax: runic (target) (skill)\r\n");
-    send_to_char(ch, "@D----@GRunic Skills@D----@n\r\n");
-    send_to_char(ch, "@Rkenaz\n%s\n%s\n%s\n%s\n%s\n%s@n\n",
-                 skill >= 40  ? "@Galgiz"   : "",
-                 skill >= 40  ? "@moagaz"   : "",
-                 skill >= 50  ? "@CLaguz"   : "",
-                 skill >= 60  ? "@Ywunjo"   : "",
-                 skill >= 80  ? "@rpurisaz" : "",
-                 skill >= 100 ? "@mgebo"    : "");
-  };
-
-  if (!*arg || !*arg2) {
-    show_help();
-    return;
-  }
-
-  auto *bottle =
-      dbat::game::search::character_inventory_find(ch, FALSE, [&](auto it) {
-        return GET_OBJ_VNUM(it) == 3424 && GET_OBJ_VAL(it, 6) > 0;
-      });
-
-  if (!bottle) {
-    send_to_char(ch, "You do not have a bottle with enough ink in it.\r\n");
-    return;
-  }
-  int amount = GET_OBJ_VAL(bottle, 6);
-
-  if (!char_inventory_search_vnum(ch, 3427, FALSE, 0)) {
-    send_to_char(ch, "You do not have a brush!\r\n");
-    return;
-  }
-
-  int64_t cost = GET_MAX_MANA(ch) * 0.05;
-  int inkcost = 0;
-
-  if (IS_HOSHIJIN(ch))
-    bonus = 10;
-  else
-    inkcost += 2;
-
-  struct char_data *vict;
-  if (!(vict = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
-    send_to_char(ch, "You can't seem to find that person.\r\n");
-    return;
-  } else if (getCurKI(ch) < cost) {
-    send_to_char(ch, "You do not have enough ki to write runes.\r\n");
-    return;
-  } else if (skill + bonus < axion_dice(0) && rand_number(1, 5) == 5) {
-    act("@BYou dip your brush into the ink, but as you infuse your ki you "
-        "balance the flow wrong and end up destroying the ink bottle!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@b$n@B dips $s runic brush into a bottle filled with shimmering ink. "
-        "@b$n@B appears to concentrate for a moment before a look of panic "
-        "dons $s face. Just at that moment the bottle of ink explodes! "
-        "Strange...@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    extract_obj(bottle);
-    improve_skill(ch, SKILL_RUNIC, 1);
-    decCurKI(ch, cost);
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  } else if (skill + bonus < axion_dice(0)) {
-    decCurKI(ch, cost);
-    act("@BYou dip your brush into the ink, but as you infuse your ki you "
-        "balance the flow wrong and end up evaporating some ink!@n",
-        TRUE, ch, 0, 0, TO_CHAR);
-    act("@b$n@B dips $s runic brush into a bottle filled with shimmering ink. "
-        "@b$n@B appears to concentrate for a moment before some ink "
-        "evaporates. Strange...@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-    improve_skill(ch, SKILL_RUNIC, 1);
-    GET_OBJ_VAL(bottle, 6) -= rand_number(1, 3);
-    if (GET_OBJ_VAL(bottle, 6) < 0)
-      GET_OBJ_VAL(bottle, 6) = 0;
-    WAIT_STATE(ch, PULSE_3SEC);
-    return;
-  }
-
-  /* deduct ink and replace bottle with empty when drained */
-  auto spend_ink = [&]() {
-    GET_OBJ_VAL(bottle, 6) -= inkcost;
-    if (GET_OBJ_VAL(bottle, 6) <= 0) {
-      extract_obj(bottle);
-      obj_to_char(read_object(3423, VIRTUAL), ch);
-    }
-  };
-
-  /* returns false and prints error if ink insufficient */
-  auto ink_ok = [&]() -> bool {
-    if (amount < inkcost) {
-      send_to_char(ch,
-                   "You do not have a bottle with enough ink. "
-                   "@D[@bInkcost@D: @R%d@D]@n\r\n",
-                   inkcost);
-      return false;
-    }
-    return true;
-  };
-
-  /* clamp skill * mult to minimum 1 */
-  auto calc_dur = [&](double mult) -> int {
-    int d = (int)(skill * mult);
-    return d < 1 ? 1 : d;
-  };
-
-  /* core rune application: ki drain, act messages (self or other), ink report,
-     vict effect message, condition application, bottle deduction */
-  auto apply_rune = [&](const char *rune_name, const char *condition,
-                         int duration, const char *vict_msg) {
-    decCurKI(ch, cost);
-    char buf[512];
-    if (vict == ch) {
-      snprintf(buf, sizeof(buf),
-               "@BYou dip your brush into the ink and infuse your ki skillfully "
-               "into it. You pull the brush out and paint the @D'@C%s@D'@B rune "
-               "on your skin!@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, 0, TO_CHAR);
-      snprintf(buf, sizeof(buf),
-               "@b$n@B dips $s brush into a bottle of ink and at the same time "
-               "the ink starts to glow. Skillfully $e then writes the "
-               "@D'@C%s@D'@B rune on $s skin.@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, 0, TO_ROOM);
-    } else {
-      snprintf(buf, sizeof(buf),
-               "@BYou dip your brush into the ink and infuse your ki skillfully "
-               "into it. You pull the brush out and paint the @D'@C%s@D'@B rune "
-               "on @b$N's@B skin!@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, vict, TO_CHAR);
-      snprintf(buf, sizeof(buf),
-               "@b$n@B dips $s brush into a bottle of ink and at the same time "
-               "the ink starts to glow. Skillfully $e then writes the "
-               "@D'@C%s@D'@B rune on @RYOUR@B skin.@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, vict, TO_VICT);
-      snprintf(buf, sizeof(buf),
-               "@b$n@B dips $s brush into a bottle of ink and at the same time "
-               "the ink starts to glow. Skillfully $e then writes the "
-               "@D'@C%s@D'@B rune on @b$N's@B skin.@n",
-               rune_name);
-      act(buf, TRUE, ch, 0, vict, TO_NOTVICT);
-    }
-    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-    send_to_char(vict, "%s", vict_msg);
-    if (condition && duration > 0) {
-      char_condition_apply_with_duration(vict, condition, "skill", "runic", duration * SECS_PER_MUD_HOUR);
-    }
-    spend_ink();
-  };
-
-  char vict_msg[256];
-
-  if (!strcasecmp(arg2, "kenaz")) {
-    inkcost += 1;
-    /* kenaz skips the ink_ok check — small cost, always permitted */
-    int dur = calc_dur(0.16);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou can now see in the dark! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Kenaz", "rune_kenaz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "algiz")) {
-    inkcost += 2;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.05);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou now have Ethereal Armor! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Algiz", "ethereal_armor", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "oagaz")) {
-    inkcost += 3;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.04);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou now are protected by Ethereal Chains! "
-             "@D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Oagaz", "rune_oagaz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "laguz")) {
-    inkcost += 4;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.04);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou now have water breathing! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Laguz", "rune_laguz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "wunjo")) {
-    inkcost += 4;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.08);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou are now blessed with a deeper understanding of things you "
-             "experience! @D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Wunjo", "rune_wunjo", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "purisaz")) {
-    inkcost += 4;
-    if (!ink_ok()) return;
-    int dur = calc_dur(0.06);
-    snprintf(vict_msg, sizeof(vict_msg),
-             "@GYou feel as if your inner energy is more potent! "
-             "@D(@WLasts@D: @w%d@D)@n\r\n", dur);
-    apply_rune("Purisaz", "rune_purisaz", dur, vict_msg);
-  } else if (!strcasecmp(arg2, "gebo")) {
-    inkcost += 10;
-    if (!ink_ok()) return;
-    /* gebo is instant: no condition/duration, but unique "flash" flavor in acts */
-    decCurKI(ch, cost);
-    char buf[512];
-    if (vict == ch) {
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CGebo@D'@B rune "
-          "on your skin! The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, 0, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on $s skin. The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, 0, TO_ROOM);
-    } else {
-      act("@BYou dip your brush into the ink and infuse your ki skillfully "
-          "into it. You pull the brush out and paint the @D'@CGebo@D'@B rune "
-          "on @b$N's@B skin! The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, vict, TO_CHAR);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on @RYOUR@B skin. The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, vict, TO_VICT);
-      act("@b$n@B dips $s brush into a bottle of ink and at the same time the "
-          "ink starts to glow. Skillfully $e then writes the @D'@CGebo@D'@B "
-          "rune on @b$N's@B skin. The rune flashes out of existence immediately!@n",
-          TRUE, ch, 0, vict, TO_NOTVICT);
-    }
-    send_to_char(ch, "@D[@B%d@b ink used.@D]@n\r\n", inkcost);
-    char_stat_mod(vict, "practices", 125);
-    send_to_char(vict,
-                 "@GYou feel like you've just gained a lot of knowledge. "
-                 "Now if only you could apply it. @D[@m+125 PS@D]@n\r\n");
-    spend_ink();
-  } else {
-    show_help();
-    return;
-  }
-
-  improve_skill(ch, SKILL_RUNIC, 1);
-  WAIT_STATE(ch, PULSE_3SEC);
-}
+/* do_extract moved to lua/characters/commands/misc/extract.lua */
+/* do_runic moved to lua/characters/commands/misc/runic.lua */
 
 ACMD(do_scry) {
 
@@ -2319,7 +1900,7 @@ ACMD(do_ensnare) {
             "$S arms with the silk!@n",
             TRUE, ch, 0, vict, TO_NOTVICT);
         extract_obj(obj);
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_ENSNARED);
+        char_condition_apply(vict, "ensnared", "skill", "ensnare");
         WAIT_STATE(ch, PULSE_3SEC);
         improve_skill(ch, SKILL_ENSNARE, 0);
         char_condition_remove(vict, "zanzoken", "zanzoken_over");
@@ -2346,7 +1927,7 @@ ACMD(do_ensnare) {
           "with the silk!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       extract_obj(obj);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_ENSNARED);
+      char_condition_apply(vict, "ensnared", "skill", "ensnare");
       WAIT_STATE(ch, PULSE_3SEC);
       improve_skill(ch, SKILL_ENSNARE, 0);
       char_condition_remove(ch, "zanzoken", "zanzoken_over");
@@ -2388,7 +1969,7 @@ ACMD(do_ensnare) {
           "silk!@n",
           TRUE, ch, 0, vict, TO_NOTVICT);
       extract_obj(obj);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_ENSNARED);
+      char_condition_apply(vict, "ensnared", "skill", "ensnare");
       WAIT_STATE(ch, PULSE_3SEC);
       improve_skill(ch, SKILL_ENSNARE, 0);
     }
@@ -3958,7 +3539,7 @@ ACMD(do_fireshield) {
         TRUE, ch, 0, 0, TO_ROOM);
     improve_skill(ch, SKILL_FIRESHIELD, 0);
     decCurKI(ch, cost);
-    SET_BIT_AR(AFF_FLAGS(ch), AFF_FIRESHIELD);
+    char_condition_apply(ch, "fireshield", "skill", "fireshield");
     return;
   }
 }

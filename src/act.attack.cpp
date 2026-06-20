@@ -3888,7 +3888,7 @@ ACMD(do_selfd) {
   } else if (GRAPPLING(ch) != NULL) {
     tch = GRAPPLING(ch);
     dmg += GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
     dmg += (getBasePL(ch)) * 0.6;
     dmg += (getBaseST(ch));
     decCurHealthPercentFloored(ch, 1, 1);
@@ -3924,7 +3924,7 @@ ACMD(do_selfd) {
     return;
   } else {
     dmg += GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
     dmg += (getBasePL(ch)) * 0.6;
     dmg += (getBaseST(ch));
     dmg *= 1.5;
@@ -4098,14 +4098,14 @@ ACMD(do_razor) {
       dmg = damtype(ch, 47, skill, attperc);
       if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
         if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-          GET_BARRIER(ch) += dmg * 0.1;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.1));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-          GET_BARRIER(ch) += dmg * 0.05;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.05));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-          GET_BARRIER(ch) += dmg * 0.02;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.02));
         }
         if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-          GET_BARRIER(ch) = GET_MAX_MANA(ch);
+          char_barrier_set(ch, GET_MAX_MANA(ch));
         }
       }
       int hitspot = 1;
@@ -4481,14 +4481,14 @@ ACMD(do_spike) {
       dmg = damtype(ch, 43, skill, attperc);
       if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
         if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-          GET_BARRIER(ch) += dmg * 0.1;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.1));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-          GET_BARRIER(ch) += dmg * 0.05;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.05));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-          GET_BARRIER(ch) += dmg * 0.02;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.02));
         }
         if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-          GET_BARRIER(ch) = GET_MAX_MANA(ch);
+          char_barrier_set(ch, GET_MAX_MANA(ch));
         }
       }
       int hitspot = 1;
@@ -4813,14 +4813,14 @@ ACMD(do_koteiru) {
       dmg = damtype(ch, 48, skill, attperc);
       if (AFF_FLAGGED(ch, AFF_SANCTUARY)) {
         if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 100) {
-          GET_BARRIER(ch) += dmg * 0.1;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.1));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 60) {
-          GET_BARRIER(ch) += dmg * 0.05;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.05));
         } else if (GET_SKILL(ch, SKILL_AQUA_BARRIER) >= 40) {
-          GET_BARRIER(ch) += dmg * 0.02;
+          char_barrier_set(ch, GET_BARRIER(ch) + (int64_t)(dmg * 0.02));
         }
         if (GET_BARRIER(ch) > GET_MAX_MANA(ch)) {
-          GET_BARRIER(ch) = GET_MAX_MANA(ch);
+          char_barrier_set(ch, GET_MAX_MANA(ch));
         }
       }
       int hitspot = 1;
@@ -4969,7 +4969,7 @@ ACMD(do_koteiru) {
             act("@CYour body completely freezes!@n", TRUE, vict, 0, 0, TO_CHAR);
             act("@c$n's@C body completely freezes!@n", TRUE, vict, 0, 0,
                 TO_ROOM);
-            SET_BIT_AR(AFF_FLAGS(vict), AFF_FROZEN);
+            char_condition_apply(vict, "frozen", "combat", "frozen");
           }
         }
       }

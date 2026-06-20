@@ -635,8 +635,6 @@ int load_char(const char *name, struct char_data *ch) {
           ;
         else if (!strcmp(tag, "rDis"))
           GET_RDISPLAY(ch) = strdup(line);
-        else if (!strcmp(tag, "Rela"))
-          GET_RELAXCOUNT(ch) = atoi(line);
         else if (!strcmp(tag, "Rtim"))
           GET_RTIME(ch) = atoi(line);
         else if (!strcmp(tag, "Rad1"))
@@ -690,9 +688,7 @@ int load_char(const char *name, struct char_data *ch) {
         break;
 
       case 'T':
-        if (!strcmp(tag, "Tgro"))
-          GET_TGROWTH(ch) = atoi(line);
-        else if (!strcmp(tag, "Tcla"))
+        if (!strcmp(tag, "Tcla"))
           GET_TRANSCLASS(ch) = atoi(line);
         else if (!strcmp(tag, "Tcos")) {
           sscanf(line, "%d %d", &num2, &num3);
@@ -1177,13 +1173,8 @@ void save_char(struct char_data *ch) {
     fprintf(fl, "Mimi: %d\n", GET_MIMIC(ch));
   if (GET_SLOTS(ch) != PFDEF_EYE)
     fprintf(fl, "Slot: %d\n", GET_SLOTS(ch));
-  if (GET_TGROWTH(ch) != PFDEF_EYE)
-    fprintf(fl, "Tgro: %d\n", GET_TGROWTH(ch));
   if (GET_RDISPLAY(ch) != PFDEF_EYE)
     fprintf(fl, "rDis: %s\n", GET_RDISPLAY(ch));
-  if (GET_RELAXCOUNT(ch) != PFDEF_EYE)
-    fprintf(fl, "Rela: %d\n", GET_RELAXCOUNT(ch));
-
   /* Save skills */
   if (GET_ADMLEVEL(ch) < ADMLVL_IMMORT) {
     fprintf(fl, "Skil:\n");

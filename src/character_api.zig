@@ -1649,11 +1649,28 @@ pub export fn char_limb_healing_sync(ch: *cdb.char_data) void {
         _ = char_condition_remove(ch, "limb_healing", "limbs_healed");
 }
 
+pub export fn char_die(ch: *cdb.char_data, killer_id: i64) void {
+    const killer: ?*cdb.char_data = if (killer_id == 0) null else cdb.char_by_id(killer_id);
+    cdb.die(ch, killer);
+}
+
 pub export fn char_charge_get(ch: *cdb.char_data) i64 {
-    return ch.charge;
+    return char_condition_number_get(ch, "charge", "amount");
+}
+pub export fn char_charge_set(ch: *cdb.char_data, val: i64) void {
+    const clamped = @max(val, 0);
+    if (clamped == 0) {
+        _ = char_condition_number_set(ch, "charge", "amount", 0);
+        return;
+    }
+    if (char_condition_has(ch, "charge")) {
+        _ = char_condition_number_set(ch, "charge", "amount", clamped);
+    } else {
+        _ = char_condition_apply_with_numbers2(ch, "charge", "combat", "external", "holding", 1, "amount", clamped);
+    }
 }
 pub export fn char_barrier_get(ch: *cdb.char_data) i64 {
-    return ch.barrier;
+    return char_condition_number_get(ch, "barrier", "amount");
 }
 
 pub export fn char_voice_get(ch: *cdb.char_data) ?[*:0]const u8 {
@@ -1689,6 +1706,12 @@ pub export fn char_genome_get(ch: *cdb.char_data, slot: c_int) c_int {
 pub export fn char_wait_set(ch: *cdb.char_data, pulses: c_int) void {
     if (ch.desc != null) ch.wait = pulses;
 }
+pub export fn char_cooldown_get(ch: *cdb.char_data) c_int {
+    return ch.con_cooldown;
+}
+pub export fn char_cooldown_set(ch: *cdb.char_data, val: c_int) void {
+    ch.con_cooldown = val;
+}
 pub export fn char_know_skill(ch: *cdb.char_data, skill_name: ?[*:0]const u8) bool {
     const index = skillIndex(skill_name) orelse return false;
     return cdb.know_skill(ch, @intCast(index)) != 0;
@@ -1721,9 +1744,6 @@ pub export fn char_distfea_get(ch: *cdb.char_data) c_int {
 pub export fn char_sleeptime_get(ch: *cdb.char_data) c_int {
     return ch.sleeptime;
 }
-pub export fn char_relax_count_get(ch: *cdb.char_data) c_int {
-    return ch.relax_count;
-}
 
 pub export fn char_has_group(ch: *cdb.char_data) bool {
     return cdb.has_group(ch) != 0;
@@ -1752,7 +1772,16 @@ pub export fn char_affflag_set(ch: *cdb.char_data, flag: c_int, val: bool) void 
     bitflags.set(ch.affected_by[0..], flag, val);
 }
 pub export fn char_barrier_set(ch: *cdb.char_data, val: i64) void {
-    ch.barrier = val;
+    const clamped = @max(val, 0);
+    if (clamped == 0) {
+        _ = char_condition_number_set(ch, "barrier", "amount", 0);
+        return;
+    }
+    if (char_condition_has(ch, "barrier")) {
+        _ = char_condition_number_set(ch, "barrier", "amount", clamped);
+    } else {
+        _ = char_condition_apply_with_number(ch, "barrier", "combat", "external", "amount", clamped);
+    }
 }
 pub export fn char_carry_drop(ch: *cdb.char_data, @"type": c_int) void {
     carry_drop(ch, @"type");

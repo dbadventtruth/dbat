@@ -124,6 +124,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "zone_vnum_get", luaCharacterZoneVnumGet);
     addMethod(lua, "zone_get", luaCharacterZoneGet);
     addMethod(lua, "reveal_hiding", luaCharacterRevealHiding);
+    addMethod(lua, "die", luaCharacterDie);
     addMethod(lua, "release_charge", luaCharacterReleaseCharge);
     addMethod(lua, "send_to_sense", luaCharacterSendToSense);
     addMethod(lua, "send_to_scouter", luaCharacterSendToScouter);
@@ -148,6 +149,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "sex_set", luaCharacterSexSet);
     addMethod(lua, "position_get", luaCharacterPositionGet);
     addMethod(lua, "position_set", luaCharacterPositionSet);
+    addMethod(lua, "is_fighting", luaCharacterIsFighting);
     addMethod(lua, "admin_level_get", luaCharacterAdminLevelGet);
     addMethod(lua, "admin_level_set", luaCharacterAdminLevelSet);
     addMethod(lua, "admin_level_mod", luaCharacterAdminLevelMod);
@@ -225,6 +227,7 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "sits_set", luaCharacterSitsSet);
     addMethod(lua, "conditions", luaCharacterConditions);
     addMethod(lua, "command_queue_clear", luaCharacterCommandQueueClear);
+    addMethod(lua, "command_enqueue", luaCharacterCommandEnqueue);
     addMethod(lua, "event_schedule", luaCharacterEventSchedule);
     addMethod(lua, "event_cancel", luaCharacterEventCancel);
     addMethod(lua, "event_count", luaCharacterEventCount);
@@ -241,7 +244,10 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "molt_threshold", luaCharacterMoltThreshold);
     addMethod(lua, "limbcond_get", luaCharacterLimbCondGet);
     addMethod(lua, "limbcond_set", luaCharacterLimbCondSet);
+    addMethod(lua, "gain_tail", luaCharacterGainTail);
+    addMethod(lua, "has_tail", luaCharacterHasTail);
     addMethod(lua, "charge_get", luaCharacterChargeGet);
+    addMethod(lua, "charge_set", luaCharacterChargeSet);
     addMethod(lua, "barrier_get", luaCharacterBarrierGet);
     addMethod(lua, "voice_get", luaCharacterVoiceGet);
     addMethod(lua, "distfea_get", luaCharacterDistfeaGet);
@@ -254,6 +260,9 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "preference_set", luaCharacterPreferenceSet);
     addMethod(lua, "genome_get", luaCharacterGenomeGet);
     addMethod(lua, "wait_set", luaCharacterWaitSet);
+    addMethod(lua, "cooldown_get", luaCharacterCooldownGet);
+    addMethod(lua, "cooldown_set", luaCharacterCooldownSet);
+    addMethod(lua, "inventory_find_vnum", luaCharacterInventoryFindVnum);
     addMethod(lua, "know_skill", luaCharacterKnowSkill);
     addMethod(lua, "improve_skill", luaCharacterImproveSkill);
     addMethod(lua, "defending_for_get", luaCharacterDefendingForGet);
@@ -267,7 +276,6 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "skin_get", luaCharacterSkinGet);
     addMethod(lua, "eye_get", luaCharacterEyeGet);
     addMethod(lua, "sleeptime_get", luaCharacterSleepcountGet);
-    addMethod(lua, "relax_count_get", luaCharacterRelaxCountGet);
     addMethod(lua, "has_group", luaCharacterHasGroup);
     addMethod(lua, "has_mail", luaCharacterHasMail);
     addMethod(lua, "soft_cap", luaCharacterSoftCap);
@@ -806,6 +814,13 @@ fn luaCharacterRevealHiding(lua: *Lua) i32 {
     return 0;
 }
 
+fn luaCharacterDie(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const killer_id: i64 = if (lua.isNoneOrNil(2)) 0 else integer(lua, 2);
+    cdb.char_die(ch, killer_id);
+    return 0;
+}
+
 fn luaCharacterReleaseCharge(lua: *Lua) i32 {
     lua.pushBoolean(cdb.release_charge(checkCharacter(lua)));
     return 1;
@@ -951,6 +966,11 @@ fn luaCharacterSexSet(lua: *Lua) i32 {
 
 fn luaCharacterPositionGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.char_position_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterIsFighting(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_fighting_get(checkCharacter(lua)) != null);
     return 1;
 }
 
@@ -1690,6 +1710,11 @@ fn luaCharacterCommandQueueClear(lua: *Lua) i32 {
     return 0;
 }
 
+fn luaCharacterCommandEnqueue(lua: *Lua) i32 {
+    cdb.char_command_enqueue(checkCharacter(lua), string(lua, 2));
+    return 0;
+}
+
 // entity:event_schedule(kind, delay_ms [, interval_ms]) → event_id
 fn luaCharacterEventSchedule(lua: *Lua) i32 {
     const ch = checkCharacter(lua);
@@ -1809,9 +1834,24 @@ fn luaCharacterLimbCondSet(lua: *Lua) i32 {
     return 0;
 }
 
+fn luaCharacterGainTail(lua: *Lua) i32 {
+    cdb.char_gain_tail(checkCharacter(lua), false);
+    return 0;
+}
+
+fn luaCharacterHasTail(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_has_tail(checkCharacter(lua)));
+    return 1;
+}
+
 fn luaCharacterChargeGet(lua: *Lua) i32 {
     lua.pushInteger(cdb.char_charge_get(checkCharacter(lua)));
     return 1;
+}
+
+fn luaCharacterChargeSet(lua: *Lua) i32 {
+    cdb.char_charge_set(checkCharacter(lua), intCastOrError(lua, i64, integer(lua, 2), "charge"));
+    return 0;
 }
 
 fn luaCharacterBarrierGet(lua: *Lua) i32 {
@@ -1873,6 +1913,24 @@ fn luaCharacterGenomeGet(lua: *Lua) i32 {
 fn luaCharacterWaitSet(lua: *Lua) i32 {
     cdb.char_wait_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "pulses"));
     return 0;
+}
+
+fn luaCharacterCooldownGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_cooldown_get(checkCharacter(lua)));
+    return 1;
+}
+
+fn luaCharacterCooldownSet(lua: *Lua) i32 {
+    cdb.char_cooldown_set(checkCharacter(lua), intCastOrError(lua, c_int, integer(lua, 2), "cooldown"));
+    return 0;
+}
+
+fn luaCharacterInventoryFindVnum(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const vnum = intCastOrError(lua, cdb.obj_vnum, integer(lua, 2), "vnum");
+    const obj = cdb.char_inventory_search_vnum(ch, vnum, false, 0);
+    if (obj) |o| objects_lua.pushObject(lua, cdb.obj_id_get(o)) else lua.pushNil();
+    return 1;
 }
 
 fn luaCharacterKnowSkill(lua: *Lua) i32 {
@@ -1963,10 +2021,6 @@ fn luaCharacterSleepcountGet(lua: *Lua) i32 {
     return 1;
 }
 
-fn luaCharacterRelaxCountGet(lua: *Lua) i32 {
-    lua.pushInteger(cdb.char_relax_count_get(checkCharacter(lua)));
-    return 1;
-}
 
 fn luaCharacterHasGroup(lua: *Lua) i32 {
     lua.pushBoolean(cdb.char_has_group(checkCharacter(lua)));

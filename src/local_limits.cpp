@@ -77,71 +77,7 @@ static void update_flags(struct char_data *ch);
 
 static int wearing_stardust(struct char_data *ch);
 
-static void barrier_shed(struct char_data *ch);
 static void check_idling(struct char_data *ch);
-
-static void barrier_shed(struct char_data *ch) {
-
-  if (!AFF_FLAGGED(ch, AFF_SANCTUARY)) {
-    return;
-  }
-
-  if (GET_SKILL(ch, SKILL_AQUA_BARRIER) > 0) {
-    return;
-  }
-
-  int chance = axion_dice(0), barrier = GET_SKILL(ch, SKILL_BARRIER),
-      concentrate = GET_SKILL(ch, SKILL_CONCENTRATION);
-  double rate = 0.3;
-
-  if (barrier >= 100) {
-    rate = 0.01;
-  } else if (barrier >= 95) {
-    rate = 0.02;
-  } else if (barrier >= 90) {
-    rate = 0.04;
-  } else if (barrier >= 80) {
-    rate = 0.08;
-  } else if (barrier >= 70) {
-    rate = 0.10;
-  } else if (barrier >= 60) {
-    rate = 0.15;
-  } else if (barrier >= 50) {
-    rate = 0.20;
-  } else if (barrier >= 40) {
-    rate = 0.25;
-  } else if (barrier >= 30) {
-    rate = 0.27;
-  } else if (barrier >= 20) {
-    rate = 0.29;
-  }
-
-  int64_t loss = (long double)(GET_BARRIER(ch)) * rate, recharge = 0;
-
-  if (concentrate >= chance) {
-    recharge = loss * 0.5;
-  }
-
-  GET_BARRIER(ch) -= loss;
-
-  if (GET_BARRIER(ch) <= 0) {
-    GET_BARRIER(ch) = 0;
-    act("@cYour barrier disappears.@n", TRUE, ch, 0, 0, TO_CHAR);
-    act("@c$n@c's barrier disappears.@n", TRUE, ch, 0, 0, TO_ROOM);
-  } else {
-    act("@cYour barrier loses some energy.@n", TRUE, ch, 0, 0, TO_CHAR);
-    send_to_char(ch, "@D[@C%s@D]@n\r\n", add_commas(loss));
-    act("@c$n@c's barrier sends some sparks into the air as it seems to get a "
-        "bit weaker.@n",
-        TRUE, ch, 0, 0, TO_ROOM);
-  }
-
-  if (recharge > 0 && (getCurKI(ch)) < GET_MAX_MANA(ch)) {
-    incCurKI(ch, recharge);
-    send_to_char(
-        ch, "@CYou reabsorb some of the energy lost into your body!@n\r\n");
-  }
-}
 
 /* If they have the Healthy trait then they have a chance to lose each of these
  */
@@ -169,10 +105,7 @@ static int wearing_stardust(struct char_data *ch) {
     return true;
   });
 
-  if (count == 26)
-    return (1);
-  else
-    return (0);
+  return count == 26;
 }
 
 
@@ -182,133 +115,10 @@ static void update_flags(struct char_data *ch) {
     return;
   }
 
-  if (GET_BONUS(ch, BONUS_LATE) && GET_POS(ch) == POS_SLEEPING &&
-      rand_number(1, 3) == 3) {
-    if (GET_HIT(ch) >= (getMaxPL(ch)) && (getCurST(ch)) >= GET_MAX_MOVE(ch) &&
-        (getCurKI(ch)) >= GET_MAX_MANA(ch)) {
-      send_to_char(ch, "You FINALLY wake up.\r\n");
-      act("$n wakes up.", TRUE, ch, 0, 0, TO_ROOM);
-      char_position_set(ch, POS_SITTING);
-    }
-  }
-
-  if (AFF_FLAGGED(ch, AFF_KNOCKED) && !FIGHTING(ch)) {
+  if (char_condition_has(ch, "knocked_out") && !FIGHTING(ch)) {
     cureStatusKnockedOutAnnounced(ch, true);
   }
 
-  barrier_shed(ch);
-
-  if (AFF_FLAGGED(ch, AFF_FIRESHIELD) && !FIGHTING(ch) &&
-      rand_number(1, 101) > GET_SKILL(ch, SKILL_FIRESHIELD)) {
-    send_to_char(ch, "Your fireshield disappears.\r\n");
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FIRESHIELD);
-  }
-  if (char_condition_has(ch, "zanzoken") && !FIGHTING(ch) &&
-      rand_number(1, 3) == 2) {
-    send_to_char(
-        ch, "You lose concentration and no longer are ready to zanzoken.\r\n");
-    char_condition_remove(ch, "zanzoken", "zanzoken_over");
-  }
-  if (AFF_FLAGGED(ch, AFF_ENSNARED) && rand_number(1, 3) == 2) {
-    send_to_char(ch, "The silk ensnaring your arms disolves enough for you to "
-                     "break it!\r\n");
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_ENSNARED);
-  }
-
-  if ((IS_SAIYAN(ch) || IS_HALFBREED(ch)) && PLR_FLAGGED(ch, PLR_TRANS1) &&
-      !PLR_FLAGGED(ch, PLR_FPSSJ)) {
-    GET_ABSORBS(ch) += 1;
-    if (GET_ABSORBS(ch) >= 300) {
-      send_to_char(ch, "You have mastered the base Super Saiyan transformation "
-                       "and achieved Full Power Super Saiyan! Super Saiyan "
-                       "First can now be maintained effortlessly.\r\n");
-      SET_BIT_AR(PLR_FLAGS(ch), PLR_FPSSJ);
-      GET_ABSORBS(ch) = 0;
-    }
-  }
-
-  if (!IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_STAIL) &&
-      !PLR_FLAGGED(ch, PLR_NOGROW) && (IS_SAIYAN(ch) || IS_HALFBREED(ch))) {
-    if (RACIAL_PREF(ch) == 1 && rand_number(1, 50) >= 40) {
-      GET_TGROWTH(ch) += 1;
-    } else if (RACIAL_PREF(ch) != 1 || IS_SAIYAN(ch)) {
-      GET_TGROWTH(ch) += 1;
-    }
-    if (GET_TGROWTH(ch) >= 10) {
-      send_to_char(ch, "@wYour tail grows back.@n\r\n");
-      act("$n@w's tail grows back.@n", TRUE, ch, 0, 0, TO_ROOM);
-      char_gain_tail(ch, true);
-      GET_TGROWTH(ch) = 0;
-    }
-  }
-  if (!IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_TAIL) &&
-      (IS_ICER(ch) || IS_BIO(ch))) {
-    GET_TGROWTH(ch) += 1;
-    if (GET_TGROWTH(ch) >= 10) {
-      send_to_char(ch, "@wYour tail grows back.@n\r\n");
-      act("$n@w's tail grows back.@n", TRUE, ch, 0, 0, TO_ROOM);
-      char_gain_tail(ch, true);
-      GET_TGROWTH(ch) = 0;
-    }
-  }
-  if (AFF_FLAGGED(ch, AFF_MBREAK) && rand_number(1, 3 + sick_fail) == 2) {
-    send_to_char(
-        ch,
-        "@wYour mind is no longer in turmoil, you can charge ki again.@n\r\n");
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_MBREAK);
-    if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 2) == 2) {
-      char_stat_mod(ch, "intelligence", -1);
-      char_stat_mod(ch, "wisdom", -1);
-      send_to_char(
-          ch,
-          "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (char_stat_get(ch, "wisdom") < 4)
-        char_stat_set(ch, "wisdom", 4);
-      if (char_stat_get(ch, "intelligence") < 4)
-        char_stat_set(ch, "intelligence", 4);
-    } else if (GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 20) == 1) {
-      char_stat_mod(ch, "intelligence", -1);
-      char_stat_mod(ch, "wisdom", -1);
-      send_to_char(
-          ch,
-          "@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n");
-      if (char_stat_get(ch, "wisdom") < 4)
-        char_stat_set(ch, "wisdom", 4);
-      if (char_stat_get(ch, "intelligence") < 4)
-        char_stat_set(ch, "intelligence", 4);
-    }
-  }
-  if (AFF_FLAGGED(ch, AFF_SHOCKED) && rand_number(1, 4) == 4) {
-    send_to_char(ch, "@wYour mind is no longer shocked.@n\r\n");
-    if (GET_SKILL(ch, SKILL_TELEPATHY) > 0) {
-      int skill = GET_SKILL(ch, SKILL_TELEPATHY), stop = FALSE;
-      improve_skill(ch, SKILL_TELEPATHY, 0);
-      while (stop == FALSE) {
-        if (rand_number(1, 8) == 5)
-          stop = TRUE;
-        else
-          improve_skill(ch, SKILL_TELEPATHY, 0);
-      }
-      if (skill < GET_SKILL(ch, SKILL_TELEPATHY))
-        send_to_char(ch, "Your mental damage and recovery has taught you "
-                         "things about your own mind.\r\n");
-    }
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_SHOCKED);
-  }
-  if (AFF_FLAGGED(ch, AFF_FROZEN) && rand_number(1, 2) == 2) {
-    send_to_char(ch, "@wYou realize you have thawed enough and break out of "
-                     "the ice holding you prisoner!\r\n");
-    act("$n@W breaks out of the ice holding $m prisoner!", TRUE, ch, 0, 0,
-        TO_ROOM);
-    REMOVE_BIT_AR(AFF_FLAGS(ch), AFF_FROZEN);
-  }
-  if (char_condition_has(ch, "wither") && rand_number(1, 6 + sick_fail) == 2) {
-    send_to_char(ch, "@wYour body returns to normal and you beat the withering "
-                     "that plagued you.\r\n");
-    act("$n@W's looks more fit now.", TRUE, ch, 0, 0, TO_ROOM);
-    char_condition_remove(ch, "wither", "wore_off");
-    save_char(ch);
-  }
   if (wearing_stardust(ch) == 1) {
     char_condition_add(ch, "zanzoken", "skill", "zanzoken");
     send_to_char(ch, "The stardust armor blesses you with a free zanzoken when "
@@ -761,64 +571,18 @@ static void check_idling(struct char_data *ch) {
 }
 
 
-static void tick_char_relax(struct char_data *i) {
-  if (IS_NPC(i) || !char_room_get(i)) return;
-  if (room_flagged(char_room_get(i), ROOM_HOUSE)) {
-    GET_RELAXCOUNT(i) += 1;
-  } else if (GET_RELAXCOUNT(i) >= 464) {
-    GET_RELAXCOUNT(i) -= 4;
-  } else if (GET_RELAXCOUNT(i) >= 232) {
-    GET_RELAXCOUNT(i) -= 3;
-  } else if (GET_RELAXCOUNT(i) > 0 && rand_number(1, 3) == 3) {
-    GET_RELAXCOUNT(i) -= 2;
-  } else {
-    GET_RELAXCOUNT(i) -= 1;
-  }
-  if (GET_RELAXCOUNT(i) < 0) GET_RELAXCOUNT(i) = 0;
-}
-
 static void tick_char_needs(struct char_data *i) {
   if (rand_number(1, 2) == 2) gain_condition(i, HUNGER, -1);
   if (rand_number(1, 2) == 2) gain_condition(i, THIRST, -1);
   if (rand_number(1, 2) == 2) gain_condition(i, DRUNK, -1);
 }
 
-static void tick_char_aura(struct char_data *i) {
-  if (!PLR_FLAGGED(i, PLR_AURALIGHT)) return;
-  auto ki_regen = char_der_total_get(i, "ki_regen");
-  if (getCurKI(i) > ki_regen + getPercentOfMaxKI(i, .05)) {
-    send_to_char(i, "You send more energy into your aura to keep the light active.\r\n");
-    decCurKI(i, ki_regen + getPercentOfMaxKI(i, .05));
-  } else {
-    send_to_char(i, "You don't have enough energy to keep the aura active.\r\n");
-    act("$n's aura slowly stops shining and fades.\r\n", TRUE, i, nullptr, nullptr, TO_ROOM);
-    REMOVE_BIT_AR(PLR_FLAGS(i), PLR_AURALIGHT);
-    room_light_mod(char_room_get(i), -1);
-  }
-}
-
-static void tick_char_sleep_kaioken(struct char_data *i) {
-  int x = (GET_KAIOKEN(i) * 5) + 5;
+static void tick_char_sleep(struct char_data *i) {
   if (GET_SLEEPT(i) > 0 && GET_POS(i) != POS_SLEEPING)
     GET_SLEEPT(i) -= 1;
   if (GET_SLEEPT(i) < 8 && GET_POS(i) == POS_SLEEPING) {
     GET_SLEEPT(i) += rand_number(2, 4);
     if (GET_SLEEPT(i) > 8) GET_SLEEPT(i) = 8;
-  }
-  if (GET_KAIOKEN(i) > 0) {
-    improve_skill(i, SKILL_KAIOKEN, -1);
-    if (GET_SKILL(i, SKILL_KAIOKEN) < rand_number(1, x) ||
-        getCurST(i) <= GET_MAX_MOVE(i) / 10)
-      remove_kaioken(i, 2);
-  }
-}
-
-static void tick_char_burns(struct char_data *i) {
-  if (!char_condition_has(i, "burned")) return;
-  if (rand_number(1, 5) >= 4) {
-    send_to_char(i, "Your burns are healed now.\r\n");
-    act("$n@w's burns are now healed.@n", TRUE, i, 0, 0, TO_ROOM);
-    char_condition_remove(i, "burned", "healing_burned");
   }
 }
 
@@ -946,30 +710,6 @@ static void tick_char_heal_messages(struct char_data *i, bool change) {
   }
 }
 
-/* Returns true if the character died from poison. */
-static bool tick_char_poison(struct char_data *i) {
-  if (!char_condition_has(i, "poison")) return false;
-  auto con = GET_CON(i);
-  double cost = con >= 100 ? 0.01
-              : con >= 80  ? 0.02
-              : con >= 50  ? 0.03
-              : con >= 30  ? 0.04
-              : con >= 20  ? 0.05
-              :                     0.06;
-  if (GET_HIT(i) - GET_MAX_HIT(i) * cost > 0) {
-    send_to_char(i, "You puke as the poison burns through your blood.\r\n");
-    act("$n shivers and then pukes.", TRUE, i, 0, 0, TO_ROOM);
-    decCurHealth(i, getMaxPL(i) * cost);
-    return false;
-  } else {
-    send_to_char(i, "The poison claims your life!\r\n");
-    act("$n pukes up blood and falls down dead!", TRUE, i, 0, 0, TO_ROOM);
-    auto poisonby = char_by_id(char_condition_number_get(i, "poison", "poison_by"));
-    die(i, poisonby);
-    return true;
-  }
-}
-
 namespace {
   inline struct timespec pu_now() {
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts;
@@ -988,7 +728,6 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
   ++t.count;
 
   struct timespec tp = pu_now();
-  tick_char_relax(i);
   tick_char_needs(i);
   if (IS_NPC(i)) i->aggtimer = 0;
   t.relax += pu_elapsed(tp, pu_now());
@@ -999,11 +738,7 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
     tp = pu_now();
     update_flags(i);
     if (!IS_NPC(i) && !isFullVitals(i)) change = true;
-    tick_char_aura(i);
-    if (IS_MUTANT(i) && (GET_GENOME(i, 0) == 6 || GET_GENOME(i, 1) == 6))
-      mutant_limb_regen(i);
-    tick_char_sleep_kaioken(i);
-    tick_char_burns(i);
+    tick_char_sleep(i);
     t.flags += pu_elapsed(tp, pu_now());
 
     tp = pu_now();
@@ -1013,10 +748,8 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
 
     tp = pu_now();
     tick_char_heal_messages(i, change);
-    bool poisoned = tick_char_poison(i);
     if (GET_POS(i) <= POS_STUNNED) update_pos(i);
     t.heal += pu_elapsed(tp, pu_now());
-    if (poisoned) return;
 
   } else if (GET_POS(i) == POS_INCAP || GET_POS(i) == POS_MORTALLYW) {
     return;
@@ -1025,7 +758,7 @@ static void process_char_point_update(struct char_data *i, PUTimings &t) {
   if (getCurKI(i) >= GET_MAX_MANA(i) * 0.5 &&
       GET_CHARGE(i) < GET_MAX_MANA(i) * 0.1 &&
       GET_PREFERENCE(i) == PREFERENCE_KI && !PLR_FLAGGED(i, PLR_AURALIGHT))
-    GET_CHARGE(i) = GET_MAX_MANA(i) * 0.1;
+    char_charge_set(i, (int64_t)(GET_MAX_MANA(i) * 0.1));
 
   if (!IS_NPC(i)) {
     tp = pu_now();

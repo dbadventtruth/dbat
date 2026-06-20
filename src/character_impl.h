@@ -155,12 +155,8 @@ struct char_data {
 
   time_t lastint; // last interest time
 
-  // charge system
-  int64_t charge;
-  int64_t chargeto;
-
-  // current barrier strength
-  int64_t barrier;
+  // charge amount lives in the "charge" condition variable "amount"
+  // barrier strength lives in the "barrier" condition variable "amount"
 
   int boosts;
 
@@ -176,8 +172,6 @@ struct char_data {
   // food, drink, sleep
   int sleeptime;
 
-  // Saiyan and halfy stuff
-  int tail_growth;
   int rage_meter;
 
   // distance attention stuff
@@ -243,8 +237,6 @@ struct char_data {
   int mobcharge;
   int preference;
   int aggtimer;
-
-  int relax_count;
 
   // Zig Fields
   void *zigdata;

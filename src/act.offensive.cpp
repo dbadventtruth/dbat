@@ -1103,9 +1103,9 @@ ACMD(do_psyblast) {
       }
 
       if (GET_CHARGE(vict) > 0 && rand_number(1, 3) == 2) {
-        GET_CHARGE(vict) -= dmg / 5;
+        char_charge_set(vict, GET_CHARGE(vict) - (int64_t)(dmg / 5));
         if (GET_CHARGE(vict) < 0) {
-          GET_CHARGE(vict) = 0;
+          char_charge_set(vict, 0);
         }
         send_to_char(vict, "@RYou lose some of your charged ki!@n\r\n");
       }
@@ -1114,7 +1114,7 @@ ACMD(do_psyblast) {
           !AFF_FLAGGED(vict, AFF_SANCTUARY)) {
         act("@MYour mind has been shocked!@n", TRUE, vict, 0, 0, TO_CHAR);
         act("@M$n@m's mind has been shocked!@n", TRUE, vict, 0, 0, TO_ROOM);
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_SHOCKED);
+        char_condition_apply(vict, "shocked", "combat", "psyblast");
       }
       if (GET_SKILL_PERF(ch, SKILL_PSYBLAST) == 3 && attperc > minimum) {
         pcost(ch, attperc - 0.05, 0);
@@ -2235,12 +2235,12 @@ ACMD(do_pbarrage) {
             TRUE, vict, 0, 0, TO_CHAR);
         act("@M$n@m's mind has been damaged by the attack!@n", TRUE, vict, 0, 0,
             TO_ROOM);
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_MBREAK);
+        char_condition_apply(vict, "mental_break", "combat", "mindsquash");
       } else if (!AFF_FLAGGED(vict, AFF_SHOCKED) && rand_number(1, 4) == 4 &&
                  !AFF_FLAGGED(vict, AFF_SANCTUARY)) {
         act("@MYour mind has been shocked!@n", TRUE, vict, 0, 0, TO_CHAR);
         act("@M$n@m's mind has been shocked!@n", TRUE, vict, 0, 0, TO_ROOM);
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_SHOCKED);
+        char_condition_apply(vict, "shocked", "combat", "mindsquash");
       }
       pcost(ch, attperc, 0);
 
@@ -2358,7 +2358,7 @@ ACMD(do_geno) {
   obj = read_object(83, VIRTUAL);
   obj_to_room(obj, char_room_get(vict));
 
-  GET_CHARGE(ch) += GET_MAX_HIT(ch) / 10;
+  char_charge_set(ch, GET_CHARGE(ch) + (int64_t)(GET_MAX_HIT(ch) / 10));
   TARGET(obj) = vict;
   KICHARGE(obj) = damtype(ch, 41, prob, attperc);
   KITYPE(obj) = SKILL_GENOCIDE;
@@ -2469,7 +2469,7 @@ ACMD(do_genki) {
     if (char_condition_has(friend_char, "group") &&
         (MASTER(friend_char) == ch || MASTER(ch) == friend_char ||
          MASTER(friend_char) == MASTER(ch))) {
-      GET_CHARGE(ch) += (getCurKI(ch)) / 10;
+      char_charge_set(ch, GET_CHARGE(ch) + (int64_t)((getCurKI(ch)) / 10));
       decCurKI(ch, getCurKI(ch) / 20);
     }
     return true;
@@ -5239,9 +5239,9 @@ ACMD(do_hellflash) {
     } else {
       dmg = damtype(ch, 32, skill, attperc);
       if (GET_BARRIER(vict) > 0) {
-        GET_BARRIER(vict) -= dmg;
+        char_barrier_set(vict, GET_BARRIER(vict) - (int64_t)dmg);
         if (GET_BARRIER(vict) <= 0) {
-          GET_BARRIER(vict) = 1;
+          char_barrier_set(vict, 1);
         }
       }
       int hitspot = 1;
@@ -12186,7 +12186,7 @@ ACMD(do_shogekiha) {
         act("@C$n@C's skillful shogekiha disipated some of @c$N's@C charged "
             "ki!",
             TRUE, ch, 0, vict, TO_NOTVICT);
-        GET_CHARGE(vict) -= GET_CHARGE(vict) * 0.25;
+        { int64_t cur_ = GET_CHARGE(vict); char_charge_set(vict, cur_ - (int64_t)(cur_ * 0.25)); }
       }
       pcost(ch, attperc, 0);
 
@@ -12223,7 +12223,7 @@ ACMD(do_shogekiha) {
           "chest!@n",
           TRUE, ch, obj, 0, TO_ROOM);
       KICHARGE(obj) -= GET_CHARGE(ch);
-      GET_CHARGE(ch) = 0;
+      char_charge_set(ch, 0);
       dmg = KICHARGE(obj);
       hurt(0, 0, USER(obj), ch, NULL, dmg, 0);
       extract_obj(obj);
@@ -16679,134 +16679,7 @@ ACMD(do_punch) {
   }
 }
 
-ACMD(do_charge) {
-
-  char arg[MAX_INPUT_LENGTH];
-  int amt;
-
-  one_argument(argument, arg);
-
-  if (PLR_FLAGGED(ch, PLR_AURALIGHT)) {
-    send_to_char(
-        ch,
-        "@WYou are concentrating too much on your aura to be able to charge.");
-    return;
-  }
-  if (PLR_FLAGGED(ch, PLR_HEALT)) {
-    send_to_char(ch, "You are inside a healing tank!\r\n");
-    return;
-  }
-  if (AFF_FLAGGED(ch, AFF_MBREAK)) {
-    send_to_char(ch, "Your mind is still strained from psychic attacks...\r\n");
-    return;
-  }
-  if (char_condition_has(ch, "poison")) {
-    send_to_char(ch, "You feel too sick from the poison to concentrate.\r\n");
-    return;
-  }
-  if (!*arg) {
-    send_to_char(ch, "Charge, yes. How much percent though?\r\n");
-    send_to_char(ch, "[ 1 - 100 | cancel | release]\r\n");
-    return;
-  } else if (!strcasecmp("release", arg) &&
-             (PLR_FLAGGED(ch, PLR_CHARGE) && GET_CHARGE(ch) <= 0)) {
-    send_to_char(ch,
-                 "Try cancel instead, you have nothing charged up yet!\r\n");
-    return;
-  } else if (!strcasecmp("release", arg) &&
-             (PLR_FLAGGED(ch, PLR_CHARGE) && GET_CHARGE(ch) > 0)) {
-    release_charge(ch);
-    return;
-  } else if (!strcasecmp("release", arg) && GET_CHARGE(ch) > 0) {
-    release_charge(ch);
-    return;
-  } else if (!strcasecmp("cancel", arg) && PLR_FLAGGED(ch, PLR_CHARGE)) {
-    send_to_char(ch, "You stop charging.\r\n");
-    switch (rand_number(1, 3)) {
-    case 1:
-      act("$n@w's aura disappears.@n", TRUE, ch, 0, 0, TO_ROOM);
-      break;
-    case 2:
-      act("$n@w's aura fades.@n", TRUE, ch, 0, 0, TO_ROOM);
-      break;
-    case 3:
-      act("$n@w's aura flickers brightly before disappearing.@n", TRUE, ch, 0,
-          0, TO_ROOM);
-      break;
-    default:
-      act("$n@w's aura disappears.@n", TRUE, ch, 0, 0, TO_ROOM);
-      break;
-    }
-    REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    GET_CHARGETO(ch) = 0;
-    return;
-  } else if (!strcasecmp("cancel", arg) && !PLR_FLAGGED(ch, PLR_CHARGE)) {
-    send_to_char(ch, "You are not even charging!\r\n");
-    return;
-  } else if ((getCurKI(ch)) < GET_MAX_MANA(ch) / 100) {
-    send_to_char(ch, "You don't even have enough ki!\r\n");
-    return;
-  } else if ((amt = atoi(arg)) > 0) {
-    if (amt >= 101) {
-      send_to_char(ch, "You have set it too high!\r\n");
-      return;
-    } else if (char_condition_has(ch, "spirit_control")) {
-      int64_t diff = 0;
-      if ((getCurKI(ch)) < ((GET_MAX_MANA(ch) * 0.01) * amt) + 1) {
-        diff = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - (getCurKI(ch));
-      }
-      int chance = 15;
-      chance -= GET_SKILL(ch, SKILL_SPIRITCONTROL) / 10;
-      if (chance < 10)
-        chance = 10;
-      else if (chance > 15)
-        chance = 15;
-
-      if (chance > rand_number(1, 100)) {
-        send_to_char(ch, "The rush of ki that you try to pool temporarily "
-                         "overwhelms you and you lose control!\r\n");
-        char_condition_remove(ch, "spirit_control", "charging");
-        return;
-      } else {
-        int64_t spiritcost = GET_MAX_MANA(ch) * 0.05;
-        if (GET_SKILL(ch, SKILL_SPIRITCONTROL) >= 100) {
-          spiritcost = GET_MAX_MANA(ch) * 0.01;
-        }
-        reveal_hiding(ch, 0);
-        send_to_char(ch,
-                     "Your %s colored aura flashes up around you as you "
-                     "instantly take control of the ki you needed!\r\n",
-                     aura_types[GET_AURA(ch)]);
-        send_to_char(ch, "@D[@RCost@D: @r%s@D]@n\r\n", add_commas(spiritcost));
-        char bloom[MAX_INPUT_LENGTH];
-        sprintf(bloom, "@wA %s aura flashes up brightly around $n@w!@n",
-                aura_types[GET_AURA(ch)]);
-        act(bloom, TRUE, ch, 0, 0, TO_ROOM);
-        GET_CHARGE(ch) = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - diff;
-        decCurKI(ch,
-                 (((GET_MAX_MANA(ch) * 0.01) * amt) + 1) - diff + spiritcost);
-      }
-    } else {
-      reveal_hiding(ch, 0);
-      send_to_char(ch,
-                   "You begin to charge some energy, as a %s aura begins to "
-                   "burn around you!\r\n",
-                   aura_types[GET_AURA(ch)]);
-      char bloom[MAX_INPUT_LENGTH];
-      sprintf(bloom, "@wA %s aura flashes up brightly around $n@w!@n",
-              aura_types[GET_AURA(ch)]);
-      act(bloom, TRUE, ch, 0, 0, TO_ROOM);
-      GET_CHARGETO(ch) = (((GET_MAX_MANA(ch) * 0.01) * amt) + 1);
-      GET_CHARGE(ch) += 1;
-      SET_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-    }
-  } else if (amt < 1 && char_room_vnum_get(ch) != 1562) {
-    send_to_char(ch, "You have set it too low!\r\n");
-    return;
-  } else {
-    send_to_char(ch, "That is an invalid argument.\r\n");
-  }
-}
+/* do_charge moved to lua/characters/commands/misc/charge.lua */
 
 ACMD(do_powerup) {
   if (IS_NPC(ch)) {

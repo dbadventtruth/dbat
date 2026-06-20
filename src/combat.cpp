@@ -787,10 +787,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
 
   if (GET_CHARGE(ch) >= GET_MAX_MANA(ch) * maxki) {
     totki += GET_MAX_MANA(ch) * maxki;
-    GET_CHARGE(ch) -= GET_MAX_MANA(ch) * maxki;
+    char_charge_set(ch, GET_CHARGE(ch) - (int64_t)(GET_MAX_MANA(ch) * maxki));
   } else {
     totki += GET_CHARGE(ch);
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
   }
 
   char_followers_iterate(ch, [&](struct char_data *fol) {
@@ -799,10 +799,10 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
       same = FALSE;
     if (GET_CHARGE(fol) >= GET_MAX_MANA(fol) * maxki) {
       totki += GET_MAX_MANA(fol) * maxki;
-      GET_CHARGE(fol) -= GET_MAX_MANA(fol) * maxki;
+      char_charge_set(fol, GET_CHARGE(fol) - (int64_t)(GET_MAX_MANA(fol) * maxki));
     } else {
       totki += GET_CHARGE(fol);
-      GET_CHARGE(fol) = 0;
+      char_charge_set(fol, 0);
     }
     totalmem += 1;
     attavg += GET_SKILL(fol, attack_skills[GET_COMBINE(fol)]);
@@ -864,7 +864,7 @@ void combine_attacks(struct char_data *ch, struct char_data *vict) {
         !AFF_FLAGGED(vict, AFF_SANCTUARY)) {
       act("@MYour mind has been shocked!@n", TRUE, vict, 0, 0, TO_CHAR);
       act("@M$n@m's mind has been shocked!@n", TRUE, vict, 0, 0, TO_ROOM);
-      SET_BIT_AR(AFF_FLAGS(vict), AFF_SHOCKED);
+      char_condition_apply(vict, "shocked", "combat", "combat");
     }
   }
   hurt(0, 0, ch, vict, NULL, totki, 1);
@@ -1332,7 +1332,7 @@ int64_t advanced_energy(struct char_data *ch, int64_t dmg) {
       add = dmg * rate;
       if (GET_CHARGE(ch) + add > GET_MAX_MANA(ch)) {
         if (GET_CHARGE(ch) < GET_MAX_MANA(ch)) {
-          GET_CHARGE(ch) = GET_MAX_MANA(ch);
+          char_charge_set(ch, GET_MAX_MANA(ch));
           act("@MYou leech some of the energy away!@n", TRUE, ch, 0, 0,
               TO_CHAR);
           act("@m$n@M leeches some of the energy away!@n", TRUE, ch, 0, 0,
@@ -1342,7 +1342,7 @@ int64_t advanced_energy(struct char_data *ch, int64_t dmg) {
                            "charged energy for you to handle!@n\r\n");
         }
       } else {
-        GET_CHARGE(ch) += add;
+        char_charge_set(ch, GET_CHARGE(ch) + (int64_t)add);
         act("@MYou leech some of the energy away!@n", TRUE, ch, 0, 0, TO_CHAR);
         act("@m$n@M leeches some of the energy away!@n", TRUE, ch, 0, 0,
             TO_ROOM);
@@ -3336,11 +3336,11 @@ int64_t damtype(struct char_data *ch, int type, int skill, double percent) {
       if (GET_PREFERENCE(ch) == PREFERENCE_WEAPON &&
           GET_CHARGE(ch) >= GET_MAX_MANA(ch) * 0.05) {
         dam += GET_MAX_MANA(ch) * 0.05;
-        GET_CHARGE(ch) -= GET_MAX_MANA(ch) * 0.05;
+        char_charge_set(ch, GET_CHARGE(ch) - (int64_t)(GET_MAX_MANA(ch) * 0.05));
       } else if (GET_PREFERENCE(ch) == PREFERENCE_WEAPON &&
                  GET_CHARGE(ch) > 0) {
         dam += GET_CHARGE(ch);
-        GET_CHARGE(ch) = 0;
+        char_charge_set(ch, 0);
       }
       if (group_bonus(ch, 2) == 8) {
         dam += dam * 0.02;
@@ -4021,15 +4021,15 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         act(barr, TRUE, ch, 0, vict, TO_VICT);
         act("@c$N's@C barrier absorbs the damage!@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        GET_BARRIER(vict) -= dmg;
+        char_barrier_set(vict, GET_BARRIER(vict) - (int64_t)dmg);
         dmg = 0;
       } else if (GET_BARRIER(vict) - dmg <= 0) {
         dmg -= GET_BARRIER(vict);
-        GET_BARRIER(vict) = 0;
+        char_barrier_set(vict, 0);
         act("@c$N's@C barrier bursts!@n", TRUE, ch, 0, vict, TO_CHAR);
         act("@CYour barrier bursts!@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$N's@C barrier bursts!@n", TRUE, ch, 0, vict, TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_SANCTUARY);
+        char_condition_remove(vict, "barrier", "burst");
       }
     }
     if (AFF_FLAGGED(vict, AFF_FIRESHIELD) &&
@@ -4044,7 +4044,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         act("@CYour fireshield disappears...@n", TRUE, ch, 0, vict, TO_VICT);
         act("@c$N's@C fireshield disappears...@n", TRUE, ch, 0, vict,
             TO_NOTVICT);
-        REMOVE_BIT_AR(AFF_FLAGS(vict), AFF_FIRESHIELD);
+        char_condition_remove(vict, "fireshield", "blocked");
       }
       dmg = 0;
     }
@@ -4275,7 +4275,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
           stop_fighting(ch);
         char_position_set(vict, POS_SLEEPING);
         if (!IS_NPC(ch))
-          SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
+          char_condition_apply(vict, "knocked_out", "combat", "sparring");
       } else {
         act("@c$N@w admits defeat to you, stops sparring, and stumbles away.@n",
             TRUE, ch, 0, vict, TO_CHAR);
@@ -4311,7 +4311,7 @@ void hurt(int limb, int chance, struct char_data *ch, struct char_data *vict,
         stop_fighting(ch);
       char_position_set(vict, POS_SLEEPING);
       if (!IS_NPC(ch))
-        SET_BIT_AR(AFF_FLAGS(vict), AFF_KNOCKED);
+        char_condition_apply(vict, "knocked_out", "combat", "sparring");
     } else if (!is_sparring(ch) && is_sparring(vict) && IS_NPC(vict)) {
       act("@w$n@w stops sparring!@n", TRUE, ch, 0, vict, TO_ROOM);
       REMOVE_BIT_AR(MOB_FLAGS(vict), MOB_SPAR);

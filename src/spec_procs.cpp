@@ -516,10 +516,8 @@ SPECIAL(healtank) {
                      "Someone else is already inside that healing tank!\r\n");
         return (TRUE);
       } else {
-        GET_CHARGE(ch) = 0;
-        REMOVE_BIT_AR(PLR_FLAGS(ch), PLR_CHARGE);
-        GET_CHARGETO(ch) = 0;
-        GET_BARRIER(ch) = 0;
+        char_condition_remove(ch, "charge", "tank");
+        char_condition_remove(ch, "barrier", "tank");
         act("@wYou step inside the healing tank and put on its breathing mask. "
             "A water like solution pours over your body until the tank is "
             "full.@n",

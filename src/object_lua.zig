@@ -109,6 +109,7 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "level_get", luaObjectLevelGet);
     addMethod(lua, "level_set", luaObjectLevelSet);
     addMethod(lua, "level_mod", luaObjectLevelMod);
+    addMethod(lua, "affect_set", luaObjectAffectSet);
     addMethod(lua, "wear_flagged", luaObjectWearFlagged);
     addMethod(lua, "wear_flag_set", luaObjectWearFlagSet);
     addMethod(lua, "wear_flag_toggle", luaObjectWearFlagToggle);
@@ -512,6 +513,20 @@ fn luaObjectLevelMod(lua: *Lua) i32 {
     cdb.obj_level_set(obj, value);
     lua.pushInteger(value);
     return 1;
+}
+
+fn luaObjectAffectSet(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const index = @as(usize, @intCast(integer(lua, 2)));
+    const location = @as(c_int, @intCast(integer(lua, 3)));
+    const specific = @as(c_int, @intCast(integer(lua, 4)));
+    const modifier = @as(c_int, @intCast(integer(lua, 5)));
+    if (index < obj.affected.len) {
+        obj.affected[index].location = location;
+        obj.affected[index].specific = specific;
+        obj.affected[index].modifier = modifier;
+    }
+    return 0;
 }
 
 fn luaObjectWearFlagged(lua: *Lua) i32 {

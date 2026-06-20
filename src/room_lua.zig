@@ -99,6 +99,8 @@ fn registerRoomMetatable(lua: *Lua) void {
     lua.setField(-2, "light_get");
     lua.pushFunction(zlua.wrap(luaRoomLightSet));
     lua.setField(-2, "light_set");
+    lua.pushFunction(zlua.wrap(luaRoomLightMod));
+    lua.setField(-2, "light_mod");
     lua.pushFunction(zlua.wrap(luaRoomDamageGet));
     lua.setField(-2, "damage_get");
     lua.pushFunction(zlua.wrap(luaRoomDamageSet));
@@ -291,6 +293,13 @@ fn luaRoomLightSet(lua: *Lua) i32 {
     const light = lua.toInteger(2) catch lua.typeError(2, "integer");
     const value = std.math.cast(u16, light) orelse lua.raiseErrorStr("room light out of range", .{});
     cdb.room_light_set(room, value);
+    return 0;
+}
+
+fn luaRoomLightMod(lua: *Lua) i32 {
+    const room = checkRoom(lua);
+    const delta = lua.toInteger(2) catch lua.typeError(2, "integer");
+    cdb.room_light_mod(room, @intCast(delta));
     return 0;
 }
 

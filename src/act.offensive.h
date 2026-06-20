@@ -9,7 +9,6 @@ extern "C" {
 ACMD(do_assist);
 ACMD(do_kill);
 ACMD(do_flee);
-ACMD(do_charge);
 ACMD(do_punch);
 ACMD(do_kick);
 ACMD(do_elbow);

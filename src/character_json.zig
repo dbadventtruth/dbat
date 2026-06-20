@@ -50,7 +50,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "eye", ch.eye);
         try jsonx.putInt(&object, allocator, "distinguishing_feature", ch.distfea);
         try jsonx.putInt(&object, allocator, "aura", ch.aura);
-        try jsonx.putInt(&object, allocator, "tail_growth", ch.tail_growth);
         try jsonx.putInt(&object, allocator, "rage_meter", ch.rage_meter);
         try jsonx.putInt(&object, allocator, "mimic", ch.mimic);
         try jsonx.putInt(&object, allocator, "hometown", ch.hometown);
@@ -108,7 +107,6 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
         try jsonx.putInt(&object, allocator, "reward_time", ch.rewtime);
         try jsonx.putInt(&object, allocator, "transclass", ch.transclass);
         try jsonx.putInt(&object, allocator, "preference", ch.preference);
-        try jsonx.putInt(&object, allocator, "relax_count", ch.relax_count);
         try jsonx.putInt(&object, allocator, "rp", ch.rp);
         try jsonx.putInt(&object, allocator, "total_rp", ch.trp);
         try jsonx.putInt(&object, allocator, "clank_rank", ch.crank);
@@ -215,7 +213,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "eye", i8)) |v| ch.eye = v;
         if (try jsonx.intField(value, "distinguishing_feature", i8)) |v| ch.distfea = v;
         if (try jsonx.intField(value, "aura", c_int)) |v| ch.aura = v;
-        if (try jsonx.intField(value, "tail_growth", c_int)) |v| ch.tail_growth = v;
         if (try jsonx.intField(value, "rage_meter", c_int)) |v| ch.rage_meter = v;
         if (try jsonx.intField(value, "mimic", c_int)) |v| ch.mimic = v;
         if (try jsonx.intField(value, "hometown", cdb.room_vnum)) |v| ch.hometown = v;
@@ -275,7 +272,6 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (try jsonx.intField(value, "reward_time", cdb.time_t)) |v| ch.rewtime = v;
         if (try jsonx.intField(value, "transclass", c_int)) |v| ch.transclass = v;
         if (try jsonx.intField(value, "preference", c_int)) |v| ch.preference = v;
-        if (try jsonx.intField(value, "relax_count", c_int)) |v| ch.relax_count = v;
         if (try jsonx.intField(value, "rp", c_int)) |v| ch.rp = v;
         if (try jsonx.intField(value, "total_rp", c_int)) |v| ch.trp = v;
         if (try jsonx.intField(value, "clank_rank", c_int)) |v| ch.crank = v;

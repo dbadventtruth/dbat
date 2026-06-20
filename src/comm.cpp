@@ -705,7 +705,7 @@ static void prompt_sitting_status(struct char_data *ch, char *p, size_t max,
 static void prompt_charge_bar(struct char_data *ch, char *p, size_t max,
                                 size_t &len) {
   if (GET_CHARGE(ch) < GET_MAX_MANA(ch) * .01 && GET_CHARGE(ch) > 0)
-    GET_CHARGE(ch) = 0;
+    char_charge_set(ch, 0);
   if (GET_CHARGE(ch) <= 0) return;
 
   int64_t charge = GET_CHARGE(ch), ki_max = GET_MAX_MANA(ch);

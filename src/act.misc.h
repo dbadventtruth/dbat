@@ -38,8 +38,8 @@ ACMD(do_shimmer);
 /* do_healglow moved to lua/characters/commands/misc/healglow.lua */
 ACMD(do_resize);
 ACMD(do_scry);
-ACMD(do_runic);
-ACMD(do_extract);
+/* do_runic moved to lua/characters/commands/misc/runic.lua */
+/* do_extract moved to lua/characters/commands/misc/extract.lua */
 /* do_fish moved to lua/characters/commands/misc/fish.lua */
 /* do_defend moved to lua/characters/commands/misc/defend.lua */
 /* do_lifeforce moved to lua/characters/pcommands/info/lifeforce.lua */
