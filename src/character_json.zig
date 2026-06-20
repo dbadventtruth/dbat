@@ -129,6 +129,7 @@ pub fn serializeCharacter(allocator: std.mem.Allocator, ch: *cdb.char_data, mode
     try jsonx.putNonEmpty(&object, allocator, "stats", try serializeStats(allocator, ch));
     if (meters.object.count() > 0) try jsonx.put(&object, allocator, "meters", meters);
     try jsonx.putNonEmpty(&object, allocator, "conditions", try serializeConditions(allocator, ch));
+    try jsonx.putNonEmpty(&object, allocator, "scripts", try serializeCharScripts(allocator, ch));
     try jsonx.putNonEmpty(&object, allocator, "transformations", try serializeTransformations(allocator, ch));
 
     return object;
@@ -219,6 +220,7 @@ pub fn deserializeCharacter(ch: *cdb.char_data, options: DeserializeOptions, val
         if (jsonx.field(value, "bodyparts")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, bodypartFlagSet);
         if (jsonx.field(value, "affected_by")) |flags| try jsonx.deserializeFlags(ch, flags, cdb.NUM_AFF_FLAGS, affectedFlagSet);
         if (jsonx.field(value, "conditions")) |conditions| try deserializeConditions(ch, conditions);
+        if (jsonx.field(value, "scripts")) |scripts| try deserializeCharScripts(ch, scripts);
         if (jsonx.field(value, "transformations")) |transformations| try deserializeTransformations(ch, transformations);
     }
 
@@ -671,4 +673,71 @@ fn prefFlagged(ch: *cdb.char_data, pos: c_int) bool {
 
 fn prefFlagSet(ch: *cdb.char_data, pos: c_int, value: bool) void {
     bitflags.set(ch.pref[0..], pos, value);
+}
+
+fn serializeCharScripts(allocator: std.mem.Allocator, ch: *cdb.char_data) !JsonValue {
+    var object = jsonx.newObject(allocator);
+    if (ch.zigdata == null) return object;
+    const data: *characters_api.CharacterData = @ptrCast(@alignCast(ch.zigdata.?));
+    var it = data.scripts.iterator();
+    while (it.next()) |entry| {
+        const sname = intern_mod.nameOf(entry.key_ptr.*);
+        const definition = lua_api.scriptDefinition("character_scripts", sname) orelse continue;
+        if (!definition.persistent) continue;
+        try jsonx.put(&object, allocator, sname, try serializeScriptInstance(allocator, entry.value_ptr));
+    }
+    return object;
+}
+
+fn serializeScriptInstance(allocator: std.mem.Allocator, instance: *const characters_api.ScriptInstance) !JsonValue {
+    var object = jsonx.newObject(allocator);
+    var numbers = jsonx.newObject(allocator);
+    var number_it = instance.numbers.iterator();
+    while (number_it.next()) |entry| try jsonx.putInt(&numbers, allocator, entry.key_ptr.*, entry.value_ptr.*);
+    if (numbers.object.count() > 0) try jsonx.put(&object, allocator, "numbers", numbers);
+
+    var strings = jsonx.newObject(allocator);
+    var string_it = instance.strings.iterator();
+    while (string_it.next()) |entry| try jsonx.putSlice(&strings, allocator, entry.key_ptr.*, entry.value_ptr.*);
+    if (strings.object.count() > 0) try jsonx.put(&object, allocator, "strings", strings);
+    return object;
+}
+
+fn deserializeCharScripts(ch: *cdb.char_data, scripts: JsonValue) !void {
+    if (scripts != .object) return error.ExpectedObject;
+    var it = scripts.object.iterator();
+    while (it.next()) |entry| {
+        const id = entry.key_ptr.*;
+        const item = entry.value_ptr.*;
+        const id_z = try std.heap.page_allocator.dupeZ(u8, id);
+        defer std.heap.page_allocator.free(id_z);
+        _ = cdb.char_script_add(ch, id_z.ptr);
+        if (item != .object) continue;
+        if (jsonx.field(item, "numbers")) |nums| {
+            if (nums == .object) {
+                var nit = nums.object.iterator();
+                while (nit.next()) |ne| {
+                    if (ne.value_ptr.* == .integer) {
+                        const kz = try std.heap.page_allocator.dupeZ(u8, ne.key_ptr.*);
+                        defer std.heap.page_allocator.free(kz);
+                        cdb.char_script_number_set(ch, id_z.ptr, kz.ptr, ne.value_ptr.*.integer);
+                    }
+                }
+            }
+        }
+        if (jsonx.field(item, "strings")) |strs| {
+            if (strs == .object) {
+                var sit = strs.object.iterator();
+                while (sit.next()) |se| {
+                    if (se.value_ptr.* == .string) {
+                        const kz = try std.heap.page_allocator.dupeZ(u8, se.key_ptr.*);
+                        defer std.heap.page_allocator.free(kz);
+                        const vz = try std.heap.page_allocator.dupeZ(u8, se.value_ptr.*.string);
+                        defer std.heap.page_allocator.free(vz);
+                        cdb.char_script_text_set(ch, id_z.ptr, kz.ptr, vz.ptr);
+                    }
+                }
+            }
+        }
+    }
 }

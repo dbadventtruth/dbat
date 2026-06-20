@@ -90,6 +90,9 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !void {
     guilds.init(allocator);
     zones.init(allocator);
     dgscripts.init(allocator);
+    objects_api.init(allocator);
+    rooms_api.init(allocator);
+    zones_api.init(allocator);
     intern.init(allocator);
     net.init(allocator, io);
     http_server.init(allocator, io);
@@ -113,10 +116,13 @@ pub fn deinit() void {
     http_server.deinit();
     net.deinit();
     dgscripts.deinit();
+    zones_api.deinit();
     zones.deinit();
+    rooms_api.deinit();
     guilds.deinit();
     shops.deinit();
     rooms.deinit();
+    objects_api.deinit();
     objects.deinit();
     characters.deinit();
 }

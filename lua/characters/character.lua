@@ -409,6 +409,10 @@ local function on_event(ch, kind)
     if not ch:condition_has(id) then return end
     local def = dbat.get("conditions", id)
     if def then def:dispatch_event(ch, ch:condition(id), event_name) end
+  elseif subsystem == "script" then
+    if not ch:script_has(id) then return end
+    local def = dbat.get("character_scripts", id)
+    if def and def.on_event then def.on_event(ch, ch:script(id), event_name) end
   elseif subsystem == "transformation" then
     -- future: route to transformation registry
   end

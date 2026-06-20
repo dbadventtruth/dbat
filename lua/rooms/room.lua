@@ -54,10 +54,11 @@ end
 local function on_event(room, kind)
   local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
   event_name = (event_name and event_name ~= "") and event_name or "tick"
-  _ = subsystem
-  _ = id
-  _ = event_name
-  -- future: route to room-based subsystems
+  if subsystem == "script" then
+    if not room:script_has(id) then return end
+    local def = require("dbat").get("room_scripts", id)
+    if def and def.on_event then def.on_event(room, room:script(id), event_name) end
+  end
 end
 
 -- Port of check_saveroom_count(ch, NULL) — counts items in a house room for

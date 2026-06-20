@@ -4,10 +4,12 @@ const cdb = @import("cdb");
 const characters_lua = @import("character_lua.zig");
 const rooms_lua = @import("room_lua.zig");
 const lua_meta = @import("lua_meta.zig");
+const object_api = @import("object_api.zig");
 
 const Lua = zlua.Lua;
 const object_metatable = "dbat.Object";
 const obj_proto_metatable = "dbat.ObjectPrototype";
+const obj_script_metatable = "dbat.ObjectScript";
 
 extern fn event_schedule_lua_obj_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, obj_id: i64) u64;
 extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
@@ -23,9 +25,15 @@ const ObjProtoHandle = extern struct {
     vnum: cdb.obj_vnum,
 };
 
+const ObjScriptHandle = extern struct {
+    obj_id: i64,
+    script: [64:0]u8,
+};
+
 pub fn register(lua: *Lua) void {
     registerObjectMetatable(lua);
     registerObjProtoMetatable(lua);
+    registerObjScriptMetatable(lua);
 
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaObjectById));
@@ -165,6 +173,15 @@ fn registerObjectMetatable(lua: *Lua) void {
     addMethod(lua, "foob_get", luaObjectFoobGet);
     addMethod(lua, "drinkcon_weight_drain", luaObjectDrinkconWeightDrain);
     addMethod(lua, "drinkcon_name_update", luaObjectDrinkconNameUpdate);
+    addMethod(lua, "script_add", luaObjectScriptAdd);
+    addMethod(lua, "script_remove", luaObjectScriptRemove);
+    addMethod(lua, "script_has", luaObjectScriptHas);
+    addMethod(lua, "script", luaObjectScript);
+    addMethod(lua, "scripts", luaObjectScripts);
+    addMethod(lua, "script_number_get", luaObjectScriptNumberGet);
+    addMethod(lua, "script_number_set", luaObjectScriptNumberSet);
+    addMethod(lua, "script_text_get", luaObjectScriptTextGet);
+    addMethod(lua, "script_text_set", luaObjectScriptTextSet);
 
     lua_meta.mergeMethods(lua, "lua.objects.object");
 
@@ -186,6 +203,26 @@ fn registerObjProtoMetatable(lua: *Lua) void {
     addMethod(lua, "vnum_get", luaObjProtoVnumGet);
     addMethod(lua, "spawn", luaObjProtoSpawn);
 
+    lua.pop(1);
+}
+
+fn registerObjScriptMetatable(lua: *Lua) void {
+    lua.newMetatable(obj_script_metatable) catch {
+        lua.pop(1);
+        return;
+    };
+    lua.pushValue(-1);
+    lua.setField(-2, "__index");
+    addMethod(lua, "id", luaObjScriptId);
+    addMethod(lua, "number_get", luaObjScriptNumberGet);
+    addMethod(lua, "number_set", luaObjScriptNumberSet);
+    addMethod(lua, "number_mod", luaObjScriptNumberMod);
+    addMethod(lua, "text_get", luaObjScriptTextGet);
+    addMethod(lua, "text_set", luaObjScriptTextSet);
+    addMethod(lua, "schedule_event", luaObjScriptScheduleEvent);
+    addMethod(lua, "cancel_event", luaObjScriptCancelEvent);
+    addMethod(lua, "event_pending", luaObjScriptEventPending);
+    addMethod(lua, "event_next_ms", luaObjScriptEventNextMs);
     lua.pop(1);
 }
 
@@ -864,5 +901,205 @@ fn luaObjectDrinkconWeightDrain(lua: *Lua) i32 {
 
 fn luaObjectDrinkconNameUpdate(lua: *Lua) i32 {
     cdb.obj_drinkcon_name_update(checkObject(lua));
+    return 0;
+}
+
+// ---- ObjectScript handle ----
+
+pub fn pushObjectScript(lua: *Lua, obj_id: i64, script_id: []const u8) void {
+    const handle = lua.newUserdata(ObjScriptHandle, 0);
+    handle.obj_id = obj_id;
+    handle.script = std.mem.zeroes([64:0]u8);
+    const len = @min(script_id.len, handle.script.len - 1);
+    @memcpy(handle.script[0..len], script_id[0..len]);
+    _ = lua.getMetatableRegistry(obj_script_metatable);
+    lua.setMetatable(-2);
+}
+
+fn checkObjScriptHandle(lua: *Lua) *ObjScriptHandle {
+    return lua.testUserdata(ObjScriptHandle, 1, obj_script_metatable) catch {
+        lua.raiseErrorStr("expected dbat.ObjectScript", .{});
+    };
+}
+
+fn objScriptObject(lua: *Lua, handle: *ObjScriptHandle) *cdb.obj_data {
+    return cdb.obj_by_id(handle.obj_id) orelse lua.raiseErrorStr("stale dbat.ObjectScript object", .{});
+}
+
+fn objScriptName(handle: *ObjScriptHandle) [*:0]const u8 {
+    return @ptrCast(&handle.script);
+}
+
+fn objScriptEventKind(buf: *[192:0]u8, script: []const u8, event: []const u8) ?[:0]u8 {
+    const prefix = "script:";
+    const total = prefix.len + script.len + 1 + event.len;
+    if (total >= buf.len) return null;
+    @memcpy(buf[0..prefix.len], prefix);
+    @memcpy(buf[prefix.len..][0..script.len], script);
+    buf[prefix.len + script.len] = ':';
+    @memcpy(buf[prefix.len + script.len + 1 ..][0..event.len], event);
+    buf[total] = 0;
+    return buf[0..total :0];
+}
+
+fn luaObjScriptId(lua: *Lua) i32 {
+    _ = lua.pushString(std.mem.span(objScriptName(checkObjScriptHandle(lua))));
+    return 1;
+}
+
+fn luaObjScriptNumberGet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    lua.pushInteger(cdb.obj_script_number_get(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjScriptNumberSet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    cdb.obj_script_number_set(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2), intCastOrError(lua, i64, integer(lua, 3), "script number"));
+    return 0;
+}
+
+fn luaObjScriptNumberMod(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const name = objScriptName(handle);
+    const key = string(lua, 2);
+    const delta = intCastOrError(lua, i64, integer(lua, 3), "script number delta");
+    const old = cdb.obj_script_number_get(obj, name, key);
+    cdb.obj_script_number_set(obj, name, key, old + delta);
+    lua.pushInteger(old + delta);
+    return 1;
+}
+
+fn luaObjScriptTextGet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    pushCString(lua, cdb.obj_script_text_get(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjScriptTextSet(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    cdb.obj_script_text_set(objScriptObject(lua, handle), objScriptName(handle), string(lua, 2), string(lua, 3));
+    return 0;
+}
+
+fn luaObjScriptScheduleEvent(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const delay_ms = integer(lua, 3);
+    const interval_ms: i64 = if (lua.isNoneOrNil(4)) 0 else @intCast(integer(lua, 4));
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse {
+        lua.pushInteger(0);
+        return 1;
+    };
+    _ = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr);
+    const id = event_schedule_lua_obj_update(event_queue_now_ms() + delay_ms, interval_ms, kind.ptr, cdb.obj_id_get(obj));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaObjScriptCancelEvent(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse return 0;
+    _ = eq_cancel_owner(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr);
+    return 0;
+}
+
+fn luaObjScriptEventPending(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    lua.pushBoolean(eq_owner_count(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr) > 0);
+    return 1;
+}
+
+fn luaObjScriptEventNextMs(lua: *Lua) i32 {
+    const handle = checkObjScriptHandle(lua);
+    const obj = objScriptObject(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(objScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = objScriptEventKind(&buf, script, event_name) orelse {
+        lua.pushInteger(-1);
+        return 1;
+    };
+    lua.pushInteger(eq_owner_next_ms(@as(c_int, cdb.EQ_OWNER_OBJ), cdb.obj_id_get(obj), kind.ptr));
+    return 1;
+}
+
+// ---- Object-level script entity methods ----
+
+fn luaObjectScriptAdd(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.obj_script_add(checkObject(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjectScriptRemove(lua: *Lua) i32 {
+    const reason: [*:0]const u8 = if (lua.isNoneOrNil(3)) "removed" else string(lua, 3);
+    lua.pushBoolean(cdb.obj_script_remove(checkObject(lua), string(lua, 2), reason));
+    return 1;
+}
+
+fn luaObjectScriptHas(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.obj_script_has(checkObject(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaObjectScript(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    const script_id = string(lua, 2);
+    if (!cdb.obj_script_has(obj, script_id)) {
+        lua.pushNil();
+        return 1;
+    }
+    pushObjectScript(lua, cdb.obj_id_get(obj), script_id);
+    return 1;
+}
+
+fn luaObjectScripts(lua: *Lua) i32 {
+    const obj = checkObject(lua);
+    lua.newTable();
+    var maybe_iter = object_api.objectScriptIterator(obj);
+    if (maybe_iter) |*iter| {
+        var i: zlua.Integer = 1;
+        while (iter.next()) |entry| {
+            pushObjectScript(lua, cdb.obj_id_get(obj), entry.name);
+            lua.setIndex(-2, i);
+            i += 1;
+        }
+    }
+    return valueIterator(lua);
+}
+
+fn luaObjectScriptNumberGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.obj_script_number_get(checkObject(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaObjectScriptNumberSet(lua: *Lua) i32 {
+    cdb.obj_script_number_set(checkObject(lua), string(lua, 2), string(lua, 3), intCastOrError(lua, i64, integer(lua, 4), "script number"));
+    return 0;
+}
+
+fn luaObjectScriptTextGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.obj_script_text_get(checkObject(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaObjectScriptTextSet(lua: *Lua) i32 {
+    cdb.obj_script_text_set(checkObject(lua), string(lua, 2), string(lua, 3), string(lua, 4));
     return 0;
 }

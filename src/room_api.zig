@@ -2,6 +2,9 @@ const cdb = @import("cdb");
 const std = @import("std");
 const bitflags = @import("flags.zig");
 const obj_api = @import("object_api.zig");
+const intern_mod = @import("intern.zig");
+const lua_api = @import("lua_api.zig");
+const script_instance_mod = @import("script_instance.zig");
 
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
@@ -221,4 +224,144 @@ pub export fn room_people_iterate(room: *cdb.room_data, func: cdb.char_iter_fn, 
         const ch = cdb.char_by_id(id) orelse continue;
         if (!callback(ch, ctx)) return;
     }
+}
+
+// ---- Room Script Storage ----
+
+const ScriptInstance = script_instance_mod.ScriptInstance;
+const ScriptId = intern_mod.InternedId;
+const ScriptMap = std.AutoHashMap(ScriptId, ScriptInstance);
+
+var room_script_allocator: std.mem.Allocator = undefined;
+var room_scripts_global: std.AutoHashMap(i64, ScriptMap) = undefined;
+
+pub fn init(alloc: std.mem.Allocator) void {
+    room_script_allocator = alloc;
+    room_scripts_global = std.AutoHashMap(i64, ScriptMap).init(alloc);
+}
+
+pub fn deinit() void {
+    var outer = room_scripts_global.iterator();
+    while (outer.next()) |entry| {
+        var inner = entry.value_ptr.iterator();
+        while (inner.next()) |se| {
+            se.value_ptr.deinit(room_script_allocator);
+        }
+        entry.value_ptr.deinit();
+    }
+    room_scripts_global.deinit();
+}
+
+fn roomKey(room: *cdb.room_data) i64 {
+    return @as(i64, @intCast(cdb.room_vnum_get(room)));
+}
+
+fn getRoomScriptMap(room: *cdb.room_data) ?*ScriptMap {
+    return room_scripts_global.getPtr(roomKey(room));
+}
+
+fn getOrCreateRoomScriptMap(room: *cdb.room_data) ?*ScriptMap {
+    const result = room_scripts_global.getOrPut(roomKey(room)) catch return null;
+    if (!result.found_existing) {
+        result.value_ptr.* = ScriptMap.init(room_script_allocator);
+    }
+    return result.value_ptr;
+}
+
+pub export fn room_script_add(room: *cdb.room_data, script_id: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const id = std.mem.span(id_z);
+    const interned = intern_mod.lookup(id) orelse return false;
+    const map = getOrCreateRoomScriptMap(room) orelse return false;
+    if (map.contains(interned)) return false;
+    const instance = ScriptInstance.init(room_script_allocator, intern_mod.nameOf(interned));
+    map.put(interned, instance) catch return false;
+    lua_api.callRoomScriptHook(room, id, "on_apply", null);
+    return true;
+}
+
+pub export fn room_script_remove(room: *cdb.room_data, script_id: ?[*:0]const u8, reason: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const id = std.mem.span(id_z);
+    const interned = intern_mod.lookup(id) orelse return false;
+    const map = getRoomScriptMap(room) orelse return false;
+    if (!map.contains(interned)) return false;
+    const reason_str: ?[]const u8 = if (reason) |r| std.mem.span(r) else null;
+    lua_api.callRoomScriptHook(room, id, "on_remove", reason_str);
+    if (map.fetchRemove(interned)) |kv| {
+        var instance = kv.value;
+        instance.deinit(room_script_allocator);
+    }
+    return true;
+}
+
+pub export fn room_script_has(room: *cdb.room_data, script_id: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return false;
+    const map = getRoomScriptMap(room) orelse return false;
+    return map.contains(interned);
+}
+
+pub export fn room_script_number_get(room: *cdb.room_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8) i64 {
+    const id_z = script_id orelse return 0;
+    const key_z = key orelse return 0;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return 0;
+    const map = getRoomScriptMap(room) orelse return 0;
+    const instance = map.getPtr(interned) orelse return 0;
+    return instance.numbers.get(std.mem.span(key_z)) orelse 0;
+}
+
+pub export fn room_script_number_set(room: *cdb.room_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8, value: i64) void {
+    const id_z = script_id orelse return;
+    const key_z = key orelse return;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return;
+    const map = getRoomScriptMap(room) orelse return;
+    const instance = map.getPtr(interned) orelse return;
+    instance.numbers.put(lua_api.internString(std.mem.span(key_z)), value) catch {};
+}
+
+pub export fn room_script_text_get(room: *cdb.room_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8) [*c]const u8 {
+    const id_z = script_id orelse return null;
+    const key_z = key orelse return null;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return null;
+    const map = getRoomScriptMap(room) orelse return null;
+    const instance = map.getPtr(interned) orelse return null;
+    return @ptrCast(instance.strings.get(std.mem.span(key_z)) orelse return null);
+}
+
+pub export fn room_script_text_set(room: *cdb.room_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8, value: ?[*:0]const u8) void {
+    const id_z = script_id orelse return;
+    const key_z = key orelse return;
+    const val_z = value orelse return;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return;
+    const map = getRoomScriptMap(room) orelse return;
+    const instance = map.getPtr(interned) orelse return;
+    const key_str = lua_api.internString(std.mem.span(key_z));
+    const val_copy = room_script_allocator.dupe(u8, std.mem.span(val_z)) catch return;
+    if (instance.strings.fetchPut(key_str, val_copy) catch null) |old| {
+        room_script_allocator.free(old.value);
+    }
+}
+
+pub export fn room_script_event_dispatch(room: *cdb.room_data, script_id: ?[*:0]const u8, event_name: ?[*:0]const u8) void {
+    const id_z = script_id orelse return;
+    const ev_z = event_name orelse return;
+    lua_api.callRoomScriptEventHook(room, std.mem.span(id_z), std.mem.span(ev_z));
+}
+
+pub const RoomScriptEntry = struct { name: []const u8 };
+
+pub const RoomScriptIterator = struct {
+    inner: ScriptMap.Iterator,
+
+    pub fn next(self: *RoomScriptIterator) ?RoomScriptEntry {
+        const kv = self.inner.next() orelse return null;
+        return .{ .name = intern_mod.nameOf(kv.key_ptr.*) };
+    }
+};
+
+pub fn roomScriptIterator(room: *const cdb.room_data) ?RoomScriptIterator {
+    const key = @as(i64, @intCast(cdb.room_vnum_get(@constCast(room))));
+    const map = room_scripts_global.getPtr(key) orelse return null;
+    return .{ .inner = map.iterator() };
 }

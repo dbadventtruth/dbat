@@ -1,8 +1,160 @@
 const cdb = @import("cdb");
 const std = @import("std");
 const bitflags = @import("flags.zig");
+const intern_mod = @import("intern.zig");
+const lua_api = @import("lua_api.zig");
+const script_instance_mod = @import("script_instance.zig");
 
 pub const ObjIterFn = *const fn (*cdb.obj_data, ?*anyopaque) callconv(.c) bool;
+
+const ScriptInstance = script_instance_mod.ScriptInstance;
+const ScriptId = intern_mod.InternedId;
+const ScriptMap = std.AutoHashMap(ScriptId, ScriptInstance);
+
+var obj_script_allocator: std.mem.Allocator = undefined;
+var obj_scripts_global: std.AutoHashMap(i64, ScriptMap) = undefined;
+
+pub fn init(alloc: std.mem.Allocator) void {
+    obj_script_allocator = alloc;
+    obj_scripts_global = std.AutoHashMap(i64, ScriptMap).init(alloc);
+}
+
+pub fn deinit() void {
+    var outer = obj_scripts_global.iterator();
+    while (outer.next()) |entry| {
+        var inner = entry.value_ptr.iterator();
+        while (inner.next()) |se| {
+            se.value_ptr.deinit(obj_script_allocator);
+        }
+        entry.value_ptr.deinit();
+    }
+    obj_scripts_global.deinit();
+}
+
+pub fn freeObjScripts(obj_id: i64) void {
+    if (obj_scripts_global.fetchRemove(obj_id)) |kv| {
+        var map = kv.value;
+        var it = map.iterator();
+        while (it.next()) |entry| entry.value_ptr.deinit(obj_script_allocator);
+        map.deinit();
+    }
+}
+
+fn getObjScriptMap(obj: *cdb.obj_data) ?*ScriptMap {
+    return obj_scripts_global.getPtr(cdb.obj_id_get(obj));
+}
+
+fn getOrCreateObjScriptMap(obj: *cdb.obj_data) ?*ScriptMap {
+    const obj_id = cdb.obj_id_get(obj);
+    const result = obj_scripts_global.getOrPut(obj_id) catch return null;
+    if (!result.found_existing) {
+        result.value_ptr.* = ScriptMap.init(obj_script_allocator);
+    }
+    return result.value_ptr;
+}
+
+pub export fn obj_script_add(obj: *cdb.obj_data, script_id: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const id = std.mem.span(id_z);
+    const interned = intern_mod.lookup(id) orelse return false;
+    const map = getOrCreateObjScriptMap(obj) orelse return false;
+    if (map.contains(interned)) return false;
+    const instance = ScriptInstance.init(obj_script_allocator, intern_mod.nameOf(interned));
+    map.put(interned, instance) catch return false;
+    lua_api.callObjScriptHook(obj, id, "on_apply", null);
+    return true;
+}
+
+pub export fn obj_script_remove(obj: *cdb.obj_data, script_id: ?[*:0]const u8, reason: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const id = std.mem.span(id_z);
+    const interned = intern_mod.lookup(id) orelse return false;
+    const map = getObjScriptMap(obj) orelse return false;
+    if (!map.contains(interned)) return false;
+    const reason_str: ?[]const u8 = if (reason) |r| std.mem.span(r) else null;
+    lua_api.callObjScriptHook(obj, id, "on_remove", reason_str);
+    if (map.fetchRemove(interned)) |kv| {
+        var instance = kv.value;
+        instance.deinit(obj_script_allocator);
+    }
+    return true;
+}
+
+pub export fn obj_script_has(obj: *cdb.obj_data, script_id: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return false;
+    const map = getObjScriptMap(obj) orelse return false;
+    return map.contains(interned);
+}
+
+pub export fn obj_script_number_get(obj: *cdb.obj_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8) i64 {
+    const id_z = script_id orelse return 0;
+    const key_z = key orelse return 0;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return 0;
+    const map = getObjScriptMap(obj) orelse return 0;
+    const instance = map.getPtr(interned) orelse return 0;
+    return instance.numbers.get(std.mem.span(key_z)) orelse 0;
+}
+
+pub export fn obj_script_number_set(obj: *cdb.obj_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8, value: i64) void {
+    const id_z = script_id orelse return;
+    const key_z = key orelse return;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return;
+    const map = getObjScriptMap(obj) orelse return;
+    const instance = map.getPtr(interned) orelse return;
+    instance.numbers.put(lua_api.internString(std.mem.span(key_z)), value) catch {};
+}
+
+pub export fn obj_script_text_get(obj: *cdb.obj_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8) [*c]const u8 {
+    const id_z = script_id orelse return null;
+    const key_z = key orelse return null;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return null;
+    const map = getObjScriptMap(obj) orelse return null;
+    const instance = map.getPtr(interned) orelse return null;
+    return @ptrCast(instance.strings.get(std.mem.span(key_z)) orelse return null);
+}
+
+pub export fn obj_script_text_set(obj: *cdb.obj_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8, value: ?[*:0]const u8) void {
+    const id_z = script_id orelse return;
+    const key_z = key orelse return;
+    const val_z = value orelse return;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return;
+    const map = getObjScriptMap(obj) orelse return;
+    const instance = map.getPtr(interned) orelse return;
+    const key_str = lua_api.internString(std.mem.span(key_z));
+    const val_copy = obj_script_allocator.dupe(u8, std.mem.span(val_z)) catch return;
+    if (instance.strings.fetchPut(key_str, val_copy) catch null) |old| {
+        obj_script_allocator.free(old.value);
+    }
+}
+
+pub export fn obj_script_event_dispatch(obj: *cdb.obj_data, script_id: ?[*:0]const u8, event_name: ?[*:0]const u8) void {
+    const id_z = script_id orelse return;
+    const ev_z = event_name orelse return;
+    lua_api.callObjScriptEventHook(obj, std.mem.span(id_z), std.mem.span(ev_z));
+}
+
+pub const ObjScriptEntry = struct { name: []const u8 };
+
+pub const ObjScriptIterator = struct {
+    inner: ScriptMap.Iterator,
+
+    pub fn next(self: *ObjScriptIterator) ?ObjScriptEntry {
+        const kv = self.inner.next() orelse return null;
+        return .{ .name = intern_mod.nameOf(kv.key_ptr.*) };
+    }
+};
+
+pub fn objectScriptIterator(obj: *const cdb.obj_data) ?ObjScriptIterator {
+    const map = obj_scripts_global.getPtr(cdb.obj_id_get(@constCast(obj))) orelse return null;
+    return .{ .inner = map.iterator() };
+}
+
+pub fn getObjScriptInstance(obj: *const cdb.obj_data, script_id: []const u8) ?*ScriptInstance {
+    const interned = intern_mod.lookup(script_id) orelse return null;
+    const map = obj_scripts_global.getPtr(cdb.obj_id_get(@constCast(obj))) orelse return null;
+    return map.getPtr(interned);
+}
 
 extern fn strdup(s: [*:0]const u8) ?[*:0]u8;
 

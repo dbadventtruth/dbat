@@ -4,6 +4,8 @@ const jsonx = @import("flags_json.zig");
 const bitflags = @import("flags.zig");
 const extradesc_json = @import("extradesc_json.zig");
 const dgscripts_json = @import("dgscript_json.zig");
+const object_api = @import("object_api.zig");
+const lua_api = @import("lua_api.zig");
 
 pub const JsonValue = jsonx.JsonValue;
 
@@ -42,6 +44,9 @@ pub fn serializeObject(allocator: std.mem.Allocator, obj: *cdb.obj_data, mode: O
     try jsonx.putNonEmpty(&object, allocator, "wear_flags", try jsonx.serializeFlags(allocator, obj, 128, wearFlagged));
     try jsonx.putNonEmpty(&object, allocator, "extra_flags", try jsonx.serializeFlags(allocator, obj, 128, extraFlagged));
     try jsonx.putNonEmpty(&object, allocator, "affect_flags", try jsonx.serializeFlags(allocator, obj, 128, affFlagged));
+    if (mode == .instance) {
+        try jsonx.putNonEmpty(&object, allocator, "scripts", try serializeObjScripts(allocator, obj));
+    }
 
     return object;
 }
@@ -99,6 +104,9 @@ pub fn deserializeObject(obj: *cdb.obj_data, options: DeserializeOptions, value:
     if (jsonx.field(value, "wear_flags")) |flags| try jsonx.deserializeFlags(obj, flags, 128, wearFlagSet);
     if (jsonx.field(value, "extra_flags")) |flags| try jsonx.deserializeFlags(obj, flags, 128, extraFlagSet);
     if (jsonx.field(value, "affect_flags")) |flags| try jsonx.deserializeFlags(obj, flags, 128, affFlagSet);
+    if (options.mode == .instance) {
+        if (jsonx.field(value, "scripts")) |scripts| try deserializeObjScripts(obj, scripts);
+    }
 }
 
 pub fn deserializeObjectPrototype(obj: *cdb.obj_proto_data, options: DeserializeOptions, value: JsonValue) !void {
@@ -210,4 +218,67 @@ fn protoAffFlagged(obj: *cdb.obj_proto_data, pos: c_int) bool {
 }
 fn protoAffFlagSet(obj: *cdb.obj_proto_data, pos: c_int, value: bool) void {
     bitflags.set(obj.bitvector[0..], pos, value);
+}
+
+fn serializeObjScripts(allocator: std.mem.Allocator, obj: *cdb.obj_data) !JsonValue {
+    var result = jsonx.newObject(allocator);
+    const maybe_iter = object_api.objectScriptIterator(obj);
+    if (maybe_iter == null) return result;
+    var iter = maybe_iter.?; // must be var to call next()
+    while (iter.next()) |entry| {
+        const sname = entry.name;
+        const definition = lua_api.scriptDefinition("object_scripts", sname) orelse continue;
+        if (!definition.persistent) continue;
+        const instance = object_api.getObjScriptInstance(obj, sname) orelse continue;
+        var obj_entry = jsonx.newObject(allocator);
+        var numbers = jsonx.newObject(allocator);
+        var number_it = instance.numbers.iterator();
+        while (number_it.next()) |ne| try jsonx.putInt(&numbers, allocator, ne.key_ptr.*, ne.value_ptr.*);
+        if (numbers.object.count() > 0) try jsonx.put(&obj_entry, allocator, "numbers", numbers);
+        var strings = jsonx.newObject(allocator);
+        var string_it = instance.strings.iterator();
+        while (string_it.next()) |se| try jsonx.putSlice(&strings, allocator, se.key_ptr.*, se.value_ptr.*);
+        if (strings.object.count() > 0) try jsonx.put(&obj_entry, allocator, "strings", strings);
+        try jsonx.put(&result, allocator, sname, obj_entry);
+    }
+    return result;
+}
+
+fn deserializeObjScripts(obj: *cdb.obj_data, scripts: JsonValue) !void {
+    if (scripts != .object) return error.ExpectedObject;
+    var it = scripts.object.iterator();
+    while (it.next()) |entry| {
+        const id = entry.key_ptr.*;
+        const item = entry.value_ptr.*;
+        const id_z = try std.heap.page_allocator.dupeZ(u8, id);
+        defer std.heap.page_allocator.free(id_z);
+        _ = cdb.obj_script_add(obj, id_z.ptr);
+        if (item != .object) continue;
+        if (jsonx.field(item, "numbers")) |nums| {
+            if (nums == .object) {
+                var nit = nums.object.iterator();
+                while (nit.next()) |ne| {
+                    if (ne.value_ptr.* == .integer) {
+                        const kz = try std.heap.page_allocator.dupeZ(u8, ne.key_ptr.*);
+                        defer std.heap.page_allocator.free(kz);
+                        cdb.obj_script_number_set(obj, id_z.ptr, kz.ptr, ne.value_ptr.*.integer);
+                    }
+                }
+            }
+        }
+        if (jsonx.field(item, "strings")) |strs| {
+            if (strs == .object) {
+                var sit = strs.object.iterator();
+                while (sit.next()) |se| {
+                    if (se.value_ptr.* == .string) {
+                        const kz = try std.heap.page_allocator.dupeZ(u8, se.key_ptr.*);
+                        defer std.heap.page_allocator.free(kz);
+                        const vz = try std.heap.page_allocator.dupeZ(u8, se.value_ptr.*.string);
+                        defer std.heap.page_allocator.free(vz);
+                        cdb.obj_script_text_set(obj, id_z.ptr, kz.ptr, vz.ptr);
+                    }
+                }
+            }
+        }
+    }
 }

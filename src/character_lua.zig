@@ -22,6 +22,7 @@ extern fn eq_owner_next_ms(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8
 extern fn event_queue_now_ms() i64;
 const mob_proto_metatable = "dbat.MobPrototype";
 const condition_metatable = "dbat.Condition";
+const char_script_metatable = "dbat.CharacterScript";
 
 const CharacterHandle = extern struct {
     id: i64,
@@ -36,6 +37,11 @@ const ConditionHandle = extern struct {
     condition: [64:0]u8,
 };
 
+const CharScriptHandle = extern struct {
+    character_id: i64,
+    script: [64:0]u8,
+};
+
 const sex_neutral: c_int = 0;
 const sex_male: c_int = 1;
 const sex_female: c_int = 2;
@@ -44,6 +50,7 @@ pub fn register(lua: *Lua) void {
     registerCharacterMetatable(lua);
     registerMobProtoMetatable(lua);
     registerConditionMetatable(lua);
+    registerCharScriptMetatable(lua);
 
     lua.newTable();
     lua.pushFunction(zlua.wrap(luaCharacterById));
@@ -331,6 +338,15 @@ fn registerCharacterMetatable(lua: *Lua) void {
     addMethod(lua, "eavesdrop_get", luaCharacterEavesdropGet);
     addMethod(lua, "eavesdrop_dir_get", luaCharacterEavesdropDirGet);
     addMethod(lua, "slot_count", luaCharacterSlotCount);
+    addMethod(lua, "script_add", luaCharacterScriptAdd);
+    addMethod(lua, "script_remove", luaCharacterScriptRemove);
+    addMethod(lua, "script_has", luaCharacterScriptHas);
+    addMethod(lua, "script", luaCharacterScript);
+    addMethod(lua, "scripts", luaCharacterScripts);
+    addMethod(lua, "script_number_get", luaCharacterScriptNumberGet);
+    addMethod(lua, "script_number_set", luaCharacterScriptNumberSet);
+    addMethod(lua, "script_text_get", luaCharacterScriptTextGet);
+    addMethod(lua, "script_text_set", luaCharacterScriptTextSet);
 
     lua_meta.mergeMethods(lua, "lua.characters.character");
 
@@ -379,6 +395,26 @@ fn registerConditionMetatable(lua: *Lua) void {
     addMethod(lua, "schedule_expire", luaConditionScheduleExpire);
     addMethod(lua, "remaining_ms", luaConditionRemainingMs);
     addMethod(lua, "remaining_secs", luaConditionRemainingSecs);
+    lua.pop(1);
+}
+
+fn registerCharScriptMetatable(lua: *Lua) void {
+    lua.newMetatable(char_script_metatable) catch {
+        lua.pop(1);
+        return;
+    };
+    lua.pushValue(-1);
+    lua.setField(-2, "__index");
+    addMethod(lua, "id", luaCharScriptId);
+    addMethod(lua, "number_get", luaCharScriptNumberGet);
+    addMethod(lua, "number_set", luaCharScriptNumberSet);
+    addMethod(lua, "number_mod", luaCharScriptNumberMod);
+    addMethod(lua, "text_get", luaCharScriptTextGet);
+    addMethod(lua, "text_set", luaCharScriptTextSet);
+    addMethod(lua, "schedule_event", luaCharScriptScheduleEvent);
+    addMethod(lua, "cancel_event", luaCharScriptCancelEvent);
+    addMethod(lua, "event_pending", luaCharScriptEventPending);
+    addMethod(lua, "event_next_ms", luaCharScriptEventNextMs);
     lua.pop(1);
 }
 
@@ -2357,4 +2393,204 @@ fn luaCharacterEavesdropDirGet(lua: *Lua) i32 {
 fn luaCharacterSlotCount(lua: *Lua) i32 {
     lua.pushInteger(cdb.char_slot_count(checkCharacter(lua)));
     return 1;
+}
+
+// ---- CharacterScript handle ----
+
+pub fn pushCharacterScript(lua: *Lua, char_id: i64, script_id: []const u8) void {
+    const handle = lua.newUserdata(CharScriptHandle, 0);
+    handle.character_id = char_id;
+    handle.script = std.mem.zeroes([64:0]u8);
+    const len = @min(script_id.len, handle.script.len - 1);
+    @memcpy(handle.script[0..len], script_id[0..len]);
+    _ = lua.getMetatableRegistry(char_script_metatable);
+    lua.setMetatable(-2);
+}
+
+fn checkCharScriptHandle(lua: *Lua) *CharScriptHandle {
+    return lua.testUserdata(CharScriptHandle, 1, char_script_metatable) catch {
+        lua.raiseErrorStr("expected dbat.CharacterScript", .{});
+    };
+}
+
+fn charScriptCharacter(lua: *Lua, handle: *CharScriptHandle) *cdb.char_data {
+    return characterByHandleId(handle.character_id) orelse lua.raiseErrorStr("stale dbat.CharacterScript character", .{});
+}
+
+fn charScriptName(handle: *CharScriptHandle) [*:0]const u8 {
+    return @ptrCast(&handle.script);
+}
+
+fn scriptEventKind(buf: *[192:0]u8, script: []const u8, event: []const u8) ?[:0]u8 {
+    const prefix = "script:";
+    const total = prefix.len + script.len + 1 + event.len;
+    if (total >= buf.len) return null;
+    @memcpy(buf[0..prefix.len], prefix);
+    @memcpy(buf[prefix.len..][0..script.len], script);
+    buf[prefix.len + script.len] = ':';
+    @memcpy(buf[prefix.len + script.len + 1 ..][0..event.len], event);
+    buf[total] = 0;
+    return buf[0..total :0];
+}
+
+fn luaCharScriptId(lua: *Lua) i32 {
+    _ = lua.pushString(std.mem.span(charScriptName(checkCharScriptHandle(lua))));
+    return 1;
+}
+
+fn luaCharScriptNumberGet(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    lua.pushInteger(cdb.char_script_number_get(charScriptCharacter(lua, handle), charScriptName(handle), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharScriptNumberSet(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    cdb.char_script_number_set(charScriptCharacter(lua, handle), charScriptName(handle), string(lua, 2), intCastOrError(lua, i64, integer(lua, 3), "script number"));
+    return 0;
+}
+
+fn luaCharScriptNumberMod(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    const ch = charScriptCharacter(lua, handle);
+    const name = charScriptName(handle);
+    const key = string(lua, 2);
+    const delta = intCastOrError(lua, i64, integer(lua, 3), "script number delta");
+    const old = cdb.char_script_number_get(ch, name, key);
+    cdb.char_script_number_set(ch, name, key, old + delta);
+    lua.pushInteger(old + delta);
+    return 1;
+}
+
+fn luaCharScriptTextGet(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    pushCString(lua, cdb.char_script_text_get(charScriptCharacter(lua, handle), charScriptName(handle), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharScriptTextSet(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    cdb.char_script_text_set(charScriptCharacter(lua, handle), charScriptName(handle), string(lua, 2), string(lua, 3));
+    return 0;
+}
+
+fn luaCharScriptScheduleEvent(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    const ch = charScriptCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const delay_ms = intCastOrError(lua, i64, integer(lua, 3), "delay_ms");
+    const interval_ms: i64 = if (lua.isNoneOrNil(4)) 0 else intCastOrError(lua, i64, integer(lua, 4), "interval_ms");
+    const script = std.mem.span(charScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = scriptEventKind(&buf, script, event_name) orelse {
+        lua.pushInteger(0);
+        return 1;
+    };
+    _ = eq_cancel_owner(1, cdb.char_id_get(ch), kind.ptr);
+    const id = event_schedule_lua_char_update(event_queue_now_ms() + delay_ms, interval_ms, kind.ptr, cdb.char_id_get(ch));
+    lua.pushInteger(@intCast(id));
+    return 1;
+}
+
+fn luaCharScriptCancelEvent(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    const ch = charScriptCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(charScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = scriptEventKind(&buf, script, event_name) orelse return 0;
+    _ = eq_cancel_owner(1, cdb.char_id_get(ch), kind.ptr);
+    return 0;
+}
+
+fn luaCharScriptEventPending(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    const ch = charScriptCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(charScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = scriptEventKind(&buf, script, event_name) orelse {
+        lua.pushBoolean(false);
+        return 1;
+    };
+    lua.pushBoolean(eq_owner_count(1, cdb.char_id_get(ch), kind.ptr) > 0);
+    return 1;
+}
+
+fn luaCharScriptEventNextMs(lua: *Lua) i32 {
+    const handle = checkCharScriptHandle(lua);
+    const ch = charScriptCharacter(lua, handle);
+    const event_name = string(lua, 2);
+    const script = std.mem.span(charScriptName(handle));
+    var buf: [192:0]u8 = undefined;
+    const kind = scriptEventKind(&buf, script, event_name) orelse {
+        lua.pushInteger(-1);
+        return 1;
+    };
+    lua.pushInteger(eq_owner_next_ms(1, cdb.char_id_get(ch), kind.ptr));
+    return 1;
+}
+
+// ---- Character-level script entity methods ----
+
+fn luaCharacterScriptAdd(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_script_add(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterScriptRemove(lua: *Lua) i32 {
+    const reason: [*:0]const u8 = if (lua.isNoneOrNil(3)) "removed" else string(lua, 3);
+    lua.pushBoolean(cdb.char_script_remove(checkCharacter(lua), string(lua, 2), reason));
+    return 1;
+}
+
+fn luaCharacterScriptHas(lua: *Lua) i32 {
+    lua.pushBoolean(cdb.char_script_has(checkCharacter(lua), string(lua, 2)));
+    return 1;
+}
+
+fn luaCharacterScript(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    const script_id = string(lua, 2);
+    if (!cdb.char_script_has(ch, script_id)) {
+        lua.pushNil();
+        return 1;
+    }
+    pushCharacterScript(lua, cdb.char_id_get(ch), script_id);
+    return 1;
+}
+
+fn luaCharacterScripts(lua: *Lua) i32 {
+    const ch = checkCharacter(lua);
+    lua.newTable();
+    var maybe_iter = character_api.characterScriptIterator(ch);
+    if (maybe_iter) |*iter| {
+        var i: zlua.Integer = 1;
+        while (iter.next()) |entry| {
+            pushCharacterScript(lua, cdb.char_id_get(ch), entry.name);
+            lua.setIndex(-2, i);
+            i += 1;
+        }
+    }
+    return valueIterator(lua);
+}
+
+fn luaCharacterScriptNumberGet(lua: *Lua) i32 {
+    lua.pushInteger(cdb.char_script_number_get(checkCharacter(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaCharacterScriptNumberSet(lua: *Lua) i32 {
+    cdb.char_script_number_set(checkCharacter(lua), string(lua, 2), string(lua, 3), intCastOrError(lua, i64, integer(lua, 4), "script number"));
+    return 0;
+}
+
+fn luaCharacterScriptTextGet(lua: *Lua) i32 {
+    pushCString(lua, cdb.char_script_text_get(checkCharacter(lua), string(lua, 2), string(lua, 3)));
+    return 1;
+}
+
+fn luaCharacterScriptTextSet(lua: *Lua) i32 {
+    cdb.char_script_text_set(checkCharacter(lua), string(lua, 2), string(lua, 3), string(lua, 4));
+    return 0;
 }

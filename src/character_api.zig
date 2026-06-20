@@ -7,6 +7,7 @@ const lua_api = @import("lua_api.zig");
 const modifiers_api = @import("modifiers_api.zig");
 const zone_mod = @import("zone.zig");
 const intern_mod = @import("intern.zig");
+const script_instance_mod = @import("script_instance.zig");
 
 extern fn event_schedule_lua_char_update(fire_at: i64, interval: i64, kind: ?[*:0]const u8, char_id: i64) u64;
 extern fn eq_cancel_owner(owner_kind: c_int, owner_id: i64, tag: ?[*:0]const u8) i64;
@@ -164,6 +165,9 @@ fn derivedId(name: []const u8) ?DerivedId {
     return intern_mod.lookup(name);
 }
 
+pub const ScriptInstance = script_instance_mod.ScriptInstance;
+const ScriptId = intern_mod.InternedId;
+
 pub const CharacterData = struct {
     stats: StatStorage,
     deriveds: DerivedStorage,
@@ -174,6 +178,7 @@ pub const CharacterData = struct {
     meters: std.AutoHashMap(intern_mod.InternedId, i64),
     skills: std.AutoHashMap(intern_mod.InternedId, SkillData),
     conditions: std.AutoHashMap(intern_mod.InternedId, ConditionInstance),
+    scripts: std.AutoHashMap(ScriptId, ScriptInstance),
 
     pub fn init(alloc: std.mem.Allocator) CharacterData {
         return CharacterData{
@@ -186,6 +191,7 @@ pub const CharacterData = struct {
             .meters = std.AutoHashMap(intern_mod.InternedId, i64).init(alloc),
             .skills = std.AutoHashMap(intern_mod.InternedId, SkillData).init(alloc),
             .conditions = std.AutoHashMap(intern_mod.InternedId, ConditionInstance).init(alloc),
+            .scripts = std.AutoHashMap(ScriptId, ScriptInstance).init(alloc),
         };
     }
 
@@ -204,6 +210,11 @@ pub const CharacterData = struct {
             entry.value_ptr.deinit(std.heap.page_allocator);
         }
         self.conditions.deinit();
+        var scripts = self.scripts.iterator();
+        while (scripts.next()) |entry| {
+            entry.value_ptr.deinit(std.heap.page_allocator);
+        }
+        self.scripts.deinit();
         self.deriveds.deinit();
     }
 };
@@ -1850,4 +1861,131 @@ pub export fn char_vnum_atype(ch: *cdb.char_data, name: ?[*:0]const u8) c_int {
     @memcpy(buf[0..len], src[0..len]);
     buf[len] = 0;
     return vnum_armortype(&buf, ch);
+}
+
+// ---- Script C API ----
+
+fn getScriptData(ch: *cdb.char_data) ?*CharacterData {
+    const ptr = ch.zigdata orelse return null;
+    return @ptrCast(@alignCast(ptr));
+}
+
+fn scriptEventKind(buf: *[192:0]u8, script_id: []const u8, event_name: []const u8) ?[:0]u8 {
+    const prefix = "script:";
+    const sep = ":";
+    const total = prefix.len + script_id.len + sep.len + event_name.len;
+    if (total >= buf.len) return null;
+    @memcpy(buf[0..prefix.len], prefix);
+    @memcpy(buf[prefix.len..][0..script_id.len], script_id);
+    @memcpy(buf[prefix.len + script_id.len ..][0..sep.len], sep);
+    @memcpy(buf[prefix.len + script_id.len + sep.len ..][0..event_name.len], event_name);
+    buf[total] = 0;
+    return buf[0..total :0];
+}
+
+pub export fn char_script_add(ch: *cdb.char_data, script_id: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const id = std.mem.span(id_z);
+    const data = getScriptData(ch) orelse return false;
+    const interned = intern_mod.lookup(id) orelse return false;
+    if (data.scripts.contains(interned)) return false;
+    const instance = ScriptInstance.init(std.heap.page_allocator, intern_mod.nameOf(interned));
+    data.scripts.put(interned, instance) catch return false;
+    lua_api.callCharScriptHook(ch, id, "on_apply", null);
+    return true;
+}
+
+pub export fn char_script_remove(ch: *cdb.char_data, script_id: ?[*:0]const u8, reason: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const id = std.mem.span(id_z);
+    const data = getScriptData(ch) orelse return false;
+    const interned = intern_mod.lookup(id) orelse return false;
+    if (!data.scripts.contains(interned)) return false;
+    const reason_str: ?[]const u8 = if (reason) |r| std.mem.span(r) else null;
+    lua_api.callCharScriptHook(ch, id, "on_remove", reason_str);
+    var prefix_buf: [192:0]u8 = undefined;
+    const prefix = "script:";
+    const total = prefix.len + id.len;
+    if (total < prefix_buf.len) {
+        @memcpy(prefix_buf[0..prefix.len], prefix);
+        @memcpy(prefix_buf[prefix.len..][0..id.len], id);
+        prefix_buf[total] = 0;
+        _ = eq_cancel_owner(cdb.EQ_OWNER_CHAR, cdb.char_id_get(ch), &prefix_buf);
+    }
+    if (data.scripts.fetchRemove(interned)) |kv| {
+        var instance = kv.value;
+        instance.deinit(std.heap.page_allocator);
+    }
+    return true;
+}
+
+pub export fn char_script_has(ch: *cdb.char_data, script_id: ?[*:0]const u8) bool {
+    const id_z = script_id orelse return false;
+    const data = getScriptData(ch) orelse return false;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return false;
+    return data.scripts.contains(interned);
+}
+
+pub export fn char_script_number_get(ch: *cdb.char_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8) i64 {
+    const id_z = script_id orelse return 0;
+    const key_z = key orelse return 0;
+    const data = getScriptData(ch) orelse return 0;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return 0;
+    const instance = data.scripts.getPtr(interned) orelse return 0;
+    return instance.numbers.get(std.mem.span(key_z)) orelse 0;
+}
+
+pub export fn char_script_number_set(ch: *cdb.char_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8, value: i64) void {
+    const id_z = script_id orelse return;
+    const key_z = key orelse return;
+    const data = getScriptData(ch) orelse return;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return;
+    const instance = data.scripts.getPtr(interned) orelse return;
+    instance.numbers.put(lua_api.internString(std.mem.span(key_z)), value) catch {};
+}
+
+pub export fn char_script_text_get(ch: *cdb.char_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8) [*c]const u8 {
+    const id_z = script_id orelse return null;
+    const key_z = key orelse return null;
+    const data = getScriptData(ch) orelse return null;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return null;
+    const instance = data.scripts.getPtr(interned) orelse return null;
+    return @ptrCast(instance.strings.get(std.mem.span(key_z)) orelse return null);
+}
+
+pub export fn char_script_text_set(ch: *cdb.char_data, script_id: ?[*:0]const u8, key: ?[*:0]const u8, value: ?[*:0]const u8) void {
+    const id_z = script_id orelse return;
+    const key_z = key orelse return;
+    const val_z = value orelse return;
+    const data = getScriptData(ch) orelse return;
+    const interned = intern_mod.lookup(std.mem.span(id_z)) orelse return;
+    const instance = data.scripts.getPtr(interned) orelse return;
+    const key_str = lua_api.internString(std.mem.span(key_z));
+    const val_copy = std.heap.page_allocator.dupe(u8, std.mem.span(val_z)) catch return;
+    if (instance.strings.fetchPut(key_str, val_copy) catch null) |old| {
+        std.heap.page_allocator.free(old.value);
+    }
+}
+
+pub export fn char_script_event_dispatch(ch: *cdb.char_data, script_id: ?[*:0]const u8, event_name: ?[*:0]const u8) void {
+    const id_z = script_id orelse return;
+    const ev_z = event_name orelse return;
+    lua_api.callCharScriptEventHook(ch, std.mem.span(id_z), std.mem.span(ev_z));
+}
+
+pub const CharScriptEntry = struct { name: []const u8 };
+
+pub const CharScriptIterator = struct {
+    inner: std.AutoHashMap(ScriptId, ScriptInstance).Iterator,
+
+    pub fn next(self: *CharScriptIterator) ?CharScriptEntry {
+        const kv = self.inner.next() orelse return null;
+        return .{ .name = intern_mod.nameOf(kv.key_ptr.*) };
+    }
+};
+
+pub fn characterScriptIterator(ch: *const cdb.char_data) ?CharScriptIterator {
+    const ptr = ch.zigdata orelse return null;
+    const data: *const CharacterData = @ptrCast(@alignCast(ptr));
+    return .{ .inner = data.scripts.iterator() };
 }

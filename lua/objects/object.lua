@@ -71,6 +71,16 @@ end
 local function on_heartbeat(obj, hb)
 end
 
+local function on_event(obj, kind)
+  local subsystem, id, event_name = kind:match("^([^:]+):([^:]+):?(.*)$")
+  event_name = (event_name and event_name ~= "") and event_name or "tick"
+  if subsystem == "script" then
+    if not obj:script_has(id) then return end
+    local def = require("dbat").get("object_scripts", id)
+    if def and def.on_event then def.on_event(obj, obj:script(id), event_name) end
+  end
+end
+
 -- ---------------------------------------------------------------------------
 -- Inventory rendering
 -- ---------------------------------------------------------------------------
@@ -440,4 +450,5 @@ return {
   on_mud_hour = on_mud_hour,
   on_second = on_second,
   on_heartbeat = on_heartbeat,
+  on_event = on_event,
 }
